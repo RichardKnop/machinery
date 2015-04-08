@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"time"
 	"log"
-	"github.com/streadway/amqp"
 )
 
 type Worker struct {
@@ -17,26 +16,16 @@ func InitWorker(app *App) *Worker {
 	}
 }
 
-func (worker *Worker) Listen() {
-	conn, err := amqp.Dial(worker.app.BrokerURL)
-	FailOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+func (worker *Worker) Launch() {
+	log.Printf("Launching a worker with the following settings:")
+	log.Printf("- broker_url: %s", worker.app.BrokerURL)
+	log.Printf("- default_queue: %s", worker.app.DefaultQueue)
 
-	ch, err := conn.Channel()
-	FailOnError(err, "Failed to open a channel")
+	conn, ch, q := Connect(worker.app)
+	defer conn.Close()
 	defer ch.Close()
 
-	q, err := ch.QueueDeclare(
-		worker.app.DefaultTaskQueue, 	// name
-		true,         					// durable
-		false,        					// delete when unused
-		false,        					// exclusive
-		false,        					// no-wait
-		nil,          					// arguments
-	)
-	FailOnError(err, "Failed to declare a queue")
-
-	err = ch.Qos(
+	err := ch.Qos(
 		3,     // prefetch count
 		0,     // prefetch size
 		false, // global

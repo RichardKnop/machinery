@@ -1,0 +1,2 @@
+broker_url: amqp://guest2:guest@localhost:5672/
+default_queue: tast_queue

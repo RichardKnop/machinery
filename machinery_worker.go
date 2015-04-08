@@ -27,6 +27,7 @@ func main() {
 	// Init app
 	app := lib.InitApp(configMap)
 
-	// Send a test task
-	app.SendTask("foobar")
+	// Launch a worker
+	worker := lib.InitWorker(app)
+	worker.Launch()
 }

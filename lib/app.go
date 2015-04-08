@@ -8,36 +8,34 @@ import (
 
 type App struct {
 	BrokerURL string
-	DefaultTaskQueue string
+	DefaultQueue string
 	registeredTasks []string
 }
 
-func InitApp(brokerURL string, defaultTaskQueue string) *App {
+func InitApp(configMap map[interface{}]interface{}) *App {
+	brokerURL, ok := configMap["broker_url"].(string)
+	if ok != true {
+		FailOnError(ArgumentNotString{}, 
+			"broker_url must be string")
+	}
+
+	defaultQueue, ok := configMap["default_queue"].(string)
+	if ok != true {
+		FailOnError(ArgumentNotString{}, 
+			"default_queue must be string")
+	}
+
 	return &App{
 		BrokerURL: brokerURL,
-		DefaultTaskQueue: defaultTaskQueue,
+		DefaultQueue: defaultQueue,
 		registeredTasks: make([]string, 5),
 	}
 }
 
 func (app *App) SendTask(taskName string) {
-	conn, err := amqp.Dial(app.BrokerURL)
-	FailOnError(err, "Failed to connect to RabbitMQ")
+	conn, ch, q := Connect(app)
 	defer conn.Close()
-
-	ch, err := conn.Channel()
-	FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
-
-	q, err := ch.QueueDeclare(
-		app.DefaultTaskQueue, 	// name
-		true,    				// durable
-		false,   				// delete when usused
-		false,   				// exclusive
-		false,   				// no-wait
-		nil,     				// arguments
-	)
-	FailOnError(err, "Failed to declare a queue")
 
 	message := fmt.Sprintf("{\"name\": \"%s\"}", taskName)
 	encodedMsgBody, err := json.Marshal(message)
