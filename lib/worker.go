@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"bytes"
 	"time"
 	"log"
@@ -52,9 +53,40 @@ func (worker *Worker) Launch() {
 			dot_count := bytes.Count(d.Body, []byte("."))
 			t := time.Duration(dot_count)
 			time.Sleep(t * time.Second)
+			worker.handleMessage(d.Body)
 		}
 	}()
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
+}
+
+func (worker *Worker) handleMessage(body []byte) {
+	message := make(map[string]interface{})
+	json.Unmarshal([]byte(body), &message)
+
+	if message["name"] == nil {
+		log.Printf("Invalid message. Required field: name")
+	}
+
+	if message["kwargs"] == nil {
+		log.Printf("Invalid message. Required field: kwargs")
+	}
+
+	name, ok := message["name"].(string)
+	if !ok {
+		log.Printf("Invalid message. Name must be string")
+	}
+
+	kwargs, ok := message["kwargs"].(map[string]interface{})
+	if !ok {
+		log.Printf("Invalid message. Kwargs must be object")
+	}
+
+	task := worker.app.GetRegisteredTask(name)
+	if task == nil {
+		log.Printf("Task with a name '%s' not registered", message["name"])
+	}
+
+	task.Process(kwargs)
 }

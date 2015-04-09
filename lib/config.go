@@ -5,7 +5,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func ParseConfig(configMap *map[interface{}]interface{}, configPath *string) {
+func ParseConfig(configMap *map[string]string, configPath *string) {
 	file, err := os.Open(*configPath)
 
 	// Config file not found, just return

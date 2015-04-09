@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"fmt"
 	"encoding/json"
 	"github.com/streadway/amqp"
 )
@@ -9,36 +8,34 @@ import (
 type App struct {
 	BrokerURL string
 	DefaultQueue string
-	registeredTasks []string
+	registeredTasks map[string]Task
 }
 
-func InitApp(configMap map[interface{}]interface{}) *App {
-	brokerURL, ok := configMap["broker_url"].(string)
-	if ok != true {
-		FailOnError(ArgumentNotString{}, 
-			"broker_url must be string")
-	}
-
-	defaultQueue, ok := configMap["default_queue"].(string)
-	if ok != true {
-		FailOnError(ArgumentNotString{}, 
-			"default_queue must be string")
-	}
-
+func InitApp(configMap map[string]string) *App {
 	return &App{
-		BrokerURL: brokerURL,
-		DefaultQueue: defaultQueue,
-		registeredTasks: make([]string, 5),
+		BrokerURL: configMap["broker_url"],
+		DefaultQueue: configMap["default_queue"],
 	}
 }
 
-func (app *App) SendTask(taskName string) {
+func (app *App) RegisterTasks(tasks map[string]Task) {
+	app.registeredTasks = tasks
+}
+
+func (app *App) GetRegisteredTask(name string) Task {
+	return app.registeredTasks[name]
+}
+
+func (app *App) SendTask(name string, kwargs map[string]interface{}) {
 	conn, ch, q := Connect(app)
 	defer conn.Close()
 	defer ch.Close()
 
-	message := fmt.Sprintf("{\"name\": \"%s\"}", taskName)
-	encodedMsgBody, err := json.Marshal(message)
+	message := make(map[string]interface{})
+	message["name"] = name
+	message["kwargs"] = kwargs
+	encodedMessage, err := json.Marshal(message)
+
 	err = ch.Publish(
 		"",     // exchange
 		q.Name, // routing key
@@ -46,7 +43,7 @@ func (app *App) SendTask(taskName string) {
 		false,  // immediate
 		amqp.Publishing{
 			ContentType: "application/json",
-			Body:        []byte(encodedMsgBody),
+			Body:        []byte(encodedMessage),
 		})
 	FailOnError(err, "Failed to publish a message")
 }
