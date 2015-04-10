@@ -25,6 +25,13 @@ $ brew install rabbitmq
 $ brew install go
 ```
 
+Running Tests
+-------------
+
+```
+$ go test ./lib
+```
+
 Installation
 ------------
 

@@ -9,15 +9,18 @@
 
 package main
 
-import "github.com/RichardKnop/machinery/lib"
+import (
+	"github.com/RichardKnop/machinery/lib"
+)
+
+var config = lib.Config{
+	BrokerURL:    "amqp://guest:guest@localhost:5672/",
+	DefaultQueue: "task_queue",
+}
 
 func main() {
-	configMap := make(map[string]string)
-	configMap["broker_url"] = "amqp://guest:guest@localhost:5672/"
-	configMap["default_queue"] = "task_queue"
+	app := lib.InitApp(&config)
 
-	app := lib.InitApp(configMap)
-	
 	// Send a test task
 	name := "foobar"
 	kwargs := make(map[string]interface{})
