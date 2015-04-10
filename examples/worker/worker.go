@@ -27,7 +27,7 @@ import (
 )
 
 // Define flags
-var configPath = flag.String("c", "config.yml",
+var configPath = flag.String("c", "exampleconfig.yml",
 	"Path to a configuration file")
 var brokerURL = flag.String("b", "amqp://guest:guest@localhost:5672/",
 	"Broker URL")

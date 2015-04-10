@@ -29,7 +29,7 @@ Running Tests
 -------------
 
 ```
-$ go test ./lib
+$ go test -v ./...
 ```
 
 Installation
@@ -42,22 +42,22 @@ $ go get github.com/RichardKnop/machinery
 ```
 
 Configuration
---------------
+-------------
 
-In order to use Machinery, you will need to define a worker and register some tasks.
+In order to use Machinery, you will need to define some tasks.
 
-Look at examples in examples/tasks/handlers.go to see a example tasks.
+Look at examples in examples/tasks/tasks.go to see few examples.
 
-Once you defined your tasks, you will need to launch a new worker process:
-
-```
-$ go run examples/worker.go
-```
-
-Finally, open a new tab in your terminal and and send some tasks:
+Once you have defined your tasks, you will to create a new app, register your tasks against it and launch a new worker process:
 
 ```
-go run examples/send.go
+$ go run examples/worker/worker.go
+```
+
+Finally, open a new tab in your terminal and send some tasks:
+
+```
+go run examples/send/send.go
 ```
 
 You should be able to see tasks being asynchronously processed by the worker process :)

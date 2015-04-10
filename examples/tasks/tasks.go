@@ -11,8 +11,10 @@ package tasks
 
 import "fmt"
 
-type Foobar struct {}
+// Foobar task
+type Foobar struct{}
 
+// Process will be called by a worker process
 func (f Foobar) Process(kwargs map[string]interface{}) {
 	fmt.Println("Foobar task handler")
 	fmt.Printf("Received kwargs: %v\n", kwargs)

@@ -13,7 +13,7 @@ defaultqueue: task_queue
 `
 
 func TestReadFromFile(t *testing.T) {
-	data := ReadFromFile("./_testconfig.yml")
+	data := ReadFromFile("testconfig.yml")
 
 	if string(data) == configYAMLData {
 		return
