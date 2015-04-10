@@ -1,3 +1,5 @@
+![Build Status](https://travis-ci.org/RichardKnop/machinery.svg?branch=master)
+
 Machinery
 =========
 
