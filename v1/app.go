@@ -38,21 +38,12 @@ func (app *App) NewConnection() *Connection {
 }
 
 // SendTask publishes a task to the default queue
-func (app *App) SendTask(
-	name string,
-	args []interface{},
-	kwargs map[string]interface{},
-) {
-	msg := TaskMessage{
-		Name:   name,
-		Args:   args,
-		Kwargs: kwargs,
-	}
-	encodedMessage, err := json.Marshal(msg)
+func (app *App) SendTask(signature *TaskSignature) {
+	message, err := json.Marshal(signature)
 	FailOnError(err, "Could not JSON encode message")
 
 	c := app.NewConnection().Open()
-	c.PublishMessage([]byte(encodedMessage))
+	c.PublishMessage([]byte(message))
 	c.Conn.Close()
 	c.Channel.Close()
 }

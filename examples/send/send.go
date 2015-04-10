@@ -22,6 +22,15 @@ func main() {
 	app := v1.InitApp(&config)
 
 	// Send a test task
-	args := []interface{}{1, 2}
-	app.SendTask("add_task", args, nil)
+	workflow := v1.TaskSignature{
+		Name: "add_task",
+		Args: []interface{}{1, 2},
+		Subsequent: []v1.TaskSignature{
+			v1.TaskSignature{
+				Name: "add_task",
+				Args: []interface{}{5, 6},
+			},
+		},
+	}
+	app.SendTask(&workflow)
 }

@@ -6,9 +6,10 @@ type Task interface {
 	Run(args []interface{}, kwargs map[string]interface{}) interface{}
 }
 
-// TaskMessage is a JSON representation of a task
-type TaskMessage struct {
-	Name   string
-	Args   []interface{}
-	Kwargs map[string]interface{}
+// TaskSignature represents a single task invocation
+type TaskSignature struct {
+	Name       string
+	Args       []interface{}
+	Kwargs     map[string]interface{}
+	Subsequent []TaskSignature
 }

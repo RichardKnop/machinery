@@ -69,18 +69,29 @@ func (worker *Worker) Launch() {
 }
 
 func (worker *Worker) handleMessage(d *amqp.Delivery) {
-	msg := TaskMessage{}
-	json.Unmarshal([]byte(d.Body), &msg)
+	s := TaskSignature{}
+	json.Unmarshal([]byte(d.Body), &s)
 
-	task := worker.app.GetRegisteredTask(msg.Name)
+	task := worker.app.GetRegisteredTask(s.Name)
 	if task == nil {
-		log.Printf("Task with a name '%s' not registered", msg.Name)
+		log.Printf("Task with a name '%s' not registered", s.Name)
 		return
 	}
 
 	// Everything seems fine, process the task!
-	log.Printf("Started processing %s", msg.Name)
-	result := task.Run(msg.Args, msg.Kwargs)
-	log.Printf("Finished processing %s", msg.Name)
+	log.Printf("Started processing %s", s.Name)
+	result := task.Run(s.Args, s.Kwargs)
+	log.Printf("Finished processing %s", s.Name)
 	log.Printf("Result = %v", result)
+
+	// Handle any subsequent task signatures
+	worker.handleSubsequent(s.Subsequent, result)
+}
+
+func (worker *Worker) handleSubsequent(
+	signatures []TaskSignature, result interface{},
+) {
+	for _, s := range signatures {
+		worker.app.SendTask(&s)
+	}
 }
