@@ -24,28 +24,29 @@ func InitWorker(app *App) *Worker {
 // and processes any incoming tasks registered against the app
 func (worker *Worker) Launch() {
 	log.Printf("Launching a worker with the following settings:")
-	log.Printf("- BrokerURL: %s", worker.app.Config.BrokerURL)
-	log.Printf("- DefaultQueue: %s", worker.app.Config.DefaultQueue)
+	log.Printf("- BrokerURL: %s", worker.app.config.BrokerURL)
+	log.Printf("- DefaultQueue: %s", worker.app.config.DefaultQueue)
 
-	conn, ch, q := Connect(worker.app)
-	defer conn.Close()
-	defer ch.Close()
+	c := worker.app.NewConnection()
+	c.Open()
+	defer c.Conn.Close()
+	defer c.Channel.Close()
 
-	err := ch.Qos(
+	err := c.Channel.Qos(
 		3,     // prefetch count
 		0,     // prefetch size
 		false, // global
 	)
 	FailOnError(err, "Failed to set QoS")
 
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		false,  // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
+	msgs, err := c.Channel.Consume(
+		c.Queue.Name, // queue
+		"",           // consumer
+		false,        // auto-ack
+		false,        // exclusive
+		false,        // no-local
+		false,        // no-wait
+		nil,          // args
 	)
 	FailOnError(err, "Failed to register a consumer")
 
@@ -67,35 +68,15 @@ func (worker *Worker) Launch() {
 }
 
 func (worker *Worker) handleMessage(body []byte) {
-	message := make(map[string]interface{})
-	json.Unmarshal([]byte(body), &message)
+	msg := TaskMessage{}
+	json.Unmarshal([]byte(body), &msg)
 
-	if message["name"] == nil {
-		log.Printf("Required field: name")
-		return
-	}
-	if message["kwargs"] == nil {
-		log.Printf("Required field: kwargs")
-		return
-	}
-
-	name, ok := message["name"].(string)
-	if !ok {
-		log.Printf("Task name must be string")
-		return
-	}
-	kwargs, ok := message["kwargs"].(map[string]interface{})
-	if !ok {
-		log.Printf("Kwargs must be [string]interface{}")
-		return
-	}
-
-	task := worker.app.GetRegisteredTask(name)
+	task := worker.app.GetRegisteredTask(msg.Name)
 	if task == nil {
-		log.Printf("Task with a name '%s' not registered", message["name"])
+		log.Printf("Task with a name '%s' not registered", msg.Name)
 		return
 	}
 
 	// Everything seems fine, process the task!
-	task.Process(kwargs)
+	task.Run(msg.Args, msg.Kwargs)
 }

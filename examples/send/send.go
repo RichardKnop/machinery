@@ -22,9 +22,11 @@ func main() {
 	app := v1.InitApp(&config)
 
 	// Send a test task
-	name := "foobar"
-	kwargs := make(map[string]interface{})
-	kwargs["foo"] = "hello world"
-	kwargs["bar"] = 123.4
-	app.SendTask(name, kwargs)
+	name := "foo"
+	args := []interface{}{1, 2}
+	kwargs := map[string]interface{}{
+		"foo": "hello world",
+		"bar": 123.4,
+	}
+	app.SendTask(name, args, kwargs)
 }

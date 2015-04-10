@@ -4,18 +4,35 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Connect onnects to the message queue, opens a channel,
+// Connection dials a broker and opens a channel for communication
+type Connection struct {
+	config  *Config
+	Conn    *amqp.Connection
+	Channel *amqp.Channel
+	Queue   amqp.Queue
+}
+
+// InitConnection - Connection constructor
+func InitConnection(config *Config) *Connection {
+	return &Connection{
+		config: config,
+	}
+}
+
+// Open connects to the message queue, opens a channel,
 // declares a queue and returns connection, channel
 // and queue objects
-func Connect(app *App) (*amqp.Connection, *amqp.Channel, amqp.Queue) {
-	conn, err := amqp.Dial(app.Config.BrokerURL)
+func (c *Connection) Open() {
+	var err error
+
+	c.Conn, err = amqp.Dial(c.config.BrokerURL)
 	FailOnError(err, "Failed to connect to RabbitMQ")
 
-	ch, err := conn.Channel()
+	c.Channel, err = c.Conn.Channel()
 	FailOnError(err, "Failed to open a channel")
 
-	q, err := ch.QueueDeclare(
-		app.Config.DefaultQueue, // name
+	c.Queue, err = c.Channel.QueueDeclare(
+		c.config.DefaultQueue, // name
 		true,  // durable
 		false, // delete when unused
 		false, // exclusive
@@ -23,6 +40,4 @@ func Connect(app *App) (*amqp.Connection, *amqp.Channel, amqp.Queue) {
 		nil,   // arguments
 	)
 	FailOnError(err, "Failed to declare a queue")
-
-	return conn, ch, q
 }
