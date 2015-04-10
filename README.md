@@ -41,14 +41,14 @@ First, you will need to download Machinery library to your GOPATH/src directory:
 $ go get github.com/RichardKnop/machinery
 ```
 
-Configuration
+Usage Example
 -------------
 
 In order to use Machinery, you will need to define some tasks.
 
-Look at examples in examples/tasks/tasks.go to see few examples.
+Look at samle tasks in examples/tasks/tasks.go to see few examples.
 
-Once you have defined your tasks, you will to create a new app, register your tasks against it and launch a new worker process:
+Once you have defined your tasks, you will to start a new worker process:
 
 ```
 $ go run examples/worker/worker.go
