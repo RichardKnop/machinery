@@ -5,5 +5,16 @@ go:
   - 1.4
   - tip
 
+services:
+  - rabbitmq
+
+branches:
+  only:
+    - develop
+    - master
+
+install:
+  - go get -u ./...
+
 script:
  - go test -v ./...
