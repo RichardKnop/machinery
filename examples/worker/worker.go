@@ -23,7 +23,7 @@ import (
 	"flag"
 
 	"github.com/RichardKnop/machinery/examples/tasks"
-	"github.com/RichardKnop/machinery/lib"
+	"github.com/RichardKnop/machinery/v1"
 )
 
 // Define flags
@@ -34,34 +34,34 @@ var brokerURL = flag.String("b", "amqp://guest:guest@localhost:5672/",
 var defaultQueue = flag.String("q", "task_queue",
 	"Default task queue")
 
-var config lib.Config
+var config v1.Config
 
 func init() {
 	// Parse the flags
 	flag.Parse()
 
-	config = lib.Config{
+	config = v1.Config{
 		BrokerURL:    *brokerURL,
 		DefaultQueue: *defaultQueue,
 	}
 
 	// Parse the config
 	// NOTE: If a config file is present, it has priority over flags
-	configData := lib.ReadFromFile(*configPath)
-	lib.ParseYAMLConfig(&configData, &config)
+	configData := v1.ReadFromFile(*configPath)
+	v1.ParseYAMLConfig(&configData, &config)
 }
 
 func main() {
 	// Init the app from config
-	app := lib.InitApp(&config)
+	app := v1.InitApp(&config)
 
 	// Register tasks to be processed by this worker
-	tasks := map[string]lib.Task{
+	tasks := map[string]v1.Task{
 		"foobar": tasks.Foobar{},
 	}
 	app.RegisterTasks(tasks)
 
 	// Launch the worker!
-	worker := lib.InitWorker(app)
+	worker := v1.InitWorker(app)
 	worker.Launch()
 }

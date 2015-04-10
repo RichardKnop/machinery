@@ -10,16 +10,16 @@
 package main
 
 import (
-	"github.com/RichardKnop/machinery/lib"
+	"github.com/RichardKnop/machinery/v1"
 )
 
-var config = lib.Config{
+var config = v1.Config{
 	BrokerURL:    "amqp://guest:guest@localhost:5672/",
 	DefaultQueue: "task_queue",
 }
 
 func main() {
-	app := lib.InitApp(&config)
+	app := v1.InitApp(&config)
 
 	// Send a test task
 	name := "foobar"

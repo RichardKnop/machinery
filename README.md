@@ -7,13 +7,38 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 
 So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processed on a single server using Golang's coroutines.
 
-This is a very early stage project so far. Feel free to contribute.
+This is an early stage project so far. Feel free to contribute.
 
-Getting Started With Machinery
-==============================
+- [First Steps](https://github.com/RichardKnop/machinery#first-steps)
+- [Development Setup](https://github.com/RichardKnop/machinery#development-setup)
 
-Requirements
-------------
+First Steps
+===========
+
+First, you will need to add the Machinery library to your $GOPATH/src:
+
+```
+$ go get github.com/RichardKnop/machinery
+```
+
+First, you will need to define some tasks.
+
+Look at sample tasks in examples/tasks/tasks.go to see few examples.
+
+Second, you will need to launch a worker process:
+
+```
+$ go run examples/worker/worker.go
+```
+
+Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
+
+```
+$ go run examples/send/send.go
+```
+
+Development Setup
+=================
 
 First, there are several requirements:
 
@@ -27,39 +52,15 @@ $ brew install rabbitmq
 $ brew install go
 ```
 
-Running Tests
--------------
+Then get all Machinery dependencies.
 
 ```
-$ go test -v ./...
+$ make deps
 ```
 
-Installation
-------------
-
-First, you will need to download Machinery library to your GOPATH/src directory:
+Tests
+-----
 
 ```
-$ go get github.com/RichardKnop/machinery
+$ make test
 ```
-
-Usage Example
--------------
-
-In order to use Machinery, you will need to define some tasks.
-
-Look at samle tasks in examples/tasks/tasks.go to see few examples.
-
-Once you have defined your tasks, you will to start a new worker process:
-
-```
-$ go run examples/worker/worker.go
-```
-
-Finally, open a new tab in your terminal and send some tasks:
-
-```
-go run examples/send/send.go
-```
-
-You should be able to see tasks being asynchronously processed by the worker process :)
