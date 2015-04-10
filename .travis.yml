@@ -13,8 +13,8 @@ branches:
     - master
 
 before_install:
-  - cp .netrc $HOME/.netrc
-  - chmod 600 $HOME/.netrc
+  - chmod 600 .netrc
+  - cp .netrc ~/
 
 install:
   - go get -u ./...
