@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"time"
+
+	"github.com/streadway/amqp"
 )
 
 // Worker represents a single worker process
@@ -38,9 +40,9 @@ func (worker *Worker) Launch() {
 	)
 	FailOnError(err, "Failed to set QoS")
 
-	msgs, err := c.Channel.Consume(
+	deliveries, err := c.Channel.Consume(
 		c.Queue.Name, // queue
-		"",           // consumer
+		"worker",     // consumer
 		false,        // auto-ack
 		false,        // exclusive
 		false,        // no-local
@@ -52,13 +54,13 @@ func (worker *Worker) Launch() {
 	forever := make(chan bool)
 
 	go func() {
-		for d := range msgs {
-			log.Printf("Received a message: %s", d.Body)
+		for d := range deliveries {
+			log.Printf("Received new message: %s", d.Body)
 			d.Ack(false)
 			dotCount := bytes.Count(d.Body, []byte("."))
 			t := time.Duration(dotCount)
 			time.Sleep(t * time.Second)
-			worker.handleMessage(d.Body)
+			worker.handleMessage(&d)
 		}
 	}()
 
@@ -66,9 +68,9 @@ func (worker *Worker) Launch() {
 	<-forever
 }
 
-func (worker *Worker) handleMessage(body []byte) {
+func (worker *Worker) handleMessage(d *amqp.Delivery) {
 	msg := TaskMessage{}
-	json.Unmarshal([]byte(body), &msg)
+	json.Unmarshal([]byte(d.Body), &msg)
 
 	task := worker.app.GetRegisteredTask(msg.Name)
 	if task == nil {
@@ -77,5 +79,8 @@ func (worker *Worker) handleMessage(body []byte) {
 	}
 
 	// Everything seems fine, process the task!
-	task.Run(msg.Args, msg.Kwargs)
+	log.Printf("Started processing %s", msg.Name)
+	result := task.Run(msg.Args, msg.Kwargs)
+	log.Printf("Finished processing %s", msg.Name)
+	log.Printf("Result = %v", result)
 }

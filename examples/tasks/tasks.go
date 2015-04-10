@@ -4,8 +4,6 @@
 // Task arguments are available in the kwargs map.
 package exampletasks
 
-import "log"
-
 // AddTask task
 type AddTask struct{}
 
@@ -21,6 +19,5 @@ func (f AddTask) Run(
 		}
 		sum += n
 	}
-	log.Printf("%v", sum)
 	return sum
 }

@@ -23,6 +23,5 @@ func main() {
 
 	// Send a test task
 	args := []interface{}{1, 2}
-	kwargs := map[string]interface{}{}
-	app.SendTask("add_task", args, kwargs)
+	app.SendTask("add_task", args, nil)
 }

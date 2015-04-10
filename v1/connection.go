@@ -43,3 +43,18 @@ func (c *Connection) Open() *Connection {
 
 	return c
 }
+
+// PublishMessage places a new message on the default queue
+func (c *Connection) PublishMessage(body []byte) {
+	err := c.Channel.Publish(
+		"",           // exchange
+		c.Queue.Name, // routing key
+		false,        // mandatory
+		false,        // immediate
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+		},
+	)
+	FailOnError(err, "Failed to publish a message")
+}
