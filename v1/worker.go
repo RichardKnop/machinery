@@ -27,8 +27,7 @@ func (worker *Worker) Launch() {
 	log.Printf("- BrokerURL: %s", worker.app.config.BrokerURL)
 	log.Printf("- DefaultQueue: %s", worker.app.config.DefaultQueue)
 
-	c := worker.app.NewConnection()
-	c.Open()
+	c := worker.app.NewConnection().Open()
 	defer c.Conn.Close()
 	defer c.Channel.Close()
 

@@ -1,5 +1,11 @@
 package v1
 
+import (
+	"encoding/json"
+
+	"github.com/streadway/amqp"
+)
+
 // App is the main MAchinery object and stores all configuration
 // All the tasks workers process are registered against the app
 // App.SendTask is one way of sending a task to workers
@@ -46,5 +52,22 @@ func (app *App) SendTask(
 		Args:   args,
 		Kwargs: kwargs,
 	}
-	msg.Send(app.NewConnection())
+	encodedMessage, err := json.Marshal(msg)
+	FailOnError(err, "Could not JSON encode message")
+
+	c := app.NewConnection().Open()
+	defer c.Conn.Close()
+	defer c.Channel.Close()
+
+	err = c.Channel.Publish(
+		"",           // exchange
+		c.Queue.Name, // routing key
+		false,        // mandatory
+		false,        // immediate
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        []byte(encodedMessage),
+		},
+	)
+	FailOnError(err, "Failed to publish a message")
 }

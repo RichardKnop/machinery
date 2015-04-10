@@ -22,7 +22,7 @@ func InitConnection(config *Config) *Connection {
 // Open connects to the message queue, opens a channel,
 // declares a queue and returns connection, channel
 // and queue objects
-func (c *Connection) Open() {
+func (c *Connection) Open() *Connection {
 	var err error
 
 	c.Conn, err = amqp.Dial(c.config.BrokerURL)
@@ -40,4 +40,6 @@ func (c *Connection) Open() {
 		nil,   // arguments
 	)
 	FailOnError(err, "Failed to declare a queue")
+
+	return c
 }

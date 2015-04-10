@@ -4,23 +4,23 @@
 // Task arguments are available in the kwargs map.
 package exampletasks
 
-import "fmt"
-
-// Foo task
-type Foo struct{}
-
-// Run will be called by a worker process
-func (f Foo) Run(args []interface{}, kwargs map[string]interface{}) {
-	fmt.Println("Foo task is being processed")
-	fmt.Printf("Received args: %v\n", args)
-	fmt.Printf("Received kwargs: %v\n", kwargs)
-}
+import "log"
 
 // AddTask task
 type AddTask struct{}
 
 // Run will be called by a worker process
-func (f AddTask) Run(args []interface{}, kwargs map[string]interface{}) {
-	fmt.Println("Foobar task handler")
-	fmt.Printf("Received kwargs: %v\n", kwargs)
+func (f AddTask) Run(
+	args []interface{}, kwargs map[string]interface{},
+) interface{} {
+	sum := 0.0
+	for _, arg := range args {
+		n, ok := arg.(float64)
+		if !ok {
+			continue
+		}
+		sum += n
+	}
+	log.Printf("%v", sum)
+	return sum
 }
