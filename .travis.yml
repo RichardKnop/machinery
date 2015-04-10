@@ -18,6 +18,3 @@ before_install:
 
 install:
   - go get -u ./...
-
-script:
- - go test -v ./...
