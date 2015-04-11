@@ -2,9 +2,7 @@
  * Sending a task
  * --------------
  *
- * This simple example demonstrates sending a task to a Machinery worker.
- * In this case, a foobar task with foo and bar keyword arguments is sent.
- * It will be picked up and processed by one of worker processes.
+ * This simple example demonstrates sending tasks to a Machinery worker.
  */
 
 package main
