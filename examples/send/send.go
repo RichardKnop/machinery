@@ -25,7 +25,7 @@ func main() {
 	workflow := v1.TaskSignature{
 		Name: "add_task",
 		Args: []interface{}{1, 2},
-		Subsequent: []v1.TaskSignature{
+		OnSuccess: []v1.TaskSignature{
 			v1.TaskSignature{
 				Name: "add_task",
 				Args: []interface{}{5, 6},

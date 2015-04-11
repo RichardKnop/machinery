@@ -60,7 +60,7 @@ func (worker *Worker) Launch() {
 			dotCount := bytes.Count(d.Body, []byte("."))
 			t := time.Duration(dotCount)
 			time.Sleep(t * time.Second)
-			worker.handleMessage(&d)
+			worker.processMessage(&d)
 		}
 	}()
 
@@ -68,7 +68,7 @@ func (worker *Worker) Launch() {
 	<-forever
 }
 
-func (worker *Worker) handleMessage(d *amqp.Delivery) {
+func (worker *Worker) processMessage(d *amqp.Delivery) {
 	s := TaskSignature{}
 	json.Unmarshal([]byte(d.Body), &s)
 
@@ -80,18 +80,27 @@ func (worker *Worker) handleMessage(d *amqp.Delivery) {
 
 	// Everything seems fine, process the task!
 	log.Printf("Started processing %s", s.Name)
-	result := task.Run(s.Args, s.Kwargs)
+	result, err := task.Run(s.Args, s.Kwargs)
+
+	// Trigger success or error tasks
+	worker.finalize(&s, result, err)
+}
+
+func (worker *Worker) finalize(s *TaskSignature, result interface{}, err error) {
+	if err != nil {
+		log.Printf("Failed processing %s", s.Name)
+		log.Printf("Error = %v", result)
+
+		for _, errorTask := range s.OnError {
+			worker.app.SendTask(&errorTask)
+		}
+		return
+	}
+
 	log.Printf("Finished processing %s", s.Name)
 	log.Printf("Result = %v", result)
 
-	// Handle any subsequent task signatures
-	worker.handleSubsequent(s.Subsequent, result)
-}
-
-func (worker *Worker) handleSubsequent(
-	signatures []TaskSignature, result interface{},
-) {
-	for _, s := range signatures {
-		worker.app.SendTask(&s)
+	for _, successTask := range s.OnSuccess {
+		worker.app.SendTask(&successTask)
 	}
 }
