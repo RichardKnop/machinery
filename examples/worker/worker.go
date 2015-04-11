@@ -57,7 +57,8 @@ func main() {
 
 	// Register tasks to be processed by this worker
 	tasks := map[string]v1.Task{
-		"add_task": exampletasks.AddTask{},
+		"add":      exampletasks.Add{},
+		"multiply": exampletasks.Multiply{},
 	}
 	app.RegisterTasks(tasks)
 

@@ -89,9 +89,12 @@ func (worker *Worker) processMessage(d *amqp.Delivery) {
 func (worker *Worker) finalize(s *TaskSignature, result interface{}, err error) {
 	if err != nil {
 		log.Printf("Failed processing %s", s.Name)
-		log.Printf("Error = %v", result)
+		log.Printf("Error = %v", err)
 
 		for _, errorTask := range s.OnError {
+			// Pass error as a first argument to error callbacks
+			args := append([]interface{}{err}, errorTask.Args...)
+			errorTask.Args = args
 			worker.app.SendTask(&errorTask)
 		}
 		return
@@ -101,6 +104,11 @@ func (worker *Worker) finalize(s *TaskSignature, result interface{}, err error) 
 	log.Printf("Result = %v", result)
 
 	for _, successTask := range s.OnSuccess {
+		if s.Immutable == false {
+			// Pass results of the task to success callbacks
+			args := append([]interface{}{result}, successTask.Args...)
+			successTask.Args = args
+		}
 		worker.app.SendTask(&successTask)
 	}
 }

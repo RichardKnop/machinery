@@ -4,25 +4,52 @@
 // Task arguments are available in the kwargs map.
 package exampletasks
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
-// AddTask task
-type AddTask struct{}
+// Add task
+type Add struct{}
 
-// Run will be called by a worker process
-func (f AddTask) Run(
+// Run adds all numbers in args together and returns their sum
+func (t Add) Run(
 	args []interface{}, kwargs map[string]interface{},
 ) (interface{}, error) {
 	var err error
-	sum := 0.0
+	var sum float64
 
 	for _, arg := range args {
 		n, ok := arg.(float64)
 		if !ok {
-			err = errors.New("Argument not a valid number")
+			errMsg := fmt.Sprintf("%v not a valid floating point number", n)
+			err = errors.New(errMsg)
 			break
 		}
 		sum += n
+	}
+
+	return sum, err
+}
+
+// Multiply task
+type Multiply struct{}
+
+// Run multiplies all numbers in args and returns the result
+func (t Multiply) Run(
+	args []interface{}, kwargs map[string]interface{},
+) (interface{}, error) {
+	var err error
+	var sum = 1.0
+
+	for _, arg := range args {
+		n, ok := arg.(float64)
+		if !ok {
+			errMsg := fmt.Sprintf("%v not a valid floating point number", n)
+			err = errors.New(errMsg)
+			break
+		}
+		sum *= n
 	}
 
 	return sum, err
