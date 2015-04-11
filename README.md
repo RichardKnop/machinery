@@ -3,9 +3,9 @@
 Machinery
 =========
 
-Machinery is an asynchronous task queue/job queue based on distributed message passing. It is similar in nature to Celery which is an excellent Python framework, although Machinery has been designed from gounr up and with Golang's strengths in mind.
+Machinery is an asynchronous task queue/job queue based on distributed message passing. It is similar in nature to Celery which is an excellent Python framework, although Machinery has been designed from ground up and with Golang's strengths in mind.
 
-So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processed on a single server using Golang's coroutines.
+So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processes on a single server using Golang's coroutines.
 
 This is an early stage project so far. Feel free to contribute.
 
