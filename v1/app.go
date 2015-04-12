@@ -5,7 +5,7 @@ import (
 	"runtime"
 )
 
-// App is the main MAchinery object and stores all configuration
+// App is the main Machinery object and stores all configuration
 // All the tasks workers process are registered against the app
 // App.SendTask is one way of sending a task to workers
 type App struct {
