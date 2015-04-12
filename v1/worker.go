@@ -24,30 +24,28 @@ func InitWorker(app *App) *Worker {
 // Launch starts a new worker process
 // The worker subscribes to the default queue
 // and processes any incoming tasks registered against the app
-func (worker *Worker) Launch() {
+func (w *Worker) Launch() {
 	log.Printf("Launching a worker with the following settings:")
-	log.Printf("- BrokerURL: %s", worker.app.config.BrokerURL)
-	log.Printf("- DefaultQueue: %s", worker.app.config.DefaultQueue)
+	log.Printf("- BrokerURL: %s", w.app.config.BrokerURL)
+	log.Printf("- DefaultQueue: %s", w.app.config.DefaultQueue)
 
-	c := worker.app.NewConnection().Open()
-	defer c.Conn.Close()
-	defer c.Channel.Close()
+	defer w.app.connection.Close()
 
-	err := c.Channel.Qos(
+	err := w.app.connection.Channel.Qos(
 		3,     // prefetch count
 		0,     // prefetch size
 		false, // global
 	)
 	FailOnError(err, "Failed to set QoS")
 
-	deliveries, err := c.Channel.Consume(
-		c.Queue.Name, // queue
-		"worker",     // consumer
-		false,        // auto-ack
-		false,        // exclusive
-		false,        // no-local
-		false,        // no-wait
-		nil,          // args
+	deliveries, err := w.app.connection.Channel.Consume(
+		w.app.connection.Queue.Name, // queue
+		"worker",                    // consumer
+		false,                       // auto-ack
+		false,                       // exclusive
+		false,                       // no-local
+		false,                       // no-wait
+		nil,                         // args
 	)
 	FailOnError(err, "Failed to register a consumer")
 
@@ -60,7 +58,7 @@ func (worker *Worker) Launch() {
 			dotCount := bytes.Count(d.Body, []byte("."))
 			t := time.Duration(dotCount)
 			time.Sleep(t * time.Second)
-			worker.processMessage(&d)
+			w.processMessage(&d)
 		}
 	}()
 
@@ -68,11 +66,15 @@ func (worker *Worker) Launch() {
 	<-forever
 }
 
-func (worker *Worker) processMessage(d *amqp.Delivery) {
+// processMessage - handles received messages
+// First, it unmarshals the message into a TaskSignature
+// Then, it looks whether the task is registered against the app
+// If it is registered, it calls signarute's Run method and then calls finalize
+func (w *Worker) processMessage(d *amqp.Delivery) {
 	s := TaskSignature{}
 	json.Unmarshal([]byte(d.Body), &s)
 
-	task := worker.app.GetRegisteredTask(s.Name)
+	task := w.app.GetRegisteredTask(s.Name)
 	if task == nil {
 		log.Printf("Task with a name '%s' not registered", s.Name)
 		return
@@ -83,10 +85,11 @@ func (worker *Worker) processMessage(d *amqp.Delivery) {
 	result, err := task.Run(s.Args, s.Kwargs)
 
 	// Trigger success or error tasks
-	worker.finalize(&s, result, err)
+	w.finalize(&s, result, err)
 }
 
-func (worker *Worker) finalize(s *TaskSignature, result interface{}, err error) {
+// finalize - handles success and error callbacks
+func (w *Worker) finalize(s *TaskSignature, result interface{}, err error) {
 	if err != nil {
 		log.Printf("Failed processing %s", s.Name)
 		log.Printf("Error = %v", err)
@@ -95,7 +98,7 @@ func (worker *Worker) finalize(s *TaskSignature, result interface{}, err error) 
 			// Pass error as a first argument to error callbacks
 			args := append([]interface{}{err}, errorTask.Args...)
 			errorTask.Args = args
-			worker.app.SendTask(&errorTask)
+			w.app.SendTask(&errorTask)
 		}
 		return
 	}
@@ -109,6 +112,6 @@ func (worker *Worker) finalize(s *TaskSignature, result interface{}, err error) 
 			args := append([]interface{}{result}, successTask.Args...)
 			successTask.Args = args
 		}
-		worker.app.SendTask(&successTask)
+		w.app.SendTask(&successTask)
 	}
 }

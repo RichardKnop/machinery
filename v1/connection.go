@@ -44,6 +44,12 @@ func (c *Connection) Open() *Connection {
 	return c
 }
 
+// Close shuts down the connection
+func (c *Connection) Close() {
+	c.Conn.Close()
+	c.Channel.Close()
+}
+
 // PublishMessage places a new message on the default queue
 func (c *Connection) PublishMessage(body []byte) {
 	err := c.Channel.Publish(

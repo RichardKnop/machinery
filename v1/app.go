@@ -1,6 +1,9 @@
 package v1
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"runtime"
+)
 
 // App is the main MAchinery object and stores all configuration
 // All the tasks workers process are registered against the app
@@ -8,13 +11,22 @@ import "encoding/json"
 type App struct {
 	config          *Config
 	registeredTasks map[string]Task
+	connection      *Connection
 }
 
 // InitApp - app constructor
 func InitApp(config *Config) *App {
-	return &App{
-		config: config,
+	app := App{
+		config:          config,
+		registeredTasks: make(map[string]Task),
+		connection:      InitConnection(config).Open(),
 	}
+
+	runtime.SetFinalizer(&app, func(app *App) {
+		app.connection.Close()
+	})
+
+	return &app
 }
 
 // RegisterTasks registers all tasks at once
@@ -32,18 +44,9 @@ func (app *App) GetRegisteredTask(name string) Task {
 	return app.registeredTasks[name]
 }
 
-// NewConnection creates a new broker connection
-func (app *App) NewConnection() *Connection {
-	return InitConnection(app.config)
-}
-
 // SendTask publishes a task to the default queue
-func (app *App) SendTask(signature *TaskSignature) {
-	message, err := json.Marshal(signature)
+func (app *App) SendTask(s *TaskSignature) {
+	message, err := json.Marshal(s)
 	FailOnError(err, "Could not JSON encode message")
-
-	c := app.NewConnection().Open()
-	c.PublishMessage([]byte(message))
-	c.Conn.Close()
-	c.Channel.Close()
+	app.connection.PublishMessage([]byte(message))
 }
