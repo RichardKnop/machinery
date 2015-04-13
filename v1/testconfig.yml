@@ -1,3 +1,0 @@
----
-brokerurl: amqp://guest:guest@localhost:5672/
-defaultqueue: task_queue

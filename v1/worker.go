@@ -1,10 +1,8 @@
-package v1
+package machinery
 
 import (
-	"bytes"
 	"encoding/json"
 	"log"
-	"time"
 
 	"github.com/streadway/amqp"
 )
@@ -14,56 +12,23 @@ type Worker struct {
 	app *App
 }
 
-// InitWorker - worker constructor
+// InitWorker - Worker constructor
 func InitWorker(app *App) *Worker {
-	return &Worker{
-		app: app,
-	}
+	return &Worker{app: app}
 }
 
 // Launch starts a new worker process
 // The worker subscribes to the default queue
 // and processes any incoming tasks registered against the app
 func (w *Worker) Launch() {
+	cnf := w.app.GetConfig()
+	conn := w.app.GetConnection()
+
 	log.Printf("Launching a worker with the following settings:")
-	log.Printf("- BrokerURL: %s", w.app.config.BrokerURL)
-	log.Printf("- DefaultQueue: %s", w.app.config.DefaultQueue)
+	log.Printf("- BrokerURL: %s", cnf.BrokerURL)
+	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 
-	defer w.app.connection.Close()
-
-	err := w.app.connection.Channel.Qos(
-		3,     // prefetch count
-		0,     // prefetch size
-		false, // global
-	)
-	FailOnError(err, "Failed to set QoS")
-
-	deliveries, err := w.app.connection.Channel.Consume(
-		w.app.connection.Queue.Name, // queue
-		"worker",                    // consumer
-		false,                       // auto-ack
-		false,                       // exclusive
-		false,                       // no-local
-		false,                       // no-wait
-		nil,                         // args
-	)
-	FailOnError(err, "Failed to register a consumer")
-
-	forever := make(chan bool)
-
-	go func() {
-		for d := range deliveries {
-			log.Printf("Received new message: %s", d.Body)
-			d.Ack(false)
-			dotCount := bytes.Count(d.Body, []byte("."))
-			t := time.Duration(dotCount)
-			time.Sleep(t * time.Second)
-			w.processMessage(&d)
-		}
-	}()
-
-	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
-	<-forever
+	conn.WaitForMessages(w)
 }
 
 // processMessage - handles received messages

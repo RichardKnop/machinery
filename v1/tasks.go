@@ -1,4 +1,4 @@
-package v1
+package machinery
 
 // Task is a common interface all registered tasks
 // must implement

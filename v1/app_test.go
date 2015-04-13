@@ -1,7 +1,9 @@
-package v1
+package machinery
 
 import (
 	"testing"
+
+	"github.com/RichardKnop/machinery/v1/config"
 )
 
 type testTask struct{}
@@ -13,12 +15,12 @@ func (t testTask) Run(
 }
 
 func TestRegisterTasks(t *testing.T) {
-	config := Config{
+	cnf := config.Config{
 		BrokerURL:    "amqp://guest:guest@localhost:5672/",
 		DefaultQueue: "task_queue",
 	}
 
-	app := InitApp(&config)
+	app := InitApp(&cnf)
 	app.RegisterTasks(map[string]Task{
 		"test_task": testTask{},
 	})
@@ -29,12 +31,12 @@ func TestRegisterTasks(t *testing.T) {
 }
 
 func TestRegisterTask(t *testing.T) {
-	config := Config{
+	cnf := config.Config{
 		BrokerURL:    "amqp://guest:guest@localhost:5672/",
 		DefaultQueue: "task_queue",
 	}
 
-	app := InitApp(&config)
+	app := InitApp(&cnf)
 	app.RegisterTask("test_task", testTask{})
 
 	if app.GetRegisteredTask("test_task") == nil {

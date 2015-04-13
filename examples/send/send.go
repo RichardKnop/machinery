@@ -8,16 +8,17 @@
 package main
 
 import (
-	"github.com/RichardKnop/machinery/v1"
+	machinery "github.com/RichardKnop/machinery/v1"
+	"github.com/RichardKnop/machinery/v1/config"
 )
 
-var config = v1.Config{
+var cnf = config.Config{
 	BrokerURL:    "amqp://guest:guest@localhost:5672/",
 	DefaultQueue: "task_queue",
 }
 
 func main() {
-	app := v1.InitApp(&config)
+	app := machinery.InitApp(&cnf)
 
 	// This example demonstrates a simple workflow consisting of multiple
 	// chained tasks. For each task you can specify success and error callbacks.
@@ -32,21 +33,21 @@ func main() {
 	//
 	// The workflow bellow will result in ((1 + 1) + (5 + 6)) * 4 = 13 * 4 = 52
 
-	task3 := v1.TaskSignature{
+	task3 := machinery.TaskSignature{
 		Name: "multiply",
 		Args: []interface{}{4},
 	}
 
-	task2 := v1.TaskSignature{
+	task2 := machinery.TaskSignature{
 		Name:      "add",
 		Args:      []interface{}{5, 6},
-		OnSuccess: []v1.TaskSignature{task3},
+		OnSuccess: []machinery.TaskSignature{task3},
 	}
 
-	task1 := v1.TaskSignature{
+	task1 := machinery.TaskSignature{
 		Name:      "add",
 		Args:      []interface{}{1, 1},
-		OnSuccess: []v1.TaskSignature{task2},
+		OnSuccess: []machinery.TaskSignature{task2},
 	}
 
 	// Let's go!

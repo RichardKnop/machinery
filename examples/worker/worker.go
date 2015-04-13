@@ -23,46 +23,49 @@ import (
 	"flag"
 
 	"github.com/RichardKnop/machinery/examples/tasks"
-	"github.com/RichardKnop/machinery/v1"
+	machinery "github.com/RichardKnop/machinery/v1"
+	"github.com/RichardKnop/machinery/v1/config"
 )
 
 // Define flags
-var configPath = flag.String("c", "exampleconfig.yml",
+var configPath = flag.String("c", "config.yml",
 	"Path to a configuration file")
 var brokerURL = flag.String("b", "amqp://guest:guest@localhost:5672/",
 	"Broker URL")
 var defaultQueue = flag.String("q", "task_queue",
 	"Default task queue")
 
-var config v1.Config
+var cnf config.Config
 
 func init() {
 	// Parse the flags
 	flag.Parse()
 
-	config = v1.Config{
+	cnf = config.Config{
 		BrokerURL:    *brokerURL,
 		DefaultQueue: *defaultQueue,
 	}
 
 	// Parse the config
 	// NOTE: If a config file is present, it has priority over flags
-	configData := v1.ReadFromFile(*configPath)
-	v1.ParseYAMLConfig(&configData, &config)
+	data, err := config.ReadFromFile(*configPath)
+	if err == nil {
+		config.ParseYAMLConfig(&data, &cnf)
+	}
 }
 
 func main() {
 	// Init the app from config
-	app := v1.InitApp(&config)
+	app := machinery.InitApp(&cnf)
 
 	// Register tasks to be processed by this worker
-	tasks := map[string]v1.Task{
+	tasks := map[string]machinery.Task{
 		"add":      exampletasks.Add{},
 		"multiply": exampletasks.Multiply{},
 	}
 	app.RegisterTasks(tasks)
 
 	// Launch the worker!
-	worker := v1.InitWorker(app)
+	worker := machinery.InitWorker(app)
 	worker.Launch()
 }

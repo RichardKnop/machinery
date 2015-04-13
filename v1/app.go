@@ -1,25 +1,36 @@
-package v1
+package machinery
 
 import (
 	"encoding/json"
 	"runtime"
+
+	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/errors"
 )
 
 // App is the main Machinery object and stores all configuration
 // All the tasks workers process are registered against the app
 // App.SendTask is one way of sending a task to workers
 type App struct {
-	config          *Config
+	config          *config.Config
 	registeredTasks map[string]Task
-	connection      *Connection
+	connection      Connectable
 }
 
-// InitApp - app constructor
-func InitApp(config *Config) *App {
+// InitApp - App constructor
+func InitApp(cnf *config.Config) *App {
+	var conn Connectable
+	var err error
+
+	conn, err = ConnectionFactory(cnf)
+	if err != nil {
+		errors.Fail(err, "Failed to create a connection")
+	}
+
 	app := App{
-		config:          config,
+		config:          cnf,
 		registeredTasks: make(map[string]Task),
-		connection:      InitConnection(config).Open(),
+		connection:      conn.Open(),
 	}
 
 	runtime.SetFinalizer(&app, func(app *App) {
@@ -27,6 +38,16 @@ func InitApp(config *Config) *App {
 	})
 
 	return &app
+}
+
+// GetConnection returns connection object
+func (app *App) GetConnection() Connectable {
+	return app.connection
+}
+
+// GetConfig returns connection object
+func (app *App) GetConfig() *config.Config {
+	return app.config
 }
 
 // RegisterTasks registers all tasks at once
@@ -47,6 +68,6 @@ func (app *App) GetRegisteredTask(name string) Task {
 // SendTask publishes a task to the default queue
 func (app *App) SendTask(s *TaskSignature) {
 	message, err := json.Marshal(s)
-	FailOnError(err, "Could not JSON encode message")
+	errors.Fail(err, "Failed to JSON encode message")
 	app.connection.PublishMessage([]byte(message))
 }
