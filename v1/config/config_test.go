@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"testing"
-
-	"github.com/JSainsburyPLC/issa-api/config"
 )
 
 var configYAMLData = `---
@@ -15,9 +13,9 @@ default_queue: task_queue
 `
 
 func TestReadFromFile(t *testing.T) {
-	data := config.ReadFromFile("testconfig.yml")
+	data, err := ReadFromFile("testconfig.yml")
 
-	if string(data) == configYAMLData {
+	if string(data) == configYAMLData && err == nil {
 		return
 	}
 

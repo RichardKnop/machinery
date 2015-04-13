@@ -1,7 +1,7 @@
-DEPS=go list -f '{{range .TestImports}}{{.}} {{end}}' ./v1
+DEPS=go list -f '{{range .TestImports}}{{.}} {{end}}' ./...
 
 deps:
-	go get -d -v ./v1
+	go get -d -v ./...
 	$(DEPS) | xargs -n1 go get -d
 
 test: deps
