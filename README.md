@@ -1,3 +1,4 @@
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg "GoDoc")](http://godoc.org/github.com/RichardKnop/machinery/v1)
 ![Build Status](https://travis-ci.org/RichardKnop/machinery.svg?branch=master)
 
 Machinery
