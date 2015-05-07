@@ -8,9 +8,7 @@ import (
 
 type testTask struct{}
 
-func (t testTask) Run(
-	args []interface{}, kwargs map[string]interface{},
-) (interface{}, error) {
+func (t testTask) Run(args []interface{}) (interface{}, error) {
 	return nil, nil
 }
 
