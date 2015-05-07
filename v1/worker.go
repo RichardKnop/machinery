@@ -47,7 +47,7 @@ func (w *Worker) processMessage(d *amqp.Delivery) {
 
 	// Everything seems fine, process the task!
 	log.Printf("Started processing %s", s.Name)
-	result, err := task.Run(s.Args, s.Kwargs)
+	result, err := task.Run(s.Args)
 
 	// Trigger success or error tasks
 	w.finalize(&s, result, err)
