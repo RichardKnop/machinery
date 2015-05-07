@@ -55,6 +55,12 @@ var cnf = config.Config{
 }
 
 app := machinery.InitApp(&cnf)
+
+tasks := map[string]machinery.Task{
+    "add":      mytasks.AddTask{},
+    "multiply": mytasks.MultiplyTask{},
+}
+app.RegisterTasks(tasks)
 ```
 
 Tasks
@@ -68,7 +74,7 @@ type Task interface {
 }
 ```
 
-A task defines what happens when a worker receives a message. Each task has a unique name by which it is registered to a Machinery application. For example:
+A task defines what happens when a worker receives a message. Each task has a unique name by which it is registered to an App instance. For example:
 
 ```go
 app := machinery.InitApp(&cnf)
@@ -137,6 +143,13 @@ tasks := map[string]machinery.Task{
     "multiply": mytasks.MultiplyTask{},
 }
 app.RegisterTasks(tasks)
+```
+
+Task can also be registered one by one:
+
+```go
+app.RegisterTask("add", mytasks.AddTask{})
+app.RegisterTask("multiply", mytasks.MultiplyTask{})
 ```
 
 Calling Tasks
