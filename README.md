@@ -21,15 +21,13 @@ This is an early stage project so far. Feel free to contribute.
 First Steps
 ===========
 
-First, you will need to add the Machinery library to your $GOPATH/src:
+Add the Machinery library to your $GOPATH/src:
 
 ```
 $ go get github.com/RichardKnop/machinery
 ```
 
-First, you will need to define some tasks.
-
-Look at sample tasks in examples/tasks/tasks.go to see few examples.
+First, you will need to define some tasks. Look at sample tasks in examples/tasks/tasks.go to see few examples.
 
 Second, you will need to launch a worker process:
 
