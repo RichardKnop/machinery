@@ -36,11 +36,17 @@ Second, you will need to launch a worker process:
 $ go run examples/worker/worker.go
 ```
 
+![Example worker](https://github.com/RichardKnop/machinery/blob/master/assets/example_worker.png)
+
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
 ```
 $ go run examples/send/send.go
 ```
+
+You will be able to see the tasks being processed asynchronously by the worker:
+
+![Example worker receives tasks](https://github.com/RichardKnop/machinery/blob/master/assets/example_worker_receives_tasks.png.png)
 
 App
 ===
