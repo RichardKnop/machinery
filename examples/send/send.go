@@ -33,23 +33,21 @@ func main() {
 	//
 	// The workflow bellow will result in ((1 + 1) + (5 + 6)) * 4 = 13 * 4 = 52
 
+	task1 := machinery.TaskSignature{
+		Name: "add",
+		Args: []interface{}{1, 1},
+	}
+
+	task2 := machinery.TaskSignature{
+		Name: "add",
+		Args: []interface{}{5, 6},
+	}
+
 	task3 := machinery.TaskSignature{
 		Name: "multiply",
 		Args: []interface{}{4},
 	}
 
-	task2 := machinery.TaskSignature{
-		Name:      "add",
-		Args:      []interface{}{5, 6},
-		OnSuccess: []machinery.TaskSignature{task3},
-	}
-
-	task1 := machinery.TaskSignature{
-		Name:      "add",
-		Args:      []interface{}{1, 1},
-		OnSuccess: []machinery.TaskSignature{task2},
-	}
-
 	// Let's go!
-	app.SendTask(&task1)
+	app.SendTask(machinery.Chain(task1, task2, task3))
 }

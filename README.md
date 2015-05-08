@@ -16,7 +16,9 @@ This is an early stage project so far. Feel free to contribute.
 - [Tasks](https://github.com/RichardKnop/machinery#tasks)
     - [Registering Tasks](https://github.com/RichardKnop/machinery#registering-tasks)
     - [Signatures](https://github.com/RichardKnop/machinery#signatures)
-    - [Calling Tasks](https://github.com/RichardKnop/machinery#calling-tasks)
+    - [Sending Tasks](https://github.com/RichardKnop/machinery#sending-tasks)
+- [Workflows](https://github.com/RichardKnop/machinery#workflows)
+    - [Chains](https://github.com/RichardKnop/machinery#chains)
 - [Development Setup](https://github.com/RichardKnop/machinery#development-setup)
 
 First Steps
@@ -207,6 +209,42 @@ task := machinery.TaskSignature{
 }
 
 app.SendTask(&task1)
+```
+
+Workflows
+=========
+
+Running a single asynchronous task is fine but often you will want to design a workflow of tasks to be executed in an orchestrated way. There are couple of useful functions to help you design workflows.
+
+Chains
+------
+
+Chain is simply a set of tasks which will be executed one by one, each successful task triggering the next task in the chain. E.g.:
+
+```go
+task1 := machinery.TaskSignature{
+    Name: "add",
+    Args: []interface{}{1, 1},
+}
+
+task2 := machinery.TaskSignature{
+    Name: "add",
+    Args: []interface{}{5, 6},
+}
+
+task3 := machinery.TaskSignature{
+    Name: "multiply",
+    Args: []interface{}{4},
+}
+
+// Let's go!
+app.SendTask(machinery.Chain(task1, task2, task3))
+```
+
+The above example execute task1, then task2 and then task3, passing result of each task to the next task in the chain. Therefor what would end up happening is:
+
+```
+((1 + 1) + (5 + 6)) * 4 = 13 * 4 = 52
 ```
 
 Development Setup

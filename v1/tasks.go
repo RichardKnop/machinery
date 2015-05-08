@@ -11,6 +11,6 @@ type TaskSignature struct {
 	Name      string
 	Args      []interface{}
 	Immutable bool
-	OnSuccess []TaskSignature
-	OnError   []TaskSignature
+	OnSuccess []*TaskSignature
+	OnError   []*TaskSignature
 }

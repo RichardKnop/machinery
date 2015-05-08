@@ -63,7 +63,7 @@ func (w *Worker) finalize(s *TaskSignature, result interface{}, err error) {
 			// Pass error as a first argument to error callbacks
 			args := append([]interface{}{err}, errorTask.Args...)
 			errorTask.Args = args
-			w.app.SendTask(&errorTask)
+			w.app.SendTask(errorTask)
 		}
 		return
 	}
@@ -77,6 +77,6 @@ func (w *Worker) finalize(s *TaskSignature, result interface{}, err error) {
 			args := append([]interface{}{result}, successTask.Args...)
 			successTask.Args = args
 		}
-		w.app.SendTask(&successTask)
+		w.app.SendTask(successTask)
 	}
 }
