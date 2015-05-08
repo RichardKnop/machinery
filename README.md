@@ -12,9 +12,10 @@ This is an early stage project so far. Feel free to contribute.
 
 - [First Steps](https://github.com/RichardKnop/machinery#first-steps)
 - [App](https://github.com/RichardKnop/machinery#app)
+- [Workers](https://github.com/RichardKnop/machinery#workers)
 - [Tasks](https://github.com/RichardKnop/machinery#tasks)
-    - [Signatures](https://github.com/RichardKnop/machinery#signatures)
     - [Registering Tasks](https://github.com/RichardKnop/machinery#registering-tasks)
+    - [Signatures](https://github.com/RichardKnop/machinery#signatures)
     - [Calling Tasks](https://github.com/RichardKnop/machinery#calling-tasks)
 - [Development Setup](https://github.com/RichardKnop/machinery#development-setup)
 
@@ -53,18 +54,24 @@ var cnf = config.Config{
 }
 
 app := machinery.InitApp(&cnf)
-
-tasks := map[string]machinery.Task{
-    "add":      mytasks.AddTask{},
-    "multiply": mytasks.MultiplyTask{},
-}
-app.RegisterTasks(tasks)
 ```
+
+Workers
+=======
+
+In order to consume tasks, you need to have one or more workers running. All you need to run a worker is an App instance with registered tasks. E.g.:
+
+```go
+worker := machinery.InitWorker(app)
+worker.Launch()
+```
+
+Each worker will only consume registered tasks.
 
 Tasks
 =====
 
-Tasks are a building block of Machinery applications. A task is a struct which implementes a simple interface:
+Tasks are a building block of Machinery applications. A task is a struct which implements a simple interface:
 
 ```go
 type Task interface {
@@ -72,11 +79,37 @@ type Task interface {
 }
 ```
 
-A task defines what happens when a worker receives a message. Each task has a unique name by which it is registered to an App instance. For example:
+A task defines what happens when a worker receives a message. Let's say we want to define a task that will add all numbers passed to it and return their sum:
 
 ```go
-app := machinery.InitApp(&cnf)
+type AddTask struct{}
 
+func (t AddTask) Run(args []interface{}) (interface{}, error) {
+	parsedArgs, err := machinery.ParseNumberArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
+	add := func(args []float64) float64 {
+		sum := 0.0
+		for _, arg := range args {
+			sum += arg
+		}
+		return sum
+	}
+
+	return add(parsedArgs), nil
+}
+
+// ... more tasks
+```
+
+Registering Tasks
+-----------------
+
+Before your workers can consume a task, you need to register it with an App instance. This is done by assigning a task signature a unique name and registering with an App instance:
+
+```go
 tasks := map[string]machinery.Task{
     "add":      mytasks.AddTask{},
     "multiply": mytasks.MultiplyTask{},
@@ -84,7 +117,14 @@ tasks := map[string]machinery.Task{
 app.RegisterTasks(tasks)
 ```
 
-The above code snippet would register two tasks against a Machinery app:
+Task can also be registered one by one:
+
+```go
+app.RegisterTask("add", mytasks.AddTask{})
+app.RegisterTask("multiply", mytasks.MultiplyTask{})
+```
+
+The above code snippet would register two tasks against the App instance:
 
 * add: mytasks.AddTask
 * multiply: mytasks.MultiplyTask
@@ -130,30 +170,10 @@ OnSuccess defines tasks which will be called after the task has executed success
 
 OnError defines tasks which will be called after the task execution fails. The first argument passed to error callbacks will be the error returned from the failed task.
 
-Registering Tasks
------------------
-
-Before you can call a task, you need to register it with a Machinery app. This is done by assigning a task signature a unique name and registering with an App instance:
-
-```go
-tasks := map[string]machinery.Task{
-    "add":      mytasks.AddTask{},
-    "multiply": mytasks.MultiplyTask{},
-}
-app.RegisterTasks(tasks)
-```
-
-Task can also be registered one by one:
-
-```go
-app.RegisterTask("add", mytasks.AddTask{})
-app.RegisterTask("multiply", mytasks.MultiplyTask{})
-```
-
-Calling Tasks
+Sending Tasks
 -------------
 
-Tasks can be called by passing task signatures to a Machinery app. For example:
+Tasks can be called by passing an instance of TaskSignature to an App instance. E.g:
 
 ```go
 task := machinery.TaskSignature{
