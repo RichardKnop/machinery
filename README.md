@@ -79,7 +79,7 @@ type Task interface {
 }
 ```
 
-A task defines what happens when a worker receives a message. Let's say we want to define a task that will add all numbers passed to it and return their sum:
+A task defines what happens when a worker receives a message. Let's say we want to define tasks for adding and multiplying numbers:
 
 ```go
 type AddTask struct{}
@@ -101,18 +101,37 @@ func (t AddTask) Run(args []interface{}) (interface{}, error) {
 	return add(parsedArgs), nil
 }
 
+type MultiplyTask struct{}
+
+func (t MultiplyTask) Run(args []interface{}) (interface{}, error) {
+	parsedArgs, err := machinery.ParseNumberArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
+	multiply := func(args []float64) float64 {
+		sum := 1.0
+		for _, arg := range args {
+			sum *= arg
+		}
+		return sum
+	}
+
+	return multiply(parsedArgs), nil
+}
+
 // ... more tasks
 ```
 
 Registering Tasks
 -----------------
 
-Before your workers can consume a task, you need to register it with an App instance. This is done by assigning a task signature a unique name and registering with an App instance:
+Before your workers can consume a task, you need to register it with an App instance. This is done by assigning a task signature a unique name and registering it with an App instance:
 
 ```go
 tasks := map[string]machinery.Task{
-    "add":      mytasks.AddTask{},
-    "multiply": mytasks.MultiplyTask{},
+    "add":      AddTask{},
+    "multiply": MultiplyTask{},
 }
 app.RegisterTasks(tasks)
 ```
@@ -120,14 +139,14 @@ app.RegisterTasks(tasks)
 Task can also be registered one by one:
 
 ```go
-app.RegisterTask("add", mytasks.AddTask{})
-app.RegisterTask("multiply", mytasks.MultiplyTask{})
+app.RegisterTask("add", AddTask{})
+app.RegisterTask("multiply", MultiplyTask{})
 ```
 
 The above code snippet would register two tasks against the App instance:
 
-* add: mytasks.AddTask
-* multiply: mytasks.MultiplyTask
+* add: AddTask
+* multiply: MultiplyTask
 
 Simply put, when a worker receives a message like this:
 
@@ -141,7 +160,7 @@ Simply put, when a worker receives a message like this:
 }
 ```
 
-It will call Run method of mytasks.AddTask with [1, 1] arguments.
+It will call Run method of AddTask with [1, 1] arguments.
 
 Ideally, tasks should be idempotent which means there will be no unintended consequences when a task is called multiple times with the same arguments.
 
