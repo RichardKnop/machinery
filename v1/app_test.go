@@ -12,13 +12,16 @@ func (t testTask) Run(args []interface{}) (interface{}, error) {
 	return nil, nil
 }
 
-func TestRegisterTasks(t *testing.T) {
-	cnf := config.Config{
-		BrokerURL:    "amqp://guest:guest@localhost:5672/",
-		DefaultQueue: "task_queue",
-	}
+var testCnf = config.Config{
+	BrokerURL:    "amqp://guest:guest@localhost:5672/",
+	Exchange:     "machinery_exchange",
+	ExchangeType: "direct",
+	DefaultQueue: "machinery_tasks",
+	BindingKey:   "machinery_task",
+}
 
-	app := InitApp(&cnf)
+func TestRegisterTasks(t *testing.T) {
+	app := InitApp(&testCnf)
 	app.RegisterTasks(map[string]Task{
 		"test_task": testTask{},
 	})
@@ -29,12 +32,7 @@ func TestRegisterTasks(t *testing.T) {
 }
 
 func TestRegisterTask(t *testing.T) {
-	cnf := config.Config{
-		BrokerURL:    "amqp://guest:guest@localhost:5672/",
-		DefaultQueue: "task_queue",
-	}
-
-	app := InitApp(&cnf)
+	app := InitApp(&testCnf)
 	app.RegisterTask("test_task", testTask{})
 
 	if app.GetRegisteredTask("test_task") == nil {

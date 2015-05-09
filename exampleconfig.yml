@@ -1,3 +1,6 @@
 ---
 broker_url: amqp://guest:guest@localhost:5672/
-default_queue: task_queue
+exchange: machinery_exchange
+exchange_type: direct
+default_queue: machinery_tasks
+binding_key: machinery_key

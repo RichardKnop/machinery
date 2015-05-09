@@ -2,7 +2,6 @@ package machinery
 
 import (
 	"encoding/json"
-	"runtime"
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/errors"
@@ -27,17 +26,11 @@ func InitApp(cnf *config.Config) *App {
 		errors.Fail(err, "Failed to create a connection")
 	}
 
-	app := App{
+	return &App{
 		config:          cnf,
 		registeredTasks: make(map[string]Task),
 		connection:      conn.Open(),
 	}
-
-	runtime.SetFinalizer(&app, func(app *App) {
-		app.connection.Close()
-	})
-
-	return &app
 }
 
 // GetConnection returns connection object

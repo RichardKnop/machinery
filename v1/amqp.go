@@ -2,7 +2,9 @@ package machinery
 
 import (
 	"bytes"
+	"fmt"
 	"log"
+	"runtime"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -20,7 +22,13 @@ type AMQPConnection struct {
 
 // InitAMQPConnection - AMQPConnection constructor
 func InitAMQPConnection(cnf *config.Config) Connectable {
-	return AMQPConnection{config: cnf}
+	c := AMQPConnection{config: cnf}
+
+	runtime.SetFinalizer(c, func(c Connectable) {
+		c.Close()
+	})
+
+	return c
 }
 
 // Open connects to the message queue, opens a channel,
@@ -30,10 +38,21 @@ func (c AMQPConnection) Open() Connectable {
 	var err error
 
 	c.conn, err = amqp.Dial(c.config.BrokerURL)
-	errors.Fail(err, "Failed to connect to RabbitMQ")
+	errors.Fail(err, fmt.Sprintf("Dial: %s", err))
 
 	c.channel, err = c.conn.Channel()
-	errors.Fail(err, "Failed to open a channel")
+	errors.Fail(err, fmt.Sprintf("Channel: %s", err))
+
+	err = c.channel.ExchangeDeclare(
+		c.config.Exchange,     // name of the exchange
+		c.config.ExchangeType, // type
+		true,  // durable
+		false, // delete when complete
+		false, // internal
+		false, // noWait
+		nil,   // arguments
+	)
+	errors.Fail(err, fmt.Sprintf("Exchange: %s", err))
 
 	c.queue, err = c.channel.QueueDeclare(
 		c.config.DefaultQueue, // name
@@ -43,15 +62,27 @@ func (c AMQPConnection) Open() Connectable {
 		false, // no-wait
 		nil,   // arguments
 	)
-	errors.Fail(err, "Failed to declare a queue")
+	errors.Fail(err, fmt.Sprintf("Queue Declare: %s", err))
+
+	err = c.channel.QueueBind(
+		c.config.DefaultQueue, // name of the queue
+		c.config.BindingKey,   // bindingKey
+		c.config.Exchange,     // sourceExchange
+		false,                 // noWait
+		nil,                   // arguments
+	)
+	errors.Fail(err, fmt.Sprintf("Queue Bind: %s", err))
 
 	return c
 }
 
 // Close shuts down the connection
 func (c AMQPConnection) Close() {
-	c.conn.Close()
-	c.channel.Close()
+	err := c.channel.Close()
+	errors.Log(err, fmt.Sprintf("Consumer cancel failed: %s", err))
+
+	err = c.conn.Close()
+	errors.Log(err, fmt.Sprintf("AMQP connection close error: %s", err))
 }
 
 // WaitForMessages enters a loop and waits for incoming messages
@@ -66,31 +97,35 @@ func (c AMQPConnection) WaitForMessages(w *Worker) {
 	errors.Fail(err, "Failed to set QoS")
 
 	deliveries, err := c.channel.Consume(
-		c.queue.Name, // queue
-		"worker",     // consumer
-		false,        // auto-ack
-		false,        // exclusive
-		false,        // no-local
-		false,        // no-wait
-		nil,          // args
+		c.queue.Name,  // queue
+		w.ConsumerTag, // consumer tag
+		false,         // auto-ack
+		false,         // exclusive
+		false,         // no-local
+		false,         // no-wait
+		nil,           // args
 	)
-	errors.Fail(err, "Failed to register a consumer")
+	errors.Fail(err, fmt.Sprintf("Queue Consume: %s", err))
 
 	forever := make(chan bool)
 
-	go func() {
-		for d := range deliveries {
-			log.Printf("Received new message: %s", d.Body)
-			d.Ack(false)
-			dotCount := bytes.Count(d.Body, []byte("."))
-			t := time.Duration(dotCount)
-			time.Sleep(t * time.Second)
-			w.processMessage(&d)
-		}
-	}()
+	go c.handleDeliveries(deliveries, w)
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
+}
+
+func (c AMQPConnection) handleDeliveries(
+	deliveries <-chan amqp.Delivery, w *Worker,
+) {
+	for d := range deliveries {
+		log.Printf("Received new message: %s", d.Body)
+		d.Ack(false)
+		dotCount := bytes.Count(d.Body, []byte("."))
+		t := time.Duration(dotCount)
+		time.Sleep(t * time.Second)
+		w.processMessage(&d)
+	}
 }
 
 // PublishMessage places a new message on the default queue

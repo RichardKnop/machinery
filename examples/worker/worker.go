@@ -28,14 +28,18 @@ import (
 )
 
 // Define flags
-var configPath = flag.String("c", "config.yml",
-	"Path to a configuration file")
-var brokerURL = flag.String("b", "amqp://guest:guest@localhost:5672/",
-	"Broker URL")
-var defaultQueue = flag.String("q", "task_queue",
-	"Default task queue")
+var (
+	configPath   = flag.String("c", "config.yml", "Path to a configuration file")
+	brokerURL    = flag.String("b", "amqp://guest:guest@localhost:5672/", "Broker URL")
+	exchange     = flag.String("e", "machinery_exchange", "Durable, non-auto-deleted AMQP exchange name")
+	exchangeType = flag.String("t", "direct", "Exchange type - direct|fanout|topic|x-custom")
+	defaultQueue = flag.String("q", "machinery_tasks", "Ephemeral AMQP queue name")
+	bindingKey   = flag.String("k", "machinery_task", "AMQP binding key")
 
-var cnf config.Config
+	cnf    config.Config
+	app    *machinery.App
+	worker *machinery.Worker
+)
 
 func init() {
 	// Parse the flags
@@ -43,7 +47,10 @@ func init() {
 
 	cnf = config.Config{
 		BrokerURL:    *brokerURL,
+		Exchange:     *exchange,
+		ExchangeType: *exchangeType,
 		DefaultQueue: *defaultQueue,
+		BindingKey:   *bindingKey,
 	}
 
 	// Parse the config
@@ -52,13 +59,15 @@ func init() {
 	if err == nil {
 		config.ParseYAMLConfig(&data, &cnf)
 	}
+
+	app = machinery.InitApp(&cnf)
+	// The second argument is a consumer tag
+	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
+	worker = machinery.InitWorker(app, "machinery_worker")
 }
 
 func main() {
-	// Init the app from config
-	app := machinery.InitApp(&cnf)
-
-	// Register tasks to be processed by this worker
+	// Register tasks
 	tasks := map[string]machinery.Task{
 		"add":      exampletasks.AddTask{},
 		"multiply": exampletasks.MultiplyTask{},
@@ -66,6 +75,5 @@ func main() {
 	app.RegisterTasks(tasks)
 
 	// Launch the worker!
-	worker := machinery.InitWorker(app)
 	worker.Launch()
 }

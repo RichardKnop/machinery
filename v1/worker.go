@@ -9,12 +9,16 @@ import (
 
 // Worker represents a single worker process
 type Worker struct {
-	app *App
+	app         *App
+	ConsumerTag string
 }
 
 // InitWorker - Worker constructor
-func InitWorker(app *App) *Worker {
-	return &Worker{app: app}
+func InitWorker(app *App, consumerTag string) *Worker {
+	return &Worker{
+		app:         app,
+		ConsumerTag: consumerTag,
+	}
 }
 
 // Launch starts a new worker process
@@ -26,7 +30,10 @@ func (w *Worker) Launch() {
 
 	log.Printf("Launching a worker with the following settings:")
 	log.Printf("- BrokerURL: %s", cnf.BrokerURL)
+	log.Printf("- Exchange: %s", cnf.Exchange)
+	log.Printf("- ExchangeType: %s", cnf.ExchangeType)
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
+	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
 	conn.WaitForMessages(w)
 }

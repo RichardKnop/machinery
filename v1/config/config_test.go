@@ -9,7 +9,10 @@ import (
 
 var configYAMLData = `---
 broker_url: amqp://guest:guest@localhost:5672/
-default_queue: task_queue
+exchange: machinery_exchange
+exchange_type: direct
+default_queue: machinery_tasks
+binding_key: machinery_task
 `
 
 func TestReadFromFile(t *testing.T) {
@@ -40,11 +43,35 @@ func TestParseYAMLConfig(t *testing.T) {
 		)
 	}
 
-	if cfg.DefaultQueue != "task_queue" {
+	if cfg.Exchange != "machinery_exchange" {
 		log.Printf("%v", cfg)
 		t.Errorf(
-			"cfg.DefaultQueue = %v, want task_queue",
+			"cfg.Exchange = %v, want machinery_exchange",
+			cfg.Exchange,
+		)
+	}
+
+	if cfg.ExchangeType != "direct" {
+		log.Printf("%v", cfg)
+		t.Errorf(
+			"cfg.ExchangeType = %v, want direct",
+			cfg.ExchangeType,
+		)
+	}
+
+	if cfg.DefaultQueue != "machinery_tasks" {
+		log.Printf("%v", cfg)
+		t.Errorf(
+			"cfg.DefaultQueue = %v, want machinery_tasks",
 			cfg.DefaultQueue,
+		)
+	}
+
+	if cfg.BindingKey != "machinery_task" {
+		log.Printf("%v", cfg)
+		t.Errorf(
+			"cfg.BindingKey = %v, want machinery_task",
+			cfg.BindingKey,
 		)
 	}
 }
