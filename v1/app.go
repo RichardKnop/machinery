@@ -62,5 +62,5 @@ func (app *App) GetRegisteredTask(name string) Task {
 func (app *App) SendTask(s *TaskSignature) {
 	message, err := json.Marshal(s)
 	errors.Fail(err, "Failed to JSON encode message")
-	app.connection.PublishMessage([]byte(message))
+	app.connection.PublishMessage([]byte(message), s.RoutingKey)
 }

@@ -66,8 +66,8 @@ func (c AMQPConnection) Open() Connectable {
 
 	err = c.channel.QueueBind(
 		c.config.DefaultQueue, // name of the queue
-		c.config.BindingKey,   // bindingKey
-		c.config.Exchange,     // sourceExchange
+		c.config.BindingKey,   // binding key
+		c.config.Exchange,     // source exchange
 		false,                 // noWait
 		nil,                   // arguments
 	)
@@ -129,12 +129,19 @@ func (c AMQPConnection) handleDeliveries(
 }
 
 // PublishMessage places a new message on the default queue
-func (c AMQPConnection) PublishMessage(body []byte) {
+func (c AMQPConnection) PublishMessage(body []byte, routingKey string) {
+	if routingKey == "" {
+		if c.config.ExchangeType == "direct" {
+			routingKey = c.config.BindingKey
+		} else {
+			routingKey = c.queue.Name
+		}
+	}
 	err := c.channel.Publish(
-		"",           // exchange
-		c.queue.Name, // routing key
-		false,        // mandatory
-		false,        // immediate
+		c.config.Exchange, // exchange
+		routingKey,        // routing key
+		false,             // mandatory
+		false,             // immediate
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,

@@ -58,7 +58,10 @@ A Machinery library must be instantiated before use. The way this is done is by 
 ```go
 var cnf = config.Config{
 	BrokerURL:    "amqp://guest:guest@localhost:5672/",
-	DefaultQueue: "task_queue",
+	Exchange:     "machinery_exchange",
+	ExchangeType: "direct",
+	DefaultQueue: "machinery_tasks",
+	BindingKey:   "machinery_task",
 }
 
 app := machinery.InitApp(&cnf)
@@ -179,11 +182,11 @@ A signature wraps calling arguments, execution options (such as immutability) an
 
 ```go
 type TaskSignature struct {
-	Name      string
-	Args      []interface{}
-	Immutable bool
-	OnSuccess []TaskSignature
-	OnError   []TaskSignature
+	Name, RoutingKey string
+	Args             []interface{}
+	Immutable        bool
+	OnSuccess        []*TaskSignature
+	OnError          []*TaskSignature
 }
 ```
 

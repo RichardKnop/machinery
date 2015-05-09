@@ -8,9 +8,9 @@ type Task interface {
 
 // TaskSignature represents a single task invocation
 type TaskSignature struct {
-	Name      string
-	Args      []interface{}
-	Immutable bool
-	OnSuccess []*TaskSignature
-	OnError   []*TaskSignature
+	Name, RoutingKey string
+	Args             []interface{}
+	Immutable        bool
+	OnSuccess        []*TaskSignature
+	OnError          []*TaskSignature
 }

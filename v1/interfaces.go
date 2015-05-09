@@ -5,5 +5,5 @@ type Connectable interface {
 	Open() Connectable
 	Close()
 	WaitForMessages(w *Worker)
-	PublishMessage(body []byte)
+	PublishMessage(body []byte, routingKey string)
 }
