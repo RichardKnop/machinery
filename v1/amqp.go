@@ -98,8 +98,6 @@ func (c AMQPConnection) Close() error {
 
 // WaitForMessages enters a loop and waits for incoming messages
 func (c AMQPConnection) WaitForMessages(w *Worker) {
-	defer c.Close()
-
 	err := c.channel.Qos(
 		3,     // prefetch count
 		0,     // prefetch size

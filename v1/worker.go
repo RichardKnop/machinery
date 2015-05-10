@@ -24,7 +24,7 @@ func InitWorker(app *App, consumerTag string) *Worker {
 // Launch starts a new worker process
 // The worker subscribes to the default queue
 // and processes any incoming tasks registered against the app
-func (w *Worker) Launch() {
+func (w *Worker) Launch() error {
 	cnf := w.app.GetConfig()
 	conn := w.app.GetConnection()
 
@@ -35,7 +35,15 @@ func (w *Worker) Launch() {
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
-	conn.WaitForMessages(w)
+	openConn, err := conn.Open()
+	if err != nil {
+		return err
+	}
+
+	defer openConn.Close()
+	openConn.WaitForMessages(w)
+
+	return nil
 }
 
 // processMessage - handles received messages

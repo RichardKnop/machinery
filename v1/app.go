@@ -3,7 +3,6 @@ package machinery
 import (
 	"encoding/json"
 	"fmt"
-	"runtime"
 
 	"github.com/RichardKnop/machinery/v1/config"
 )
@@ -27,19 +26,10 @@ func InitApp(cnf *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	openedConn, err := conn.Open()
-	if err != nil {
-		return nil, err
-	}
-
-	runtime.SetFinalizer(&openedConn, func(c *Connectable) {
-		Connectable(*c).Close()
-	})
-
 	return &App{
 		config:          cnf,
 		registeredTasks: make(map[string]Task),
-		connection:      openedConn,
+		connection:      conn,
 	}, nil
 }
 
@@ -70,12 +60,19 @@ func (app *App) GetRegisteredTask(name string) Task {
 
 // SendTask publishes a task to the default queue
 func (app *App) SendTask(s *TaskSignature) error {
+	openConn, err := app.connection.Open()
+	if err != nil {
+		return err
+	}
+
+	defer openConn.Close()
+
 	message, err := json.Marshal(s)
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	err = app.connection.PublishMessage([]byte(message), s.RoutingKey)
+	err = openConn.PublishMessage([]byte(message), s.RoutingKey)
 	if err != nil {
 		return fmt.Errorf("Publish Message: %v", err)
 	}

@@ -78,5 +78,6 @@ func init() {
 }
 
 func main() {
-	worker.Launch()
+	err := worker.Launch()
+	errors.Fail(err, "Could not launch Worker")
 }
