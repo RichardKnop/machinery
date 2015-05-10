@@ -34,14 +34,18 @@ func InitAMQPConnection(cnf *config.Config) Connectable {
 // Open connects to the message queue, opens a channel,
 // declares a queue and returns connection, channel
 // and queue objects
-func (c AMQPConnection) Open() Connectable {
+func (c AMQPConnection) Open() (Connectable, error) {
 	var err error
 
 	c.conn, err = amqp.Dial(c.config.BrokerURL)
-	errors.Fail(err, fmt.Sprintf("Dial: %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("Dial: %s", err)
+	}
 
 	c.channel, err = c.conn.Channel()
-	errors.Fail(err, fmt.Sprintf("Channel: %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("Channel: %s", err)
+	}
 
 	err = c.channel.ExchangeDeclare(
 		c.config.Exchange,     // name of the exchange
@@ -52,7 +56,9 @@ func (c AMQPConnection) Open() Connectable {
 		false, // noWait
 		nil,   // arguments
 	)
-	errors.Fail(err, fmt.Sprintf("Exchange: %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("Exchange: %s", err)
+	}
 
 	c.queue, err = c.channel.QueueDeclare(
 		c.config.DefaultQueue, // name
@@ -62,7 +68,9 @@ func (c AMQPConnection) Open() Connectable {
 		false, // no-wait
 		nil,   // arguments
 	)
-	errors.Fail(err, fmt.Sprintf("Queue Declare: %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("Queue Declare: %s", err)
+	}
 
 	err = c.channel.QueueBind(
 		c.config.DefaultQueue, // name of the queue
@@ -71,18 +79,26 @@ func (c AMQPConnection) Open() Connectable {
 		false,                 // noWait
 		nil,                   // arguments
 	)
-	errors.Fail(err, fmt.Sprintf("Queue Bind: %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("Queue Bind: %s", err)
+	}
 
-	return c
+	return c, nil
 }
 
 // Close shuts down the connection
-func (c AMQPConnection) Close() {
+func (c AMQPConnection) Close() error {
 	err := c.channel.Close()
-	errors.Log(err, fmt.Sprintf("Consumer cancel failed: %s", err))
+	if err != nil {
+		return fmt.Errorf("Consumer cancel failed: %s", err)
+	}
 
 	err = c.conn.Close()
-	errors.Log(err, fmt.Sprintf("AMQP connection close error: %s", err))
+	if err != nil {
+		return fmt.Errorf("AMQP connection close error: %s", err)
+	}
+
+	return nil
 }
 
 // WaitForMessages enters a loop and waits for incoming messages
@@ -129,7 +145,7 @@ func (c AMQPConnection) handleDeliveries(
 }
 
 // PublishMessage places a new message on the default queue
-func (c AMQPConnection) PublishMessage(body []byte, routingKey string) {
+func (c AMQPConnection) PublishMessage(body []byte, routingKey string) error {
 	if routingKey == "" {
 		if c.config.ExchangeType == "direct" {
 			routingKey = c.config.BindingKey
@@ -137,7 +153,7 @@ func (c AMQPConnection) PublishMessage(body []byte, routingKey string) {
 			routingKey = c.queue.Name
 		}
 	}
-	err := c.channel.Publish(
+	return c.channel.Publish(
 		c.config.Exchange, // exchange
 		routingKey,        // routing key
 		false,             // mandatory
@@ -147,5 +163,4 @@ func (c AMQPConnection) PublishMessage(body []byte, routingKey string) {
 			Body:        body,
 		},
 	)
-	errors.Fail(err, "Failed to publish a message")
 }

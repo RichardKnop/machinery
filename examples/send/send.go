@@ -23,6 +23,7 @@ import (
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/errors"
 )
 
 // Define flagss
@@ -54,10 +55,12 @@ func init() {
 	// NOTE: If a config file is present, it has priority over flags
 	data, err := config.ReadFromFile(*configPath)
 	if err == nil {
-		config.ParseYAMLConfig(&data, &cnf)
+		err = config.ParseYAMLConfig(&data, &cnf)
+		errors.Fail(err, "Could not parse config file")
 	}
 
-	app = machinery.InitApp(&cnf)
+	app, err = machinery.InitApp(&cnf)
+	errors.Fail(err, "Could not init App")
 }
 
 func main() {

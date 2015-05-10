@@ -2,9 +2,9 @@ package machinery
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/errors"
 )
 
 // App is the main Machinery object and stores all configuration
@@ -17,20 +17,25 @@ type App struct {
 }
 
 // InitApp - App constructor
-func InitApp(cnf *config.Config) *App {
+func InitApp(cnf *config.Config) (*App, error) {
 	var conn Connectable
 	var err error
 
 	conn, err = ConnectionFactory(cnf)
 	if err != nil {
-		errors.Fail(err, "Failed to create a connection")
+		return nil, err
+	}
+
+	openedConn, err := conn.Open()
+	if err != nil {
+		return nil, err
 	}
 
 	return &App{
 		config:          cnf,
 		registeredTasks: make(map[string]Task),
-		connection:      conn.Open(),
-	}
+		connection:      openedConn,
+	}, nil
 }
 
 // GetConnection returns connection object
@@ -59,8 +64,16 @@ func (app *App) GetRegisteredTask(name string) Task {
 }
 
 // SendTask publishes a task to the default queue
-func (app *App) SendTask(s *TaskSignature) {
+func (app *App) SendTask(s *TaskSignature) error {
 	message, err := json.Marshal(s)
-	errors.Fail(err, "Failed to JSON encode message")
-	app.connection.PublishMessage([]byte(message), s.RoutingKey)
+	if err != nil {
+		return fmt.Errorf("JSON Encode Message: %v", err)
+	}
+
+	err = app.connection.PublishMessage([]byte(message), s.RoutingKey)
+	if err != nil {
+		return fmt.Errorf("Publish Message: %v", err)
+	}
+
+	return nil
 }

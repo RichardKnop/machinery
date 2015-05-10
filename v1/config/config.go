@@ -1,9 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/RichardKnop/machinery/v1/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,23 +22,25 @@ func ReadFromFile(cnfPath string) ([]byte, error) {
 
 	// Config file not found
 	if err != nil {
-		return nil, &errors.ConfigFileNotFound{}
+		return nil, fmt.Errorf("Config Open: %v", err)
 	}
 
 	// Config file found, let's try to read it
 	data := make([]byte, 1000)
 	count, err := file.Read(data)
 	if err != nil {
-		return nil, &errors.ConfigFileReadError{}
+		return nil, fmt.Errorf("Config Read: %v", err)
 	}
 
 	return data[:count], nil
 }
 
 // ParseYAMLConfig parses YAML data into Config object
-func ParseYAMLConfig(data *[]byte, cnf *Config) {
+func ParseYAMLConfig(data *[]byte, cnf *Config) error {
 	err := yaml.Unmarshal(*data, &cnf)
 	if err != nil {
-		errors.Fail(err, "Failed to unmarshal the config")
+		return fmt.Errorf("Config Unmarshal: %v", err)
 	}
+
+	return nil
 }

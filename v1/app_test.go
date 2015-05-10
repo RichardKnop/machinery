@@ -21,7 +21,11 @@ var testCnf = config.Config{
 }
 
 func TestRegisterTasks(t *testing.T) {
-	app := InitApp(&testCnf)
+	app, err := InitApp(&testCnf)
+	if err != nil {
+		t.Error(err)
+	}
+
 	app.RegisterTasks(map[string]Task{
 		"test_task": testTask{},
 	})
@@ -32,7 +36,11 @@ func TestRegisterTasks(t *testing.T) {
 }
 
 func TestRegisterTask(t *testing.T) {
-	app := InitApp(&testCnf)
+	app, err := InitApp(&testCnf)
+	if err != nil {
+		t.Error(err)
+	}
+
 	app.RegisterTask("test_task", testTask{})
 
 	if app.GetRegisteredTask("test_task") == nil {

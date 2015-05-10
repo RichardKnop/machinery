@@ -64,7 +64,10 @@ var cnf = config.Config{
 	BindingKey:   "machinery_task",
 }
 
-app := machinery.InitApp(&cnf)
+app, err := machinery.InitApp(&cnf)
+if err != nil {
+    // do something with the error
+}
 ```
 
 Workers
@@ -211,7 +214,10 @@ task := machinery.TaskSignature{
     Args:      []interface{}{1, 1},
 }
 
-app.SendTask(&task1)
+err := app.SendTask(&task1)
+if err != nil {
+    // do something with the error
+}
 ```
 
 Workflows
@@ -240,8 +246,10 @@ task3 := machinery.TaskSignature{
     Args: []interface{}{4},
 }
 
-// Let's go!
-app.SendTask(machinery.Chain(task1, task2, task3))
+err := app.SendTask(machinery.Chain(task1, task2, task3))
+if err != nil {
+    // do something with the error
+}
 ```
 
 The above example execute task1, then task2 and then task3, passing result of each task to the next task in the chain. Therefor what would end up happening is:

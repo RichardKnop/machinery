@@ -25,6 +25,7 @@ import (
 	"github.com/RichardKnop/machinery/examples/tasks"
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/errors"
 )
 
 // Define flags
@@ -57,16 +58,13 @@ func init() {
 	// NOTE: If a config file is present, it has priority over flags
 	data, err := config.ReadFromFile(*configPath)
 	if err == nil {
-		config.ParseYAMLConfig(&data, &cnf)
+		err = config.ParseYAMLConfig(&data, &cnf)
+		errors.Fail(err, "Could not parse config file")
 	}
 
-	app = machinery.InitApp(&cnf)
-	// The second argument is a consumer tag
-	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
-	worker = machinery.InitWorker(app, "machinery_worker")
-}
+	app, err := machinery.InitApp(&cnf)
+	errors.Fail(err, "Could not init App")
 
-func main() {
 	// Register tasks
 	tasks := map[string]machinery.Task{
 		"add":      exampletasks.AddTask{},
@@ -74,6 +72,11 @@ func main() {
 	}
 	app.RegisterTasks(tasks)
 
-	// Launch the worker!
+	// The second argument is a consumer tag
+	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
+	worker = machinery.InitWorker(app, "machinery_worker")
+}
+
+func main() {
 	worker.Launch()
 }
