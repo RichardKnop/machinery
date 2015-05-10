@@ -3,6 +3,7 @@ package machinery
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 
 	"github.com/RichardKnop/machinery/v1/config"
 )
@@ -30,6 +31,10 @@ func InitApp(cnf *config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	runtime.SetFinalizer(&openedConn, func(c *Connectable) {
+		Connectable(*c).Close()
+	})
 
 	return &App{
 		config:          cnf,

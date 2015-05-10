@@ -12,16 +12,14 @@ func (t testTask) Run(args []interface{}) (interface{}, error) {
 	return nil, nil
 }
 
-var testCnf = config.Config{
-	BrokerURL:    "amqp://guest:guest@localhost:5672/",
-	Exchange:     "machinery_exchange",
-	ExchangeType: "direct",
-	DefaultQueue: "machinery_tasks",
-	BindingKey:   "machinery_task",
-}
-
 func TestRegisterTasks(t *testing.T) {
-	app, err := InitApp(&testCnf)
+	app, err := InitApp(&config.Config{
+		BrokerURL:    "amqp://guest:guest@localhost:5672/",
+		Exchange:     "machinery_exchange",
+		ExchangeType: "direct",
+		DefaultQueue: "machinery_tasks",
+		BindingKey:   "machinery_task",
+	})
 	if err != nil {
 		t.Error(err)
 	}
@@ -36,7 +34,13 @@ func TestRegisterTasks(t *testing.T) {
 }
 
 func TestRegisterTask(t *testing.T) {
-	app, err := InitApp(&testCnf)
+	app, err := InitApp(&config.Config{
+		BrokerURL:    "amqp://guest:guest@localhost:5672/",
+		Exchange:     "machinery_exchange",
+		ExchangeType: "direct",
+		DefaultQueue: "machinery_tasks",
+		BindingKey:   "machinery_task",
+	})
 	if err != nil {
 		t.Error(err)
 	}

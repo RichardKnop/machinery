@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"runtime"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -22,13 +21,9 @@ type AMQPConnection struct {
 
 // InitAMQPConnection - AMQPConnection constructor
 func InitAMQPConnection(cnf *config.Config) Connectable {
-	c := AMQPConnection{config: cnf}
-
-	runtime.SetFinalizer(c, func(c Connectable) {
-		c.Close()
-	})
-
-	return c
+	return AMQPConnection{
+		config: cnf,
+	}
 }
 
 // Open connects to the message queue, opens a channel,

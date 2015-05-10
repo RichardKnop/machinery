@@ -16,7 +16,7 @@ func ParseNumberArgs(args []interface{}) ([]float64, error) {
 			errMsg := fmt.Sprintf(
 				"%v. arg is not a valid floating point number: %v",
 				n+1,
-				num,
+				args[n],
 			)
 			err = errors.New(errMsg)
 			return nil, err
