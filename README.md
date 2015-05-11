@@ -88,7 +88,6 @@ Tasks
 Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message. Let's say we want to define tasks for adding and multiplying numbers:
 
 ```go
-// AddTask ...
 func AddTask(args ...float64) (float64, error) {
 	sum := 0.0
 	for _, arg := range args {
@@ -97,7 +96,6 @@ func AddTask(args ...float64) (float64, error) {
 	return sum, nil
 }
 
-// MultiplyTask ...
 func MultiplyTask(args ...float64) (float64, error) {
 	sum := 1.0
 	for _, arg := range args {
@@ -128,11 +126,6 @@ Task can also be registered one by one:
 app.RegisterTask("add", AddTask)
 app.RegisterTask("multiply", MultiplyTask)
 ```
-
-The above code snippet would register two tasks against the App instance:
-
-* add: AddTask
-* multiply: MultiplyTask
 
 Simply put, when a worker receives a message like this:
 
@@ -180,6 +173,8 @@ type TaskSignature struct {
 ```
 
 Name is the unique task name by which it is registered against a Machinery app.
+
+RoutingKey is used for routing a task to correct queue. If you leave it empty, the default behaviour will be to set it to the default queue's binding key for direct exchange type and to the default queue name for other exchange types.
 
 Args is a list of arguments that will be passed to the task when it is executed by a worker.
 
