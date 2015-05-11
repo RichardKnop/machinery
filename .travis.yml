@@ -12,8 +12,4 @@ branches:
   only:
     - master
 
-before_install:
-  - chmod 600 .netrc
-  - cp .netrc ~/
-
 script: make test
