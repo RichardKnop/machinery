@@ -24,6 +24,17 @@ This is an early stage project so far. Feel free to contribute.
 First Steps
 ===========
 
+Install dependencies:
+
+```
+go get github.com/streadway/amqp
+go get gopkg.in/yaml.v2
+
+# or run
+
+make
+```
+
 Add the Machinery library to your $GOPATH/src:
 
 ```
