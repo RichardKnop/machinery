@@ -2,7 +2,9 @@ package machinery
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
+	"reflect"
 
 	"github.com/streadway/amqp"
 )
@@ -62,21 +64,36 @@ func (w *Worker) processMessage(d *amqp.Delivery) {
 
 	// Everything seems fine, process the task!
 	log.Printf("Started processing %s", s.Name)
-	result, err := task.Run(s.Args)
+
+	reflectedTask := reflect.ValueOf(task)
+	relfectedArgs, err := ReflectArgs(s.Args)
+	if err != nil {
+		w.finalize(&s, reflect.ValueOf(nil), err)
+		return
+	}
+
+	results := reflectedTask.Call(relfectedArgs)
+	if !results[1].IsNil() {
+		w.finalize(&s, reflect.ValueOf(nil), errors.New(results[1].String()))
+		return
+	}
 
 	// Trigger success or error tasks
-	w.finalize(&s, result, err)
+	w.finalize(&s, results[0], err)
 }
 
 // finalize - handles success and error callbacks
-func (w *Worker) finalize(s *TaskSignature, result interface{}, err error) {
+func (w *Worker) finalize(s *TaskSignature, result reflect.Value, err error) {
 	if err != nil {
 		log.Printf("Failed processing %s", s.Name)
 		log.Printf("Error = %v", err)
 
 		for _, errorTask := range s.OnError {
 			// Pass error as a first argument to error callbacks
-			args := append([]interface{}{err}, errorTask.Args...)
+			args := append([]TaskArg{TaskArg{
+				Type:  reflect.TypeOf(err).String(),
+				Value: reflect.ValueOf(err).Interface(),
+			}}, errorTask.Args...)
 			errorTask.Args = args
 			w.app.SendTask(errorTask)
 		}
@@ -84,12 +101,15 @@ func (w *Worker) finalize(s *TaskSignature, result interface{}, err error) {
 	}
 
 	log.Printf("Finished processing %s", s.Name)
-	log.Printf("Result = %v", result)
+	log.Printf("Result = %v", result.Interface())
 
 	for _, successTask := range s.OnSuccess {
 		if s.Immutable == false {
 			// Pass results of the task to success callbacks
-			args := append([]interface{}{result}, successTask.Args...)
+			args := append([]TaskArg{TaskArg{
+				Type:  result.Type().String(),
+				Value: result.Interface(),
+			}}, successTask.Args...)
 			successTask.Args = args
 		}
 		w.app.SendTask(successTask)

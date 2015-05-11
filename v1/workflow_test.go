@@ -5,17 +5,40 @@ import "testing"
 func TestChain(t *testing.T) {
 	task1 := TaskSignature{
 		Name: "foo",
-		Args: []interface{}{1, 1},
+		Args: []TaskArg{
+			TaskArg{
+				Type:  "float64",
+				Value: interface{}(1),
+			},
+			TaskArg{
+				Type:  "float64",
+				Value: interface{}(1),
+			},
+		},
 	}
 
 	task2 := TaskSignature{
 		Name: "bar",
-		Args: []interface{}{5, 6},
+		Args: []TaskArg{
+			TaskArg{
+				Type:  "float64",
+				Value: interface{}(5),
+			},
+			TaskArg{
+				Type:  "float64",
+				Value: interface{}(6),
+			},
+		},
 	}
 
 	task3 := TaskSignature{
 		Name: "qux",
-		Args: []interface{}{4},
+		Args: []TaskArg{
+			TaskArg{
+				Type:  "float64",
+				Value: interface{}(4),
+			},
+		},
 	}
 
 	chain := Chain(task1, task2, task3)

@@ -8,10 +8,6 @@ import (
 
 type testTask struct{}
 
-func (t testTask) Run(args []interface{}) (interface{}, error) {
-	return nil, nil
-}
-
 func TestRegisterTasks(t *testing.T) {
 	app, err := InitApp(&config.Config{
 		BrokerURL:    "amqp://guest:guest@localhost:5672/",
@@ -24,8 +20,8 @@ func TestRegisterTasks(t *testing.T) {
 		t.Error(err)
 	}
 
-	app.RegisterTasks(map[string]Task{
-		"test_task": testTask{},
+	app.RegisterTasks(map[string]interface{}{
+		"test_task": func() {},
 	})
 
 	if app.GetRegisteredTask("test_task") == nil {
@@ -45,7 +41,7 @@ func TestRegisterTask(t *testing.T) {
 		t.Error(err)
 	}
 
-	app.RegisterTask("test_task", testTask{})
+	app.RegisterTask("test_task", func() {})
 
 	if app.GetRegisteredTask("test_task") == nil {
 		t.Error("test_task is not registered but it should be")

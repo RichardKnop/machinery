@@ -85,54 +85,27 @@ Each worker will only consume registered tasks.
 Tasks
 =====
 
-Tasks are a building block of Machinery applications. A task is a struct which implements a simple interface:
+Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message. Let's say we want to define tasks for adding and multiplying numbers:
 
 ```go
-type Task interface {
-	Run(args []interface{}) (interface{}, error)
-}
-```
-
-A task defines what happens when a worker receives a message. Let's say we want to define tasks for adding and multiplying numbers:
-
-```go
-type AddTask struct{}
-
-func (t AddTask) Run(args []interface{}) (interface{}, error) {
-	parsedArgs, err := machinery.ParseNumberArgs(args)
-	if err != nil {
-		return nil, err
+// AddTask ...
+func AddTask(args ...float64) (float64, error) {
+	sum := 0.0
+	for _, arg := range args {
+		sum += arg
 	}
-
-	add := func(args []float64) float64 {
-		sum := 0.0
-		for _, arg := range args {
-			sum += arg
-		}
-		return sum
-	}
-
-	return add(parsedArgs), nil
+	return sum, nil
 }
 
-type MultiplyTask struct{}
-
-func (t MultiplyTask) Run(args []interface{}) (interface{}, error) {
-	parsedArgs, err := machinery.ParseNumberArgs(args)
-	if err != nil {
-		return nil, err
+// MultiplyTask ...
+func MultiplyTask(args ...float64) (float64, error) {
+	sum := 1.0
+	for _, arg := range args {
+		sum *= arg
 	}
-
-	multiply := func(args []float64) float64 {
-		sum := 1.0
-		for _, arg := range args {
-			sum *= arg
-		}
-		return sum
-	}
-
-	return multiply(parsedArgs), nil
+	return sum, nil
 }
+
 
 // ... more tasks
 ```
@@ -140,21 +113,20 @@ func (t MultiplyTask) Run(args []interface{}) (interface{}, error) {
 Registering Tasks
 -----------------
 
-Before your workers can consume a task, you need to register it with an App instance. This is done by assigning a task signature a unique name and registering it with an App instance:
+Before your workers can consume a task, you need to register it with an App instance. This is done by assigning a task a unique name and registering it with an App instance:
 
 ```go
-tasks := map[string]machinery.Task{
-    "add":      AddTask{},
-    "multiply": MultiplyTask{},
-}
-app.RegisterTasks(tasks)
+app.RegisterTasks(map[string]interface{}{
+    "add":      AddTask,
+    "multiply": MultiplyTask,
+})
 ```
 
 Task can also be registered one by one:
 
 ```go
-app.RegisterTask("add", AddTask{})
-app.RegisterTask("multiply", MultiplyTask{})
+app.RegisterTask("add", AddTask)
+app.RegisterTask("multiply", MultiplyTask)
 ```
 
 The above code snippet would register two tasks against the App instance:
@@ -167,14 +139,23 @@ Simply put, when a worker receives a message like this:
 ```json
 {
     "Name": "add",
-    "Args": [1, 1],
+    "Args": [
+        {
+            "Type": "float64",
+            "Value": 1,
+        },
+        {
+            "Type": "float64",
+            "Value": 1,
+        }
+    ],
     "Immutable": false,
     "OnSuccess": null,
     "OnError": null
 }
 ```
 
-It will call Run method of AddTask with [1, 1] arguments.
+It will call AddTask(1, 1). Each task should return an error as well so we can handle failures.
 
 Ideally, tasks should be idempotent which means there will be no unintended consequences when a task is called multiple times with the same arguments.
 
@@ -184,9 +165,14 @@ Signatures
 A signature wraps calling arguments, execution options (such as immutability) and success/error callbacks of a task so it can be send across the wire to workers. Task signatures implement a simple interface:
 
 ```go
+type TaskArg struct {
+	Type  string
+	Value interface{}
+}
+
 type TaskSignature struct {
 	Name, RoutingKey string
-	Args             []interface{}
+	Args             []TaskArg
 	Immutable        bool
 	OnSuccess        []*TaskSignature
 	OnError          []*TaskSignature
@@ -210,12 +196,22 @@ Tasks can be called by passing an instance of TaskSignature to an App instance. 
 
 ```go
 task := machinery.TaskSignature{
-    Name:      "add",
-    Args:      []interface{}{1, 1},
+    Name: "add",
+    Args: []machinery.TaskArg{
+        machinery.TaskArg{
+            Type:  "float64",
+            Value: interface{}(1),
+        },
+        machinery.TaskArg{
+            Type:  "float64",
+            Value: interface{}(1),
+        },
+    },
 }
 
 err := app.SendTask(&task1)
 if err != nil {
+    // failed to send the task
     // do something with the error
 }
 ```
@@ -233,21 +229,45 @@ Chain is simply a set of tasks which will be executed one by one, each successfu
 ```go
 task1 := machinery.TaskSignature{
     Name: "add",
-    Args: []interface{}{1, 1},
+    Args: []machinery.TaskArg{
+        machinery.TaskArg{
+            Type:  "float64",
+            Value: interface{}(1),
+        },
+        machinery.TaskArg{
+            Type:  "float64",
+            Value: interface{}(1),
+        },
+    },
 }
 
 task2 := machinery.TaskSignature{
     Name: "add",
-    Args: []interface{}{5, 6},
+    Args: []machinery.TaskArg{
+        machinery.TaskArg{
+            Type:  "float64",
+            Value: interface{}(5),
+        },
+        machinery.TaskArg{
+            Type:  "float64",
+            Value: interface{}(6),
+        },
+    },
 }
 
 task3 := machinery.TaskSignature{
     Name: "multiply",
-    Args: []interface{}{4},
+    Args: []machinery.TaskArg{
+        machinery.TaskArg{
+            Type:  "float64",
+            Value: interface{}(4),
+        },
+    },
 }
 
 err := app.SendTask(machinery.Chain(task1, task2, task3))
 if err != nil {
+    // failed to send the task
     // do something with the error
 }
 ```

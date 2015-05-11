@@ -1,15 +1,15 @@
 package machinery
 
-// Task is a common interface all registered tasks
-// must implement
-type Task interface {
-	Run(args []interface{}) (interface{}, error)
+// TaskArg represents a single argument passed to invocation fo a task
+type TaskArg struct {
+	Type  string
+	Value interface{}
 }
 
 // TaskSignature represents a single task invocation
 type TaskSignature struct {
 	Name, RoutingKey string
-	Args             []interface{}
+	Args             []TaskArg
 	Immutable        bool
 	OnSuccess        []*TaskSignature
 	OnError          []*TaskSignature
