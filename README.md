@@ -4,14 +4,14 @@
 Machinery
 =========
 
-Machinery is an asynchronous task queue/job queue based on distributed message passing. It is similar in nature to Celery which is an excellent Python framework, although Machinery has been designed from ground up and with Golang's strengths in mind.
+Machinery is an asynchronous task queue/job queue based on distributed message passing.
 
 So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processes on a single server using Golang's coroutines.
 
 This is an early stage project so far. Feel free to contribute.
 
 - [First Steps](https://github.com/RichardKnop/machinery#first-steps)
-- [App](https://github.com/RichardKnop/machinery#app)
+- [Server](https://github.com/RichardKnop/machinery#server)
 - [Workers](https://github.com/RichardKnop/machinery#workers)
 - [Tasks](https://github.com/RichardKnop/machinery#tasks)
     - [Registering Tasks](https://github.com/RichardKnop/machinery#registering-tasks)
@@ -50,10 +50,10 @@ You will be able to see the tasks being processed asynchronously by the worker:
 
 ![Example worker receives tasks](https://github.com/RichardKnop/machinery/blob/master/assets/example_worker_receives_tasks.png)
 
-App
-===
+Server
+======
 
-A Machinery library must be instantiated before use. The way this is done is by creating an App instance. App is a base object which stores Machinery configuration and registered tasks. E.g.:
+A Machinery library must be instantiated before use. The way this is done is by creating a Server instance. Server is a base object which stores Machinery configuration and registered tasks. E.g.:
 
 ```go
 var cnf = config.Config{
@@ -64,7 +64,7 @@ var cnf = config.Config{
 	BindingKey:   "machinery_task",
 }
 
-app, err := machinery.InitApp(&cnf)
+server, err := machinery.NewServer(&cnf)
 if err != nil {
     // do something with the error
 }
@@ -73,11 +73,14 @@ if err != nil {
 Workers
 =======
 
-In order to consume tasks, you need to have one or more workers running. All you need to run a worker is an App instance with registered tasks. E.g.:
+In order to consume tasks, you need to have one or more workers running. All you need to run a worker is a Server instance with registered tasks. E.g.:
 
 ```go
-worker := machinery.InitWorker(app)
-worker.Launch()
+worker := server.NewWorker("worker_name")
+err := worker.Launch()
+if err != nil {
+    // do something with the error
+}
 ```
 
 Each worker will only consume registered tasks.
@@ -88,7 +91,7 @@ Tasks
 Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message. Let's say we want to define tasks for adding and multiplying numbers:
 
 ```go
-func AddTask(args ...float64) (float64, error) {
+func Add(args ...float64) (float64, error) {
 	sum := 0.0
 	for _, arg := range args {
 		sum += arg
@@ -96,35 +99,32 @@ func AddTask(args ...float64) (float64, error) {
 	return sum, nil
 }
 
-func MultiplyTask(args ...float64) (float64, error) {
+func Multiply(args ...float64) (float64, error) {
 	sum := 1.0
 	for _, arg := range args {
 		sum *= arg
 	}
 	return sum, nil
 }
-
-
-// ... more tasks
 ```
 
 Registering Tasks
 -----------------
 
-Before your workers can consume a task, you need to register it with an App instance. This is done by assigning a task a unique name and registering it with an App instance:
+Before your workers can consume a task, you need to register it with the server. This is done by assigning a task a unique name:
 
 ```go
-app.RegisterTasks(map[string]interface{}{
-    "add":      AddTask,
-    "multiply": MultiplyTask,
+server.RegisterTasks(map[string]interface{}{
+    "add":      Add,
+    "multiply": Multiply,
 })
 ```
 
 Task can also be registered one by one:
 
 ```go
-app.RegisterTask("add", AddTask)
-app.RegisterTask("multiply", MultiplyTask)
+server.RegisterTask("add", Add)
+server.RegisterTask("multiply", Multiply)
 ```
 
 Simply put, when a worker receives a message like this:
@@ -148,7 +148,7 @@ Simply put, when a worker receives a message like this:
 }
 ```
 
-It will call AddTask(1, 1). Each task should return an error as well so we can handle failures.
+It will call Add(1, 1). Each task should return an error as well so we can handle failures.
 
 Ideally, tasks should be idempotent which means there will be no unintended consequences when a task is called multiple times with the same arguments.
 
@@ -172,7 +172,7 @@ type TaskSignature struct {
 }
 ```
 
-Name is the unique task name by which it is registered against a Machinery app.
+Name is the unique task name by which it is registered against a Server instance.
 
 RoutingKey is used for routing a task to correct queue. If you leave it empty, the default behaviour will be to set it to the default queue's binding key for direct exchange type and to the default queue name for other exchange types.
 
@@ -204,7 +204,7 @@ task := machinery.TaskSignature{
     },
 }
 
-err := app.SendTask(&task1)
+err := server.SendTask(&task1)
 if err != nil {
     // failed to send the task
     // do something with the error
@@ -260,7 +260,8 @@ task3 := machinery.TaskSignature{
     },
 }
 
-err := app.SendTask(machinery.Chain(task1, task2, task3))
+chain := machinery.Chain(task1, task2, task3)
+err := server.SendTask(chain)
 if err != nil {
     // failed to send the task
     // do something with the error

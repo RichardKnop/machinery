@@ -59,7 +59,7 @@ func init() {
 	}
 
 	server, err = machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not init App")
+	errors.Fail(err, "Could not initialize server")
 }
 
 func main() {
@@ -101,6 +101,7 @@ func main() {
 		},
 	}
 
-	// Let's go!
-	server.SendTask(machinery.Chain(task1, task2, task3))
+	chain := machinery.Chain(task1, task2, task3)
+	err := server.SendTask(chain)
+	errors.Fail(err, "Could not send task")
 }

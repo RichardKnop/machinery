@@ -62,7 +62,7 @@ func init() {
 	}
 
 	server, err := machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not init App")
+	errors.Fail(err, "Could not initialize server")
 
 	// Register tasks
 	tasks := map[string]interface{}{
@@ -78,5 +78,5 @@ func init() {
 
 func main() {
 	err := worker.Launch()
-	errors.Fail(err, "Could not launch Worker")
+	errors.Fail(err, "Could not launch worker")
 }
