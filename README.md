@@ -99,7 +99,7 @@ func AddTask(args ...float64) (float64, error) {
 
 // MultiplyTask ...
 func MultiplyTask(args ...float64) (float64, error) {
-	sum := 0.0
+	sum := 1.0
 	for _, arg := range args {
 		sum *= arg
 	}
