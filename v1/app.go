@@ -12,7 +12,7 @@ import (
 // App.SendTask is one way of sending a task to workers
 type App struct {
 	config          *config.Config
-	registeredTasks map[string]Task
+	registeredTasks map[string]interface{}
 	connection      Connectable
 }
 
@@ -28,7 +28,7 @@ func InitApp(cnf *config.Config) (*App, error) {
 
 	return &App{
 		config:          cnf,
-		registeredTasks: make(map[string]Task),
+		registeredTasks: make(map[string]interface{}),
 		connection:      conn,
 	}, nil
 }
@@ -44,17 +44,17 @@ func (app *App) GetConfig() *config.Config {
 }
 
 // RegisterTasks registers all tasks at once
-func (app *App) RegisterTasks(tasks map[string]Task) {
+func (app *App) RegisterTasks(tasks map[string]interface{}) {
 	app.registeredTasks = tasks
 }
 
 // RegisterTask registers a single task
-func (app *App) RegisterTask(name string, task Task) {
+func (app *App) RegisterTask(name string, task interface{}) {
 	app.registeredTasks[name] = task
 }
 
 // GetRegisteredTask returns registered task by name
-func (app *App) GetRegisteredTask(name string) Task {
+func (app *App) GetRegisteredTask(name string) interface{} {
 	return app.registeredTasks[name]
 }
 

@@ -1,21 +1,20 @@
-/*
- * A worker example
- * ----------------
- *
- * This is how a Machinery worker could look.
- *
- * Preferred way to launch a new worker process is by using a configuration file
- * (see config.yml in this directory for an example):
- * ./worker -c /path/to/config.yml
- *
- *
- * Optionally, you could pass command line flags:
- * ./worker -b amqp://guest:guest@localhost:5672/ -q tast_queue
- *
- * Once the worker process is up and running, it subscribes to the defined queue
- * and waits for incoming tasks. When a new task is published, the worker will
- * process it if it has been registered with the app.
- */
+//
+// A worker example
+// ----------------
+//
+// This is how a Machinery worker could look.
+//
+// Preferred way to launch a new worker process is by using a configuration file
+// (see config.yml in this directory for an example):
+// ./worker -c /path/to/config.yml
+//
+//
+// Optionally, you could pass command line flags:
+// ./worker -b amqp://guest:guest@localhost:5672/ -q tast_queue
+//
+// Once the worker process is up and running, it subscribes to the defined queue
+// and waits for incoming tasks. When a new task is published, the worker will
+// process it if it has been registered with the app.
 
 package main
 
@@ -66,9 +65,9 @@ func init() {
 	errors.Fail(err, "Could not init App")
 
 	// Register tasks
-	tasks := map[string]machinery.Task{
-		"add":      exampletasks.AddTask{},
-		"multiply": exampletasks.MultiplyTask{},
+	tasks := map[string]interface{}{
+		"add":      exampletasks.AddTask,
+		"multiply": exampletasks.MultiplyTask,
 	}
 	app.RegisterTasks(tasks)
 
