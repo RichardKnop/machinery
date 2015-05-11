@@ -18,6 +18,9 @@ var (
 		"float64": reflect.TypeOf(float64(0.5)),
 		"string":  reflect.TypeOf(string("")),
 	}
+	typeConversionError = func(argValue interface{}, argTypeStr string) error {
+		return fmt.Errorf("%v is not %v", argValue, argTypeStr)
+	}
 )
 
 // ReflectArgs converts []TaskArg to []reflect.Value
@@ -26,42 +29,50 @@ func ReflectArgs(args []TaskArg) ([]reflect.Value, error) {
 
 	for i, arg := range args {
 		argType := typesMap[arg.Type]
-		argTypeString := argType.String()
+		argTypeStr := argType.String()
 		argValue := reflect.New(argType)
 
-		if strings.HasPrefix(argTypeString, "int") {
+		if strings.HasPrefix(argTypeStr, "int") {
 			intValue, ok := arg.Value.(int64)
 			if !ok {
-				return nil, fmt.Errorf("%v is not %v", arg.Value, argTypeString)
+				return nil, typeConversionError(arg.Value, argTypeStr)
 			}
 			argValue.Elem().SetInt(intValue)
+			argValues[i] = argValue.Elem()
+			continue
 		}
 
-		if argTypeString == "uint" {
+		if argTypeStr == "uint" {
 			uintValue, ok := arg.Value.(uint64)
 			if !ok {
-				return nil, fmt.Errorf("%v is not %v", arg.Value, argTypeString)
+				return nil, typeConversionError(arg.Value, argTypeStr)
 			}
 			argValue.Elem().SetUint(uintValue)
+			argValues[i] = argValue.Elem()
+			continue
 		}
 
-		if strings.HasPrefix(argTypeString, "float") {
+		if strings.HasPrefix(argTypeStr, "float") {
 			floatValue, ok := arg.Value.(float64)
 			if !ok {
-				return nil, fmt.Errorf("%v is not %v", arg.Value, argTypeString)
+				return nil, typeConversionError(arg.Value, argTypeStr)
 			}
 			argValue.Elem().SetFloat(floatValue)
+			argValues[i] = argValue.Elem()
+			continue
 		}
 
-		if argTypeString == "string" {
+		if argTypeStr == "string" {
 			stringValue, ok := arg.Value.(string)
 			if !ok {
-				return nil, fmt.Errorf("%v is not %v", arg.Value, argTypeString)
+				return nil, typeConversionError(arg.Value, argTypeStr)
 			}
 			argValue.Elem().SetString(stringValue)
+			argValues[i] = argValue.Elem()
+			continue
 		}
 
-		argValues[i] = argValue.Elem()
+		return nil, fmt.Errorf("%v is not one of supported types", arg.Value)
 	}
 
 	return argValues, nil
