@@ -34,8 +34,8 @@ var (
 	defaultQueue = flag.String("q", "machinery_tasks", "Ephemeral AMQP queue name")
 	bindingKey   = flag.String("k", "machinery_task", "AMQP binding key")
 
-	cnf config.Config
-	app *machinery.App
+	cnf    config.Config
+	server *machinery.Server
 )
 
 func init() {
@@ -58,7 +58,7 @@ func init() {
 		errors.Fail(err, "Could not parse config file")
 	}
 
-	app, err = machinery.InitApp(&cnf)
+	server, err = machinery.NewServer(&cnf)
 	errors.Fail(err, "Could not init App")
 }
 
@@ -102,5 +102,5 @@ func main() {
 	}
 
 	// Let's go!
-	app.SendTask(machinery.Chain(task1, task2, task3))
+	server.SendTask(machinery.Chain(task1, task2, task3))
 }

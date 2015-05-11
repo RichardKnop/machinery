@@ -19,8 +19,8 @@ type AMQPConnection struct {
 	queue   amqp.Queue
 }
 
-// InitAMQPConnection - AMQPConnection constructor
-func InitAMQPConnection(cnf *config.Config) Connectable {
+// NewAMQPConnection - AMQPConnection constructor
+func NewAMQPConnection(cnf *config.Config) Connectable {
 	return AMQPConnection{
 		config: cnf,
 	}
@@ -29,22 +29,22 @@ func InitAMQPConnection(cnf *config.Config) Connectable {
 // Open connects to the message queue, opens a channel,
 // declares a queue and returns connection, channel
 // and queue objects
-func (c AMQPConnection) Open() (Connectable, error) {
+func (connection AMQPConnection) Open() (Connectable, error) {
 	var err error
 
-	c.conn, err = amqp.Dial(c.config.BrokerURL)
+	connection.conn, err = amqp.Dial(connection.config.BrokerURL)
 	if err != nil {
 		return nil, fmt.Errorf("Dial: %s", err)
 	}
 
-	c.channel, err = c.conn.Channel()
+	connection.channel, err = connection.conn.Channel()
 	if err != nil {
 		return nil, fmt.Errorf("Channel: %s", err)
 	}
 
-	err = c.channel.ExchangeDeclare(
-		c.config.Exchange,     // name of the exchange
-		c.config.ExchangeType, // type
+	err = connection.channel.ExchangeDeclare(
+		connection.config.Exchange,     // name of the exchange
+		connection.config.ExchangeType, // type
 		true,  // durable
 		false, // delete when complete
 		false, // internal
@@ -55,8 +55,8 @@ func (c AMQPConnection) Open() (Connectable, error) {
 		return nil, fmt.Errorf("Exchange: %s", err)
 	}
 
-	c.queue, err = c.channel.QueueDeclare(
-		c.config.DefaultQueue, // name
+	connection.queue, err = connection.channel.QueueDeclare(
+		connection.config.DefaultQueue, // name
 		true,  // durable
 		false, // delete when unused
 		false, // exclusive
@@ -67,28 +67,28 @@ func (c AMQPConnection) Open() (Connectable, error) {
 		return nil, fmt.Errorf("Queue Declare: %s", err)
 	}
 
-	err = c.channel.QueueBind(
-		c.config.DefaultQueue, // name of the queue
-		c.config.BindingKey,   // binding key
-		c.config.Exchange,     // source exchange
-		false,                 // noWait
-		nil,                   // arguments
+	err = connection.channel.QueueBind(
+		connection.config.DefaultQueue, // name of the queue
+		connection.config.BindingKey,   // binding key
+		connection.config.Exchange,     // source exchange
+		false, // noWait
+		nil,   // arguments
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Queue Bind: %s", err)
 	}
 
-	return c, nil
+	return connection, nil
 }
 
 // Close shuts down the connection
-func (c AMQPConnection) Close() error {
-	err := c.channel.Close()
+func (connection AMQPConnection) Close() error {
+	err := connection.channel.Close()
 	if err != nil {
 		return fmt.Errorf("Consumer cancel failed: %s", err)
 	}
 
-	err = c.conn.Close()
+	err = connection.conn.Close()
 	if err != nil {
 		return fmt.Errorf("AMQP connection close error: %s", err)
 	}
@@ -97,35 +97,35 @@ func (c AMQPConnection) Close() error {
 }
 
 // WaitForMessages enters a loop and waits for incoming messages
-func (c AMQPConnection) WaitForMessages(w *Worker) {
-	err := c.channel.Qos(
+func (connection AMQPConnection) WaitForMessages(worker *Worker) {
+	err := connection.channel.Qos(
 		3,     // prefetch count
 		0,     // prefetch size
 		false, // global
 	)
 	errors.Fail(err, "Failed to set QoS")
 
-	deliveries, err := c.channel.Consume(
-		c.queue.Name,  // queue
-		w.ConsumerTag, // consumer tag
-		false,         // auto-ack
-		false,         // exclusive
-		false,         // no-local
-		false,         // no-wait
-		nil,           // args
+	deliveries, err := connection.channel.Consume(
+		connection.queue.Name, // queue
+		worker.ConsumerTag,    // consumer tag
+		false,                 // auto-ack
+		false,                 // exclusive
+		false,                 // no-local
+		false,                 // no-wait
+		nil,                   // args
 	)
 	errors.Fail(err, fmt.Sprintf("Queue Consume: %s", err))
 
 	forever := make(chan bool)
 
-	go c.handleDeliveries(deliveries, w)
+	go connection.handleDeliveries(deliveries, worker)
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
 }
 
-func (c AMQPConnection) handleDeliveries(
-	deliveries <-chan amqp.Delivery, w *Worker,
+func (connection AMQPConnection) handleDeliveries(
+	deliveries <-chan amqp.Delivery, worker *Worker,
 ) {
 	for d := range deliveries {
 		log.Printf("Received new message: %s", d.Body)
@@ -133,24 +133,26 @@ func (c AMQPConnection) handleDeliveries(
 		dotCount := bytes.Count(d.Body, []byte("."))
 		t := time.Duration(dotCount)
 		time.Sleep(t * time.Second)
-		w.processMessage(&d)
+		worker.processMessage(&d)
 	}
 }
 
 // PublishMessage places a new message on the default queue
-func (c AMQPConnection) PublishMessage(body []byte, routingKey string) error {
+func (connection AMQPConnection) PublishMessage(
+	body []byte, routingKey string,
+) error {
 	if routingKey == "" {
-		if c.config.ExchangeType == "direct" {
-			routingKey = c.config.BindingKey
+		if connection.config.ExchangeType == "direct" {
+			routingKey = connection.config.BindingKey
 		} else {
-			routingKey = c.queue.Name
+			routingKey = connection.queue.Name
 		}
 	}
-	return c.channel.Publish(
-		c.config.Exchange, // exchange
-		routingKey,        // routing key
-		false,             // mandatory
-		false,             // immediate
+	return connection.channel.Publish(
+		connection.config.Exchange, // exchange
+		routingKey,                 // routing key
+		false,                      // mandatory
+		false,                      // immediate
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,

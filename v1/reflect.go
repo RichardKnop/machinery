@@ -32,6 +32,7 @@ func ReflectArgs(args []TaskArg) ([]reflect.Value, error) {
 		argTypeStr := argType.String()
 		argValue := reflect.New(argType)
 
+		// Integers
 		if strings.HasPrefix(argTypeStr, "int") {
 			intValue, ok := arg.Value.(int64)
 			if !ok {
@@ -42,6 +43,7 @@ func ReflectArgs(args []TaskArg) ([]reflect.Value, error) {
 			continue
 		}
 
+		// Unbound integers
 		if argTypeStr == "uint" {
 			uintValue, ok := arg.Value.(uint64)
 			if !ok {
@@ -52,6 +54,7 @@ func ReflectArgs(args []TaskArg) ([]reflect.Value, error) {
 			continue
 		}
 
+		// Floating point numbers
 		if strings.HasPrefix(argTypeStr, "float") {
 			floatValue, ok := arg.Value.(float64)
 			if !ok {
@@ -62,6 +65,7 @@ func ReflectArgs(args []TaskArg) ([]reflect.Value, error) {
 			continue
 		}
 
+		// Strings
 		if argTypeStr == "string" {
 			stringValue, ok := arg.Value.(string)
 			if !ok {

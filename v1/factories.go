@@ -11,7 +11,7 @@ import (
 // Currently only AMQP is supported
 func ConnectionFactory(cnf *config.Config) (Connectable, error) {
 	if strings.HasPrefix(cnf.BrokerURL, "amqp://") {
-		return InitAMQPConnection(cnf), nil
+		return NewAMQPConnection(cnf), nil
 	}
 
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.BrokerURL)

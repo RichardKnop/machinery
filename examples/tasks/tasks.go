@@ -1,7 +1,7 @@
 package exampletasks
 
-// AddTask ...
-func AddTask(args ...float64) (float64, error) {
+// Add ...
+func Add(args ...float64) (float64, error) {
 	sum := 0.0
 	for _, arg := range args {
 		sum += arg
@@ -9,8 +9,8 @@ func AddTask(args ...float64) (float64, error) {
 	return sum, nil
 }
 
-// MultiplyTask ...
-func MultiplyTask(args ...float64) (float64, error) {
+// Multiply ...
+func Multiply(args ...float64) (float64, error) {
 	sum := 1.0
 	for _, arg := range args {
 		sum *= arg

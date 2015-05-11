@@ -37,7 +37,7 @@ var (
 	bindingKey   = flag.String("k", "machinery_task", "AMQP binding key")
 
 	cnf    config.Config
-	app    *machinery.App
+	server *machinery.Server
 	worker *machinery.Worker
 )
 
@@ -61,19 +61,19 @@ func init() {
 		errors.Fail(err, "Could not parse config file")
 	}
 
-	app, err := machinery.InitApp(&cnf)
+	server, err := machinery.NewServer(&cnf)
 	errors.Fail(err, "Could not init App")
 
 	// Register tasks
 	tasks := map[string]interface{}{
-		"add":      exampletasks.AddTask,
-		"multiply": exampletasks.MultiplyTask,
+		"add":      exampletasks.Add,
+		"multiply": exampletasks.Multiply,
 	}
-	app.RegisterTasks(tasks)
+	server.RegisterTasks(tasks)
 
 	// The second argument is a consumer tag
 	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
-	worker = machinery.InitWorker(app, "machinery_worker")
+	worker = server.NewWorker("machinery_worker")
 }
 
 func main() {

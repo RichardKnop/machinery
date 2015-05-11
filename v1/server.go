@@ -7,17 +7,16 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
-// App is the main Machinery object and stores all configuration
-// All the tasks workers process are registered against the app
-// App.SendTask is one way of sending a task to workers
-type App struct {
+// Server is the main Machinery object and stores all configuration
+// All the tasks workers process are registered against the server
+type Server struct {
 	config          *config.Config
 	registeredTasks map[string]interface{}
 	connection      Connectable
 }
 
-// InitApp - App constructor
-func InitApp(cnf *config.Config) (*App, error) {
+// NewServer - Server constructor
+func NewServer(cnf *config.Config) (*Server, error) {
 	var conn Connectable
 	var err error
 
@@ -26,41 +25,49 @@ func InitApp(cnf *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	return &App{
+	return &Server{
 		config:          cnf,
 		registeredTasks: make(map[string]interface{}),
 		connection:      conn,
 	}, nil
 }
 
+// NewWorker - Creates a new worker instance
+func (server *Server) NewWorker(consumerTag string) *Worker {
+	return &Worker{
+		server:      server,
+		ConsumerTag: consumerTag,
+	}
+}
+
 // GetConnection returns connection object
-func (app *App) GetConnection() Connectable {
-	return app.connection
+func (server *Server) GetConnection() Connectable {
+	return server.connection
 }
 
 // GetConfig returns connection object
-func (app *App) GetConfig() *config.Config {
-	return app.config
+func (server *Server) GetConfig() *config.Config {
+	return server.config
 }
 
 // RegisterTasks registers all tasks at once
-func (app *App) RegisterTasks(tasks map[string]interface{}) {
-	app.registeredTasks = tasks
+func (server *Server) RegisterTasks(tasks map[string]interface{}) {
+	server.registeredTasks = tasks
 }
 
 // RegisterTask registers a single task
-func (app *App) RegisterTask(name string, task interface{}) {
-	app.registeredTasks[name] = task
+func (server *Server) RegisterTask(name string, task interface{}) {
+	server.registeredTasks[name] = task
 }
 
 // GetRegisteredTask returns registered task by name
-func (app *App) GetRegisteredTask(name string) interface{} {
-	return app.registeredTasks[name]
+func (server *Server) GetRegisteredTask(name string) interface{} {
+	return server.registeredTasks[name]
 }
 
 // SendTask publishes a task to the default queue
-func (app *App) SendTask(s *TaskSignature) error {
-	openConn, err := app.connection.Open()
+func (server *Server) SendTask(s *TaskSignature) error {
+	openConn, err := server.connection.Open()
 	if err != nil {
 		return err
 	}

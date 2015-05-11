@@ -11,24 +11,16 @@ import (
 
 // Worker represents a single worker process
 type Worker struct {
-	app         *App
+	server      *Server
 	ConsumerTag string
 }
 
-// InitWorker - Worker constructor
-func InitWorker(app *App, consumerTag string) *Worker {
-	return &Worker{
-		app:         app,
-		ConsumerTag: consumerTag,
-	}
-}
-
 // Launch starts a new worker process
-// The worker subscribes to the default queue
-// and processes any incoming tasks registered against the app
-func (w *Worker) Launch() error {
-	cnf := w.app.GetConfig()
-	conn := w.app.GetConnection()
+// The worker subscribes to the default queue and processes
+// incoming tasks registered against the server instance
+func (worker *Worker) Launch() error {
+	cnf := worker.server.GetConfig()
+	conn := worker.server.GetConnection()
 
 	log.Printf("Launching a worker with the following settings:")
 	log.Printf("- BrokerURL: %s", cnf.BrokerURL)
@@ -43,68 +35,79 @@ func (w *Worker) Launch() error {
 	}
 
 	defer openConn.Close()
-	openConn.WaitForMessages(w)
+	openConn.WaitForMessages(worker)
 
 	return nil
 }
 
 // processMessage - handles received messages
 // First, it unmarshals the message into a TaskSignature
-// Then, it looks whether the task is registered against the app
-// If it is registered, it calls signarute's Run method and then calls finalize
-func (w *Worker) processMessage(d *amqp.Delivery) {
-	s := TaskSignature{}
-	json.Unmarshal([]byte(d.Body), &s)
+// Then, it looks whether the task is registered against the server
+// If it is registered, it invokes the task using reflection and
+// triggers success/error callbacks
+func (worker *Worker) processMessage(d *amqp.Delivery) {
+	signature := TaskSignature{}
+	json.Unmarshal([]byte(d.Body), &signature)
 
-	task := w.app.GetRegisteredTask(s.Name)
+	task := worker.server.GetRegisteredTask(signature.Name)
 	if task == nil {
-		log.Printf("Task with a name '%s' not registered", s.Name)
+		log.Printf("Task with a name '%s' not registered", signature.Name)
 		return
 	}
 
 	// Everything seems fine, process the task!
-	log.Printf("Started processing %s", s.Name)
+	log.Printf("Started processing %s", signature.Name)
 
 	reflectedTask := reflect.ValueOf(task)
-	relfectedArgs, err := ReflectArgs(s.Args)
+	relfectedArgs, err := ReflectArgs(signature.Args)
 	if err != nil {
-		w.finalize(&s, reflect.ValueOf(nil), err)
+		worker.finalize(
+			&signature,
+			reflect.ValueOf(nil),
+			err,
+		)
 		return
 	}
 
 	results := reflectedTask.Call(relfectedArgs)
 	if !results[1].IsNil() {
-		w.finalize(&s, reflect.ValueOf(nil), errors.New(results[1].String()))
+		worker.finalize(
+			&signature,
+			reflect.ValueOf(nil),
+			errors.New(results[1].String()),
+		)
 		return
 	}
 
 	// Trigger success or error tasks
-	w.finalize(&s, results[0], err)
+	worker.finalize(&signature, results[0], err)
 }
 
 // finalize - handles success and error callbacks
-func (w *Worker) finalize(s *TaskSignature, result reflect.Value, err error) {
+func (worker *Worker) finalize(
+	signature *TaskSignature, result reflect.Value, err error,
+) {
 	if err != nil {
-		log.Printf("Failed processing %s", s.Name)
+		log.Printf("Failed processing %s", signature.Name)
 		log.Printf("Error = %v", err)
 
-		for _, errorTask := range s.OnError {
+		for _, errorTask := range signature.OnError {
 			// Pass error as a first argument to error callbacks
 			args := append([]TaskArg{TaskArg{
 				Type:  reflect.TypeOf(err).String(),
 				Value: reflect.ValueOf(err).Interface(),
 			}}, errorTask.Args...)
 			errorTask.Args = args
-			w.app.SendTask(errorTask)
+			worker.server.SendTask(errorTask)
 		}
 		return
 	}
 
-	log.Printf("Finished processing %s", s.Name)
+	log.Printf("Finished processing %s", signature.Name)
 	log.Printf("Result = %v", result.Interface())
 
-	for _, successTask := range s.OnSuccess {
-		if s.Immutable == false {
+	for _, successTask := range signature.OnSuccess {
+		if signature.Immutable == false {
 			// Pass results of the task to success callbacks
 			args := append([]TaskArg{TaskArg{
 				Type:  result.Type().String(),
@@ -112,6 +115,6 @@ func (w *Worker) finalize(s *TaskSignature, result reflect.Value, err error) {
 			}}, successTask.Args...)
 			successTask.Args = args
 		}
-		w.app.SendTask(successTask)
+		worker.server.SendTask(successTask)
 	}
 }
