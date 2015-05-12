@@ -20,7 +20,6 @@ type Worker struct {
 // incoming tasks registered against the server instance
 func (worker *Worker) Launch() error {
 	cnf := worker.server.GetConfig()
-	conn := worker.server.GetConnection()
 
 	log.Printf("Launching a worker with the following settings:")
 	log.Printf("- BrokerURL: %s", cnf.BrokerURL)
@@ -29,15 +28,7 @@ func (worker *Worker) Launch() error {
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
-	openConn, err := conn.Open()
-	if err != nil {
-		return err
-	}
-
-	defer openConn.Close()
-	openConn.WaitForMessages(worker)
-
-	return nil
+	return worker.server.GetConnection().WaitForMessages(worker)
 }
 
 // processMessage - handles received messages

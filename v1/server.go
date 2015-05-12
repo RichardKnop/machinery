@@ -67,20 +67,15 @@ func (server *Server) GetRegisteredTask(name string) interface{} {
 
 // SendTask publishes a task to the default queue
 func (server *Server) SendTask(s *TaskSignature) error {
-	openConn, err := server.connection.Open()
-	if err != nil {
-		return err
-	}
-
-	defer openConn.Close()
-
 	message, err := json.Marshal(s)
+
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	err = openConn.PublishMessage([]byte(message), s.RoutingKey)
-	if err != nil {
+	if err := server.connection.PublishMessage(
+		[]byte(message), s.RoutingKey,
+	); err != nil {
 		return fmt.Errorf("Publish Message: %v", err)
 	}
 

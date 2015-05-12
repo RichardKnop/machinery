@@ -2,8 +2,6 @@ package machinery
 
 // Connectable - a common interface for all connections
 type Connectable interface {
-	Open() (Connectable, error)
-	Close() error
-	WaitForMessages(w *Worker)
+	WaitForMessages(w *Worker) error
 	PublishMessage(body []byte, routingKey string) error
 }
