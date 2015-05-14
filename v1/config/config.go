@@ -9,11 +9,12 @@ import (
 
 // Config holds all configuration for our program
 type Config struct {
-	BrokerURL    string `yaml:"broker_url"`
-	Exchange     string `yaml:"exchange"`
-	ExchangeType string `yaml:"exchange_type"`
-	DefaultQueue string `yaml:"default_queue"`
-	BindingKey   string `yaml:"binding_key"`
+	Broker        string `yaml:"broker"`
+	ResultBackend string `yaml:"result_backend"`
+	Exchange      string `yaml:"exchange"`
+	ExchangeType  string `yaml:"exchange_type"`
+	DefaultQueue  string `yaml:"default_queue"`
+	BindingKey    string `yaml:"binding_key"`
 }
 
 // ReadFromFile reads data from a file

@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/twinj/uuid"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -14,6 +16,7 @@ type Server struct {
 	config          *config.Config
 	registeredTasks map[string]interface{}
 	broker          brokers.Broker
+	backend         backends.Backend
 }
 
 // NewServer creates Server instance
@@ -23,10 +26,14 @@ func NewServer(cnf *config.Config) (*Server, error) {
 		return nil, err
 	}
 
+	// Backend is optional so we ignore the error
+	backend, _ := BackendFactory(cnf)
+
 	return &Server{
 		config:          cnf,
 		registeredTasks: make(map[string]interface{}),
 		broker:          broker,
+		backend:         backend,
 	}, nil
 }
 
@@ -64,18 +71,35 @@ func (server *Server) GetRegisteredTask(name string) interface{} {
 }
 
 // SendTask publishes a task to the default queue
-func (server *Server) SendTask(s *TaskSignature) error {
-	message, err := json.Marshal(s)
+func (server *Server) SendTask(signature *TaskSignature) error {
+	// Auto generate a UUID if not set already
+	if signature.UUID == "" {
+		signature.UUID = uuid.NewV4().String()
+	}
+
+	message, err := json.Marshal(signature)
 
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
+	server.UpdateTaskState(signature.UUID, backends.PendingState)
+
 	if err := server.broker.Publish(
-		[]byte(message), s.RoutingKey,
+		[]byte(message), signature.RoutingKey,
 	); err != nil {
+		server.UpdateTaskState(signature.UUID, backends.FailureState)
 		return fmt.Errorf("Publish Message: %v", err)
 	}
 
 	return nil
+}
+
+// UpdateTaskState updates a task state
+// If no result backend has been configured, does nothing
+func (server *Server) UpdateTaskState(taskUUID, state string) error {
+	if server.backend == nil {
+		return nil
+	}
+	return server.backend.UpdateState(taskUUID, state)
 }

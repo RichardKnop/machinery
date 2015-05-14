@@ -6,6 +6,7 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/streadway/amqp"
 )
 
@@ -22,7 +23,8 @@ func (worker *Worker) Launch() error {
 	cnf := worker.server.GetConfig()
 
 	log.Printf("Launching a worker with the following settings:")
-	log.Printf("- BrokerURL: %s", cnf.BrokerURL)
+	log.Printf("- Broker: %s", cnf.Broker)
+	log.Printf("- ResultBackend: %s", cnf.ResultBackend)
 	log.Printf("- Exchange: %s", cnf.Exchange)
 	log.Printf("- ExchangeType: %s", cnf.ExchangeType)
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
@@ -49,8 +51,7 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 		return
 	}
 
-	// Everything seems fine, process the task!
-	log.Printf("Started processing %s", signature.Name)
+	worker.server.UpdateTaskState(signature.UUID, backends.ReceivedState)
 
 	errorFinalizer := func(err error) {
 		worker.finalize(
@@ -67,6 +68,8 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 		return
 	}
 
+	worker.server.UpdateTaskState(signature.UUID, backends.StartedState)
+
 	results := reflectedTask.Call(relfectedArgs)
 	if !results[1].IsNil() {
 		errorFinalizer(errors.New(results[1].String()))
@@ -82,6 +85,8 @@ func (worker *Worker) finalize(
 	signature *TaskSignature, result reflect.Value, err error,
 ) {
 	if err != nil {
+		worker.server.UpdateTaskState(signature.UUID, backends.FailureState)
+
 		log.Printf("Failed processing %s", signature.Name)
 		log.Printf("Error = %v", err)
 
@@ -96,6 +101,8 @@ func (worker *Worker) finalize(
 		}
 		return
 	}
+
+	worker.server.UpdateTaskState(signature.UUID, backends.SuccessState)
 
 	log.Printf("Finished processing %s", signature.Name)
 	log.Printf("Result = %v", result.Interface())

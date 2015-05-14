@@ -27,12 +27,13 @@ import (
 
 // Define flagss
 var (
-	configPath   = flag.String("c", "config.yml", "Path to a configuration file")
-	brokerURL    = flag.String("b", "amqp://guest:guest@localhost:5672/", "Broker URL")
-	exchange     = flag.String("e", "machinery_exchange", "Durable, non-auto-deleted AMQP exchange name")
-	exchangeType = flag.String("t", "direct", "Exchange type - direct|fanout|topic|x-custom")
-	defaultQueue = flag.String("q", "machinery_tasks", "Ephemeral AMQP queue name")
-	bindingKey   = flag.String("k", "machinery_task", "AMQP binding key")
+	configPath    = flag.String("c", "config.yml", "Path to a configuration file")
+	broker        = flag.String("b", "amqp://guest:guest@localhost:5672/", "Broker URL")
+	resultBackend = flag.String("r", "amqp", "Result backend")
+	exchange      = flag.String("e", "machinery_exchange", "Durable, non-auto-deleted AMQP exchange name")
+	exchangeType  = flag.String("t", "direct", "Exchange type - direct|fanout|topic|x-custom")
+	defaultQueue  = flag.String("q", "machinery_tasks", "Ephemeral AMQP queue name")
+	bindingKey    = flag.String("k", "machinery_task", "AMQP binding key")
 
 	cnf    config.Config
 	server *machinery.Server
@@ -43,11 +44,12 @@ func init() {
 	flag.Parse()
 
 	cnf = config.Config{
-		BrokerURL:    *brokerURL,
-		Exchange:     *exchange,
-		ExchangeType: *exchangeType,
-		DefaultQueue: *defaultQueue,
-		BindingKey:   *bindingKey,
+		Broker:        *broker,
+		ResultBackend: *resultBackend,
+		Exchange:      *exchange,
+		ExchangeType:  *exchangeType,
+		DefaultQueue:  *defaultQueue,
+		BindingKey:    *bindingKey,
 	}
 
 	// Parse the config

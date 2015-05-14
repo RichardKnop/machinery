@@ -8,7 +8,7 @@ import (
 
 func TestRegisterTasks(t *testing.T) {
 	server, err := NewServer(&config.Config{
-		BrokerURL:    "amqp://guest:guest@localhost:5672/",
+		Broker:       "amqp://guest:guest@localhost:5672/",
 		Exchange:     "machinery_exchange",
 		ExchangeType: "direct",
 		DefaultQueue: "machinery_tasks",
@@ -29,7 +29,7 @@ func TestRegisterTasks(t *testing.T) {
 
 func TestRegisterTask(t *testing.T) {
 	server, err := NewServer(&config.Config{
-		BrokerURL:    "amqp://guest:guest@localhost:5672/",
+		Broker:       "amqp://guest:guest@localhost:5672/",
 		Exchange:     "machinery_exchange",
 		ExchangeType: "direct",
 		DefaultQueue: "machinery_tasks",

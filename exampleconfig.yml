@@ -1,5 +1,6 @@
 ---
-broker_url: amqp://guest:guest@localhost:5672/
+broker: amqp://guest:guest@localhost:5672/
+result_backend: amqp
 exchange: machinery_exchange
 exchange_type: direct
 default_queue: machinery_tasks

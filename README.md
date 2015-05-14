@@ -131,6 +131,7 @@ Simply put, when a worker receives a message like this:
 
 ```json
 {
+    "UUID": "48760a1a-8576-4536-973b-da09048c2ac5",
     "Name": "add",
     "Args": [
         {
@@ -164,13 +165,15 @@ type TaskArg struct {
 }
 
 type TaskSignature struct {
-	Name, RoutingKey string
-	Args             []TaskArg
-	Immutable        bool
-	OnSuccess        []*TaskSignature
-	OnError          []*TaskSignature
+	UUID, Name, RoutingKey string
+	Args                   []TaskArg
+	Immutable              bool
+	OnSuccess              []*TaskSignature
+	OnError                []*TaskSignature
 }
 ```
+
+UUID is a unique ID of a task. You can either set it yourself or it will be automatically generated.
 
 Name is the unique task name by which it is registered against a Server instance.
 
