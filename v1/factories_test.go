@@ -5,10 +5,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
-func TestConnectionFactory(t *testing.T) {
+func TestBrokerFactory(t *testing.T) {
 	cnf := config.Config{
 		BrokerURL:    "amqp://guest:guest@localhost:5672/",
 		Exchange:     "machinery_exchange",
@@ -17,24 +18,24 @@ func TestConnectionFactory(t *testing.T) {
 		BindingKey:   "machinery_task",
 	}
 
-	actual, err := ConnectionFactory(&cnf)
+	actual, err := BrokerFactory(&cnf)
 
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	expected := AMQPConnection{config: &cnf}
+	expected := brokers.NewAMQPBroker(&cnf)
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
 }
 
-func TestConnectionFactoryError(t *testing.T) {
+func TestBrokerFactoryError(t *testing.T) {
 	cnf := config.Config{
 		BrokerURL: "BOGUS",
 	}
 
-	conn, err := ConnectionFactory(&cnf)
+	conn, err := BrokerFactory(&cnf)
 
 	if conn != nil {
 		t.Errorf("conn = %v, should be nil", conn)

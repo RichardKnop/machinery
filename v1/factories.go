@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
-// ConnectionFactory creates a new Connectable object
-// Currently only AMQP is supported
-func ConnectionFactory(cnf *config.Config) (Connectable, error) {
+// BrokerFactory creates a new object with Broker interface
+// Currently only AMQP broker is supported
+func BrokerFactory(cnf *config.Config) (brokers.Broker, error) {
 	if strings.HasPrefix(cnf.BrokerURL, "amqp://") {
-		return NewAMQPConnection(cnf), nil
+		return brokers.NewAMQPBroker(cnf), nil
 	}
 
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.BrokerURL)

@@ -1,4 +1,4 @@
-package machinery
+package brokers
 
 import (
 	"bytes"
@@ -10,17 +10,17 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// AMQPConnection represents an AMQP conenction (e.g. RabbitMQ)
-type AMQPConnection struct {
+// AMQPBroker represents an AMQP broker
+type AMQPBroker struct {
 	config  *config.Config
 	conn    *amqp.Connection
 	channel *amqp.Channel
 	queue   amqp.Queue
 }
 
-// NewAMQPConnection - AMQPConnection constructor
-func NewAMQPConnection(cnf *config.Config) Connectable {
-	return AMQPConnection{
+// NewAMQPBroker - AMQPConnection constructor
+func NewAMQPBroker(cnf *config.Config) Broker {
+	return AMQPBroker{
 		config: cnf,
 	}
 }
@@ -35,7 +35,9 @@ func fibonacci() func() int {
 }
 
 // Consume enters a loop and waits for incoming messages
-func (amqpConnection AMQPConnection) Consume(worker *Worker) error {
+func (amqpBroker AMQPBroker) Consume(
+	consumerTag string, mp MessageProcessor,
+) error {
 	var retryCountDown int
 	fibonacci := fibonacci()
 
@@ -52,7 +54,7 @@ func (amqpConnection AMQPConnection) Consume(worker *Worker) error {
 			retryCountDown = fibonacci()
 		}
 
-		openConn, err := amqpConnection.open()
+		openConn, err := amqpBroker.open()
 		if err != nil {
 			return fmt.Errorf("AMQPConnection Open: %s", err)
 		}
@@ -69,7 +71,7 @@ func (amqpConnection AMQPConnection) Consume(worker *Worker) error {
 
 		deliveries, err := openConn.channel.Consume(
 			openConn.queue.Name, // queue
-			worker.ConsumerTag,  // consumer tag
+			consumerTag,         // consumer tag
 			false,               // auto-ack
 			false,               // exclusive
 			false,               // no-local
@@ -82,7 +84,7 @@ func (amqpConnection AMQPConnection) Consume(worker *Worker) error {
 
 		forever := make(chan bool)
 
-		go openConn.consume(deliveries, worker)
+		go openConn.consume(deliveries, mp)
 
 		log.Print("[*] Waiting for messages. To exit press CTRL+C")
 		<-forever
@@ -92,10 +94,10 @@ func (amqpConnection AMQPConnection) Consume(worker *Worker) error {
 }
 
 // Publish places a new message on the default queue
-func (amqpConnection AMQPConnection) Publish(
+func (amqpBroker AMQPBroker) Publish(
 	body []byte, routingKey string,
 ) error {
-	openConn, err := amqpConnection.open()
+	openConn, err := amqpBroker.open()
 	if err != nil {
 		return fmt.Errorf("AMQPConnection Open: %s", err)
 	}
@@ -115,22 +117,22 @@ func (amqpConnection AMQPConnection) Publish(
 }
 
 // Connects to the message queue, opens a channel, declares a queue
-func (amqpConnection AMQPConnection) open() (*AMQPConnection, error) {
+func (amqpBroker AMQPBroker) open() (*AMQPBroker, error) {
 	var err error
 
-	amqpConnection.conn, err = amqp.Dial(amqpConnection.config.BrokerURL)
+	amqpBroker.conn, err = amqp.Dial(amqpBroker.config.BrokerURL)
 	if err != nil {
 		return nil, fmt.Errorf("Dial: %s", err)
 	}
 
-	amqpConnection.channel, err = amqpConnection.conn.Channel()
+	amqpBroker.channel, err = amqpBroker.conn.Channel()
 	if err != nil {
 		return nil, fmt.Errorf("Channel: %s", err)
 	}
 
-	err = amqpConnection.channel.ExchangeDeclare(
-		amqpConnection.config.Exchange,     // name of the exchange
-		amqpConnection.config.ExchangeType, // type
+	err = amqpBroker.channel.ExchangeDeclare(
+		amqpBroker.config.Exchange,     // name of the exchange
+		amqpBroker.config.ExchangeType, // type
 		true,  // durable
 		false, // delete when complete
 		false, // internal
@@ -141,8 +143,8 @@ func (amqpConnection AMQPConnection) open() (*AMQPConnection, error) {
 		return nil, fmt.Errorf("Exchange: %s", err)
 	}
 
-	amqpConnection.queue, err = amqpConnection.channel.QueueDeclare(
-		amqpConnection.config.DefaultQueue, // name
+	amqpBroker.queue, err = amqpBroker.channel.QueueDeclare(
+		amqpBroker.config.DefaultQueue, // name
 		true,  // durable
 		false, // delete when unused
 		false, // exclusive
@@ -153,10 +155,10 @@ func (amqpConnection AMQPConnection) open() (*AMQPConnection, error) {
 		return nil, fmt.Errorf("Queue Declare: %s", err)
 	}
 
-	err = amqpConnection.channel.QueueBind(
-		amqpConnection.config.DefaultQueue, // name of the queue
-		amqpConnection.config.BindingKey,   // binding key
-		amqpConnection.config.Exchange,     // source exchange
+	err = amqpBroker.channel.QueueBind(
+		amqpBroker.config.DefaultQueue, // name of the queue
+		amqpBroker.config.BindingKey,   // binding key
+		amqpBroker.config.Exchange,     // source exchange
 		false, // noWait
 		nil,   // arguments
 	)
@@ -164,16 +166,16 @@ func (amqpConnection AMQPConnection) open() (*AMQPConnection, error) {
 		return nil, fmt.Errorf("Queue Bind: %s", err)
 	}
 
-	return &amqpConnection, nil
+	return &amqpBroker, nil
 }
 
 // Closes the connection
-func (amqpConnection AMQPConnection) close() error {
-	if err := amqpConnection.channel.Close(); err != nil {
+func (amqpBroker AMQPBroker) close() error {
+	if err := amqpBroker.channel.Close(); err != nil {
 		return fmt.Errorf("Channel Close: %s", err)
 	}
 
-	if err := amqpConnection.conn.Close(); err != nil {
+	if err := amqpBroker.conn.Close(); err != nil {
 		return fmt.Errorf("Connection Close: %s", err)
 	}
 
@@ -181,8 +183,8 @@ func (amqpConnection AMQPConnection) close() error {
 }
 
 // Consumes messages
-func (amqpConnection AMQPConnection) consume(
-	deliveries <-chan amqp.Delivery, worker *Worker,
+func (amqpBroker AMQPBroker) consume(
+	deliveries <-chan amqp.Delivery, mp MessageProcessor,
 ) {
 	for d := range deliveries {
 		log.Printf("Received new message: %s", d.Body)
@@ -190,20 +192,20 @@ func (amqpConnection AMQPConnection) consume(
 		dotCount := bytes.Count(d.Body, []byte("."))
 		t := time.Duration(dotCount)
 		time.Sleep(t * time.Second)
-		worker.processMessage(&d)
+		mp.ProcessMessage(&d)
 	}
 }
 
 // If routing key is empty string:
 // a) set it to binding key for direct exchange type
 // b) set it to default queue name
-func (amqpConnection AMQPConnection) adjustRoutingKey(routingKey string) string {
+func (amqpBroker AMQPBroker) adjustRoutingKey(routingKey string) string {
 	if routingKey != "" {
 		return routingKey
 	}
 
-	if amqpConnection.config.ExchangeType == "direct" {
-		return amqpConnection.config.BindingKey
+	if amqpBroker.config.ExchangeType == "direct" {
+		return amqpBroker.config.BindingKey
 	}
-	return amqpConnection.queue.Name
+	return amqpBroker.queue.Name
 }

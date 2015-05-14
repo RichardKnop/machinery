@@ -16,8 +16,8 @@ type Worker struct {
 }
 
 // Launch starts a new worker process
-// The worker subscribes to the default queue and processes
-// incoming tasks registered against the server instance
+// The worker subscribes to the default queue
+// and processes incoming registered tasks
 func (worker *Worker) Launch() error {
 	cnf := worker.server.GetConfig()
 
@@ -28,15 +28,18 @@ func (worker *Worker) Launch() error {
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
-	return worker.server.GetConnection().Consume(worker)
+	return worker.server.GetBroker().Consume(
+		worker.ConsumerTag,
+		worker,
+	)
 }
 
-// processMessage - handles received messages
+// ProcessMessage handles received messages
 // First, it unmarshals the message into a TaskSignature
 // Then, it looks whether the task is registered against the server
 // If it is registered, it invokes the task using reflection and
 // triggers success/error callbacks
-func (worker *Worker) processMessage(d *amqp.Delivery) {
+func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 	signature := TaskSignature{}
 	json.Unmarshal([]byte(d.Body), &signature)
 
@@ -49,24 +52,24 @@ func (worker *Worker) processMessage(d *amqp.Delivery) {
 	// Everything seems fine, process the task!
 	log.Printf("Started processing %s", signature.Name)
 
-	reflectedTask := reflect.ValueOf(task)
-	relfectedArgs, err := ReflectArgs(signature.Args)
-	if err != nil {
+	errorFinalizer := func(err error) {
 		worker.finalize(
 			&signature,
 			reflect.ValueOf(nil),
 			err,
 		)
+	}
+
+	reflectedTask := reflect.ValueOf(task)
+	relfectedArgs, err := ReflectArgs(signature.Args)
+	if err != nil {
+		errorFinalizer(err)
 		return
 	}
 
 	results := reflectedTask.Call(relfectedArgs)
 	if !results[1].IsNil() {
-		worker.finalize(
-			&signature,
-			reflect.ValueOf(nil),
-			errors.New(results[1].String()),
-		)
+		errorFinalizer(errors.New(results[1].String()))
 		return
 	}
 

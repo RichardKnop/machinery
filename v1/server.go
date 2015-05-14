@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
@@ -12,15 +13,12 @@ import (
 type Server struct {
 	config          *config.Config
 	registeredTasks map[string]interface{}
-	connection      Connectable
+	broker          brokers.Broker
 }
 
-// NewServer - Server constructor
+// NewServer creates Server instance
 func NewServer(cnf *config.Config) (*Server, error) {
-	var conn Connectable
-	var err error
-
-	conn, err = ConnectionFactory(cnf)
+	broker, err := BrokerFactory(cnf)
 	if err != nil {
 		return nil, err
 	}
@@ -28,11 +26,11 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	return &Server{
 		config:          cnf,
 		registeredTasks: make(map[string]interface{}),
-		connection:      conn,
+		broker:          broker,
 	}, nil
 }
 
-// NewWorker - Creates a new worker instance
+// NewWorker creates Worker instance
 func (server *Server) NewWorker(consumerTag string) *Worker {
 	return &Worker{
 		server:      server,
@@ -40,9 +38,9 @@ func (server *Server) NewWorker(consumerTag string) *Worker {
 	}
 }
 
-// GetConnection returns connection object
-func (server *Server) GetConnection() Connectable {
-	return server.connection
+// GetBroker returns connection object
+func (server *Server) GetBroker() brokers.Broker {
+	return server.broker
 }
 
 // GetConfig returns connection object
@@ -73,7 +71,7 @@ func (server *Server) SendTask(s *TaskSignature) error {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	if err := server.connection.Publish(
+	if err := server.broker.Publish(
 		[]byte(message), s.RoutingKey,
 	); err != nil {
 		return fmt.Errorf("Publish Message: %v", err)
