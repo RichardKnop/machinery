@@ -73,7 +73,7 @@ func (server *Server) SendTask(s *TaskSignature) error {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	if err := server.connection.PublishMessage(
+	if err := server.connection.Publish(
 		[]byte(message), s.RoutingKey,
 	); err != nil {
 		return fmt.Errorf("Publish Message: %v", err)

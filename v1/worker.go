@@ -28,7 +28,7 @@ func (worker *Worker) Launch() error {
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
-	return worker.server.GetConnection().WaitForMessages(worker)
+	return worker.server.GetConnection().Consume(worker)
 }
 
 // processMessage - handles received messages

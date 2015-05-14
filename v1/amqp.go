@@ -34,8 +34,8 @@ func fibonacci() func() int {
 	}
 }
 
-// WaitForMessages enters a loop and waits for incoming messages
-func (amqpConnection AMQPConnection) WaitForMessages(worker *Worker) error {
+// Consume enters a loop and waits for incoming messages
+func (amqpConnection AMQPConnection) Consume(worker *Worker) error {
 	var retryCountDown int
 	fibonacci := fibonacci()
 
@@ -91,8 +91,8 @@ func (amqpConnection AMQPConnection) WaitForMessages(worker *Worker) error {
 	}
 }
 
-// PublishMessage places a new message on the default queue
-func (amqpConnection AMQPConnection) PublishMessage(
+// Publish places a new message on the default queue
+func (amqpConnection AMQPConnection) Publish(
 	body []byte, routingKey string,
 ) error {
 	openConn, err := amqpConnection.open()
@@ -198,12 +198,12 @@ func (amqpConnection AMQPConnection) consume(
 // a) set it to binding key for direct exchange type
 // b) set it to default queue name
 func (amqpConnection AMQPConnection) adjustRoutingKey(routingKey string) string {
-	if routingKey == "" {
-		if amqpConnection.config.ExchangeType == "direct" {
-			routingKey = amqpConnection.config.BindingKey
-		} else {
-			routingKey = amqpConnection.queue.Name
-		}
+	if routingKey != "" {
+		return routingKey
 	}
-	return routingKey
+
+	if amqpConnection.config.ExchangeType == "direct" {
+		return amqpConnection.config.BindingKey
+	}
+	return amqpConnection.queue.Name
 }
