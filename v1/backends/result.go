@@ -1,6 +1,7 @@
 package backends
 
 import (
+	"errors"
 	"reflect"
 
 	"github.com/RichardKnop/machinery/v1/utils"
@@ -24,6 +25,10 @@ func NewAsyncResult(taskUUID string, backend Backend) *AsyncResult {
 
 // Get returns task result (synchronous blocking call)
 func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
+	if asyncResult.backend == nil {
+		return reflect.Value{}, errors.New("Result backend not configured")
+	}
+
 	for {
 		asyncResult.GetState()
 
