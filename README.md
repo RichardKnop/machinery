@@ -259,13 +259,28 @@ TaskState struct will be serialized and stored every time a task state changes.
 AsyncResult object allows you to check for the state of a task:
 
 ```go
-asyncResult.GetState().State
+taskState := asyncResult.GetState()
+fmt.Printf("Current state of %v task is:\n", taskState.TaskUUID)
+fmt.Println(taskState.State)
+```
+
+There are couple of convenient me methods to inspect the task status:
+
+```go
+asyncResult.GetState().IsCompleted()
+asyncResult.GetState().IsSuccess()
+asyncResult.GetState().IsFailure()
 ```
 
 You can also do a synchronous blocking call to wait for a task result:
 
 ```go
-asyncResult.Get().Interface()
+result, err := asyncResult.Get()
+if err != nil {
+    // task failed
+    // do something with the error
+}
+fmt.Println(result.Interface())
 ```
 
 Workflows
@@ -322,8 +337,8 @@ task3 := signatures.TaskSignature{
     },
 }
 
-chain := machinery.NewChain(task1, task2, task3)
-asyncResult, err := server.SendChain(chain)
+chain := machinery.NewChain(&task1, &task2, &task3)
+chainAsyncResult, err := server.SendChain(chain)
 if err != nil {
     // failed to send the task
     // do something with the error
@@ -334,6 +349,17 @@ The above example execute task1, then task2 and then task3, passing result of ea
 
 ```
 ((1 + 1) + (5 + 6)) * 4 = 13 * 4 = 52
+```
+
+SendChain returns ChainAsyncResult which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:
+
+```go
+result, err := chainAsyncResult.Get()
+if err != nil {
+    // task chain failed
+    // do something with the error
+}
+fmt.Println(result.Interface())
 ```
 
 Development Setup
