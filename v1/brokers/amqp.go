@@ -1,7 +1,6 @@
 package brokers
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"time"
@@ -18,7 +17,7 @@ type AMQPBroker struct {
 	queue   amqp.Queue
 }
 
-// NewAMQPBroker - AMQPConnection constructor
+// NewAMQPBroker creates new AMQPConnection instance
 func NewAMQPBroker(cnf *config.Config) Broker {
 	return AMQPBroker{
 		config: cnf,
@@ -56,7 +55,7 @@ func (amqpBroker AMQPBroker) Consume(
 
 		openConn, err := amqpBroker.open()
 		if err != nil {
-			return fmt.Errorf("AMQPConnection Open: %s", err)
+			return fmt.Errorf("AMQPBroker Open: %s", err)
 		}
 
 		defer openConn.close()
@@ -99,7 +98,7 @@ func (amqpBroker AMQPBroker) Publish(
 ) error {
 	openConn, err := amqpBroker.open()
 	if err != nil {
-		return fmt.Errorf("AMQPConnection Open: %s", err)
+		return err
 	}
 
 	defer openConn.close()
@@ -110,8 +109,9 @@ func (amqpBroker AMQPBroker) Publish(
 		false, // mandatory
 		false, // immediate
 		amqp.Publishing{
-			ContentType: "application/json",
-			Body:        body,
+			ContentType:  "application/json",
+			Body:         body,
+			DeliveryMode: amqp.Persistent,
 		},
 	)
 }
@@ -120,7 +120,7 @@ func (amqpBroker AMQPBroker) Publish(
 func (amqpBroker AMQPBroker) open() (*AMQPBroker, error) {
 	var err error
 
-	amqpBroker.conn, err = amqp.Dial(amqpBroker.config.BrokerURL)
+	amqpBroker.conn, err = amqp.Dial(amqpBroker.config.Broker)
 	if err != nil {
 		return nil, fmt.Errorf("Dial: %s", err)
 	}
@@ -156,9 +156,9 @@ func (amqpBroker AMQPBroker) open() (*AMQPBroker, error) {
 	}
 
 	err = amqpBroker.channel.QueueBind(
-		amqpBroker.config.DefaultQueue, // name of the queue
-		amqpBroker.config.BindingKey,   // binding key
-		amqpBroker.config.Exchange,     // source exchange
+		amqpBroker.queue.Name,        // name of the queue
+		amqpBroker.config.BindingKey, // binding key
+		amqpBroker.config.Exchange,   // source exchange
 		false, // noWait
 		nil,   // arguments
 	)
@@ -189,9 +189,6 @@ func (amqpBroker AMQPBroker) consume(
 	for d := range deliveries {
 		log.Printf("Received new message: %s", d.Body)
 		d.Ack(false)
-		dotCount := bytes.Count(d.Body, []byte("."))
-		t := time.Duration(dotCount)
-		time.Sleep(t * time.Second)
 		mp.ProcessMessage(&d)
 	}
 }

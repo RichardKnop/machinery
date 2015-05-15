@@ -6,6 +6,8 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/streadway/amqp"
 )
 
@@ -22,7 +24,8 @@ func (worker *Worker) Launch() error {
 	cnf := worker.server.GetConfig()
 
 	log.Printf("Launching a worker with the following settings:")
-	log.Printf("- BrokerURL: %s", cnf.BrokerURL)
+	log.Printf("- Broker: %s", cnf.Broker)
+	log.Printf("- ResultBackend: %s", cnf.ResultBackend)
 	log.Printf("- Exchange: %s", cnf.Exchange)
 	log.Printf("- ExchangeType: %s", cnf.ExchangeType)
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
@@ -41,7 +44,11 @@ func (worker *Worker) Launch() error {
 // triggers success/error callbacks
 func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 	signature := TaskSignature{}
-	json.Unmarshal([]byte(d.Body), &signature)
+	err := json.Unmarshal([]byte(d.Body), &signature)
+	if err != nil {
+		log.Printf("Failed to unmarshal task singnature: %v", d.Body)
+		return
+	}
 
 	task := worker.server.GetRegisteredTask(signature.Name)
 	if task == nil {
@@ -49,8 +56,7 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 		return
 	}
 
-	// Everything seems fine, process the task!
-	log.Printf("Started processing %s", signature.Name)
+	worker.server.UpdateTaskState(signature.UUID, backends.ReceivedState, nil)
 
 	errorFinalizer := func(err error) {
 		worker.finalize(
@@ -61,11 +67,13 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 	}
 
 	reflectedTask := reflect.ValueOf(task)
-	relfectedArgs, err := ReflectArgs(signature.Args)
+	relfectedArgs, err := worker.reflectArgs(signature.Args)
 	if err != nil {
 		errorFinalizer(err)
 		return
 	}
+
+	worker.server.UpdateTaskState(signature.UUID, backends.StartedState, nil)
 
 	results := reflectedTask.Call(relfectedArgs)
 	if !results[1].IsNil() {
@@ -77,13 +85,29 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 	worker.finalize(&signature, results[0], err)
 }
 
+// Converts []TaskArg to []reflect.Value
+func (worker *Worker) reflectArgs(args []TaskArg) ([]reflect.Value, error) {
+	argValues := make([]reflect.Value, len(args))
+
+	for i, arg := range args {
+		argValue, err := utils.ReflectValue(arg.Type, arg.Value)
+		if err != nil {
+			return nil, err
+		}
+		argValues[i] = argValue
+	}
+
+	return argValues, nil
+}
+
 // finalize - handles success and error callbacks
 func (worker *Worker) finalize(
 	signature *TaskSignature, result reflect.Value, err error,
 ) {
 	if err != nil {
-		log.Printf("Failed processing %s", signature.Name)
-		log.Printf("Error = %v", err)
+		worker.server.UpdateTaskState(signature.UUID, backends.FailureState, nil)
+
+		log.Printf("Failed processing %s. Error = %v", signature.UUID, err)
 
 		for _, errorTask := range signature.OnError {
 			// Pass error as a first argument to error callbacks
@@ -97,8 +121,16 @@ func (worker *Worker) finalize(
 		return
 	}
 
-	log.Printf("Finished processing %s", signature.Name)
-	log.Printf("Result = %v", result.Interface())
+	worker.server.UpdateTaskState(
+		signature.UUID,
+		backends.SuccessState,
+		&backends.TaskResult{
+			Type:  result.Type().String(),
+			Value: result.Interface(),
+		},
+	)
+
+	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
 
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {

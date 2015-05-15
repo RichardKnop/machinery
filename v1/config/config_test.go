@@ -8,7 +8,8 @@ import (
 )
 
 var configYAMLData = `---
-broker_url: amqp://guest:guest@localhost:5672/
+broker: amqp://guest:guest@localhost:5672/
+result_backend: amqp
 exchange: machinery_exchange
 exchange_type: direct
 default_queue: machinery_tasks
@@ -35,11 +36,19 @@ func TestParseYAMLConfig(t *testing.T) {
 	cfg := Config{}
 	ParseYAMLConfig(&data, &cfg)
 
-	if cfg.BrokerURL != "amqp://guest:guest@localhost:5672/" {
+	if cfg.Broker != "amqp://guest:guest@localhost:5672/" {
 		log.Printf("%v", cfg)
 		t.Errorf(
-			"cfg.BrokerURL = %v, want amqp://guest:guest@localhost:5672/",
-			cfg.BrokerURL,
+			"cfg.Broker = %v, want amqp://guest:guest@localhost:5672/",
+			cfg.Broker,
+		)
+	}
+
+	if cfg.ResultBackend != "amqp" {
+		log.Printf("%v", cfg)
+		t.Errorf(
+			"cfg.ResultBackend = %v, want amqp",
+			cfg.ResultBackend,
 		)
 	}
 
