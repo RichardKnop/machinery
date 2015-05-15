@@ -57,11 +57,12 @@ A Machinery library must be instantiated before use. The way this is done is by 
 
 ```go
 var cnf = config.Config{
-	BrokerURL:    "amqp://guest:guest@localhost:5672/",
-	Exchange:     "machinery_exchange",
-	ExchangeType: "direct",
-	DefaultQueue: "machinery_tasks",
-	BindingKey:   "machinery_task",
+	Broker:        "amqp://guest:guest@localhost:5672/",
+    ResultBackend: "amqp",
+	Exchange:      "machinery_exchange",
+	ExchangeType:  "direct",
+	DefaultQueue:  "machinery_tasks",
+	BindingKey:    "machinery_task",
 }
 
 server, err := machinery.NewServer(&cnf)
@@ -212,6 +213,50 @@ if err != nil {
     // failed to send the task
     // do something with the error
 }
+```
+
+Keeping Results
+---------------
+
+If you have configured a result backend, the task states will be persisted. Possible states:
+
+```go
+const (
+	PendingState = "PENDING"
+	ReceivedState = "RECEIVED"
+	StartedState = "STARTED"
+	SuccessState = "SUCCESS"
+	FailureState = "FAILURE"
+)
+```
+
+When using AMQP as a result backend, task states will be persisted in separate queues for each task.
+
+```go
+type TaskResult struct {
+	Type  string
+	Value interface{}
+}
+
+type TaskState struct {
+	TaskUUID string
+	State    string
+	Result   *TaskResult
+}
+```
+
+TaskState struct will be serialized and stored every time a task state changes.
+
+AsyncResult object allows you to check for the state of a task:
+
+```go
+asyncResult.GetState().State
+```
+
+You can also do a synchronous blocking call to wait for a task result:
+
+```go
+asyncResult.Get().Interface()
 ```
 
 Workflows
