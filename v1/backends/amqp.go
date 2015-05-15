@@ -26,22 +26,13 @@ func NewAMQPBackend(cnf *config.Config) Backend {
 }
 
 // UpdateState updates a task state
-func (amqpBackend AMQPBackend) UpdateState(
-	taskUUID, state string, result *TaskResult, errResult error,
-) error {
-	openConn, err := amqpBackend.open(taskUUID)
+func (amqpBackend AMQPBackend) UpdateState(taskState *TaskState) error {
+	openConn, err := amqpBackend.open(taskState.TaskUUID)
 	if err != nil {
 		return err
 	}
 
 	defer openConn.close()
-
-	taskState := TaskState{
-		TaskUUID: taskUUID,
-		State:    state,
-		Result:   result,
-		Error:    errResult,
-	}
 
 	message, err := json.Marshal(taskState)
 	if err != nil {
@@ -50,7 +41,7 @@ func (amqpBackend AMQPBackend) UpdateState(
 
 	return openConn.channel.Publish(
 		openConn.config.Exchange, // exchange
-		taskUUID,                 // routing key
+		taskState.TaskUUID,       // routing key
 		false,                    // mandatory
 		false,                    // immediate
 		amqp.Publishing{
@@ -61,8 +52,8 @@ func (amqpBackend AMQPBackend) UpdateState(
 	)
 }
 
-// GetState returns the latest task state
-// It will only return the status once as the message will get acked!
+// GetState returns the latest task state. It will only return the status once
+// as the message will get consumed and removed from the queue.
 func (amqpBackend AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := TaskState{}
 
@@ -86,13 +77,12 @@ func (amqpBackend AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 
 	d.Ack(false)
 
-	err = json.Unmarshal([]byte(d.Body), &taskState)
-	if err != nil {
+	if err := json.Unmarshal([]byte(d.Body), &taskState); err != nil {
 		log.Printf("Failed to unmarshal task state: %v", d.Body)
 		return &taskState, err
 	}
 
-	if taskState.State == SuccessState || taskState.State == FailureState {
+	if taskState.IsCompleted() {
 		openConn.channel.QueueDelete(
 			openConn.queue.Name, // name
 			false,               // ifUnused
@@ -131,26 +121,29 @@ func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
 		return nil, fmt.Errorf("Exchange: %s", err)
 	}
 
+	arguments := amqp.Table{
+		// expire results after 1 hour
+		"x-message-ttl": int32(1000 * 3600),
+	}
 	amqpBackend.queue, err = amqpBackend.channel.QueueDeclare(
 		taskUUID, // name
 		false,    // durable
 		true,     // delete when unused
 		false,    // exclusive
 		false,    // no-wait
-		amqp.Table{"x-message-ttl": int32(1000 * 3600)}, // expire results after 1 hour
+		arguments,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Queue Declare: %s", err)
 	}
 
-	err = amqpBackend.channel.QueueBind(
+	if err := amqpBackend.channel.QueueBind(
 		amqpBackend.queue.Name,      // name of the queue
 		taskUUID,                    // binding key
 		amqpBackend.config.Exchange, // source exchange
 		false, // noWait
 		nil,   // arguments
-	)
-	if err != nil {
+	); err != nil {
 		return nil, fmt.Errorf("Queue Bind: %s", err)
 	}
 

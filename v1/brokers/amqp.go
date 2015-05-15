@@ -8,6 +8,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/streadway/amqp"
 )
 
@@ -26,31 +27,20 @@ func NewAMQPBroker(cnf *config.Config) Broker {
 	}
 }
 
-// Returns successive Fibonacci numbers starting from 1
-func fibonacci() func() int {
-	a, b := 0, 1
-	return func() int {
-		a, b = b, a+b
-		return a
-	}
-}
-
 // Consume enters a loop and waits for incoming messages
-func (amqpBroker AMQPBroker) Consume(
-	consumerTag string, taskProcessor TaskProcessor,
-) error {
+func (amqpBroker AMQPBroker) Consume(consumerTag string, taskProcessor TaskProcessor) error {
 	var retryCountDown int
-	fibonacci := fibonacci()
+	fibonacci := utils.Fibonacci()
 
 	for {
 		if retryCountDown > 0 {
-			duration, err := time.ParseDuration(
-				fmt.Sprintf("%vs", retryCountDown))
+			durationString := fmt.Sprintf("%vs", retryCountDown)
+			duration, err := time.ParseDuration(durationString)
 			if err != nil {
 				return fmt.Errorf("ParseDuration: %s", err)
 			}
 
-			log.Printf("Retrying after %v seconds", retryCountDown)
+			log.Printf("Retrying in %v seconds", retryCountDown)
 			time.Sleep(duration)
 			retryCountDown = fibonacci()
 		}
@@ -77,7 +67,7 @@ func (amqpBroker AMQPBroker) Consume(
 			false,               // exclusive
 			false,               // no-local
 			false,               // no-wait
-			nil,                 // args
+			nil,                 // arguments
 		)
 		if err != nil {
 			return fmt.Errorf("Queue Consume: %s", err)
@@ -95,7 +85,7 @@ func (amqpBroker AMQPBroker) Consume(
 }
 
 // Publish places a new message on the default queue
-func (amqpBroker AMQPBroker) Publish(task *signatures.TaskSignature) error {
+func (amqpBroker AMQPBroker) Publish(signature *signatures.TaskSignature) error {
 	openConn, err := amqpBroker.open()
 	if err != nil {
 		return err
@@ -103,16 +93,21 @@ func (amqpBroker AMQPBroker) Publish(task *signatures.TaskSignature) error {
 
 	defer openConn.close()
 
-	message, err := json.Marshal(task)
+	message, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
+	signature.AdjustRoutingKey(
+		openConn.config.ExchangeType,
+		openConn.config.BindingKey,
+		openConn.config.DefaultQueue,
+	)
 	return openConn.channel.Publish(
-		openConn.config.Exchange,                   // exchange
-		openConn.adjustRoutingKey(task.RoutingKey), // routing key
-		false, // mandatory
-		false, // immediate
+		openConn.config.Exchange, // exchange
+		signature.RoutingKey,     // routing key
+		false,                    // mandatory
+		false,                    // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
@@ -135,7 +130,7 @@ func (amqpBroker AMQPBroker) open() (*AMQPBroker, error) {
 		return nil, fmt.Errorf("Channel: %s", err)
 	}
 
-	err = amqpBroker.channel.ExchangeDeclare(
+	if err := amqpBroker.channel.ExchangeDeclare(
 		amqpBroker.config.Exchange,     // name of the exchange
 		amqpBroker.config.ExchangeType, // type
 		true,  // durable
@@ -143,8 +138,7 @@ func (amqpBroker AMQPBroker) open() (*AMQPBroker, error) {
 		false, // internal
 		false, // noWait
 		nil,   // arguments
-	)
-	if err != nil {
+	); err != nil {
 		return nil, fmt.Errorf("Exchange: %s", err)
 	}
 
@@ -160,14 +154,13 @@ func (amqpBroker AMQPBroker) open() (*AMQPBroker, error) {
 		return nil, fmt.Errorf("Queue Declare: %s", err)
 	}
 
-	err = amqpBroker.channel.QueueBind(
+	if err := amqpBroker.channel.QueueBind(
 		amqpBroker.queue.Name,        // name of the queue
 		amqpBroker.config.BindingKey, // binding key
 		amqpBroker.config.Exchange,   // source exchange
 		false, // noWait
 		nil,   // arguments
-	)
-	if err != nil {
+	); err != nil {
 		return nil, fmt.Errorf("Queue Bind: %s", err)
 	}
 
@@ -188,10 +181,8 @@ func (amqpBroker AMQPBroker) close() error {
 }
 
 // Consumes messages
-func (amqpBroker AMQPBroker) consume(
-	deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor,
-) {
-	for d := range deliveries {
+func (amqpBroker AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) {
+	consumeOne := func(d amqp.Delivery) {
 		log.Printf("Received new message: %s", d.Body)
 		d.Ack(false)
 
@@ -203,18 +194,8 @@ func (amqpBroker AMQPBroker) consume(
 
 		taskProcessor.Process(&signature)
 	}
-}
 
-// If routing key is empty string:
-// a) set it to binding key for direct exchange type
-// b) set it to default queue name
-func (amqpBroker AMQPBroker) adjustRoutingKey(routingKey string) string {
-	if routingKey != "" {
-		return routingKey
+	for d := range deliveries {
+		consumeOne(d)
 	}
-
-	if amqpBroker.config.ExchangeType == "direct" {
-		return amqpBroker.config.BindingKey
-	}
-	return amqpBroker.queue.Name
 }

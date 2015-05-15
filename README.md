@@ -322,8 +322,8 @@ task3 := signatures.TaskSignature{
     },
 }
 
-chain := machinery.Chain(task1, task2, task3)
-err := server.SendTask(chain)
+chain := machinery.NewChain(task1, task2, task3)
+asyncResult, err := server.SendChain(chain)
 if err != nil {
     // failed to send the task
     // do something with the error

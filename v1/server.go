@@ -71,31 +71,38 @@ func (server *Server) GetRegisteredTask(name string) interface{} {
 }
 
 // SendTask publishes a task to the default queue
-func (server *Server) SendTask(
-	signature *signatures.TaskSignature,
-) (*backends.AsyncResult, error) {
+func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.AsyncResult, error) {
 	// Auto generate a UUID if not set already
 	if signature.UUID == "" {
 		signature.UUID = uuid.NewV4().String()
 	}
 
-	server.UpdateTaskState(signature.UUID, backends.PendingState, nil, nil)
-
 	if err := server.broker.Publish(signature); err != nil {
-		server.UpdateTaskState(signature.UUID, backends.FailureState, nil, nil)
 		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
+
+	server.UpdateTaskState(backends.NewPendingTaskState(signature.UUID))
 
 	return backends.NewAsyncResult(signature.UUID, server.backend), nil
 }
 
+// SendChain triggers a chain of tasks
+func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error) {
+	if err := server.broker.Publish(chain.Tasks[0]); err != nil {
+		return nil, fmt.Errorf("Publish Message: %v", err)
+	}
+
+	// Update task state to PENDING
+	server.UpdateTaskState(backends.NewPendingTaskState(chain.Tasks[0].UUID))
+
+	return backends.NewChainAsyncResult(chain.GetUUIDs(), server.backend), nil
+}
+
 // UpdateTaskState updates a task state
 // If no result backend has been configured, does nothing
-func (server *Server) UpdateTaskState(
-	taskUUID, state string, result *backends.TaskResult, errResult error,
-) error {
+func (server *Server) UpdateTaskState(taskState *backends.TaskState) error {
 	if server.backend == nil {
 		return nil
 	}
-	return server.backend.UpdateState(taskUUID, state, result, errResult)
+	return server.backend.UpdateState(taskState)
 }

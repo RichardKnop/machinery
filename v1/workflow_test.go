@@ -6,7 +6,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
-func TestChain(t *testing.T) {
+func TestNewChain(t *testing.T) {
 	task1 := signatures.TaskSignature{
 		Name: "foo",
 		Args: []signatures.TaskArg{
@@ -45,23 +45,25 @@ func TestChain(t *testing.T) {
 		},
 	}
 
-	chain := Chain(task1, task2, task3)
+	chain := NewChain(&task1, &task2, &task3)
 
-	if chain.Name != "foo" {
-		t.Errorf("chain.Name = %v, want foo", chain.Name)
+	firstTask := chain.Tasks[0]
+
+	if firstTask.Name != "foo" {
+		t.Errorf("firstTask.Name = %v, want foo", firstTask.Name)
 	}
 
-	if chain.OnSuccess[0].Name != "bar" {
+	if firstTask.OnSuccess[0].Name != "bar" {
 		t.Errorf(
-			"chain.OnSuccess[0].Name = %v, want bar",
-			chain.OnSuccess[0].Name,
+			"firstTask.OnSuccess[0].Name = %v, want bar",
+			firstTask.OnSuccess[0].Name,
 		)
 	}
 
-	if chain.OnSuccess[0].OnSuccess[0].Name != "qux" {
+	if firstTask.OnSuccess[0].OnSuccess[0].Name != "qux" {
 		t.Errorf(
-			"chain.OnSuccess[0].OnSuccess[0].Name = %v, want qux",
-			chain.OnSuccess[0].OnSuccess[0].Name,
+			"firstTask.OnSuccess[0].OnSuccess[0].Name = %v, want qux",
+			firstTask.OnSuccess[0].OnSuccess[0].Name,
 		)
 	}
 }

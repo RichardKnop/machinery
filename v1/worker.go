@@ -41,49 +41,34 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) {
 		return
 	}
 
-	worker.server.UpdateTaskState(
-		signature.UUID,
-		backends.ReceivedState,
-		nil,
-		nil,
-	)
+	// Update task state to RECEIVED
+	taskState := backends.NewReceivedTaskState(signature.UUID)
+	worker.server.UpdateTaskState(taskState)
 
-	errorFinalizer := func(theErr error) {
-		worker.finalize(
-			signature,
-			reflect.ValueOf(nil),
-			theErr,
-		)
-	}
-
+	// Get task args and convert them to proper types
 	reflectedTask := reflect.ValueOf(task)
 	relfectedArgs, err := worker.reflectArgs(signature.Args)
 	if err != nil {
-		errorFinalizer(err)
+		worker.finalizeError(signature, err)
 		return
 	}
 
-	worker.server.UpdateTaskState(
-		signature.UUID,
-		backends.StartedState,
-		nil,
-		nil,
-	)
+	// Update task state to STARTED
+	taskState = backends.NewStartedTaskState(signature.UUID)
+	worker.server.UpdateTaskState(taskState)
 
+	// Call the task passing in the correct arguments
 	results := reflectedTask.Call(relfectedArgs)
 	if !results[1].IsNil() {
-		errorFinalizer(errors.New(results[1].String()))
+		worker.finalizeError(signature, errors.New(results[1].String()))
 		return
 	}
 
-	// Trigger success or error tasks
-	worker.finalize(signature, results[0], err)
+	worker.finalizeSuccess(signature, results[0])
 }
 
 // Converts []TaskArg to []reflect.Value
-func (worker *Worker) reflectArgs(
-	args []signatures.TaskArg,
-) ([]reflect.Value, error) {
+func (worker *Worker) reflectArgs(args []signatures.TaskArg) ([]reflect.Value, error) {
 	argValues := make([]reflect.Value, len(args))
 
 	for i, arg := range args {
@@ -97,43 +82,17 @@ func (worker *Worker) reflectArgs(
 	return argValues, nil
 }
 
-// finalize - handles success and error callbacks
-func (worker *Worker) finalize(
-	signature *signatures.TaskSignature, result reflect.Value, errResult error,
-) {
-	if errResult != nil {
-		// Update task state to FAILURE
-		worker.server.UpdateTaskState(
-			signature.UUID,
-			backends.FailureState,
-			nil,
-			errResult,
-		)
-
-		log.Printf("Failed processing %s. Error = %v", signature.UUID, errResult)
-
-		for _, errorTask := range signature.OnError {
-			// Pass error as a first argument to error callbacks
-			args := append([]signatures.TaskArg{signatures.TaskArg{
-				Type:  reflect.TypeOf(errResult).String(),
-				Value: reflect.ValueOf(errResult).Interface(),
-			}}, errorTask.Args...)
-			errorTask.Args = args
-			worker.server.SendTask(errorTask)
-		}
-		return
-	}
-
+// Task succeeded, update state and trigger success callbacks
+func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, result reflect.Value) {
 	// Update task state to SUCCESS
-	worker.server.UpdateTaskState(
+	taskState := backends.NewSuccessTaskState(
 		signature.UUID,
-		backends.SuccessState,
 		&backends.TaskResult{
 			Type:  result.Type().String(),
 			Value: result.Interface(),
 		},
-		nil,
 	)
+	worker.server.UpdateTaskState(taskState)
 
 	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
 
@@ -146,6 +105,30 @@ func (worker *Worker) finalize(
 			}}, successTask.Args...)
 			successTask.Args = args
 		}
+
+		// Update task state to PENDING
+		taskState := backends.NewPendingTaskState(successTask.UUID)
+		worker.server.UpdateTaskState(taskState)
+
 		worker.server.SendTask(successTask)
+	}
+}
+
+// Task failed, update state and trigger error callbacks
+func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) {
+	// Update task state to FAILURE
+	taskState := backends.NewFailureTaskState(signature.UUID, err)
+	worker.server.UpdateTaskState(taskState)
+
+	log.Printf("Failed processing %s. Error = %v", signature.UUID, err)
+
+	for _, errorTask := range signature.OnError {
+		// Pass error as a first argument to error callbacks
+		args := append([]signatures.TaskArg{signatures.TaskArg{
+			Type:  reflect.TypeOf(err).String(),
+			Value: reflect.ValueOf(err).Interface(),
+		}}, errorTask.Args...)
+		errorTask.Args = args
+		worker.server.SendTask(errorTask)
 	}
 }

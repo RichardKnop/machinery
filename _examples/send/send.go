@@ -67,6 +67,29 @@ func init() {
 }
 
 func main() {
+	// First, let's try sending a single task
+	task0 := signatures.TaskSignature{
+		Name: "add",
+		Args: []signatures.TaskArg{
+			signatures.TaskArg{
+				Type:  "float64",
+				Value: interface{}(1),
+			},
+			signatures.TaskArg{
+				Type:  "float64",
+				Value: interface{}(1),
+			},
+		},
+	}
+
+	asyncResult, err := server.SendTask(&task0)
+	errors.Fail(err, "Could not send task")
+
+	result, err := asyncResult.Get()
+	errors.Fail(err, "Task failed with error")
+	fmt.Printf("%v\n", result.Interface())
+
+	// Now, let's try a chain of tasks
 	task1 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
@@ -105,10 +128,11 @@ func main() {
 		},
 	}
 
-	chain := machinery.Chain(task1, task2, task3)
-	asyncResult, err := server.SendTask(chain)
+	chain := machinery.NewChain(&task1, &task2, &task3)
+	chainAsyncResult, err := server.SendChain(chain)
 	errors.Fail(err, "Could not send task")
 
-	result, _ := asyncResult.Get()
+	result, err = chainAsyncResult.Get()
+	errors.Fail(err, "Chain failed with error")
 	fmt.Printf("%v\n", result.Interface())
 }

@@ -7,11 +7,17 @@ import (
 	"github.com/RichardKnop/machinery/v1/utils"
 )
 
-// AsyncResult represents an asynchronous task result
+// AsyncResult represents a task result
 type AsyncResult struct {
 	taskUUID  string
 	taskState *TaskState
 	backend   Backend
+}
+
+// ChainAsyncResult represents a result of a chain of tasks
+type ChainAsyncResult struct {
+	asyncResults []*AsyncResult
+	backend      Backend
 }
 
 // NewAsyncResult creates AsyncResult instance
@@ -20,6 +26,18 @@ func NewAsyncResult(taskUUID string, backend Backend) *AsyncResult {
 		taskUUID:  taskUUID,
 		taskState: &TaskState{},
 		backend:   backend,
+	}
+}
+
+// NewChainAsyncResult creates ChainAsyncResult instance
+func NewChainAsyncResult(taskUUIDs []string, backend Backend) *ChainAsyncResult {
+	asyncResults := make([]*AsyncResult, len(taskUUIDs))
+	for i, taskUUID := range taskUUIDs {
+		asyncResults[i] = NewAsyncResult(taskUUID, backend)
+	}
+	return &ChainAsyncResult{
+		asyncResults: asyncResults,
+		backend:      backend,
 	}
 }
 
@@ -32,14 +50,14 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 	for {
 		asyncResult.GetState()
 
-		if asyncResult.IsSuccess() {
+		if asyncResult.taskState.IsCompleted() {
 			return utils.ReflectValue(
 				asyncResult.taskState.Result.Type,
 				asyncResult.taskState.Result.Value,
 			)
 		}
 
-		if asyncResult.IsFailure() {
+		if asyncResult.taskState.IsFailure() {
 			return reflect.Value{}, asyncResult.taskState.Error
 		}
 	}
@@ -47,7 +65,7 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 
 // GetState returns latest task state
 func (asyncResult *AsyncResult) GetState() *TaskState {
-	if asyncResult.IsCompleted() {
+	if asyncResult.taskState.IsCompleted() {
 		return asyncResult.taskState
 	}
 	taskState, err := asyncResult.backend.GetState(asyncResult.taskUUID)
@@ -57,18 +75,21 @@ func (asyncResult *AsyncResult) GetState() *TaskState {
 	return asyncResult.taskState
 }
 
-// IsCompleted returns true if state is SUCCESSS or FAILURE,
-// i.e. the task has finished processing and either succeeded or failed.
-func (asyncResult *AsyncResult) IsCompleted() bool {
-	return asyncResult.IsSuccess() || asyncResult.IsFailure()
-}
+// Get returns result of a chain of tasks (synchronous blocking call)
+func (chainAsyncResult *ChainAsyncResult) Get() (reflect.Value, error) {
+	if chainAsyncResult.backend == nil {
+		return reflect.Value{}, errors.New("Result backend not configured")
+	}
 
-// IsSuccess returns true if state is SUCCESSS
-func (asyncResult *AsyncResult) IsSuccess() bool {
-	return asyncResult.taskState.State == SuccessState
-}
+	var result reflect.Value
+	var err error
 
-// IsFailure returns true if state is FAILURE
-func (asyncResult *AsyncResult) IsFailure() bool {
-	return asyncResult.taskState.State == FailureState
+	for _, asyncResult := range chainAsyncResult.asyncResults {
+		result, err = asyncResult.Get()
+		if err != nil {
+			return result, err
+		}
+	}
+
+	return result, err
 }

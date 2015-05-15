@@ -26,3 +26,61 @@ type TaskState struct {
 	Result   *TaskResult
 	Error    error
 }
+
+// NewPendingTaskState ...
+func NewPendingTaskState(taskUUID string) *TaskState {
+	return &TaskState{
+		TaskUUID: taskUUID,
+		State:    PendingState,
+	}
+}
+
+// NewReceivedTaskState ...
+func NewReceivedTaskState(taskUUID string) *TaskState {
+	return &TaskState{
+		TaskUUID: taskUUID,
+		State:    ReceivedState,
+	}
+}
+
+// NewStartedTaskState ...
+func NewStartedTaskState(taskUUID string) *TaskState {
+	return &TaskState{
+		TaskUUID: taskUUID,
+		State:    StartedState,
+	}
+}
+
+// NewSuccessTaskState ...
+func NewSuccessTaskState(taskUUID string, result *TaskResult) *TaskState {
+	return &TaskState{
+		TaskUUID: taskUUID,
+		State:    SuccessState,
+		Result:   result,
+	}
+}
+
+// NewFailureTaskState ...
+func NewFailureTaskState(taskUUID string, err error) *TaskState {
+	return &TaskState{
+		TaskUUID: taskUUID,
+		State:    SuccessState,
+		Error:    err,
+	}
+}
+
+// IsCompleted returns true if state is SUCCESSS or FAILURE,
+// i.e. the task has finished processing and either succeeded or failed.
+func (taskState *TaskState) IsCompleted() bool {
+	return taskState.IsSuccess() || taskState.IsFailure()
+}
+
+// IsSuccess returns true if state is SUCCESSS
+func (taskState *TaskState) IsSuccess() bool {
+	return taskState.State == SuccessState
+}
+
+// IsFailure returns true if state is FAILURE
+func (taskState *TaskState) IsFailure() bool {
+	return taskState.State == FailureState
+}
