@@ -31,12 +31,12 @@ Add the Machinery library to your $GOPATH/src:
 $ go get github.com/RichardKnop/machinery
 ```
 
-First, you will need to define some tasks. Look at sample tasks in examples/tasks/tasks.go to see few examples.
+First, you will need to define some tasks. Look at sample tasks in `_examples/tasks/tasks.go` to see few examples.
 
 Second, you will need to launch a worker process:
 
 ```
-$ go run examples/worker/worker.go
+$ go run _examples/worker/worker.go
 ```
 
 ![Example worker](https://github.com/RichardKnop/machinery/blob/master/assets/example_worker.png)
@@ -44,7 +44,7 @@ $ go run examples/worker/worker.go
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
 ```
-$ go run examples/send/send.go
+$ go run _examples/send/send.go
 ```
 
 You will be able to see the tasks being processed asynchronously by the worker:

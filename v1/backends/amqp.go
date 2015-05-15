@@ -72,7 +72,10 @@ func (amqpBackend AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 
 	defer openConn.close()
 
-	d, ok, err := openConn.channel.Get(taskUUID, false)
+	d, ok, err := openConn.channel.Get(
+		openConn.queue.Name, // queue name
+		false,               // multiple
+	)
 	if err != nil {
 		return &taskState, err
 	}
@@ -86,6 +89,15 @@ func (amqpBackend AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	if err != nil {
 		log.Printf("Failed to unmarshal task state: %v", d.Body)
 		return &taskState, err
+	}
+
+	if taskState.State == SuccessState || taskState.State == FailureState {
+		openConn.channel.QueueDelete(
+			openConn.queue.Name, // name
+			false,               // ifUnused
+			false,               // ifEmpty
+			false,               // noWait
+		)
 	}
 
 	return &taskState, nil

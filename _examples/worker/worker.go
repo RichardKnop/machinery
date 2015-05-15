@@ -21,7 +21,7 @@ package main
 import (
 	"flag"
 
-	"github.com/RichardKnop/machinery/examples/tasks"
+	"github.com/RichardKnop/machinery/_examples/tasks"
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/errors"
