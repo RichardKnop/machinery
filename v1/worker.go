@@ -43,7 +43,11 @@ func (worker *Worker) Launch() error {
 // triggers success/error callbacks
 func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 	signature := TaskSignature{}
-	json.Unmarshal([]byte(d.Body), &signature)
+	err := json.Unmarshal([]byte(d.Body), &signature)
+	if err != nil {
+		log.Printf("Failed to unmarshal task singnature: %v", d.Body)
+		return
+	}
 
 	task := worker.server.GetRegisteredTask(signature.Name)
 	if task == nil {

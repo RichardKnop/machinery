@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/streadway/amqp"
@@ -79,7 +80,12 @@ func (amqpBackend AMQPBackend) GetState(taskUUID string) (string, error) {
 	d.Ack(false)
 
 	state := TaskState{}
-	json.Unmarshal([]byte(d.Body), &state)
+	err = json.Unmarshal([]byte(d.Body), &state)
+
+	if err != nil {
+		log.Printf("Failed to unmarshal task state: %v", d.Body)
+		return "", err
+	}
 
 	return state.State, nil
 }
