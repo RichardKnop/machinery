@@ -1,40 +1,44 @@
 package machinery
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/RichardKnop/machinery/v1/signatures"
+)
 
 func TestChain(t *testing.T) {
-	task1 := TaskSignature{
+	task1 := signatures.TaskSignature{
 		Name: "foo",
-		Args: []TaskArg{
-			TaskArg{
+		Args: []signatures.TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(1),
 			},
-			TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(1),
 			},
 		},
 	}
 
-	task2 := TaskSignature{
+	task2 := signatures.TaskSignature{
 		Name: "bar",
-		Args: []TaskArg{
-			TaskArg{
+		Args: []signatures.TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(5),
 			},
-			TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(6),
 			},
 		},
 	}
 
-	task3 := TaskSignature{
+	task3 := signatures.TaskSignature{
 		Name: "qux",
-		Args: []TaskArg{
-			TaskArg{
+		Args: []signatures.TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(4),
 			},

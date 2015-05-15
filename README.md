@@ -57,6 +57,12 @@ Server
 A Machinery library must be instantiated before use. The way this is done is by creating a Server instance. Server is a base object which stores Machinery configuration and registered tasks. E.g.:
 
 ```go
+
+import (
+    "github.com/RichardKnop/machinery/v1/config"
+    machinery "github.com/RichardKnop/machinery/v1"
+)
+
 var cnf = config.Config{
 	Broker:        "amqp://guest:guest@localhost:5672/",
     ResultBackend: "amqp",
@@ -195,14 +201,16 @@ Sending Tasks
 Tasks can be called by passing an instance of TaskSignature to an App instance. E.g:
 
 ```go
-task := machinery.TaskSignature{
+import "github.com/RichardKnop/machinery/v1/signatures"
+
+task := signatures.TaskSignature{
     Name: "add",
-    Args: []machinery.TaskArg{
-        machinery.TaskArg{
+    Args: []signatures.TaskArg{
+        signatures.TaskArg{
             Type:  "float64",
             Value: interface{}(1),
         },
-        machinery.TaskArg{
+        signatures.TaskArg{
             Type:  "float64",
             Value: interface{}(1),
         },
@@ -271,38 +279,43 @@ Chains
 Chain is simply a set of tasks which will be executed one by one, each successful task triggering the next task in the chain. E.g.:
 
 ```go
-task1 := machinery.TaskSignature{
+import (
+    "github.com/RichardKnop/machinery/v1/signatures"
+    machinery "github.com/RichardKnop/machinery/v1"
+)
+
+task1 := signatures.TaskSignature{
     Name: "add",
-    Args: []machinery.TaskArg{
-        machinery.TaskArg{
+    Args: []signatures.TaskArg{
+        signatures.TaskArg{
             Type:  "float64",
             Value: interface{}(1),
         },
-        machinery.TaskArg{
+        signatures.TaskArg{
             Type:  "float64",
             Value: interface{}(1),
         },
     },
 }
 
-task2 := machinery.TaskSignature{
+task2 := signatures.TaskSignature{
     Name: "add",
-    Args: []machinery.TaskArg{
-        machinery.TaskArg{
+    Args: []signatures.TaskArg{
+        signatures.TaskArg{
             Type:  "float64",
             Value: interface{}(5),
         },
-        machinery.TaskArg{
+        signatures.TaskArg{
             Type:  "float64",
             Value: interface{}(6),
         },
     },
 }
 
-task3 := machinery.TaskSignature{
+task3 := signatures.TaskSignature{
     Name: "multiply",
-    Args: []machinery.TaskArg{
-        machinery.TaskArg{
+    Args: []signatures.TaskArg{
+        signatures.TaskArg{
             Type:  "float64",
             Value: interface{}(4),
         },

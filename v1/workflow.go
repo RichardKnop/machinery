@@ -1,12 +1,14 @@
 package machinery
 
+import "github.com/RichardKnop/machinery/v1/signatures"
+
 // Chain - creates a chain of tasks to be executed one after another
-func Chain(signatures ...TaskSignature) *TaskSignature {
-	for i := len(signatures) - 1; i > 0; i-- {
+func Chain(tasks ...signatures.TaskSignature) *signatures.TaskSignature {
+	for i := len(tasks) - 1; i > 0; i-- {
 		if i > 0 {
-			signatures[i-1].OnSuccess = []*TaskSignature{&signatures[i]}
+			tasks[i-1].OnSuccess = []*signatures.TaskSignature{&tasks[i]}
 		}
 	}
 
-	return &signatures[0]
+	return &tasks[0]
 }

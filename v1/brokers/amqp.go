@@ -1,11 +1,13 @@
 package brokers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/streadway/amqp"
 )
 
@@ -93,9 +95,7 @@ func (amqpBroker AMQPBroker) Consume(
 }
 
 // Publish places a new message on the default queue
-func (amqpBroker AMQPBroker) Publish(
-	body []byte, routingKey string,
-) error {
+func (amqpBroker AMQPBroker) Publish(task *signatures.TaskSignature) error {
 	openConn, err := amqpBroker.open()
 	if err != nil {
 		return err
@@ -103,14 +103,19 @@ func (amqpBroker AMQPBroker) Publish(
 
 	defer openConn.close()
 
+	message, err := json.Marshal(task)
+	if err != nil {
+		return fmt.Errorf("JSON Encode Message: %v", err)
+	}
+
 	return openConn.channel.Publish(
-		openConn.config.Exchange,              // exchange
-		openConn.adjustRoutingKey(routingKey), // routing key
+		openConn.config.Exchange,                   // exchange
+		openConn.adjustRoutingKey(task.RoutingKey), // routing key
 		false, // mandatory
 		false, // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
-			Body:         body,
+			Body:         message,
 			DeliveryMode: amqp.Persistent,
 		},
 	)

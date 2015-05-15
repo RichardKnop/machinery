@@ -24,6 +24,7 @@ import (
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/errors"
+	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
 // Define flagss
@@ -66,38 +67,38 @@ func init() {
 }
 
 func main() {
-	task1 := machinery.TaskSignature{
+	task1 := signatures.TaskSignature{
 		Name: "add",
-		Args: []machinery.TaskArg{
-			machinery.TaskArg{
+		Args: []signatures.TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(1),
 			},
-			machinery.TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(1),
 			},
 		},
 	}
 
-	task2 := machinery.TaskSignature{
+	task2 := signatures.TaskSignature{
 		Name: "add",
-		Args: []machinery.TaskArg{
-			machinery.TaskArg{
+		Args: []signatures.TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(5),
 			},
-			machinery.TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(6),
 			},
 		},
 	}
 
-	task3 := machinery.TaskSignature{
+	task3 := signatures.TaskSignature{
 		Name: "multiply",
-		Args: []machinery.TaskArg{
-			machinery.TaskArg{
+		Args: []signatures.TaskArg{
+			signatures.TaskArg{
 				Type:  "float64",
 				Value: interface{}(4),
 			},

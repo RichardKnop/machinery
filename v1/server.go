@@ -1,12 +1,12 @@
 package machinery
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/twinj/uuid"
 )
 
@@ -71,37 +71,31 @@ func (server *Server) GetRegisteredTask(name string) interface{} {
 }
 
 // SendTask publishes a task to the default queue
-func (server *Server) SendTask(signature *TaskSignature) (*backends.AsyncResult, error) {
+func (server *Server) SendTask(
+	task *signatures.TaskSignature,
+) (*backends.AsyncResult, error) {
 	// Auto generate a UUID if not set already
-	if signature.UUID == "" {
-		signature.UUID = uuid.NewV4().String()
+	if task.UUID == "" {
+		task.UUID = uuid.NewV4().String()
 	}
 
-	message, err := json.Marshal(signature)
+	server.UpdateTaskState(task.UUID, backends.PendingState, nil, nil)
 
-	if err != nil {
-		return nil, fmt.Errorf("JSON Encode Message: %v", err)
-	}
-
-	server.UpdateTaskState(signature.UUID, backends.PendingState, nil)
-
-	if err := server.broker.Publish(
-		[]byte(message), signature.RoutingKey,
-	); err != nil {
-		server.UpdateTaskState(signature.UUID, backends.FailureState, nil)
+	if err := server.broker.Publish(task); err != nil {
+		server.UpdateTaskState(task.UUID, backends.FailureState, nil, nil)
 		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
 
-	return backends.NewAsyncResult(signature.UUID, server.backend), nil
+	return backends.NewAsyncResult(task.UUID, server.backend), nil
 }
 
 // UpdateTaskState updates a task state
 // If no result backend has been configured, does nothing
 func (server *Server) UpdateTaskState(
-	taskUUID, state string, result *backends.TaskResult,
+	taskUUID, state string, result *backends.TaskResult, errResult error,
 ) error {
 	if server.backend == nil {
 		return nil
 	}
-	return server.backend.UpdateState(taskUUID, state, result)
+	return server.backend.UpdateState(taskUUID, state, result, errResult)
 }

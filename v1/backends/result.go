@@ -26,11 +26,16 @@ func NewAsyncResult(taskUUID string, backend Backend) *AsyncResult {
 func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 	for {
 		asyncResult.GetState()
-		if asyncResult.IsCompleted() {
+
+		if asyncResult.IsSuccess() {
 			return utils.ReflectValue(
 				asyncResult.taskState.Result.Type,
 				asyncResult.taskState.Result.Value,
 			)
+		}
+
+		if asyncResult.IsFailure() {
+			return reflect.Value{}, asyncResult.taskState.Error
 		}
 	}
 }
@@ -50,11 +55,15 @@ func (asyncResult *AsyncResult) GetState() *TaskState {
 // IsCompleted returns true if state is SUCCESSS or FAILURE,
 // i.e. the task has finished processing and either succeeded or failed.
 func (asyncResult *AsyncResult) IsCompleted() bool {
-	if asyncResult.taskState.State == SuccessState {
-		return true
-	}
-	if asyncResult.taskState.State == FailureState {
-		return true
-	}
-	return false
+	return asyncResult.IsSuccess() || asyncResult.IsFailure()
+}
+
+// IsSuccess returns true if state is SUCCESSS
+func (asyncResult *AsyncResult) IsSuccess() bool {
+	return asyncResult.taskState.State == SuccessState
+}
+
+// IsFailure returns true if state is FAILURE
+func (asyncResult *AsyncResult) IsFailure() bool {
+	return asyncResult.taskState.State == FailureState
 }

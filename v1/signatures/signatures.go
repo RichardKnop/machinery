@@ -1,4 +1,4 @@
-package machinery
+package signatures
 
 // TaskArg represents a single argument passed to invocation fo a task
 type TaskArg struct {

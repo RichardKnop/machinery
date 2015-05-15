@@ -27,7 +27,7 @@ func NewAMQPBackend(cnf *config.Config) Backend {
 
 // UpdateState updates a task state
 func (amqpBackend AMQPBackend) UpdateState(
-	taskUUID, state string, result *TaskResult,
+	taskUUID, state string, result *TaskResult, errResult error,
 ) error {
 	openConn, err := amqpBackend.open(taskUUID)
 	if err != nil {
@@ -40,6 +40,7 @@ func (amqpBackend AMQPBackend) UpdateState(
 		TaskUUID: taskUUID,
 		State:    state,
 		Result:   result,
+		Error:    errResult,
 	}
 
 	message, err := json.Marshal(taskState)
@@ -136,7 +137,7 @@ func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
 		true,     // delete when unused
 		false,    // exclusive
 		false,    // no-wait
-		nil,      // arguments
+		amqp.Table{"x-message-ttl": int32(1000 * 3600)}, // expire results after 1 hour
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Queue Declare: %s", err)
