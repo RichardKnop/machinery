@@ -19,6 +19,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -104,6 +105,9 @@ func main() {
 	}
 
 	chain := machinery.Chain(task1, task2, task3)
-	_, err := server.SendTask(chain)
+	asyncResult, err := server.SendTask(chain)
 	errors.Fail(err, "Could not send task")
+
+	result, _ := asyncResult.Get()
+	fmt.Printf("%v\n", result.Interface())
 }

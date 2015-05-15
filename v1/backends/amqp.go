@@ -26,7 +26,9 @@ func NewAMQPBackend(cnf *config.Config) Backend {
 }
 
 // UpdateState updates a task state
-func (amqpBackend AMQPBackend) UpdateState(taskUUID, state string) error {
+func (amqpBackend AMQPBackend) UpdateState(
+	taskUUID, state string, result *TaskResult,
+) error {
 	openConn, err := amqpBackend.open(taskUUID)
 	if err != nil {
 		return err
@@ -37,10 +39,10 @@ func (amqpBackend AMQPBackend) UpdateState(taskUUID, state string) error {
 	taskState := TaskState{
 		TaskUUID: taskUUID,
 		State:    state,
+		Result:   result,
 	}
 
 	message, err := json.Marshal(taskState)
-
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
@@ -58,36 +60,35 @@ func (amqpBackend AMQPBackend) UpdateState(taskUUID, state string) error {
 	)
 }
 
-// GetState returns the current state of a task
-func (amqpBackend AMQPBackend) GetState(taskUUID string) (string, error) {
+// GetState returns the latest task state
+// It will only return the status once as the message will get acked!
+func (amqpBackend AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
+	taskState := TaskState{}
+
 	openConn, err := amqpBackend.open(taskUUID)
 	if err != nil {
-		return "", err
+		return &taskState, err
 	}
 
 	defer openConn.close()
 
 	d, ok, err := openConn.channel.Get(taskUUID, false)
-
 	if err != nil {
-		return "", err
+		return &taskState, err
 	}
-
 	if !ok {
-		return "", errors.New("No state ready")
+		return &taskState, errors.New("No state ready")
 	}
 
 	d.Ack(false)
 
-	state := TaskState{}
-	err = json.Unmarshal([]byte(d.Body), &state)
-
+	err = json.Unmarshal([]byte(d.Body), &taskState)
 	if err != nil {
 		log.Printf("Failed to unmarshal task state: %v", d.Body)
-		return "", err
+		return &taskState, err
 	}
 
-	return state.State, nil
+	return &taskState, nil
 }
 
 // Connects to the message queue, opens a channel, declares a queue
@@ -124,7 +125,6 @@ func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
 		false,    // exclusive
 		false,    // no-wait
 		nil,      // arguments
-		//amqp.Table{"x-message-ttl": int32(100)}, // expire in 100 ms
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Queue Declare: %s", err)

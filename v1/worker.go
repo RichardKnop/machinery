@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/streadway/amqp"
 )
 
@@ -55,7 +56,7 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 		return
 	}
 
-	worker.server.UpdateTaskState(signature.UUID, backends.ReceivedState)
+	worker.server.UpdateTaskState(signature.UUID, backends.ReceivedState, nil)
 
 	errorFinalizer := func(err error) {
 		worker.finalize(
@@ -66,13 +67,13 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 	}
 
 	reflectedTask := reflect.ValueOf(task)
-	relfectedArgs, err := ReflectArgs(signature.Args)
+	relfectedArgs, err := worker.reflectArgs(signature.Args)
 	if err != nil {
 		errorFinalizer(err)
 		return
 	}
 
-	worker.server.UpdateTaskState(signature.UUID, backends.StartedState)
+	worker.server.UpdateTaskState(signature.UUID, backends.StartedState, nil)
 
 	results := reflectedTask.Call(relfectedArgs)
 	if !results[1].IsNil() {
@@ -84,12 +85,27 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 	worker.finalize(&signature, results[0], err)
 }
 
+// Converts []TaskArg to []reflect.Value
+func (worker *Worker) reflectArgs(args []TaskArg) ([]reflect.Value, error) {
+	argValues := make([]reflect.Value, len(args))
+
+	for i, arg := range args {
+		argValue, err := utils.ReflectValue(arg.Type, arg.Value)
+		if err != nil {
+			return nil, err
+		}
+		argValues[i] = argValue
+	}
+
+	return argValues, nil
+}
+
 // finalize - handles success and error callbacks
 func (worker *Worker) finalize(
 	signature *TaskSignature, result reflect.Value, err error,
 ) {
 	if err != nil {
-		worker.server.UpdateTaskState(signature.UUID, backends.FailureState)
+		worker.server.UpdateTaskState(signature.UUID, backends.FailureState, nil)
 
 		log.Printf("Failed processing %s. Error = %v", signature.UUID, err)
 
@@ -105,7 +121,14 @@ func (worker *Worker) finalize(
 		return
 	}
 
-	worker.server.UpdateTaskState(signature.UUID, backends.SuccessState)
+	worker.server.UpdateTaskState(
+		signature.UUID,
+		backends.SuccessState,
+		&backends.TaskResult{
+			Type:  result.Type().String(),
+			Value: result.Interface(),
+		},
+	)
 
 	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
 

@@ -83,12 +83,12 @@ func (server *Server) SendTask(signature *TaskSignature) (*backends.AsyncResult,
 		return nil, fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	server.UpdateTaskState(signature.UUID, backends.PendingState)
+	server.UpdateTaskState(signature.UUID, backends.PendingState, nil)
 
 	if err := server.broker.Publish(
 		[]byte(message), signature.RoutingKey,
 	); err != nil {
-		server.UpdateTaskState(signature.UUID, backends.FailureState)
+		server.UpdateTaskState(signature.UUID, backends.FailureState, nil)
 		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
 
@@ -97,9 +97,11 @@ func (server *Server) SendTask(signature *TaskSignature) (*backends.AsyncResult,
 
 // UpdateTaskState updates a task state
 // If no result backend has been configured, does nothing
-func (server *Server) UpdateTaskState(taskUUID, state string) error {
+func (server *Server) UpdateTaskState(
+	taskUUID, state string, result *backends.TaskResult,
+) error {
 	if server.backend == nil {
 		return nil
 	}
-	return server.backend.UpdateState(taskUUID, state)
+	return server.backend.UpdateState(taskUUID, state, result)
 }

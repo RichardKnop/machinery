@@ -13,8 +13,15 @@ const (
 	FailureState = "FAILURE"
 )
 
+// TaskResult represents an actual return value of a processed task
+type TaskResult struct {
+	Type  string
+	Value interface{}
+}
+
 // TaskState represents a state of a task
 type TaskState struct {
 	TaskUUID string
 	State    string
+	Result   *TaskResult
 }
