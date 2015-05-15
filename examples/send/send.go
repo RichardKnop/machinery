@@ -104,6 +104,6 @@ func main() {
 	}
 
 	chain := machinery.Chain(task1, task2, task3)
-	err := server.SendTask(chain)
+	_, err := server.SendTask(chain)
 	errors.Fail(err, "Could not send task")
 }

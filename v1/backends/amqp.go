@@ -2,6 +2,7 @@ package backends
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -16,7 +17,7 @@ type AMQPBackend struct {
 	queue   amqp.Queue
 }
 
-// NewAMQPBackend -  constructor
+// NewAMQPBackend creates AMQPBackend instance
 func NewAMQPBackend(cnf *config.Config) Backend {
 	return AMQPBackend{
 		config: cnf,
@@ -56,6 +57,33 @@ func (amqpBackend AMQPBackend) UpdateState(taskUUID, state string) error {
 	)
 }
 
+// GetState returns the current state of a task
+func (amqpBackend AMQPBackend) GetState(taskUUID string) (string, error) {
+	openConn, err := amqpBackend.open(taskUUID)
+	if err != nil {
+		return "", err
+	}
+
+	defer openConn.close()
+
+	d, ok, err := openConn.channel.Get(taskUUID, false)
+
+	if err != nil {
+		return "", err
+	}
+
+	if !ok {
+		return "", errors.New("No state ready")
+	}
+
+	d.Ack(false)
+
+	state := TaskState{}
+	json.Unmarshal([]byte(d.Body), &state)
+
+	return state.State, nil
+}
+
 // Connects to the message queue, opens a channel, declares a queue
 func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
 	var err error
@@ -89,7 +117,8 @@ func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
 		true,     // delete when unused
 		false,    // exclusive
 		false,    // no-wait
-		amqp.Table{"x-message-ttl": int32(100)}, // expire in 100 ms
+		nil,      // arguments
+		//amqp.Table{"x-message-ttl": int32(100)}, // expire in 100 ms
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Queue Declare: %s", err)

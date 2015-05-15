@@ -1,7 +1,6 @@
 package brokers
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"time"
@@ -190,9 +189,6 @@ func (amqpBroker AMQPBroker) consume(
 	for d := range deliveries {
 		log.Printf("Received new message: %s", d.Body)
 		d.Ack(false)
-		dotCount := bytes.Count(d.Body, []byte("."))
-		t := time.Duration(dotCount)
-		time.Sleep(t * time.Second)
 		mp.ProcessMessage(&d)
 	}
 }

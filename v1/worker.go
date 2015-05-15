@@ -87,8 +87,7 @@ func (worker *Worker) finalize(
 	if err != nil {
 		worker.server.UpdateTaskState(signature.UUID, backends.FailureState)
 
-		log.Printf("Failed processing %s", signature.Name)
-		log.Printf("Error = %v", err)
+		log.Printf("Failed processing %s. Error = %v", signature.UUID, err)
 
 		for _, errorTask := range signature.OnError {
 			// Pass error as a first argument to error callbacks
@@ -104,8 +103,7 @@ func (worker *Worker) finalize(
 
 	worker.server.UpdateTaskState(signature.UUID, backends.SuccessState)
 
-	log.Printf("Finished processing %s", signature.Name)
-	log.Printf("Result = %v", result.Interface())
+	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
 
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {

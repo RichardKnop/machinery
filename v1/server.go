@@ -71,7 +71,7 @@ func (server *Server) GetRegisteredTask(name string) interface{} {
 }
 
 // SendTask publishes a task to the default queue
-func (server *Server) SendTask(signature *TaskSignature) error {
+func (server *Server) SendTask(signature *TaskSignature) (*backends.AsyncResult, error) {
 	// Auto generate a UUID if not set already
 	if signature.UUID == "" {
 		signature.UUID = uuid.NewV4().String()
@@ -80,7 +80,7 @@ func (server *Server) SendTask(signature *TaskSignature) error {
 	message, err := json.Marshal(signature)
 
 	if err != nil {
-		return fmt.Errorf("JSON Encode Message: %v", err)
+		return nil, fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
 	server.UpdateTaskState(signature.UUID, backends.PendingState)
@@ -89,10 +89,10 @@ func (server *Server) SendTask(signature *TaskSignature) error {
 		[]byte(message), signature.RoutingKey,
 	); err != nil {
 		server.UpdateTaskState(signature.UUID, backends.FailureState)
-		return fmt.Errorf("Publish Message: %v", err)
+		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
 
-	return nil
+	return backends.NewAsyncResult(signature.UUID, server.backend), nil
 }
 
 // UpdateTaskState updates a task state

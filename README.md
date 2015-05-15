@@ -207,7 +207,7 @@ task := machinery.TaskSignature{
     },
 }
 
-err := server.SendTask(&task1)
+asyncResult, err := server.SendTask(&task1)
 if err != nil {
     // failed to send the task
     // do something with the error
