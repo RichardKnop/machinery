@@ -72,21 +72,21 @@ func (server *Server) GetRegisteredTask(name string) interface{} {
 
 // SendTask publishes a task to the default queue
 func (server *Server) SendTask(
-	task *signatures.TaskSignature,
+	signature *signatures.TaskSignature,
 ) (*backends.AsyncResult, error) {
 	// Auto generate a UUID if not set already
-	if task.UUID == "" {
-		task.UUID = uuid.NewV4().String()
+	if signature.UUID == "" {
+		signature.UUID = uuid.NewV4().String()
 	}
 
-	server.UpdateTaskState(task.UUID, backends.PendingState, nil, nil)
+	server.UpdateTaskState(signature.UUID, backends.PendingState, nil, nil)
 
-	if err := server.broker.Publish(task); err != nil {
-		server.UpdateTaskState(task.UUID, backends.FailureState, nil, nil)
+	if err := server.broker.Publish(signature); err != nil {
+		server.UpdateTaskState(signature.UUID, backends.FailureState, nil, nil)
 		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
 
-	return backends.NewAsyncResult(task.UUID, server.backend), nil
+	return backends.NewAsyncResult(signature.UUID, server.backend), nil
 }
 
 // UpdateTaskState updates a task state

@@ -1,7 +1,6 @@
 package machinery
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"reflect"
@@ -9,7 +8,6 @@ import (
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
-	"github.com/streadway/amqp"
 )
 
 // Worker represents a single worker process
@@ -32,25 +30,11 @@ func (worker *Worker) Launch() error {
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
-	return worker.server.GetBroker().Consume(
-		worker.ConsumerTag,
-		worker,
-	)
+	return worker.server.GetBroker().Consume(worker.ConsumerTag, worker)
 }
 
-// ProcessMessage handles received messages
-// First, it unmarshals the message into a TaskSignature
-// Then, it looks whether the task is registered against the server
-// If it is registered, it invokes the task using reflection and
-// triggers success/error callbacks
-func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
-	signature := signatures.TaskSignature{}
-	err := json.Unmarshal([]byte(d.Body), &signature)
-	if err != nil {
-		log.Printf("Failed to unmarshal task singnature: %v", d.Body)
-		return
-	}
-
+// Process handles received tasks and triggers success/error callbacks
+func (worker *Worker) Process(signature *signatures.TaskSignature) {
 	task := worker.server.GetRegisteredTask(signature.Name)
 	if task == nil {
 		log.Printf("Task with a name '%s' not registered", signature.Name)
@@ -66,7 +50,7 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 
 	errorFinalizer := func(theErr error) {
 		worker.finalize(
-			&signature,
+			signature,
 			reflect.ValueOf(nil),
 			theErr,
 		)
@@ -93,7 +77,7 @@ func (worker *Worker) ProcessMessage(d *amqp.Delivery) {
 	}
 
 	// Trigger success or error tasks
-	worker.finalize(&signature, results[0], err)
+	worker.finalize(signature, results[0], err)
 }
 
 // Converts []TaskArg to []reflect.Value

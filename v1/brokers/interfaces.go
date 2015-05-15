@@ -1,18 +1,15 @@
 package brokers
 
-import (
-	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/streadway/amqp"
-)
+import "github.com/RichardKnop/machinery/v1/signatures"
 
 // Broker - a common interface for all brokers
 type Broker interface {
-	Consume(consumerTag string, p MessageProcessor) error
+	Consume(consumerTag string, p TaskProcessor) error
 	Publish(task *signatures.TaskSignature) error
 }
 
-// MessageProcessor - can process a delivered message
+// TaskProcessor - can process a delivered task
 // This will probably always be a worker instance
-type MessageProcessor interface {
-	ProcessMessage(d *amqp.Delivery)
+type TaskProcessor interface {
+	Process(dtask *signatures.TaskSignature)
 }

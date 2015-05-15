@@ -37,7 +37,7 @@ func fibonacci() func() int {
 
 // Consume enters a loop and waits for incoming messages
 func (amqpBroker AMQPBroker) Consume(
-	consumerTag string, mp MessageProcessor,
+	consumerTag string, taskProcessor TaskProcessor,
 ) error {
 	var retryCountDown int
 	fibonacci := fibonacci()
@@ -85,7 +85,7 @@ func (amqpBroker AMQPBroker) Consume(
 
 		forever := make(chan bool)
 
-		go openConn.consume(deliveries, mp)
+		go openConn.consume(deliveries, taskProcessor)
 
 		log.Print("[*] Waiting for messages. To exit press CTRL+C")
 		<-forever
@@ -189,12 +189,19 @@ func (amqpBroker AMQPBroker) close() error {
 
 // Consumes messages
 func (amqpBroker AMQPBroker) consume(
-	deliveries <-chan amqp.Delivery, mp MessageProcessor,
+	deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor,
 ) {
 	for d := range deliveries {
 		log.Printf("Received new message: %s", d.Body)
 		d.Ack(false)
-		mp.ProcessMessage(&d)
+
+		signature := signatures.TaskSignature{}
+		if err := json.Unmarshal([]byte(d.Body), &signature); err != nil {
+			log.Printf("Failed to unmarshal task singnature: %v", d.Body)
+			return
+		}
+
+		taskProcessor.Process(&signature)
 	}
 }
 
