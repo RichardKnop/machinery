@@ -17,6 +17,7 @@ This is an early stage project so far. Feel free to contribute.
     - [Registering Tasks](https://github.com/RichardKnop/machinery#registering-tasks)
     - [Signatures](https://github.com/RichardKnop/machinery#signatures)
     - [Sending Tasks](https://github.com/RichardKnop/machinery#sending-tasks)
+    - [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 - [Workflows](https://github.com/RichardKnop/machinery#workflows)
     - [Chains](https://github.com/RichardKnop/machinery#chains)
 - [Development Setup](https://github.com/RichardKnop/machinery#development-setup)
