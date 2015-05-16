@@ -34,6 +34,8 @@ func (amqpBroker *AMQPBroker) Consume(consumerTag string, taskProcessor TaskProc
 
 	for {
 		if retryCountDown > 0 {
+			// This means there was a problem opening a connection
+			// We will try reconnecting in 1, 1, 2, 3, 5, 8... (Fibonacci)
 			durationString := fmt.Sprintf("%vs", retryCountDown)
 			duration, err := time.ParseDuration(durationString)
 			if err != nil {
@@ -42,13 +44,19 @@ func (amqpBroker *AMQPBroker) Consume(consumerTag string, taskProcessor TaskProc
 
 			log.Printf("Retrying in %v seconds", retryCountDown)
 			time.Sleep(duration)
-			retryCountDown = fibonacci()
 		}
+		retryCountDown = fibonacci()
 
 		conn, channel, queue, err := open(amqpBroker.config)
 		if err != nil {
-			return fmt.Errorf("AMQPBroker Open: %s", err)
+			log.Print(err)
+			continue
 		}
+
+		// Next time there is a connection problem,
+		// we want to start a new Fibonacci retry sequence
+		fibonacci = utils.Fibonacci()
+		retryCountDown = 0
 
 		defer close(channel, conn)
 
@@ -73,14 +81,9 @@ func (amqpBroker *AMQPBroker) Consume(consumerTag string, taskProcessor TaskProc
 			return fmt.Errorf("Queue Consume: %s", err)
 		}
 
-		forever := make(chan bool)
-
-		go amqpBroker.consume(deliveries, taskProcessor)
+		amqpBroker.consume(deliveries, taskProcessor)
 
 		log.Print("[*] Waiting for messages. To exit press CTRL+C")
-		<-forever
-
-		return nil
 	}
 }
 
