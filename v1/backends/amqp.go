@@ -12,38 +12,35 @@ import (
 
 // AMQPBackend represents an AMQP result backend
 type AMQPBackend struct {
-	config  *config.Config
-	conn    *amqp.Connection
-	channel *amqp.Channel
-	queue   amqp.Queue
+	config *config.Config
 }
 
 // NewAMQPBackend creates AMQPBackend instance
 func NewAMQPBackend(cnf *config.Config) Backend {
-	return AMQPBackend{
+	return Backend(&AMQPBackend{
 		config: cnf,
-	}
+	})
 }
 
 // UpdateState updates a task state
-func (amqpBackend AMQPBackend) UpdateState(taskState *TaskState) error {
-	openConn, err := amqpBackend.open(taskState.TaskUUID)
+func (amqpBackend *AMQPBackend) UpdateState(taskState *TaskState) error {
+	conn, channel, _, err := open(taskState.TaskUUID, amqpBackend.config)
 	if err != nil {
 		return err
 	}
 
-	defer openConn.close()
+	defer close(channel, conn)
 
 	message, err := json.Marshal(taskState)
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	return openConn.channel.Publish(
-		openConn.config.Exchange, // exchange
-		taskState.TaskUUID,       // routing key
-		false,                    // mandatory
-		false,                    // immediate
+	return channel.Publish(
+		amqpBackend.config.Exchange, // exchange
+		taskState.TaskUUID,          // routing key
+		false,                       // mandatory
+		false,                       // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
@@ -54,19 +51,19 @@ func (amqpBackend AMQPBackend) UpdateState(taskState *TaskState) error {
 
 // GetState returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
-func (amqpBackend AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
+func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := TaskState{}
 
-	openConn, err := amqpBackend.open(taskUUID)
+	conn, channel, queue, err := open(taskUUID, amqpBackend.config)
 	if err != nil {
 		return &taskState, err
 	}
 
-	defer openConn.close()
+	defer close(channel, conn)
 
-	d, ok, err := openConn.channel.Get(
-		openConn.queue.Name, // queue name
-		false,               // multiple
+	d, ok, err := channel.Get(
+		queue.Name, // queue name
+		false,      // multiple
 	)
 	if err != nil {
 		return &taskState, err
@@ -83,11 +80,11 @@ func (amqpBackend AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	}
 
 	if taskState.IsCompleted() {
-		openConn.channel.QueueDelete(
-			openConn.queue.Name, // name
-			false,               // ifUnused
-			false,               // ifEmpty
-			false,               // noWait
+		channel.QueueDelete(
+			queue.Name, // name
+			false,      // ifUnused
+			false,      // ifEmpty
+			false,      // noWait
 		)
 	}
 
@@ -95,33 +92,36 @@ func (amqpBackend AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 }
 
 // Connects to the message queue, opens a channel, declares a queue
-func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
+func open(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel, amqp.Queue, error) {
+	var conn *amqp.Connection
+	var channel *amqp.Channel
+	var queue amqp.Queue
 	var err error
 
-	amqpBackend.conn, err = amqp.Dial(amqpBackend.config.Broker)
+	conn, err = amqp.Dial(cnf.Broker)
 	if err != nil {
-		return nil, fmt.Errorf("Dial: %s", err)
+		return conn, channel, queue, fmt.Errorf("Dial: %s", err)
 	}
 
-	amqpBackend.channel, err = amqpBackend.conn.Channel()
+	channel, err = conn.Channel()
 	if err != nil {
-		return nil, fmt.Errorf("Channel: %s", err)
+		return conn, channel, queue, fmt.Errorf("Channel: %s", err)
 	}
 
-	err = amqpBackend.channel.ExchangeDeclare(
-		amqpBackend.config.Exchange,     // name of the exchange
-		amqpBackend.config.ExchangeType, // type
-		true,  // durable
-		false, // delete when complete
-		false, // internal
-		false, // noWait
-		nil,   // arguments
+	err = channel.ExchangeDeclare(
+		cnf.Exchange,     // name of the exchange
+		cnf.ExchangeType, // type
+		true,             // durable
+		false,            // delete when complete
+		false,            // internal
+		false,            // noWait
+		nil,              // arguments
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Exchange: %s", err)
+		return conn, channel, queue, fmt.Errorf("Exchange: %s", err)
 	}
 
-	resultsExpireIn := amqpBackend.config.ResultsExpireIn
+	resultsExpireIn := cnf.ResultsExpireIn
 	if resultsExpireIn == 0 {
 		// // expire results after 1 hour by default
 		resultsExpireIn = 1000 * 3600
@@ -129,7 +129,7 @@ func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
 	arguments := amqp.Table{
 		"x-message-ttl": int32(resultsExpireIn),
 	}
-	amqpBackend.queue, err = amqpBackend.channel.QueueDeclare(
+	queue, err = channel.QueueDeclare(
 		taskUUID, // name
 		false,    // durable
 		true,     // delete when unused
@@ -138,29 +138,29 @@ func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
 		arguments,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Queue Declare: %s", err)
+		return conn, channel, queue, fmt.Errorf("Queue Declare: %s", err)
 	}
 
-	if err := amqpBackend.channel.QueueBind(
-		amqpBackend.queue.Name,      // name of the queue
-		taskUUID,                    // binding key
-		amqpBackend.config.Exchange, // source exchange
-		false, // noWait
-		nil,   // arguments
+	if err := channel.QueueBind(
+		queue.Name,   // name of the queue
+		taskUUID,     // binding key
+		cnf.Exchange, // source exchange
+		false,        // noWait
+		nil,          // arguments
 	); err != nil {
-		return nil, fmt.Errorf("Queue Bind: %s", err)
+		return conn, channel, queue, fmt.Errorf("Queue Bind: %s", err)
 	}
 
-	return &amqpBackend, nil
+	return conn, channel, queue, nil
 }
 
 // Closes the connection
-func (amqpBackend AMQPBackend) close() error {
-	if err := amqpBackend.channel.Close(); err != nil {
+func close(channel *amqp.Channel, conn *amqp.Connection) error {
+	if err := channel.Close(); err != nil {
 		return fmt.Errorf("Channel Close: %s", err)
 	}
 
-	if err := amqpBackend.conn.Close(); err != nil {
+	if err := conn.Close(); err != nil {
 		return fmt.Errorf("Connection Close: %s", err)
 	}
 

@@ -22,13 +22,13 @@ type AMQPBroker struct {
 
 // NewAMQPBroker creates new AMQPConnection instance
 func NewAMQPBroker(cnf *config.Config) Broker {
-	return AMQPBroker{
+	return Broker(&AMQPBroker{
 		config: cnf,
-	}
+	})
 }
 
 // Consume enters a loop and waits for incoming messages
-func (amqpBroker AMQPBroker) Consume(consumerTag string, taskProcessor TaskProcessor) error {
+func (amqpBroker *AMQPBroker) Consume(consumerTag string, taskProcessor TaskProcessor) error {
 	var retryCountDown int
 	fibonacci := utils.Fibonacci()
 
@@ -45,14 +45,14 @@ func (amqpBroker AMQPBroker) Consume(consumerTag string, taskProcessor TaskProce
 			retryCountDown = fibonacci()
 		}
 
-		openConn, err := amqpBroker.open()
+		conn, channel, queue, err := open(amqpBroker.config)
 		if err != nil {
 			return fmt.Errorf("AMQPBroker Open: %s", err)
 		}
 
-		defer openConn.close()
+		defer close(channel, conn)
 
-		if err := openConn.channel.Qos(
+		if err := channel.Qos(
 			3,     // prefetch count
 			0,     // prefetch size
 			false, // global
@@ -60,14 +60,14 @@ func (amqpBroker AMQPBroker) Consume(consumerTag string, taskProcessor TaskProce
 			return fmt.Errorf("Channel Qos: %s", err)
 		}
 
-		deliveries, err := openConn.channel.Consume(
-			openConn.queue.Name, // queue
-			consumerTag,         // consumer tag
-			false,               // auto-ack
-			false,               // exclusive
-			false,               // no-local
-			false,               // no-wait
-			nil,                 // arguments
+		deliveries, err := channel.Consume(
+			queue.Name,  // queue
+			consumerTag, // consumer tag
+			false,       // auto-ack
+			false,       // exclusive
+			false,       // no-local
+			false,       // no-wait
+			nil,         // arguments
 		)
 		if err != nil {
 			return fmt.Errorf("Queue Consume: %s", err)
@@ -75,7 +75,7 @@ func (amqpBroker AMQPBroker) Consume(consumerTag string, taskProcessor TaskProce
 
 		forever := make(chan bool)
 
-		go openConn.consume(deliveries, taskProcessor)
+		go amqpBroker.consume(deliveries, taskProcessor)
 
 		log.Print("[*] Waiting for messages. To exit press CTRL+C")
 		<-forever
@@ -85,13 +85,13 @@ func (amqpBroker AMQPBroker) Consume(consumerTag string, taskProcessor TaskProce
 }
 
 // Publish places a new message on the default queue
-func (amqpBroker AMQPBroker) Publish(signature *signatures.TaskSignature) error {
-	openConn, err := amqpBroker.open()
+func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error {
+	conn, channel, _, err := open(amqpBroker.config)
 	if err != nil {
 		return err
 	}
 
-	defer openConn.close()
+	defer close(channel, conn)
 
 	message, err := json.Marshal(signature)
 	if err != nil {
@@ -99,15 +99,15 @@ func (amqpBroker AMQPBroker) Publish(signature *signatures.TaskSignature) error 
 	}
 
 	signature.AdjustRoutingKey(
-		openConn.config.ExchangeType,
-		openConn.config.BindingKey,
-		openConn.config.DefaultQueue,
+		amqpBroker.config.ExchangeType,
+		amqpBroker.config.BindingKey,
+		amqpBroker.config.DefaultQueue,
 	)
-	return openConn.channel.Publish(
-		openConn.config.Exchange, // exchange
-		signature.RoutingKey,     // routing key
-		false,                    // mandatory
-		false,                    // immediate
+	return channel.Publish(
+		amqpBroker.config.Exchange, // exchange
+		signature.RoutingKey,       // routing key
+		false,                      // mandatory
+		false,                      // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
@@ -116,72 +116,8 @@ func (amqpBroker AMQPBroker) Publish(signature *signatures.TaskSignature) error 
 	)
 }
 
-// Connects to the message queue, opens a channel, declares a queue
-func (amqpBroker AMQPBroker) open() (*AMQPBroker, error) {
-	var err error
-
-	amqpBroker.conn, err = amqp.Dial(amqpBroker.config.Broker)
-	if err != nil {
-		return nil, fmt.Errorf("Dial: %s", err)
-	}
-
-	amqpBroker.channel, err = amqpBroker.conn.Channel()
-	if err != nil {
-		return nil, fmt.Errorf("Channel: %s", err)
-	}
-
-	if err := amqpBroker.channel.ExchangeDeclare(
-		amqpBroker.config.Exchange,     // name of the exchange
-		amqpBroker.config.ExchangeType, // type
-		true,  // durable
-		false, // delete when complete
-		false, // internal
-		false, // noWait
-		nil,   // arguments
-	); err != nil {
-		return nil, fmt.Errorf("Exchange: %s", err)
-	}
-
-	amqpBroker.queue, err = amqpBroker.channel.QueueDeclare(
-		amqpBroker.config.DefaultQueue, // name
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	if err != nil {
-		return nil, fmt.Errorf("Queue Declare: %s", err)
-	}
-
-	if err := amqpBroker.channel.QueueBind(
-		amqpBroker.queue.Name,        // name of the queue
-		amqpBroker.config.BindingKey, // binding key
-		amqpBroker.config.Exchange,   // source exchange
-		false, // noWait
-		nil,   // arguments
-	); err != nil {
-		return nil, fmt.Errorf("Queue Bind: %s", err)
-	}
-
-	return &amqpBroker, nil
-}
-
-// Closes the connection
-func (amqpBroker AMQPBroker) close() error {
-	if err := amqpBroker.channel.Close(); err != nil {
-		return fmt.Errorf("Channel Close: %s", err)
-	}
-
-	if err := amqpBroker.conn.Close(); err != nil {
-		return fmt.Errorf("Connection Close: %s", err)
-	}
-
-	return nil
-}
-
 // Consumes messages
-func (amqpBroker AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) {
+func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) {
 	consumeOne := func(d amqp.Delivery) {
 		log.Printf("Received new message: %s", d.Body)
 		d.Ack(false)
@@ -198,4 +134,71 @@ func (amqpBroker AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProces
 	for d := range deliveries {
 		consumeOne(d)
 	}
+}
+
+// Connects to the message queue, opens a channel, declares a queue
+func open(cnf *config.Config) (*amqp.Connection, *amqp.Channel, amqp.Queue, error) {
+	var conn *amqp.Connection
+	var channel *amqp.Channel
+	var queue amqp.Queue
+	var err error
+
+	conn, err = amqp.Dial(cnf.Broker)
+	if err != nil {
+		return conn, channel, queue, fmt.Errorf("Dial: %s", err)
+	}
+
+	channel, err = conn.Channel()
+	if err != nil {
+		return conn, channel, queue, fmt.Errorf("Channel: %s", err)
+	}
+
+	if err := channel.ExchangeDeclare(
+		cnf.Exchange,     // name of the exchange
+		cnf.ExchangeType, // type
+		true,             // durable
+		false,            // delete when complete
+		false,            // internal
+		false,            // noWait
+		nil,              // arguments
+	); err != nil {
+		return conn, channel, queue, fmt.Errorf("Exchange: %s", err)
+	}
+
+	queue, err = channel.QueueDeclare(
+		cnf.DefaultQueue, // name
+		true,             // durable
+		false,            // delete when unused
+		false,            // exclusive
+		false,            // no-wait
+		nil,              // arguments
+	)
+	if err != nil {
+		return conn, channel, queue, fmt.Errorf("Queue Declare: %s", err)
+	}
+
+	if err := channel.QueueBind(
+		queue.Name,     // name of the queue
+		cnf.BindingKey, // binding key
+		cnf.Exchange,   // source exchange
+		false,          // noWait
+		nil,            // arguments
+	); err != nil {
+		return conn, channel, queue, fmt.Errorf("Queue Bind: %s", err)
+	}
+
+	return conn, channel, queue, nil
+}
+
+// Closes the connection
+func close(channel *amqp.Channel, conn *amqp.Connection) error {
+	if err := channel.Close(); err != nil {
+		return fmt.Errorf("Channel Close: %s", err)
+	}
+
+	if err := conn.Close(); err != nil {
+		return fmt.Errorf("Connection Close: %s", err)
+	}
+
+	return nil
 }
