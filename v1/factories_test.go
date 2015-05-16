@@ -49,15 +49,10 @@ func TestBrokerFactoryError(t *testing.T) {
 }
 
 func TestBackendFactory(t *testing.T) {
-	cnf := config.Config{
-		Broker:        "amqp://guest:guest@localhost:5672/",
-		ResultBackend: "amqp",
-		Exchange:      "machinery_exchange",
-		ExchangeType:  "direct",
-		DefaultQueue:  "machinery_tasks",
-		BindingKey:    "machinery_task",
-	}
+	var cnf config.Config
+	// 1) AMQP backend test
 
+	cnf = config.Config{ResultBackend: "amqp"}
 	actual, err := BackendFactory(&cnf)
 
 	if err != nil {
@@ -65,6 +60,25 @@ func TestBackendFactory(t *testing.T) {
 	}
 
 	expected := backends.NewAMQPBackend(&cnf)
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("conn = %v, want %v", actual, expected)
+	}
+
+	// 2) Memcache backend test
+
+	cnf = config.Config{
+		ResultBackend: "memcache://10.0.0.1:11211,10.0.0.2:11211",
+	}
+	actual, err = BackendFactory(&cnf)
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	servers := []string{"10.0.0.1:11211", "10.0.0.2:11211"}
+	expected = backends.NewMemcacheBackend(&cnf, servers)
+
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
