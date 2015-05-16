@@ -11,6 +11,7 @@ So called tasks (or jobs if you like) are executed concurrently either by many w
 This is an early stage project so far. Feel free to contribute.
 
 - [First Steps](https://github.com/RichardKnop/machinery#first-steps)
+- [Configuration](https://github.com/RichardKnop/machinery#configuration)
 - [Server](https://github.com/RichardKnop/machinery#server)
 - [Workers](https://github.com/RichardKnop/machinery#workers)
 - [Tasks](https://github.com/RichardKnop/machinery#tasks)
@@ -50,6 +51,31 @@ $ go run _examples/send/send.go
 You will be able to see the tasks being processed asynchronously by the worker:
 
 ![Example worker receives tasks](https://github.com/RichardKnop/machinery/blob/master/assets/example_worker_receives_tasks.png)
+
+Configuration
+=============
+
+Machinery has several configuration options. Configuration is encapsulated by a Config struct and injected as a dependency to objects that need it.
+
+```go
+type Config struct {
+	Broker          string `yaml:"broker"`
+	ResultBackend   string `yaml:"result_backend"`
+	ResultsExpireIn int    `yaml:"results_expire_in"`
+	Exchange        string `yaml:"exchange"`
+	ExchangeType    string `yaml:"exchange_type"`
+	DefaultQueue    string `yaml:"default_queue"`
+	BindingKey      string `yaml:"binding_key"`
+}
+```
+
+* Broker: A message broker. Currently only AMQP is supported. Use full AMQP URL.
+* ResultBackend (optional): Result backend to use for keeping task results. Currently only AMQP is supported. Use just "amqp", other details will be assumed from the full AMQP URL in Broker setting.
+* ResultsExpireIn (optional): How long to store task results for in miliseconds. Defaults to 3600000 (1 hour).
+* Exchange: Exchange name.
+* Exchange: Exchange type.
+* DefaultQueue: Default queue name.
+* BindingKey: The queue is bind to the exchange with this key.
 
 Server
 ======

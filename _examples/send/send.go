@@ -1,20 +1,3 @@
-//
-// Sending a task
-// --------------
-//
-// This example demonstrates a simple workflow consisting of multiple
-// chained tasks. For each task you can specify success and error callbacks.
-//
-// When a task is successful, its return value will be prepended to args
-// of all success callbacks (signatures in TaskSignature.OnSuccess) and they
-// will then be sent to the queue.
-//
-// When a task fails, error will be prepended to all args of all error
-// callbacks (signatures in TaskSignature.OnError) and they
-// will then sent to the queue.
-//
-// The workflow bellow will result in ((1 + 1) + (5 + 6)) * 4 = 13 * 4 = 52
-
 package main
 
 import (

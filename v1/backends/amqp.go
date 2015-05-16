@@ -121,9 +121,13 @@ func (amqpBackend AMQPBackend) open(taskUUID string) (*AMQPBackend, error) {
 		return nil, fmt.Errorf("Exchange: %s", err)
 	}
 
+	resultsExpireIn := amqpBackend.config.ResultsExpireIn
+	if resultsExpireIn == 0 {
+		// // expire results after 1 hour by default
+		resultsExpireIn = 1000 * 3600
+	}
 	arguments := amqp.Table{
-		// expire results after 1 hour
-		"x-message-ttl": int32(1000 * 3600),
+		"x-message-ttl": int32(resultsExpireIn),
 	}
 	amqpBackend.queue, err = amqpBackend.channel.QueueDeclare(
 		taskUUID, // name

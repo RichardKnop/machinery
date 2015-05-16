@@ -10,6 +10,7 @@ import (
 var configYAMLData = `---
 broker: amqp://guest:guest@localhost:5672/
 result_backend: amqp
+results_expire_in: 3600000
 exchange: machinery_exchange
 exchange_type: direct
 default_queue: machinery_tasks
@@ -49,6 +50,14 @@ func TestParseYAMLConfig(t *testing.T) {
 		t.Errorf(
 			"cfg.ResultBackend = %v, want amqp",
 			cfg.ResultBackend,
+		)
+	}
+
+	if cfg.ResultsExpireIn != 3600000 {
+		log.Printf("%v", cfg)
+		t.Errorf(
+			"cfg.ResultsExpireIn = %v, want 3600000",
+			cfg.ResultsExpireIn,
 		)
 	}
 
