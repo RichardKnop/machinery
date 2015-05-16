@@ -106,10 +106,6 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 			successTask.Args = args
 		}
 
-		// Update task state to PENDING
-		taskState := backends.NewPendingTaskState(successTask.UUID)
-		worker.server.UpdateTaskState(taskState)
-
 		worker.server.SendTask(successTask)
 	}
 }
