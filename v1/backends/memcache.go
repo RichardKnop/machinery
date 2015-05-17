@@ -28,7 +28,7 @@ func (memcacheBackend *MemcacheBackend) UpdateState(taskState *TaskState) error 
 		return err
 	}
 
-	expiration := memcacheBackend.config.ResultsExpireIn / 1000
+	expiration := memcacheBackend.config.ResultsExpireIn
 	if expiration == 0 {
 		// // expire results after 1 hour by default
 		expiration = 3600
@@ -49,7 +49,7 @@ func (memcacheBackend *MemcacheBackend) GetState(taskUUID string) (*TaskState, e
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(item.Value, taskState); err != nil {
+	if err := json.Unmarshal(item.Value, &taskState); err != nil {
 		return nil, err
 	}
 

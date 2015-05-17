@@ -68,10 +68,12 @@ func (asyncResult *AsyncResult) GetState() *TaskState {
 	if asyncResult.taskState.IsCompleted() {
 		return asyncResult.taskState
 	}
+
 	taskState, err := asyncResult.backend.GetState(asyncResult.taskUUID)
 	if err == nil {
 		asyncResult.taskState = taskState
 	}
+
 	return asyncResult.taskState
 }
 

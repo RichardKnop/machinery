@@ -2,6 +2,7 @@ package machinery
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
@@ -81,7 +82,11 @@ func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.A
 		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
 
-	server.UpdateTaskState(backends.NewPendingTaskState(signature.UUID))
+	// Update task state to PENDING
+	taskState := backends.NewPendingTaskState(signature.UUID)
+	if err := server.UpdateTaskState(taskState); err != nil {
+		log.Print(err)
+	}
 
 	return backends.NewAsyncResult(signature.UUID, server.backend), nil
 }
@@ -93,7 +98,10 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 	}
 
 	// Update task state to PENDING
-	server.UpdateTaskState(backends.NewPendingTaskState(chain.Tasks[0].UUID))
+	taskState := backends.NewPendingTaskState(chain.Tasks[0].UUID)
+	if err := server.UpdateTaskState(taskState); err != nil {
+		log.Print(err)
+	}
 
 	return backends.NewChainAsyncResult(chain.GetUUIDs(), server.backend), nil
 }

@@ -121,10 +121,10 @@ func open(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel,
 		return conn, channel, queue, fmt.Errorf("Exchange: %s", err)
 	}
 
-	resultsExpireIn := cnf.ResultsExpireIn
+	resultsExpireIn := cnf.ResultsExpireIn * 1000
 	if resultsExpireIn == 0 {
 		// // expire results after 1 hour by default
-		resultsExpireIn = 1000 * 3600
+		resultsExpireIn = 3600 * 1000
 	}
 	arguments := amqp.Table{
 		"x-message-ttl": int32(resultsExpireIn),
