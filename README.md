@@ -70,7 +70,9 @@ type Config struct {
 ```
 
 * Broker: A message broker. Currently only AMQP is supported. Use full AMQP URL.
-* ResultBackend (optional): Result backend to use for keeping task results. Currently only AMQP is supported. Use just "amqp", other details will be assumed from the full AMQP URL in Broker setting.
+* ResultBackend (optional): Result backend to use for keeping task results. Supported backends: Currently only AMQP is supported.
+    * AMQP: Use just "amqp", other details will be assumed from the full AMQP URL in Broker setting.
+    * Memcache: You can define several Memcache servers: memcache://10.0.0.1:11211,10.0.0.2:11211
 * ResultsExpireIn (optional): How long to store task results for in seconds. Defaults to 3600 (1 hour).
 * Exchange: Exchange name.
 * Exchange: Exchange type.
