@@ -44,7 +44,8 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) {
 	// Update task state to RECEIVED
 	receivedState := backends.NewReceivedTaskState(signature.UUID)
 	if err := worker.server.UpdateTaskState(receivedState); err != nil {
-		log.Print(err)
+		worker.finalizeError(signature, err)
+		return
 	}
 
 	// Get task args and convert them to proper types
@@ -58,7 +59,8 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) {
 	// Update task state to STARTED
 	startedState := backends.NewStartedTaskState(signature.UUID)
 	if err := worker.server.UpdateTaskState(startedState); err != nil {
-		log.Print(err)
+		worker.finalizeError(signature, err)
+		return
 	}
 
 	// Call the task passing in the correct arguments
@@ -119,9 +121,9 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 // Task failed, update state and trigger error callbacks
 func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) {
 	// Update task state to FAILURE
-	failureState := backends.NewFailureTaskState(signature.UUID, err)
+	failureState := backends.NewFailureTaskState(signature.UUID, err.Error())
 	if err := worker.server.UpdateTaskState(failureState); err != nil {
-		log.Print(err)
+		log.Printf("Failed updating status to FAILURE. Error = %v", err)
 	}
 
 	log.Printf("Failed processing %s. Error = %v", signature.UUID, err)

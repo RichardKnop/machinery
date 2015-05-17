@@ -83,88 +83,37 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 }
 
 func getIntValue(theType string, value interface{}) (int64, error) {
-	argType := typesMap[theType].String()
-
-	switch argType {
-	case "int":
-		intValue, ok := value.(int)
-		if ok {
-			return int64(intValue), nil
-		}
-	case "int8":
-		intValue, ok := value.(int8)
-		if ok {
-			return int64(intValue), nil
-		}
-	case "int16":
-		intValue, ok := value.(int16)
-		if ok {
-			return int64(intValue), nil
-		}
-	case "int32":
-		intValue, ok := value.(int32)
-		if ok {
-			return int64(intValue), nil
-		}
-	case "int64":
-		intValue, ok := value.(int64)
-		if ok {
-			return intValue, nil
-		}
+	// Any numbers from unmarshalled JSON will be float64 by default
+	// So we first need to do a type conversion to float64
+	number, ok := value.(float64)
+	if !ok {
+		return 0, typeConversionError(value, typesMap[theType].String())
 	}
 
-	return 0, typeConversionError(value, argType)
+	// Now we can cast the float64 to int64
+	return int64(number), nil
 }
 
 func getUintValue(theType string, value interface{}) (uint64, error) {
-	argType := typesMap[theType].String()
-
-	switch argType {
-	case "uint":
-		uintValue, ok := value.(uint)
-		if ok {
-			return uint64(uintValue), nil
-		}
-	case "uint8":
-		uintValue, ok := value.(uint8)
-		if ok {
-			return uint64(uintValue), nil
-		}
-	case "uint16":
-		uintValue, ok := value.(uint16)
-		if ok {
-			return uint64(uintValue), nil
-		}
-	case "uint32":
-		uintValue, ok := value.(uint32)
-		if ok {
-			return uint64(uintValue), nil
-		}
-	case "uint64":
-		uintValue, ok := value.(uint64)
-		if ok {
-			return uintValue, nil
-		}
+	// Any numbers from unmarshalled JSON will be float64 by default
+	// So we first need to do a type conversion to float64
+	number, ok := value.(float64)
+	if !ok {
+		return 0, typeConversionError(value, typesMap[theType].String())
 	}
 
-	return 0, typeConversionError(value, argType)
+	// Now we can cast the float64 to uint64
+	return uint64(number), nil
 }
 
 func getFloatValue(theType string, value interface{}) (float64, error) {
-	argType := typesMap[theType].String()
-
-	switch argType {
-	case "float32":
-		floatValue, ok := value.(float32)
-		if ok {
-			return float64(floatValue), nil
-		}
-	case "float64":
-		floatValue, ok := value.(float64)
-		if ok {
-			return floatValue, nil
-		}
+	// Any numbers from unmarshalled JSON will be float64 by default
+	// So we first need to do a type conversion to float64
+	number, ok := value.(float64)
+	if !ok {
+		return 0, typeConversionError(value, typesMap[theType].String())
 	}
 
-	return 0, typeConversionError(value, argType)
+	// Now we can return float64
+	return number, nil
 }

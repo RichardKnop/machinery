@@ -24,7 +24,7 @@ type TaskState struct {
 	TaskUUID string
 	State    string
 	Result   *TaskResult
-	Error    error
+	Error    string
 }
 
 // NewPendingTaskState ...
@@ -61,10 +61,10 @@ func NewSuccessTaskState(taskUUID string, result *TaskResult) *TaskState {
 }
 
 // NewFailureTaskState ...
-func NewFailureTaskState(taskUUID string, err error) *TaskState {
+func NewFailureTaskState(taskUUID string, err string) *TaskState {
 	return &TaskState{
 		TaskUUID: taskUUID,
-		State:    SuccessState,
+		State:    FailureState,
 		Error:    err,
 	}
 }

@@ -3,7 +3,7 @@ package utils
 import "testing"
 
 func TestReflectValue(t *testing.T) {
-	value, err := ReflectValue("int", interface{}(int(1)))
+	value, err := ReflectValue("int", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -11,7 +11,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int", value.Type().String())
 	}
 
-	value, err = ReflectValue("int8", interface{}(int8(1)))
+	value, err = ReflectValue("int8", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -19,7 +19,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int8", value.Type().String())
 	}
 
-	value, err = ReflectValue("int16", interface{}(int16(1)))
+	value, err = ReflectValue("int16", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -27,7 +27,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int16", value.Type().String())
 	}
 
-	value, err = ReflectValue("int32", interface{}(int32(1)))
+	value, err = ReflectValue("int32", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -35,7 +35,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int32", value.Type().String())
 	}
 
-	value, err = ReflectValue("int64", interface{}(int64(1)))
+	value, err = ReflectValue("int64", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -43,7 +43,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int64", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint", interface{}(uint(1)))
+	value, err = ReflectValue("uint", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -51,7 +51,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint8", interface{}(uint8(1)))
+	value, err = ReflectValue("uint8", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -59,7 +59,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint8", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint16", interface{}(uint16(1)))
+	value, err = ReflectValue("uint16", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -67,7 +67,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint16", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint32", interface{}(uint32(1)))
+	value, err = ReflectValue("uint32", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -75,7 +75,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint32", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint64", interface{}(uint64(1)))
+	value, err = ReflectValue("uint64", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -83,7 +83,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint64", value.Type().String())
 	}
 
-	value, err = ReflectValue("float32", interface{}(float32(0.5)))
+	value, err = ReflectValue("float32", interface{}(float64(0.5)))
 	if err != nil {
 		t.Error(err)
 	}

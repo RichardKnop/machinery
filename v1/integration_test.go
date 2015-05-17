@@ -26,11 +26,11 @@ func TestSendTask(t *testing.T) {
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(1),
 			},
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(1),
 			},
 		},
@@ -46,9 +46,9 @@ func TestSendTask(t *testing.T) {
 		t.Error(err)
 	}
 
-	if result.Interface() != float64(2) {
+	if result.Interface() != int64(2) {
 		t.Errorf(
-			"result = %v(%v), want float64(2)",
+			"result = %v(%v), want int64(2)",
 			result.Type().String(),
 			result.Interface(),
 		)
@@ -72,11 +72,11 @@ func TestSendChain(t *testing.T) {
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(1),
 			},
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(1),
 			},
 		},
@@ -86,11 +86,11 @@ func TestSendChain(t *testing.T) {
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(5),
 			},
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(6),
 			},
 		},
@@ -100,7 +100,7 @@ func TestSendChain(t *testing.T) {
 		Name: "multiply",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(4),
 			},
 		},
@@ -117,9 +117,9 @@ func TestSendChain(t *testing.T) {
 		t.Error(err)
 	}
 
-	if result.Interface() != float64(52) {
+	if result.Interface() != int64(52) {
 		t.Errorf(
-			"result = %v(%v), want float64(52)",
+			"result = %v(%v), want int64(52)",
 			result.Type().String(),
 			result.Interface(),
 		)
@@ -140,15 +140,15 @@ func setup(brokerURL string) *Server {
 	errors.Fail(err, "Could not initialize server")
 
 	tasks := map[string]interface{}{
-		"add": func(args ...float64) (float64, error) {
-			sum := 0.0
+		"add": func(args ...int64) (int64, error) {
+			sum := int64(0)
 			for _, arg := range args {
 				sum += arg
 			}
 			return sum, nil
 		},
-		"multiply": func(args ...float64) (float64, error) {
-			sum := 1.0
+		"multiply": func(args ...int64) (int64, error) {
+			sum := int64(1)
 			for _, arg := range args {
 				sum *= arg
 			}

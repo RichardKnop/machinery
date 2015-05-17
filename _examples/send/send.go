@@ -55,11 +55,11 @@ func main() {
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(1),
 			},
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(1),
 			},
 		},
@@ -77,11 +77,11 @@ func main() {
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(1),
 			},
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(1),
 			},
 		},
@@ -91,11 +91,11 @@ func main() {
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(5),
 			},
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(6),
 			},
 		},
@@ -105,7 +105,7 @@ func main() {
 		Name: "multiply",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
-				Type:  "float64",
+				Type:  "int64",
 				Value: interface{}(4),
 			},
 		},

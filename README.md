@@ -127,16 +127,16 @@ Tasks
 Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message. Let's say we want to define tasks for adding and multiplying numbers:
 
 ```go
-func Add(args ...float64) (float64, error) {
-	sum := 0.0
+func Add(args ...int64) (int64, error) {
+	sum := int64(0)
 	for _, arg := range args {
 		sum += arg
 	}
 	return sum, nil
 }
 
-func Multiply(args ...float64) (float64, error) {
-	sum := 1.0
+func Multiply(args ...int64) (int64, error) {
+	sum := int64(1)
 	for _, arg := range args {
 		sum *= arg
 	}
@@ -171,11 +171,11 @@ Simply put, when a worker receives a message like this:
     "Name": "add",
     "Args": [
         {
-            "Type": "float64",
+            "Type": "int64",
             "Value": 1,
         },
         {
-            "Type": "float64",
+            "Type": "int64",
             "Value": 1,
         }
     ],
@@ -235,11 +235,11 @@ task := signatures.TaskSignature{
     Name: "add",
     Args: []signatures.TaskArg{
         signatures.TaskArg{
-            Type:  "float64",
+            Type:  "int64",
             Value: interface{}(1),
         },
         signatures.TaskArg{
-            Type:  "float64",
+            Type:  "int64",
             Value: interface{}(1),
         },
     },
@@ -259,11 +259,11 @@ If you have configured a result backend, the task states will be persisted. Poss
 
 ```go
 const (
-	PendingState = "PENDING"
+	PendingState  = "PENDING"
 	ReceivedState = "RECEIVED"
-	StartedState = "STARTED"
-	SuccessState = "SUCCESS"
-	FailureState = "FAILURE"
+	StartedState  = "STARTED"
+	SuccessState  = "SUCCESS"
+	FailureState  = "FAILURE"
 )
 ```
 
@@ -331,11 +331,11 @@ task1 := signatures.TaskSignature{
     Name: "add",
     Args: []signatures.TaskArg{
         signatures.TaskArg{
-            Type:  "float64",
+            Type:  "int64",
             Value: interface{}(1),
         },
         signatures.TaskArg{
-            Type:  "float64",
+            Type:  "int64",
             Value: interface{}(1),
         },
     },
@@ -345,11 +345,11 @@ task2 := signatures.TaskSignature{
     Name: "add",
     Args: []signatures.TaskArg{
         signatures.TaskArg{
-            Type:  "float64",
+            Type:  "int64",
             Value: interface{}(5),
         },
         signatures.TaskArg{
-            Type:  "float64",
+            Type:  "int64",
             Value: interface{}(6),
         },
     },
@@ -359,7 +359,7 @@ task3 := signatures.TaskSignature{
     Name: "multiply",
     Args: []signatures.TaskArg{
         signatures.TaskArg{
-            Type:  "float64",
+            Type:  "int64",
             Value: interface{}(4),
         },
     },

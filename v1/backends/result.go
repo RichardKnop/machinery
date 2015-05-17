@@ -50,7 +50,7 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 	for {
 		asyncResult.GetState()
 
-		if asyncResult.taskState.IsCompleted() {
+		if asyncResult.taskState.IsSuccess() {
 			return utils.ReflectValue(
 				asyncResult.taskState.Result.Type,
 				asyncResult.taskState.Result.Value,
@@ -58,7 +58,7 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 		}
 
 		if asyncResult.taskState.IsFailure() {
-			return reflect.Value{}, asyncResult.taskState.Error
+			return reflect.Value{}, errors.New(asyncResult.taskState.Error)
 		}
 	}
 }

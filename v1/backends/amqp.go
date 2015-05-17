@@ -56,7 +56,7 @@ func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 
 	conn, channel, queue, err := open(taskUUID, amqpBackend.config)
 	if err != nil {
-		return &taskState, err
+		return nil, err
 	}
 
 	defer close(channel, conn)
@@ -66,17 +66,18 @@ func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 		false,      // multiple
 	)
 	if err != nil {
-		return &taskState, err
+		return nil, err
 	}
 	if !ok {
-		return &taskState, errors.New("No state ready")
+		return nil, errors.New("No state ready")
 	}
 
 	d.Ack(false)
 
 	if err := json.Unmarshal([]byte(d.Body), &taskState); err != nil {
-		log.Printf("Failed to unmarshal task state: %v", d.Body)
-		return &taskState, err
+		log.Printf("Failed to unmarshal task state: %v", string(d.Body))
+		log.Print(err)
+		return nil, err
 	}
 
 	if taskState.IsCompleted() {

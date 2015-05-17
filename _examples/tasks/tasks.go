@@ -1,8 +1,8 @@
 package exampletasks
 
 // Add ...
-func Add(args ...float64) (float64, error) {
-	sum := 0.0
+func Add(args ...int64) (int64, error) {
+	sum := int64(0)
 	for _, arg := range args {
 		sum += arg
 	}
@@ -10,8 +10,8 @@ func Add(args ...float64) (float64, error) {
 }
 
 // Multiply ...
-func Multiply(args ...float64) (float64, error) {
-	sum := 1.0
+func Multiply(args ...int64) (int64, error) {
+	sum := int64(1)
 	for _, arg := range args {
 		sum *= arg
 	}

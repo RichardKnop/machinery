@@ -132,9 +132,12 @@ func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProce
 
 		signature := signatures.TaskSignature{}
 		if err := json.Unmarshal([]byte(d.Body), &signature); err != nil {
-			log.Printf("Failed to unmarshal task singnature: %v", d.Body)
+			log.Printf("Failed to unmarshal task singnature: %v", string(d.Body))
 			return
 		}
+		// for _, arg := range signature.Args {
+		// 	arg.Value =
+		// }
 
 		taskProcessor.Process(&signature)
 	}
