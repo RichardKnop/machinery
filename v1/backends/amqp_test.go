@@ -1,6 +1,7 @@
 package backends
 
 import (
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -8,20 +9,25 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
-func TestGetStateMemcache(t *testing.T) {
-	memcacheURL := os.Getenv("MEMCACHE_URL")
-	if memcacheURL == "" {
+func TestGetStateAMQP(t *testing.T) {
+	brokerURL := os.Getenv("AMQP_URL")
+	if brokerURL == "" {
 		return
 	}
 
 	cnf := config.Config{
-		ResultBackend: memcacheURL,
+		Broker:        brokerURL,
+		ResultBackend: "amqp",
+		Exchange:      "test_exchange",
+		ExchangeType:  "direct",
+		DefaultQueue:  "test_queue",
+		BindingKey:    "test_task",
 	}
 
 	taskUUID := "taskUUID"
 
 	go func() {
-		backend := NewMemcacheBackend(&cnf, []string{memcacheURL})
+		backend := NewAMQPBackend(&cnf)
 
 		pendingState := NewPendingTaskState(taskUUID)
 		backend.UpdateState(pendingState)
@@ -46,12 +52,13 @@ func TestGetStateMemcache(t *testing.T) {
 		backend.UpdateState(successState)
 	}()
 
-	backend := NewMemcacheBackend(&cnf, []string{memcacheURL})
+	backend := NewAMQPBackend(&cnf)
 
 	for {
 		taskState, err := backend.GetState(taskUUID)
 
 		if err != nil {
+			log.Print(err)
 			continue
 		}
 

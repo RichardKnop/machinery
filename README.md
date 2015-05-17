@@ -236,11 +236,11 @@ task := signatures.TaskSignature{
     Args: []signatures.TaskArg{
         signatures.TaskArg{
             Type:  "int64",
-            Value: interface{}(1),
+            Value: 1,
         },
         signatures.TaskArg{
             Type:  "int64",
-            Value: interface{}(1),
+            Value: 1,
         },
     },
 }
@@ -332,11 +332,11 @@ task1 := signatures.TaskSignature{
     Args: []signatures.TaskArg{
         signatures.TaskArg{
             Type:  "int64",
-            Value: interface{}(1),
+            Value: 1,
         },
         signatures.TaskArg{
             Type:  "int64",
-            Value: interface{}(1),
+            Value: 1,
         },
     },
 }
@@ -346,11 +346,11 @@ task2 := signatures.TaskSignature{
     Args: []signatures.TaskArg{
         signatures.TaskArg{
             Type:  "int64",
-            Value: interface{}(5),
+            Value: 5,
         },
         signatures.TaskArg{
             Type:  "int64",
-            Value: interface{}(6),
+            Value: 5,
         },
     },
 }
@@ -360,7 +360,7 @@ task3 := signatures.TaskSignature{
     Args: []signatures.TaskArg{
         signatures.TaskArg{
             Type:  "int64",
-            Value: interface{}(4),
+            Value: 4,
         },
     },
 }

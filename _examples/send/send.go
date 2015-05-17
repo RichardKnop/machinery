@@ -56,11 +56,11 @@ func main() {
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: interface{}(1),
+				Value: 1,
 			},
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: interface{}(1),
+				Value: 1,
 			},
 		},
 	}
@@ -78,11 +78,11 @@ func main() {
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: interface{}(1),
+				Value: 1,
 			},
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: interface{}(1),
+				Value: 1,
 			},
 		},
 	}
@@ -92,11 +92,11 @@ func main() {
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: interface{}(5),
+				Value: 5,
 			},
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: interface{}(6),
+				Value: 6,
 			},
 		},
 	}
@@ -106,7 +106,7 @@ func main() {
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: interface{}(4),
+				Value: 4,
 			},
 		},
 	}
