@@ -42,8 +42,8 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) {
 	}
 
 	// Update task state to RECEIVED
-	taskState := backends.NewReceivedTaskState(signature.UUID)
-	if err := worker.server.UpdateTaskState(taskState); err != nil {
+	receivedState := backends.NewReceivedTaskState(signature.UUID)
+	if err := worker.server.UpdateTaskState(receivedState); err != nil {
 		log.Print(err)
 	}
 
@@ -56,8 +56,8 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) {
 	}
 
 	// Update task state to STARTED
-	taskState = backends.NewStartedTaskState(signature.UUID)
-	if err := worker.server.UpdateTaskState(taskState); err != nil {
+	startedState := backends.NewStartedTaskState(signature.UUID)
+	if err := worker.server.UpdateTaskState(startedState); err != nil {
 		log.Print(err)
 	}
 
@@ -89,14 +89,14 @@ func (worker *Worker) reflectArgs(args []signatures.TaskArg) ([]reflect.Value, e
 // Task succeeded, update state and trigger success callbacks
 func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, result reflect.Value) {
 	// Update task state to SUCCESS
-	taskState := backends.NewSuccessTaskState(
+	successState := backends.NewSuccessTaskState(
 		signature.UUID,
 		&backends.TaskResult{
 			Type:  result.Type().String(),
 			Value: result.Interface(),
 		},
 	)
-	if err := worker.server.UpdateTaskState(taskState); err != nil {
+	if err := worker.server.UpdateTaskState(successState); err != nil {
 		log.Print(err)
 	}
 
@@ -119,8 +119,8 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 // Task failed, update state and trigger error callbacks
 func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) {
 	// Update task state to FAILURE
-	taskState := backends.NewFailureTaskState(signature.UUID, err)
-	if err := worker.server.UpdateTaskState(taskState); err != nil {
+	failureState := backends.NewFailureTaskState(signature.UUID, err)
+	if err := worker.server.UpdateTaskState(failureState); err != nil {
 		log.Print(err)
 	}
 

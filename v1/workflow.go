@@ -1,8 +1,8 @@
 package machinery
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/twinj/uuid"
 )
 
 // Chain creates a chain of tasks to be executed one after another
@@ -22,7 +22,7 @@ func NewChain(tasks ...*signatures.TaskSignature) *Chain {
 
 	// Auto generate a UUIDs if not set already
 	for _, task := range chain.Tasks {
-		task.UUID = uuid.NewV4().String()
+		task.UUID = uuid.New()
 	}
 
 	return chain

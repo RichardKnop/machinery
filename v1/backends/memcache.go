@@ -2,6 +2,7 @@ package backends
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/bradfitz/gomemcache/memcache"
@@ -28,17 +29,30 @@ func (memcacheBackend *MemcacheBackend) UpdateState(taskState *TaskState) error 
 		return err
 	}
 
-	expiration := memcacheBackend.config.ResultsExpireIn
-	if expiration == 0 {
+	expiresIn := memcacheBackend.config.ResultsExpireIn
+	if expiresIn == 0 {
 		// // expire results after 1 hour by default
-		expiration = 3600
+		expiresIn = 3600
+	}
+	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
+
+	if err := memcacheBackend.client.Set(&memcache.Item{
+		Key:   taskState.TaskUUID,
+		Value: encoded,
+	}); err != nil {
+		return err
 	}
 
-	return memcacheBackend.client.Set(&memcache.Item{
-		Key:        taskState.TaskUUID,
-		Value:      encoded,
-		Expiration: int32(expiration),
-	})
+	if err := memcacheBackend.client.Touch(
+		taskState.TaskUUID,
+		expirationTimestamp,
+	); err != nil {
+		return err
+	}
+
+	time.Sleep(1 * time.Millisecond)
+
+	return nil
 }
 
 // GetState returns the latest task state
