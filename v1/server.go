@@ -2,12 +2,13 @@ package machinery
 
 import (
 	"fmt"
+	"log"
 
+	"code.google.com/p/go-uuid/uuid"
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/twinj/uuid"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -74,14 +75,18 @@ func (server *Server) GetRegisteredTask(name string) interface{} {
 func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.AsyncResult, error) {
 	// Auto generate a UUID if not set already
 	if signature.UUID == "" {
-		signature.UUID = uuid.NewV4().String()
+		signature.UUID = uuid.New()
 	}
 
 	if err := server.broker.Publish(signature); err != nil {
 		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
 
-	server.UpdateTaskState(backends.NewPendingTaskState(signature.UUID))
+	// Update task state to PENDING
+	pendingState := backends.NewPendingTaskState(signature.UUID)
+	if err := server.UpdateTaskState(pendingState); err != nil {
+		log.Print(err)
+	}
 
 	return backends.NewAsyncResult(signature.UUID, server.backend), nil
 }
@@ -93,7 +98,10 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 	}
 
 	// Update task state to PENDING
-	server.UpdateTaskState(backends.NewPendingTaskState(chain.Tasks[0].UUID))
+	pendingState := backends.NewPendingTaskState(chain.Tasks[0].UUID)
+	if err := server.UpdateTaskState(pendingState); err != nil {
+		log.Print(err)
+	}
 
 	return backends.NewChainAsyncResult(chain.GetUUIDs(), server.backend), nil
 }
