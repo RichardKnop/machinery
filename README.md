@@ -6,7 +6,7 @@ Machinery
 
 Machinery is an asynchronous task queue/job queue based on distributed message passing.
 
-So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processes on a single server using Golang's coroutines.
+So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processes on a single server using Golang's goroutines.
 
 This is an early stage project so far. Feel free to contribute.
 
@@ -75,7 +75,7 @@ type Config struct {
     * Memcache: memcache://10.0.0.1:11211,10.0.0.2:11211
 * ResultsExpireIn (optional): How long to store task results for in seconds. Defaults to 3600 (1 hour)
 * Exchange (required): Exchange name
-* Exchange (required): Exchange type
+* ExchangeType (required): Exchange type
 * DefaultQueue (required): Default queue name
 * BindingKey (required): The queue is bind to the exchange with this key
 
