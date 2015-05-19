@@ -52,8 +52,6 @@ func (memcacheBackend *MemcacheBackend) UpdateState(taskState *TaskState) error 
 		return err
 	}
 
-	//time.Sleep(1 * time.Millisecond)
-
 	return nil
 }
 
