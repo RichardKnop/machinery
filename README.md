@@ -75,7 +75,7 @@ type Config struct {
     * Memcache: memcache://10.0.0.1:11211,10.0.0.2:11211
 * ResultsExpireIn (optional): How long to store task results for in seconds. Defaults to 3600 (1 hour)
 * Exchange (required): Exchange name
-* Exchange (required): Exchange type
+* ExchangeType (required): Exchange type
 * DefaultQueue (required): Default queue name
 * BindingKey (required): The queue is bind to the exchange with this key
 
