@@ -6,7 +6,7 @@ Machinery
 
 Machinery is an asynchronous task queue/job queue based on distributed message passing.
 
-So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processes on a single server using Golang's coroutines.
+So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processes on a single server using Golang's goroutines.
 
 This is an early stage project so far. Feel free to contribute.
 
