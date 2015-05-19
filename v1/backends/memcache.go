@@ -10,15 +10,15 @@ import (
 
 // MemcacheBackend represents a Memcache result backend
 type MemcacheBackend struct {
-	config *config.Config
-	client *memcache.Client
+	config  *config.Config
+	servers []string
 }
 
 // NewMemcacheBackend creates MemcacheBackend instance
 func NewMemcacheBackend(cnf *config.Config, servers []string) Backend {
 	return Backend(&MemcacheBackend{
-		config: cnf,
-		client: memcache.New(servers...),
+		config:  cnf,
+		servers: servers,
 	})
 }
 
@@ -29,6 +29,15 @@ func (memcacheBackend *MemcacheBackend) UpdateState(taskState *TaskState) error 
 		return err
 	}
 
+	client := memcache.New(memcacheBackend.servers...)
+
+	if err := client.Set(&memcache.Item{
+		Key:   taskState.TaskUUID,
+		Value: encoded,
+	}); err != nil {
+		return err
+	}
+
 	expiresIn := memcacheBackend.config.ResultsExpireIn
 	if expiresIn == 0 {
 		// // expire results after 1 hour by default
@@ -36,21 +45,14 @@ func (memcacheBackend *MemcacheBackend) UpdateState(taskState *TaskState) error 
 	}
 	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
 
-	if err := memcacheBackend.client.Set(&memcache.Item{
-		Key:   taskState.TaskUUID,
-		Value: encoded,
-	}); err != nil {
-		return err
-	}
-
-	if err := memcacheBackend.client.Touch(
+	if err := client.Touch(
 		taskState.TaskUUID,
 		expirationTimestamp,
 	); err != nil {
 		return err
 	}
 
-	time.Sleep(1 * time.Millisecond)
+	//time.Sleep(1 * time.Millisecond)
 
 	return nil
 }
@@ -59,7 +61,9 @@ func (memcacheBackend *MemcacheBackend) UpdateState(taskState *TaskState) error 
 func (memcacheBackend *MemcacheBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := TaskState{}
 
-	item, err := memcacheBackend.client.Get(taskUUID)
+	client := memcache.New(memcacheBackend.servers...)
+
+	item, err := client.Get(taskUUID)
 	if err != nil {
 		return nil, err
 	}
