@@ -46,9 +46,24 @@ func (server *Server) NewWorker(consumerTag string) *Worker {
 	}
 }
 
-// GetBroker returns connection object
+// GetBroker returns broker
 func (server *Server) GetBroker() brokers.Broker {
 	return server.broker
+}
+
+// SetBroker sets broker
+func (server *Server) SetBroker(broker brokers.Broker) {
+	server.broker = broker
+}
+
+// GetBackend returns backend
+func (server *Server) GetBackend() backends.Backend {
+	return server.backend
+}
+
+// SetBackend sets backend
+func (server *Server) SetBackend(backend backends.Backend) {
+	server.backend = backend
 }
 
 // GetConfig returns connection object
