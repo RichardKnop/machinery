@@ -95,7 +95,7 @@ Default queue name, e.g. `machinery_tasks`.
 
 ### BindingKey
 
-The queue is bind to the exchange with this key.
+The queue is bind to the exchange with this key, e.g. `machinery_task`.
 
 ## Server
 
