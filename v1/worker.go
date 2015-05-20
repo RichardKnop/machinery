@@ -16,9 +16,8 @@ type Worker struct {
 	ConsumerTag string
 }
 
-// Launch starts a new worker process
-// The worker subscribes to the default queue
-// and processes incoming registered tasks
+// Launch starts a new worker process. The worker subscribes
+// to the default queue and processes incoming registered tasks
 func (worker *Worker) Launch() error {
 	cnf := worker.server.GetConfig()
 
@@ -33,7 +32,7 @@ func (worker *Worker) Launch() error {
 	return worker.server.GetBroker().StartConsuming(worker.ConsumerTag, worker)
 }
 
-// Quit ...
+// Quit tears down the running worker process
 func (worker *Worker) Quit() {
 	worker.server.GetBroker().StopConsuming()
 }
