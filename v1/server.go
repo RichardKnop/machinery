@@ -71,6 +71,11 @@ func (server *Server) GetConfig() *config.Config {
 	return server.config
 }
 
+// SetConfig sets config
+func (server *Server) SetConfig(cnf *config.Config) {
+	server.config = cnf
+}
+
 // RegisterTasks registers all tasks at once
 func (server *Server) RegisterTasks(tasks map[string]interface{}) {
 	server.registeredTasks = tasks
