@@ -65,6 +65,7 @@ func (memcacheBackend *MemcacheBackend) GetState(taskUUID string) (*TaskState, e
 	if err != nil {
 		return nil, err
 	}
+
 	if err := json.Unmarshal(item.Value, &taskState); err != nil {
 		return nil, err
 	}

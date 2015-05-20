@@ -8,11 +8,13 @@ type TaskArg struct {
 
 // TaskSignature represents a single task invocation
 type TaskSignature struct {
-	UUID, Name, RoutingKey string
-	Args                   []TaskArg
-	Immutable              bool
-	OnSuccess              []*TaskSignature
-	OnError                []*TaskSignature
+	UUID       string
+	Name       string
+	RoutingKey string
+	Args       []TaskArg
+	Immutable  bool
+	OnSuccess  []*TaskSignature
+	OnError    []*TaskSignature
 }
 
 // AdjustRoutingKey makes sure the routing key is correct.

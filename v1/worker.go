@@ -30,7 +30,12 @@ func (worker *Worker) Launch() error {
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
-	return worker.server.GetBroker().Consume(worker.ConsumerTag, worker)
+	return worker.server.GetBroker().StartConsuming(worker.ConsumerTag, worker)
+}
+
+// Quit ...
+func (worker *Worker) Quit() {
+	worker.server.GetBroker().StopConsuming()
 }
 
 // Process handles received tasks and triggers success/error callbacks

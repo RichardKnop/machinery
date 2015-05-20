@@ -4,7 +4,8 @@ import "github.com/RichardKnop/machinery/v1/signatures"
 
 // Broker - a common interface for all brokers
 type Broker interface {
-	Consume(consumerTag string, p TaskProcessor) error
+	StartConsuming(consumerTag string, p TaskProcessor) error
+	StopConsuming()
 	Publish(task *signatures.TaskSignature) error
 }
 

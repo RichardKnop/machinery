@@ -18,17 +18,19 @@ type AMQPBroker struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 	queue   amqp.Queue
+	quit    chan int
 }
 
 // NewAMQPBroker creates new AMQPConnection instance
-func NewAMQPBroker(cnf *config.Config) Broker {
+func NewAMQPBroker(cnf *config.Config, quit chan int) Broker {
 	return Broker(&AMQPBroker{
 		config: cnf,
+		quit:   quit,
 	})
 }
 
-// Consume enters a loop and waits for incoming messages
-func (amqpBroker *AMQPBroker) Consume(consumerTag string, taskProcessor TaskProcessor) error {
+// StartConsuming enters a loop and waits for incoming messages
+func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) error {
 	retryIn := 0
 	fibonacci := utils.Fibonacci()
 
@@ -86,10 +88,21 @@ func (amqpBroker *AMQPBroker) Consume(consumerTag string, taskProcessor TaskProc
 			return fmt.Errorf("Queue Consume: %s", err)
 		}
 
+		log.Print("[*] Waiting for messages. To exit press CTRL+C")
+
 		amqpBroker.consume(deliveries, taskProcessor)
 
-		log.Print("[*] Waiting for messages. To exit press CTRL+C")
+		log.Print("Quitting the worker")
+
+		break
 	}
+
+	return nil
+}
+
+// StopConsuming quits the loop
+func (amqpBroker *AMQPBroker) StopConsuming() {
+	amqpBroker.quit <- 1
 }
 
 // Publish places a new message on the default queue
@@ -135,15 +148,17 @@ func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProce
 			log.Printf("Failed to unmarshal task singnature: %v", string(d.Body))
 			return
 		}
-		// for _, arg := range signature.Args {
-		// 	arg.Value =
-		// }
 
 		taskProcessor.Process(&signature)
 	}
 
-	for d := range deliveries {
-		consumeOne(d)
+	for {
+		select {
+		case d := <-deliveries:
+			consumeOne(d)
+		case <-amqpBroker.quit:
+			return
+		}
 	}
 }
 

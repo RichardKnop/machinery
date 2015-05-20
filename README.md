@@ -1,8 +1,7 @@
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg "GoDoc")](http://godoc.org/github.com/RichardKnop/machinery/v1)
 ![Build Status](https://travis-ci.org/RichardKnop/machinery.svg?branch=master)
 
-Machinery
-=========
+# Machinery
 
 Machinery is an asynchronous task queue/job queue based on distributed message passing.
 
@@ -23,8 +22,7 @@ This is an early stage project so far. Feel free to contribute.
     - [Chains](https://github.com/RichardKnop/machinery#chains)
 - [Development Setup](https://github.com/RichardKnop/machinery#development-setup)
 
-First Steps
-===========
+## First Steps
 
 Add the Machinery library to your $GOPATH/src:
 
@@ -52,8 +50,7 @@ You will be able to see the tasks being processed asynchronously by the worker:
 
 ![Example worker receives tasks](https://github.com/RichardKnop/machinery/blob/master/assets/example_worker_receives_tasks.png)
 
-Configuration
-=============
+## Configuration
 
 Machinery has several configuration options. Configuration is encapsulated by a Config struct and injected as a dependency to objects that need it.
 
@@ -69,18 +66,38 @@ type Config struct {
 }
 ```
 
-* Broker (required): A message broker. Currently only AMQP is supported. Use full AMQP URL
-* ResultBackend (optional): Result backend to use for keeping task results Supported backends: Currently only AMQP is supported
-    * AMQP: Use just "amqp", other details will be assumed from the full AMQP URL in Broker setting
-    * Memcache: memcache://10.0.0.1:11211,10.0.0.2:11211
-* ResultsExpireIn (optional): How long to store task results for in seconds. Defaults to 3600 (1 hour)
-* Exchange (required): Exchange name
-* ExchangeType (required): Exchange type
-* DefaultQueue (required): Default queue name
-* BindingKey (required): The queue is bind to the exchange with this key
+### Broker
 
-Server
-======
+A message broker. Currently only AMQP is supported. Use full AMQP URL such as `amqp://guest:guest@localhost:5672/`.
+
+### ResultBackend
+
+Result backend to use for keeping task states and results. This setting is optional, you can run Machinery without keeping track of task results.
+
+* Use `amqp` which will assume full AMQP connection details from Broker setting.
+* To use Memcache backend: `memcache://10.0.0.1:11211,10.0.0.2:11211`.
+
+### ResultsExpireIn
+
+How long to store task results for in seconds. Defaults to 3600 (1 hour).
+
+### Exchange
+
+Exchange name, e.g. `machinery_exchange`.
+
+### ExchangeType
+
+Exchange type, e.g. `direct`.
+
+### DefaultQueue
+
+Default queue name, e.g. `machinery_tasks`.
+
+### BindingKey
+
+The queue is bind to the exchange with this key.
+
+## Server
 
 A Machinery library must be instantiated before use. The way this is done is by creating a Server instance. Server is a base object which stores Machinery configuration and registered tasks. E.g.:
 
@@ -106,8 +123,7 @@ if err != nil {
 }
 ```
 
-Workers
-=======
+## Workers
 
 In order to consume tasks, you need to have one or more workers running. All you need to run a worker is a Server instance with registered tasks. E.g.:
 
@@ -121,8 +137,7 @@ if err != nil {
 
 Each worker will only consume registered tasks.
 
-Tasks
-=====
+## Tasks
 
 Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message. Let's say we want to define tasks for adding and multiplying numbers:
 
@@ -144,8 +159,7 @@ func Multiply(args ...int64) (int64, error) {
 }
 ```
 
-Registering Tasks
------------------
+### Registering Tasks
 
 Before your workers can consume a task, you need to register it with the server. This is done by assigning a task a unique name:
 
@@ -189,8 +203,7 @@ It will call Add(1, 1). Each task should return an error as well so we can handl
 
 Ideally, tasks should be idempotent which means there will be no unintended consequences when a task is called multiple times with the same arguments.
 
-Signatures
-----------
+### Signatures
 
 A signature wraps calling arguments, execution options (such as immutability) and success/error callbacks of a task so it can be send across the wire to workers. Task signatures implement a simple interface:
 
@@ -201,11 +214,13 @@ type TaskArg struct {
 }
 
 type TaskSignature struct {
-	UUID, Name, RoutingKey string
-	Args                   []TaskArg
-	Immutable              bool
-	OnSuccess              []*TaskSignature
-	OnError                []*TaskSignature
+	UUID       string
+	Name       string
+	RoutingKey string
+	Args       []TaskArg
+	Immutable  bool
+	OnSuccess  []*TaskSignature
+	OnError    []*TaskSignature
 }
 ```
 
@@ -223,8 +238,7 @@ OnSuccess defines tasks which will be called after the task has executed success
 
 OnError defines tasks which will be called after the task execution fails. The first argument passed to error callbacks will be the error returned from the failed task.
 
-Sending Tasks
--------------
+### Sending Tasks
 
 Tasks can be called by passing an instance of TaskSignature to an App instance. E.g:
 
@@ -252,8 +266,7 @@ if err != nil {
 }
 ```
 
-Keeping Results
----------------
+### Keeping Results
 
 If you have configured a result backend, the task states will be persisted. Possible states:
 
@@ -267,7 +280,7 @@ const (
 )
 ```
 
-When using AMQP as a result backend, task states will be persisted in separate queues for each task.
+> When using AMQP as a result backend, task states will be persisted in separate queues for each task. Although RabbitMQ can scale up to thousands of queues, it is strongly advised to use a better suited result backend (e.g. Memcache) when you are expecting to run a large number of parallel tasks.
 
 ```go
 type TaskResult struct {
@@ -311,13 +324,11 @@ if err != nil {
 fmt.Println(result.Interface())
 ```
 
-Workflows
-=========
+## Workflows
 
 Running a single asynchronous task is fine but often you will want to design a workflow of tasks to be executed in an orchestrated way. There are couple of useful functions to help you design workflows.
 
-Chains
-------
+### Chains
 
 Chain is simply a set of tasks which will be executed one by one, each successful task triggering the next task in the chain. E.g.:
 
@@ -390,8 +401,7 @@ if err != nil {
 fmt.Println(result.Interface())
 ```
 
-Development Setup
-=================
+## Development Setup
 
 First, there are several requirements:
 
@@ -411,8 +421,7 @@ Then get all Machinery dependencies.
 $ make deps
 ```
 
-Tests
------
+### Tests
 
 ```
 $ make test

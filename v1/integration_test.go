@@ -1,6 +1,7 @@
 package machinery
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -9,19 +10,33 @@ import (
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
-func TestSendTask(t *testing.T) {
+func TestIntegration(t *testing.T) {
 	brokerURL := os.Getenv("AMQP_URL")
 	if brokerURL == "" {
 		return
 	}
 
-	server := setup(brokerURL)
-	worker := server.NewWorker("test_worker")
+	server1 := setup(brokerURL, "amqp")
+	worker1 := server1.NewWorker("test_worker")
+	go worker1.Launch()
+	_testSendTask(server1, t)
+	_testSendChain(server1, t)
+	worker1.Quit()
 
-	go func() {
-		worker.Launch()
-	}()
+	memcacheURL := os.Getenv("MEMCACHE_URL")
+	if memcacheURL == "" {
+		return
+	}
 
+	server2 := setup(brokerURL, fmt.Sprintf("memcache://%v", memcacheURL))
+	worker2 := server2.NewWorker("test_worker")
+	go worker2.Launch()
+	_testSendTask(server2, t)
+	_testSendChain(server2, t)
+	worker2.Quit()
+}
+
+func _testSendTask(server *Server, t *testing.T) {
 	task := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
@@ -55,19 +70,7 @@ func TestSendTask(t *testing.T) {
 	}
 }
 
-func TestSendChain(t *testing.T) {
-	brokerURL := os.Getenv("AMQP_URL")
-	if brokerURL == "" {
-		return
-	}
-
-	server := setup(brokerURL)
-	worker := server.NewWorker("test_worker")
-
-	go func() {
-		worker.Launch()
-	}()
-
+func _testSendChain(server *Server, t *testing.T) {
 	task1 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
@@ -126,10 +129,10 @@ func TestSendChain(t *testing.T) {
 	}
 }
 
-func setup(brokerURL string) *Server {
+func setup(brokerURL, backend string) *Server {
 	cnf := config.Config{
 		Broker:        brokerURL,
-		ResultBackend: "amqp",
+		ResultBackend: backend,
 		Exchange:      "test_exchange",
 		ExchangeType:  "direct",
 		DefaultQueue:  "test_queue",

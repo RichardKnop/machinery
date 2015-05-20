@@ -22,7 +22,7 @@ type Server struct {
 
 // NewServer creates Server instance
 func NewServer(cnf *config.Config) (*Server, error) {
-	broker, err := BrokerFactory(cnf)
+	broker, err := BrokerFactory(cnf, make(chan int))
 	if err != nil {
 		return nil, err
 	}
