@@ -20,6 +20,7 @@ type Worker struct {
 // to the default queue and processes incoming registered tasks
 func (worker *Worker) Launch() error {
 	cnf := worker.server.GetConfig()
+	broker := worker.server.GetBroker()
 
 	log.Printf("Launching a worker with the following settings:")
 	log.Printf("- Broker: %s", cnf.Broker)
@@ -29,7 +30,24 @@ func (worker *Worker) Launch() error {
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
-	return worker.server.GetBroker().StartConsuming(worker.ConsumerTag, worker)
+	errChan := make(chan error)
+
+	go func() {
+		retryFunc := utils.RetryClosure()
+		for {
+			retryFunc()
+			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
+
+			if !retry {
+				errChan <- err // stop the goroutine
+				break
+			}
+
+			log.Print(err)
+		}
+	}()
+
+	return <-errChan
 }
 
 // Quit tears down the running worker process

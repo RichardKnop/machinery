@@ -4,105 +4,72 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/streadway/amqp"
 )
 
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
-	config  *config.Config
-	conn    *amqp.Connection
-	channel *amqp.Channel
-	queue   amqp.Queue
-	quit    chan int
+	config   *config.Config
+	conn     *amqp.Connection
+	channel  *amqp.Channel
+	queue    amqp.Queue
+	stopChan chan int
 }
 
 // NewAMQPBroker creates new AMQPConnection instance
-func NewAMQPBroker(cnf *config.Config, quit chan int) Broker {
+func NewAMQPBroker(cnf *config.Config, stopChan chan int) Broker {
 	return Broker(&AMQPBroker{
-		config: cnf,
-		quit:   quit,
+		config:   cnf,
+		stopChan: stopChan,
 	})
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) error {
-	retryIn := 0
-	fibonacci := utils.Fibonacci()
-
-	retryReset := func() {
-		// Next time there is a connection problem,
-		// we want to start a new Fibonacci retry sequence
-		fibonacci = utils.Fibonacci()
-		retryIn = 0
+func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
+	conn, channel, queue, err := open(amqpBroker.config)
+	if err != nil {
+		return true, err // retry true
 	}
 
-	retry := func() {
-		if retryIn > 0 {
-			// This means there was a problem opening a connection
-			// We will try reconnecting in 1, 1, 2, 3, 5, 8... (Fibonacci)
-			durationString := fmt.Sprintf("%vs", retryIn)
-			duration, _ := time.ParseDuration(durationString)
+	defer close(channel, conn)
 
-			log.Printf("Retrying in %v seconds", retryIn)
-			time.Sleep(duration)
-		}
-		retryIn = fibonacci()
+	if err := channel.Qos(
+		3,     // prefetch count
+		0,     // prefetch size
+		false, // global
+	); err != nil {
+		return false, fmt.Errorf("Channel Qos: %s", err)
 	}
 
-	for {
-		retry()
-
-		conn, channel, queue, err := open(amqpBroker.config)
-		if err != nil {
-			log.Print(err)
-			continue
-		}
-
-		retryReset()
-
-		defer close(channel, conn)
-
-		if err := channel.Qos(
-			3,     // prefetch count
-			0,     // prefetch size
-			false, // global
-		); err != nil {
-			return fmt.Errorf("Channel Qos: %s", err)
-		}
-
-		deliveries, err := channel.Consume(
-			queue.Name,  // queue
-			consumerTag, // consumer tag
-			false,       // auto-ack
-			false,       // exclusive
-			false,       // no-local
-			false,       // no-wait
-			nil,         // arguments
-		)
-		if err != nil {
-			return fmt.Errorf("Queue Consume: %s", err)
-		}
-
-		log.Print("[*] Waiting for messages. To exit press CTRL+C")
-
-		amqpBroker.consume(deliveries, taskProcessor)
-
-		log.Print("Quitting the worker")
-
-		break
+	deliveries, err := channel.Consume(
+		queue.Name,  // queue
+		consumerTag, // consumer tag
+		false,       // auto-ack
+		false,       // exclusive
+		false,       // no-local
+		false,       // no-wait
+		nil,         // arguments
+	)
+	if err != nil {
+		return false, fmt.Errorf("Queue Consume: %s", err)
 	}
 
-	return nil
+	log.Print("[*] Waiting for messages. To exit press CTRL+C")
+
+	if err := amqpBroker.consume(deliveries, taskProcessor); err != nil {
+		return true, err // retry true
+	}
+
+	return false, nil
 }
 
 // StopConsuming quits the loop
 func (amqpBroker *AMQPBroker) StopConsuming() {
-	amqpBroker.quit <- 1
+	// Notifying the quit channel stops consuming of messages
+	amqpBroker.stopChan <- 1
 }
 
 // Publish places a new message on the default queue
@@ -138,26 +105,31 @@ func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error
 }
 
 // Consumes messages
-func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) {
-	consumeOne := func(d amqp.Delivery) {
+func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) error {
+	consumeOne := func(d amqp.Delivery) error {
 		log.Printf("Received new message: %s", d.Body)
-		d.Ack(false)
 
 		signature := signatures.TaskSignature{}
-		if err := json.Unmarshal([]byte(d.Body), &signature); err != nil {
-			log.Printf("Failed to unmarshal task singnature: %v", string(d.Body))
-			return
+		if err := json.Unmarshal(d.Body, &signature); err != nil {
+			d.Nack(false, false) // multiple, requeue both false
+			return err
 		}
 
+		d.Ack(false) // multiple false
+
 		taskProcessor.Process(&signature)
+
+		return nil
 	}
 
 	for {
 		select {
 		case d := <-deliveries:
-			consumeOne(d)
-		case <-amqpBroker.quit:
-			return
+			if err := consumeOne(d); err != nil {
+				return err
+			}
+		case <-amqpBroker.stopChan:
+			return nil
 		}
 	}
 }
