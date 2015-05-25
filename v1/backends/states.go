@@ -1,5 +1,9 @@
 package backends
 
+import (
+	"github.com/RichardKnop/machinery/v1/signatures"
+)
+
 const (
 	// PendingState - initial state of a task
 	PendingState = "PENDING"
@@ -27,43 +31,49 @@ type TaskState struct {
 	Error    string
 }
 
+// TaskStateGroup represents a state of group of tasks
+type TaskStateGroup struct {
+	GroupUUID string
+	States    *[]TaskState
+}
+
 // NewPendingTaskState ...
-func NewPendingTaskState(taskUUID string) *TaskState {
+func NewPendingTaskState(signature *signatures.TaskSignature) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    PendingState,
 	}
 }
 
 // NewReceivedTaskState ...
-func NewReceivedTaskState(taskUUID string) *TaskState {
+func NewReceivedTaskState(signature *signatures.TaskSignature) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    ReceivedState,
 	}
 }
 
 // NewStartedTaskState ...
-func NewStartedTaskState(taskUUID string) *TaskState {
+func NewStartedTaskState(signature *signatures.TaskSignature) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    StartedState,
 	}
 }
 
 // NewSuccessTaskState ...
-func NewSuccessTaskState(taskUUID string, result *TaskResult) *TaskState {
+func NewSuccessTaskState(signature *signatures.TaskSignature, result *TaskResult) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    SuccessState,
 		Result:   result,
 	}
 }
 
 // NewFailureTaskState ...
-func NewFailureTaskState(taskUUID string, err string) *TaskState {
+func NewFailureTaskState(signature *signatures.TaskSignature, err string) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    FailureState,
 		Error:    err,
 	}

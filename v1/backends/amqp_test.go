@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
 func TestGetStateAMQP(t *testing.T) {
@@ -24,22 +25,24 @@ func TestGetStateAMQP(t *testing.T) {
 		BindingKey:    "test_task",
 	}
 
-	taskUUID := "taskUUID"
+	signature := &signatures.TaskSignature{
+		UUID: "taskUUID",
+	}
 
 	go func() {
 		backend := NewAMQPBackend(&cnf)
 
-		pendingState := NewPendingTaskState(taskUUID)
+		pendingState := NewPendingTaskState(signature)
 		backend.UpdateState(pendingState)
 
 		time.Sleep(2 * time.Millisecond)
 
-		receivedState := NewReceivedTaskState(taskUUID)
+		receivedState := NewReceivedTaskState(signature)
 		backend.UpdateState(receivedState)
 
 		time.Sleep(2 * time.Millisecond)
 
-		startedState := NewStartedTaskState(taskUUID)
+		startedState := NewStartedTaskState(signature)
 		backend.UpdateState(startedState)
 
 		time.Sleep(2 * time.Millisecond)
@@ -48,14 +51,14 @@ func TestGetStateAMQP(t *testing.T) {
 			Type:  "float64",
 			Value: 2,
 		}
-		successState := NewSuccessTaskState(taskUUID, &result)
+		successState := NewSuccessTaskState(signature, &result)
 		backend.UpdateState(successState)
 	}()
 
 	backend := NewAMQPBackend(&cnf)
 
 	for {
-		taskState, err := backend.GetState(taskUUID)
+		taskState, err := backend.GetState(signature.UUID)
 
 		if err != nil {
 			log.Print(err)

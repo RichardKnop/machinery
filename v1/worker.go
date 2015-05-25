@@ -64,7 +64,7 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) {
 	}
 
 	// Update task state to RECEIVED
-	receivedState := backends.NewReceivedTaskState(signature.UUID)
+	receivedState := backends.NewReceivedTaskState(signature)
 	if err := worker.server.UpdateTaskState(receivedState); err != nil {
 		worker.finalizeError(signature, err)
 		return
@@ -79,7 +79,7 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) {
 	}
 
 	// Update task state to STARTED
-	startedState := backends.NewStartedTaskState(signature.UUID)
+	startedState := backends.NewStartedTaskState(signature)
 	if err := worker.server.UpdateTaskState(startedState); err != nil {
 		worker.finalizeError(signature, err)
 		return
@@ -114,7 +114,7 @@ func (worker *Worker) reflectArgs(args []signatures.TaskArg) ([]reflect.Value, e
 func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, result reflect.Value) {
 	// Update task state to SUCCESS
 	successState := backends.NewSuccessTaskState(
-		signature.UUID,
+		signature,
 		&backends.TaskResult{
 			Type:  result.Type().String(),
 			Value: result.Interface(),
@@ -143,7 +143,7 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 // Task failed, update state and trigger error callbacks
 func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) {
 	// Update task state to FAILURE
-	failureState := backends.NewFailureTaskState(signature.UUID, err.Error())
+	failureState := backends.NewFailureTaskState(signature, err.Error())
 	if err := worker.server.UpdateTaskState(failureState); err != nil {
 		log.Printf("Failed updating status to FAILURE. Error = %v", err)
 	}

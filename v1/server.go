@@ -103,7 +103,7 @@ func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.A
 	}
 
 	// Update task state to PENDING
-	pendingState := backends.NewPendingTaskState(signature.UUID)
+	pendingState := backends.NewPendingTaskState(signature)
 	if err := server.UpdateTaskState(pendingState); err != nil {
 		log.Print(err)
 	}
@@ -118,7 +118,7 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 	}
 
 	// Update task state to PENDING
-	pendingState := backends.NewPendingTaskState(chain.Tasks[0].UUID)
+	pendingState := backends.NewPendingTaskState(chain.Tasks[0])
 	if err := server.UpdateTaskState(pendingState); err != nil {
 		log.Print(err)
 	}

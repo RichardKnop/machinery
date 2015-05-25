@@ -11,6 +11,7 @@ type TaskSignature struct {
 	UUID       string
 	Name       string
 	RoutingKey string
+	GroupID    string
 	Args       []TaskArg
 	Immutable  bool
 	OnSuccess  []*TaskSignature
