@@ -292,6 +292,7 @@ type TaskState struct {
 	TaskUUID string
 	State    string
 	Result   *TaskResult
+	Error    string
 }
 ```
 
