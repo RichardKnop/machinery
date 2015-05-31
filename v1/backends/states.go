@@ -94,3 +94,34 @@ func (taskState *TaskState) IsSuccess() bool {
 func (taskState *TaskState) IsFailure() bool {
 	return taskState.State == FailureState
 }
+
+// IsCompleted returns true if state of all tasks in a group
+// is SUCCESS or FAILURE which means all grouped tasks are completed
+func (taskStateGroup *TaskStateGroup) IsCompleted() bool {
+	for _, taskState := range taskStateGroup.States {
+		if !taskState.IsSuccess() && !taskState.IsFailure() {
+			return false
+		}
+	}
+	return true
+}
+
+// IsSuccess returns true if state of all grouped tasks is SUCCESSS
+func (taskStateGroup *TaskStateGroup) IsSuccess() bool {
+	for _, taskState := range taskStateGroup.States {
+		if !taskState.IsSuccess() {
+			return false
+		}
+	}
+	return true
+}
+
+// IsFailure returns true if state of any single task in the group is FAILURE
+func (taskStateGroup *TaskStateGroup) IsFailure() bool {
+	for _, taskState := range taskStateGroup.States {
+		if taskState.IsFailure() {
+			return true
+		}
+	}
+	return false
+}
