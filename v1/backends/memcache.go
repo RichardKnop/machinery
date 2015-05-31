@@ -27,27 +27,77 @@ func NewMemcacheBackend(cnf *config.Config, servers []string) Backend {
 
 // SetStatePending - sets task state to PENDING
 func (memcacheBackend *MemcacheBackend) SetStatePending(signature *signatures.TaskSignature) error {
-	return memcacheBackend.updateState(NewPendingTaskState(signature))
+	taskState := NewPendingTaskState(signature)
+
+	if err := memcacheBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return memcacheBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
 }
 
 // SetStateReceived - sets task state to RECEIVED
 func (memcacheBackend *MemcacheBackend) SetStateReceived(signature *signatures.TaskSignature) error {
-	return memcacheBackend.updateState(NewReceivedTaskState(signature))
+	taskState := NewReceivedTaskState(signature)
+
+	if err := memcacheBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return memcacheBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
 }
 
 // SetStateStarted - sets task state to STARTED
 func (memcacheBackend *MemcacheBackend) SetStateStarted(signature *signatures.TaskSignature) error {
-	return memcacheBackend.updateState(NewStartedTaskState(signature))
+	taskState := NewStartedTaskState(signature)
+
+	if err := memcacheBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return memcacheBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
 }
 
 // SetStateSuccess - sets task state to SUCCESS
 func (memcacheBackend *MemcacheBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
-	return memcacheBackend.updateState(NewSuccessTaskState(signature, result))
+	taskState := NewSuccessTaskState(signature, result)
+
+	if err := memcacheBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return memcacheBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
 }
 
 // SetStateFailure - sets task state to FAILURE
 func (memcacheBackend *MemcacheBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
-	return memcacheBackend.updateState(NewFailureTaskState(signature, err))
+	taskState := NewFailureTaskState(signature, err)
+
+	if err := memcacheBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return memcacheBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
 }
 
 // GetState returns the latest task state
