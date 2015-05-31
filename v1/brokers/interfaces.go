@@ -12,5 +12,5 @@ type Broker interface {
 // TaskProcessor - can process a delivered task
 // This will probably always be a worker instance
 type TaskProcessor interface {
-	Process(signature *signatures.TaskSignature)
+	Process(signature *signatures.TaskSignature) error
 }

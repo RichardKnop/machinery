@@ -26,27 +26,23 @@ func TestGetStateMemcache(t *testing.T) {
 	go func() {
 		backend := NewMemcacheBackend(&cnf, []string{memcacheURL})
 
-		pendingState := NewPendingTaskState(signature)
-		backend.UpdateState(pendingState)
+		backend.SetStatePending(signature)
 
 		time.Sleep(2 * time.Millisecond)
 
-		receivedState := NewReceivedTaskState(signature)
-		backend.UpdateState(receivedState)
+		backend.SetStateReceived(signature)
 
 		time.Sleep(2 * time.Millisecond)
 
-		startedState := NewStartedTaskState(signature)
-		backend.UpdateState(startedState)
+		backend.SetStateStarted(signature)
 
 		time.Sleep(2 * time.Millisecond)
 
-		result := TaskResult{
+		taskResult := TaskResult{
 			Type:  "float64",
 			Value: 2,
 		}
-		successState := NewSuccessTaskState(signature, &result)
-		backend.UpdateState(successState)
+		backend.SetStateSuccess(signature, &taskResult)
 	}()
 
 	backend := NewMemcacheBackend(&cnf, []string{memcacheURL})

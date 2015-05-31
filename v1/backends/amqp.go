@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/streadway/amqp"
 )
 
@@ -22,31 +23,29 @@ func NewAMQPBackend(cnf *config.Config) Backend {
 	})
 }
 
-// UpdateState updates a task state
-func (amqpBackend *AMQPBackend) UpdateState(taskState *TaskState) error {
-	conn, channel, _, err := open(taskState.TaskUUID, amqpBackend.config)
-	if err != nil {
-		return err
-	}
+// SetStatePending - sets task state to PENDING
+func (amqpBackend *AMQPBackend) SetStatePending(signature *signatures.TaskSignature) error {
+	return amqpBackend.updateState(NewPendingTaskState(signature))
+}
 
-	defer close(channel, conn)
+// SetStateReceived - sets task state to RECEIVED
+func (amqpBackend *AMQPBackend) SetStateReceived(signature *signatures.TaskSignature) error {
+	return amqpBackend.updateState(NewReceivedTaskState(signature))
+}
 
-	message, err := json.Marshal(taskState)
-	if err != nil {
-		return fmt.Errorf("JSON Encode Message: %v", err)
-	}
+// SetStateStarted - sets task state to STARTED
+func (amqpBackend *AMQPBackend) SetStateStarted(signature *signatures.TaskSignature) error {
+	return amqpBackend.updateState(NewStartedTaskState(signature))
+}
 
-	return channel.Publish(
-		amqpBackend.config.Exchange, // exchange
-		taskState.TaskUUID,          // routing key
-		false,                       // mandatory
-		false,                       // immediate
-		amqp.Publishing{
-			ContentType:  "application/json",
-			Body:         message,
-			DeliveryMode: amqp.Transient,
-		},
-	)
+// SetStateSuccess - sets task state to SUCCESS
+func (amqpBackend *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
+	return amqpBackend.updateState(NewSuccessTaskState(signature, result))
+}
+
+// SetStateFailure - sets task state to FAILURE
+func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
+	return amqpBackend.updateState(NewFailureTaskState(signature, err))
 }
 
 // GetState returns the latest task state. It will only return the status once
@@ -90,6 +89,33 @@ func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	}
 
 	return &taskState, nil
+}
+
+// Updates a task state
+func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
+	conn, channel, _, err := open(taskState.TaskUUID, amqpBackend.config)
+	if err != nil {
+		return err
+	}
+
+	defer close(channel, conn)
+
+	message, err := json.Marshal(taskState)
+	if err != nil {
+		return fmt.Errorf("JSON Encode Message: %v", err)
+	}
+
+	return channel.Publish(
+		amqpBackend.config.Exchange, // exchange
+		taskState.TaskUUID,          // routing key
+		false,                       // mandatory
+		false,                       // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			Body:         message,
+			DeliveryMode: amqp.Transient,
+		},
+	)
 }
 
 // Connects to the message queue, opens a channel, declares a queue
