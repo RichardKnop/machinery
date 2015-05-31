@@ -34,7 +34,7 @@ type TaskState struct {
 // TaskStateGroup represents a state of group of tasks
 type TaskStateGroup struct {
 	GroupUUID string
-	States    *[]TaskState
+	States    map[string]TaskState
 }
 
 // NewPendingTaskState ...

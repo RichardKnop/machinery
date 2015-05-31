@@ -48,7 +48,7 @@ func TestGetStateMemcache(t *testing.T) {
 	backend := NewMemcacheBackend(&cnf, []string{memcacheURL})
 
 	for {
-		taskState, err := backend.GetState(signature.UUID)
+		taskState, err := backend.GetState(signature)
 
 		if err != nil {
 			continue

@@ -106,7 +106,7 @@ func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.A
 		return nil, fmt.Errorf("Set State Pending: %v", err)
 	}
 
-	return backends.NewAsyncResult(signature.UUID, server.backend), nil
+	return backends.NewAsyncResult(signature, server.backend), nil
 }
 
 // SendChain triggers a chain of tasks
@@ -120,5 +120,5 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 		return nil, fmt.Errorf("Set State Pending: %v", err)
 	}
 
-	return backends.NewChainAsyncResult(chain.GetUUIDs(), server.backend), nil
+	return backends.NewChainAsyncResult(chain.Tasks, server.backend), nil
 }

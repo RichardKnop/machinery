@@ -27,12 +27,3 @@ func NewChain(tasks ...*signatures.TaskSignature) *Chain {
 
 	return chain
 }
-
-// GetUUIDs returns []string of task UUIDs
-func (chain *Chain) GetUUIDs() []string {
-	UUIDs := make([]string, len(chain.Tasks))
-	for i, task := range chain.Tasks {
-		UUIDs[i] = task.UUID
-	}
-	return UUIDs
-}

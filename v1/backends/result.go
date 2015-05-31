@@ -4,12 +4,13 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 )
 
 // AsyncResult represents a task result
 type AsyncResult struct {
-	taskUUID  string
+	signature *signatures.TaskSignature
 	taskState *TaskState
 	backend   Backend
 }
@@ -21,19 +22,19 @@ type ChainAsyncResult struct {
 }
 
 // NewAsyncResult creates AsyncResult instance
-func NewAsyncResult(taskUUID string, backend Backend) *AsyncResult {
+func NewAsyncResult(signature *signatures.TaskSignature, backend Backend) *AsyncResult {
 	return &AsyncResult{
-		taskUUID:  taskUUID,
+		signature: signature,
 		taskState: &TaskState{},
 		backend:   backend,
 	}
 }
 
 // NewChainAsyncResult creates ChainAsyncResult instance
-func NewChainAsyncResult(taskUUIDs []string, backend Backend) *ChainAsyncResult {
-	asyncResults := make([]*AsyncResult, len(taskUUIDs))
-	for i, taskUUID := range taskUUIDs {
-		asyncResults[i] = NewAsyncResult(taskUUID, backend)
+func NewChainAsyncResult(tasks []*signatures.TaskSignature, backend Backend) *ChainAsyncResult {
+	asyncResults := make([]*AsyncResult, len(tasks))
+	for i, task := range tasks {
+		asyncResults[i] = NewAsyncResult(task, backend)
 	}
 	return &ChainAsyncResult{
 		asyncResults: asyncResults,
@@ -69,7 +70,7 @@ func (asyncResult *AsyncResult) GetState() *TaskState {
 		return asyncResult.taskState
 	}
 
-	taskState, err := asyncResult.backend.GetState(asyncResult.taskUUID)
+	taskState, err := asyncResult.backend.GetState(asyncResult.signature)
 	if err == nil {
 		asyncResult.taskState = taskState
 	}

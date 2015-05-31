@@ -49,12 +49,12 @@ func (memcacheBackend *MemcacheBackend) SetStateFailure(signature *signatures.Ta
 }
 
 // GetState returns the latest task state
-func (memcacheBackend *MemcacheBackend) GetState(taskUUID string) (*TaskState, error) {
+func (memcacheBackend *MemcacheBackend) GetState(signature *signatures.TaskSignature) (*TaskState, error) {
 	taskState := TaskState{}
 
 	client := memcache.New(memcacheBackend.servers...)
 
-	item, err := client.Get(taskUUID)
+	item, err := client.Get(signature.UUID)
 	if err != nil {
 		return nil, err
 	}

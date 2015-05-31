@@ -26,7 +26,8 @@ func TestGetStateAMQP(t *testing.T) {
 	}
 
 	signature := &signatures.TaskSignature{
-		UUID: "taskUUID",
+		UUID:      "taskUUID",
+		GroupUUID: "groupUUID",
 	}
 
 	go func() {
@@ -54,7 +55,7 @@ func TestGetStateAMQP(t *testing.T) {
 	backend := NewAMQPBackend(&cnf)
 
 	for {
-		taskState, err := backend.GetState(signature.UUID)
+		taskState, err := backend.GetState(signature)
 
 		if err != nil {
 			log.Print(err)
