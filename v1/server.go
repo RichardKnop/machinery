@@ -2,7 +2,6 @@ package machinery
 
 import (
 	"fmt"
-	"log"
 
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/RichardKnop/machinery/v1/backends"
@@ -103,12 +102,11 @@ func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.A
 	}
 
 	// Update task state to PENDING
-	pendingState := backends.NewPendingTaskState(signature.UUID)
-	if err := server.UpdateTaskState(pendingState); err != nil {
-		log.Print(err)
+	if err := server.backend.SetStatePending(signature); err != nil {
+		return nil, fmt.Errorf("Set State Pending: %v", err)
 	}
 
-	return backends.NewAsyncResult(signature.UUID, server.backend), nil
+	return backends.NewAsyncResult(signature, server.backend), nil
 }
 
 // SendChain triggers a chain of tasks
@@ -118,19 +116,9 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 	}
 
 	// Update task state to PENDING
-	pendingState := backends.NewPendingTaskState(chain.Tasks[0].UUID)
-	if err := server.UpdateTaskState(pendingState); err != nil {
-		log.Print(err)
+	if err := server.backend.SetStatePending(chain.Tasks[0]); err != nil {
+		return nil, fmt.Errorf("Set State Pending: %v", err)
 	}
 
-	return backends.NewChainAsyncResult(chain.GetUUIDs(), server.backend), nil
-}
-
-// UpdateTaskState updates a task state
-// If no result backend has been configured, does nothing
-func (server *Server) UpdateTaskState(taskState *backends.TaskState) error {
-	if server.backend == nil {
-		return nil
-	}
-	return server.backend.UpdateState(taskState)
+	return backends.NewChainAsyncResult(chain.Tasks, server.backend), nil
 }

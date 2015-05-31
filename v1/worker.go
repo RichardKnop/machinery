@@ -2,6 +2,7 @@ package machinery
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"reflect"
 
@@ -56,43 +57,37 @@ func (worker *Worker) Quit() {
 }
 
 // Process handles received tasks and triggers success/error callbacks
-func (worker *Worker) Process(signature *signatures.TaskSignature) {
+func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 	task := worker.server.GetRegisteredTask(signature.Name)
 	if task == nil {
-		log.Printf("Task with a name '%s' not registered", signature.Name)
-		return
+		return fmt.Errorf("Task not registered: %v", signature.Name)
 	}
 
+	backend := worker.server.GetBackend()
 	// Update task state to RECEIVED
-	receivedState := backends.NewReceivedTaskState(signature.UUID)
-	if err := worker.server.UpdateTaskState(receivedState); err != nil {
-		worker.finalizeError(signature, err)
-		return
+	if err := backend.SetStateReceived(signature); err != nil {
+		return fmt.Errorf("Set State Received: %v", err)
 	}
 
-	// Get task args and convert them to proper types
+	// Get task args and reflect them to proper types
 	reflectedTask := reflect.ValueOf(task)
 	relfectedArgs, err := worker.reflectArgs(signature.Args)
 	if err != nil {
-		worker.finalizeError(signature, err)
-		return
+		return fmt.Errorf("Reflect task args: %v", err)
 	}
 
 	// Update task state to STARTED
-	startedState := backends.NewStartedTaskState(signature.UUID)
-	if err := worker.server.UpdateTaskState(startedState); err != nil {
-		worker.finalizeError(signature, err)
-		return
+	if err := backend.SetStateStarted(signature); err != nil {
+		return fmt.Errorf("Set State Started: %v", err)
 	}
 
 	// Call the task passing in the correct arguments
 	results := reflectedTask.Call(relfectedArgs)
 	if !results[1].IsNil() {
-		worker.finalizeError(signature, errors.New(results[1].String()))
-		return
+		return worker.finalizeError(signature, errors.New(results[1].String()))
 	}
 
-	worker.finalizeSuccess(signature, results[0])
+	return worker.finalizeSuccess(signature, results[0])
 }
 
 // Converts []TaskArg to []reflect.Value
@@ -111,17 +106,15 @@ func (worker *Worker) reflectArgs(args []signatures.TaskArg) ([]reflect.Value, e
 }
 
 // Task succeeded, update state and trigger success callbacks
-func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, result reflect.Value) {
+func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, result reflect.Value) error {
 	// Update task state to SUCCESS
-	successState := backends.NewSuccessTaskState(
-		signature.UUID,
-		&backends.TaskResult{
-			Type:  result.Type().String(),
-			Value: result.Interface(),
-		},
-	)
-	if err := worker.server.UpdateTaskState(successState); err != nil {
-		log.Print(err)
+	backend := worker.server.GetBackend()
+	taskResult := &backends.TaskResult{
+		Type:  result.Type().String(),
+		Value: result.Interface(),
+	}
+	if err := backend.SetStateSuccess(signature, taskResult); err != nil {
+		return fmt.Errorf("Set State Success: %v", err)
 	}
 
 	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
@@ -138,14 +131,16 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 
 		worker.server.SendTask(successTask)
 	}
+
+	return nil
 }
 
 // Task failed, update state and trigger error callbacks
-func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) {
+func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) error {
 	// Update task state to FAILURE
-	failureState := backends.NewFailureTaskState(signature.UUID, err.Error())
-	if err := worker.server.UpdateTaskState(failureState); err != nil {
-		log.Printf("Failed updating status to FAILURE. Error = %v", err)
+	backend := worker.server.GetBackend()
+	if err := backend.SetStateFailure(signature, err.Error()); err != nil {
+		return fmt.Errorf("Set State Failure: %v", err)
 	}
 
 	log.Printf("Failed processing %s. Error = %v", signature.UUID, err)
@@ -159,4 +154,6 @@ func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err err
 		errorTask.Args = args
 		worker.server.SendTask(errorTask)
 	}
+
+	return nil
 }

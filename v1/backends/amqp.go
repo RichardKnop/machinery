@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/streadway/amqp"
 )
 
@@ -22,39 +23,87 @@ func NewAMQPBackend(cnf *config.Config) Backend {
 	})
 }
 
-// UpdateState updates a task state
-func (amqpBackend *AMQPBackend) UpdateState(taskState *TaskState) error {
-	conn, channel, _, err := open(taskState.TaskUUID, amqpBackend.config)
-	if err != nil {
+// SetStatePending - sets task state to PENDING
+func (amqpBackend *AMQPBackend) SetStatePending(signature *signatures.TaskSignature) error {
+	taskState := NewPendingTaskState(signature)
+
+	if err := amqpBackend.updateState(taskState); err != nil {
 		return err
 	}
 
-	defer close(channel, conn)
-
-	message, err := json.Marshal(taskState)
-	if err != nil {
-		return fmt.Errorf("JSON Encode Message: %v", err)
+	if signature.GroupUUID != "" {
+		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
 	}
 
-	return channel.Publish(
-		amqpBackend.config.Exchange, // exchange
-		taskState.TaskUUID,          // routing key
-		false,                       // mandatory
-		false,                       // immediate
-		amqp.Publishing{
-			ContentType:  "application/json",
-			Body:         message,
-			DeliveryMode: amqp.Transient,
-		},
-	)
+	return nil
+}
+
+// SetStateReceived - sets task state to RECEIVED
+func (amqpBackend *AMQPBackend) SetStateReceived(signature *signatures.TaskSignature) error {
+	taskState := NewReceivedTaskState(signature)
+
+	if err := amqpBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
+}
+
+// SetStateStarted - sets task state to STARTED
+func (amqpBackend *AMQPBackend) SetStateStarted(signature *signatures.TaskSignature) error {
+	taskState := NewStartedTaskState(signature)
+
+	if err := amqpBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
+}
+
+// SetStateSuccess - sets task state to SUCCESS
+func (amqpBackend *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
+	taskState := NewSuccessTaskState(signature, result)
+
+	if err := amqpBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
+}
+
+// SetStateFailure - sets task state to FAILURE
+func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
+	taskState := NewFailureTaskState(signature, err)
+
+	if err := amqpBackend.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID != "" {
+		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	}
+
+	return nil
 }
 
 // GetState returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
-func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
+func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*TaskState, error) {
 	taskState := TaskState{}
 
-	conn, channel, queue, err := open(taskUUID, amqpBackend.config)
+	conn, channel, queue, err := open(signature.UUID, amqpBackend.config)
 	if err != nil {
 		return nil, err
 	}
@@ -80,16 +129,109 @@ func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 		return nil, err
 	}
 
-	if taskState.IsCompleted() {
-		channel.QueueDelete(
-			queue.Name, // name
-			false,      // ifUnused
-			false,      // ifEmpty
-			false,      // noWait
-		)
+	return &taskState, nil
+}
+
+// PurgeState - deletes stored task state
+func (amqpBackend *AMQPBackend) PurgeState(signature *signatures.TaskSignature) error {
+	conn, channel, queue, err := open(signature.UUID, amqpBackend.config)
+	if err != nil {
+		return err
 	}
 
-	return &taskState, nil
+	defer close(channel, conn)
+
+	// First return value is number of messages removed
+	_, err = channel.QueueDelete(
+		queue.Name, // name
+		false,      // ifUnused
+		false,      // ifEmpty
+		false,      // noWait
+	)
+
+	return err
+}
+
+// Updates a task state
+func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
+	conn, channel, _, err := open(taskState.TaskUUID, amqpBackend.config)
+	if err != nil {
+		return err
+	}
+
+	defer close(channel, conn)
+
+	message, err := json.Marshal(taskState)
+	if err != nil {
+		return fmt.Errorf("JSON Encode Message: %v", err)
+	}
+
+	return channel.Publish(
+		amqpBackend.config.Exchange, // exchange
+		taskState.TaskUUID,          // routing key
+		false,                       // mandatory
+		false,                       // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			Body:         message,
+			DeliveryMode: amqp.Transient,
+		},
+	)
+}
+
+// Updates a task state group
+func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, taskState *TaskState) error {
+	conn, channel, queue, err := open(groupUUID, amqpBackend.config)
+	if err != nil {
+		return err
+	}
+
+	defer close(channel, conn)
+
+	var taskStateGroup TaskStateGroup
+
+	d, ok, err := channel.Get(
+		queue.Name, // queue name
+		false,      // multiple
+	)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		taskStateGroup = TaskStateGroup{
+			GroupUUID: groupUUID,
+			States:    make(map[string]TaskState),
+		}
+	} else {
+		d.Ack(false)
+
+		taskStateGroup = TaskStateGroup{}
+
+		if err := json.Unmarshal([]byte(d.Body), &taskStateGroup); err != nil {
+			log.Printf("Failed to unmarshal task state group: %v", string(d.Body))
+			log.Print(err)
+			return err
+		}
+	}
+
+	taskStateGroup.States[taskState.TaskUUID] = *taskState
+
+	message, err := json.Marshal(taskStateGroup)
+	if err != nil {
+		return fmt.Errorf("JSON Encode Message: %v", err)
+	}
+
+	return channel.Publish(
+		amqpBackend.config.Exchange, // exchange
+		groupUUID,                   // routing key
+		false,                       // mandatory
+		false,                       // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			Body:         message,
+			DeliveryMode: amqp.Transient,
+		},
+	)
 }
 
 // Connects to the message queue, opens a channel, declares a queue

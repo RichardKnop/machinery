@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
 func TestGetStateMemcache(t *testing.T) {
@@ -18,38 +19,37 @@ func TestGetStateMemcache(t *testing.T) {
 		ResultBackend: memcacheURL,
 	}
 
-	taskUUID := "taskUUID"
+	signature := &signatures.TaskSignature{
+		UUID:      "testTaskUUID",
+		GroupUUID: "testGroupUUID",
+	}
 
 	go func() {
 		backend := NewMemcacheBackend(&cnf, []string{memcacheURL})
 
-		pendingState := NewPendingTaskState(taskUUID)
-		backend.UpdateState(pendingState)
+		backend.SetStatePending(signature)
 
 		time.Sleep(2 * time.Millisecond)
 
-		receivedState := NewReceivedTaskState(taskUUID)
-		backend.UpdateState(receivedState)
+		backend.SetStateReceived(signature)
 
 		time.Sleep(2 * time.Millisecond)
 
-		startedState := NewStartedTaskState(taskUUID)
-		backend.UpdateState(startedState)
+		backend.SetStateStarted(signature)
 
 		time.Sleep(2 * time.Millisecond)
 
-		result := TaskResult{
+		taskResult := TaskResult{
 			Type:  "float64",
 			Value: 2,
 		}
-		successState := NewSuccessTaskState(taskUUID, &result)
-		backend.UpdateState(successState)
+		backend.SetStateSuccess(signature, &taskResult)
 	}()
 
 	backend := NewMemcacheBackend(&cnf, []string{memcacheURL})
 
 	for {
-		taskState, err := backend.GetState(taskUUID)
+		taskState, err := backend.GetState(signature)
 
 		if err != nil {
 			continue

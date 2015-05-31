@@ -117,9 +117,7 @@ func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProce
 
 		d.Ack(false) // multiple false
 
-		taskProcessor.Process(&signature)
-
-		return nil
+		return taskProcessor.Process(&signature)
 	}
 
 	for {

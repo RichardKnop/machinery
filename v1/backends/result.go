@@ -4,12 +4,13 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 )
 
 // AsyncResult represents a task result
 type AsyncResult struct {
-	taskUUID  string
+	signature *signatures.TaskSignature
 	taskState *TaskState
 	backend   Backend
 }
@@ -21,19 +22,19 @@ type ChainAsyncResult struct {
 }
 
 // NewAsyncResult creates AsyncResult instance
-func NewAsyncResult(taskUUID string, backend Backend) *AsyncResult {
+func NewAsyncResult(signature *signatures.TaskSignature, backend Backend) *AsyncResult {
 	return &AsyncResult{
-		taskUUID:  taskUUID,
+		signature: signature,
 		taskState: &TaskState{},
 		backend:   backend,
 	}
 }
 
 // NewChainAsyncResult creates ChainAsyncResult instance
-func NewChainAsyncResult(taskUUIDs []string, backend Backend) *ChainAsyncResult {
-	asyncResults := make([]*AsyncResult, len(taskUUIDs))
-	for i, taskUUID := range taskUUIDs {
-		asyncResults[i] = NewAsyncResult(taskUUID, backend)
+func NewChainAsyncResult(tasks []*signatures.TaskSignature, backend Backend) *ChainAsyncResult {
+	asyncResults := make([]*AsyncResult, len(tasks))
+	for i, task := range tasks {
+		asyncResults[i] = NewAsyncResult(task, backend)
 	}
 	return &ChainAsyncResult{
 		asyncResults: asyncResults,
@@ -51,6 +52,12 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 		asyncResult.GetState()
 
 		if asyncResult.taskState.IsSuccess() {
+			// Purge state if we are using AMQP backend
+			_, ok := asyncResult.backend.(*AMQPBackend)
+			if ok && asyncResult.taskState.IsCompleted() {
+				asyncResult.backend.PurgeState(asyncResult.signature)
+			}
+
 			return utils.ReflectValue(
 				asyncResult.taskState.Result.Type,
 				asyncResult.taskState.Result.Value,
@@ -58,6 +65,12 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 		}
 
 		if asyncResult.taskState.IsFailure() {
+			// Purge state if we are using AMQP backend
+			_, ok := asyncResult.backend.(*AMQPBackend)
+			if ok && asyncResult.taskState.IsCompleted() {
+				asyncResult.backend.PurgeState(asyncResult.signature)
+			}
+
 			return reflect.Value{}, errors.New(asyncResult.taskState.Error)
 		}
 	}
@@ -69,7 +82,7 @@ func (asyncResult *AsyncResult) GetState() *TaskState {
 		return asyncResult.taskState
 	}
 
-	taskState, err := asyncResult.backend.GetState(asyncResult.taskUUID)
+	taskState, err := asyncResult.backend.GetState(asyncResult.signature)
 	if err == nil {
 		asyncResult.taskState = taskState
 	}

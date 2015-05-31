@@ -1,5 +1,9 @@
 package backends
 
+import (
+	"github.com/RichardKnop/machinery/v1/signatures"
+)
+
 const (
 	// PendingState - initial state of a task
 	PendingState = "PENDING"
@@ -27,43 +31,49 @@ type TaskState struct {
 	Error    string
 }
 
+// TaskStateGroup represents a state of group of tasks
+type TaskStateGroup struct {
+	GroupUUID string
+	States    map[string]TaskState
+}
+
 // NewPendingTaskState ...
-func NewPendingTaskState(taskUUID string) *TaskState {
+func NewPendingTaskState(signature *signatures.TaskSignature) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    PendingState,
 	}
 }
 
 // NewReceivedTaskState ...
-func NewReceivedTaskState(taskUUID string) *TaskState {
+func NewReceivedTaskState(signature *signatures.TaskSignature) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    ReceivedState,
 	}
 }
 
 // NewStartedTaskState ...
-func NewStartedTaskState(taskUUID string) *TaskState {
+func NewStartedTaskState(signature *signatures.TaskSignature) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    StartedState,
 	}
 }
 
 // NewSuccessTaskState ...
-func NewSuccessTaskState(taskUUID string, result *TaskResult) *TaskState {
+func NewSuccessTaskState(signature *signatures.TaskSignature, result *TaskResult) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    SuccessState,
 		Result:   result,
 	}
 }
 
 // NewFailureTaskState ...
-func NewFailureTaskState(taskUUID string, err string) *TaskState {
+func NewFailureTaskState(signature *signatures.TaskSignature, err string) *TaskState {
 	return &TaskState{
-		TaskUUID: taskUUID,
+		TaskUUID: signature.UUID,
 		State:    FailureState,
 		Error:    err,
 	}
@@ -83,4 +93,35 @@ func (taskState *TaskState) IsSuccess() bool {
 // IsFailure returns true if state is FAILURE
 func (taskState *TaskState) IsFailure() bool {
 	return taskState.State == FailureState
+}
+
+// IsCompleted returns true if state of all tasks in a group
+// is SUCCESS or FAILURE which means all grouped tasks are completed
+func (taskStateGroup *TaskStateGroup) IsCompleted() bool {
+	for _, taskState := range taskStateGroup.States {
+		if !taskState.IsSuccess() && !taskState.IsFailure() {
+			return false
+		}
+	}
+	return true
+}
+
+// IsSuccess returns true if state of all grouped tasks is SUCCESSS
+func (taskStateGroup *TaskStateGroup) IsSuccess() bool {
+	for _, taskState := range taskStateGroup.States {
+		if !taskState.IsSuccess() {
+			return false
+		}
+	}
+	return true
+}
+
+// IsFailure returns true if state of any single task in the group is FAILURE
+func (taskStateGroup *TaskStateGroup) IsFailure() bool {
+	for _, taskState := range taskStateGroup.States {
+		if taskState.IsFailure() {
+			return true
+		}
+	}
+	return false
 }
