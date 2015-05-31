@@ -2,6 +2,8 @@ package backends
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -66,6 +68,12 @@ func (memcacheBackend *MemcacheBackend) GetState(signature *signatures.TaskSigna
 	return &taskState, nil
 }
 
+// PurgeState - deletes stored task state
+func (memcacheBackend *MemcacheBackend) PurgeState(signature *signatures.TaskSignature) error {
+	client := memcache.New(memcacheBackend.servers...)
+	return client.Delete(signature.UUID)
+}
+
 // Updates a task state
 func (memcacheBackend *MemcacheBackend) updateState(taskState *TaskState) error {
 	encoded, err := json.Marshal(&taskState)
@@ -82,6 +90,50 @@ func (memcacheBackend *MemcacheBackend) updateState(taskState *TaskState) error 
 		return err
 	}
 
+	return memcacheBackend.setExpirationTime(taskState.TaskUUID)
+}
+
+// Updates a task state group
+func (memcacheBackend *MemcacheBackend) updateStateGroup(groupUUID string, taskState *TaskState) error {
+	var taskStateGroup TaskStateGroup
+
+	client := memcache.New(memcacheBackend.servers...)
+
+	item, err := client.Get(groupUUID)
+	if err != nil {
+		taskStateGroup = TaskStateGroup{
+			GroupUUID: groupUUID,
+			States:    make(map[string]TaskState),
+		}
+	} else {
+		if err := json.Unmarshal(item.Value, &taskStateGroup); err != nil {
+			log.Printf("Failed to unmarshal task state group: %v", string(item.Value))
+			log.Print(err)
+			return err
+		}
+	}
+
+	taskStateGroup.States[taskState.TaskUUID] = *taskState
+
+	encoded, err := json.Marshal(taskStateGroup)
+	if err != nil {
+		return fmt.Errorf("JSON Encode Message: %v", err)
+	}
+
+	if err := client.Set(&memcache.Item{
+		Key:   groupUUID,
+		Value: encoded,
+	}); err != nil {
+		return err
+	}
+
+	return memcacheBackend.setExpirationTime(groupUUID)
+}
+
+// Sets expiration timestamp on a stored state
+func (memcacheBackend *MemcacheBackend) setExpirationTime(key string) error {
+	client := memcache.New(memcacheBackend.servers...)
+
 	expiresIn := memcacheBackend.config.ResultsExpireIn
 	if expiresIn == 0 {
 		// // expire results after 1 hour by default
@@ -90,7 +142,7 @@ func (memcacheBackend *MemcacheBackend) updateState(taskState *TaskState) error 
 	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
 
 	if err := client.Touch(
-		taskState.TaskUUID,
+		key,
 		expirationTimestamp,
 	); err != nil {
 		return err

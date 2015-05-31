@@ -12,4 +12,5 @@ type Backend interface {
 	SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error
 	SetStateFailure(signature *signatures.TaskSignature, err string) error
 	GetState(signature *signatures.TaskSignature) (*TaskState, error)
+	PurgeState(signature *signatures.TaskSignature) error
 }

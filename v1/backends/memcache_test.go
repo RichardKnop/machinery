@@ -20,7 +20,8 @@ func TestGetStateMemcache(t *testing.T) {
 	}
 
 	signature := &signatures.TaskSignature{
-		UUID: "taskUUID",
+		UUID:      "testTaskUUID",
+		GroupUUID: "testGroupUUID",
 	}
 
 	go func() {

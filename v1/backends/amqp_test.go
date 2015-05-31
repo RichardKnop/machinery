@@ -26,8 +26,8 @@ func TestGetStateAMQP(t *testing.T) {
 	}
 
 	signature := &signatures.TaskSignature{
-		UUID:      "taskUUID",
-		GroupUUID: "groupUUID",
+		UUID:      "testTaskUUID",
+		GroupUUID: "testGroupUUID",
 	}
 
 	go func() {

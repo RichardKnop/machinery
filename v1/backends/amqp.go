@@ -129,16 +129,27 @@ func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*
 		return nil, err
 	}
 
-	if taskState.IsCompleted() {
-		channel.QueueDelete(
-			queue.Name, // name
-			false,      // ifUnused
-			false,      // ifEmpty
-			false,      // noWait
-		)
+	return &taskState, nil
+}
+
+// PurgeState - deletes stored task state
+func (amqpBackend *AMQPBackend) PurgeState(signature *signatures.TaskSignature) error {
+	conn, channel, queue, err := open(signature.UUID, amqpBackend.config)
+	if err != nil {
+		return err
 	}
 
-	return &taskState, nil
+	defer close(channel, conn)
+
+	// First return value is number of messages removed
+	_, err = channel.QueueDelete(
+		queue.Name, // name
+		false,      // ifUnused
+		false,      // ifEmpty
+		false,      // noWait
+	)
+
+	return err
 }
 
 // Updates a task state
