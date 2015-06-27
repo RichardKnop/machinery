@@ -134,22 +134,33 @@ func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*
 
 // PurgeState - deletes stored task state
 func (amqpBackend *AMQPBackend) PurgeState(signature *signatures.TaskSignature) error {
-	conn, channel, queue, err := open(signature.UUID, amqpBackend.config)
-	if err != nil {
-		return err
+	purgeUUIDs := []string{signature.UUID}
+	if signature.GroupUUID != "" {
+		purgeUUIDs = append(purgeUUIDs, signature.GroupUUID)
 	}
 
-	defer close(channel, conn)
+	for _, purgeUUID := range purgeUUIDs {
+		conn, channel, queue, err := open(purgeUUID, amqpBackend.config)
+		if err != nil {
+			return err
+		}
 
-	// First return value is number of messages removed
-	_, err = channel.QueueDelete(
-		queue.Name, // name
-		false,      // ifUnused
-		false,      // ifEmpty
-		false,      // noWait
-	)
+		defer close(channel, conn)
 
-	return err
+		// First return value is number of messages removed
+		_, err = channel.QueueDelete(
+			queue.Name, // name
+			false,      // ifUnused
+			false,      // ifEmpty
+			false,      // noWait
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Updates a task state

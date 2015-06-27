@@ -20,8 +20,9 @@ var (
 	defaultQueue  = flag.String("q", "machinery_tasks", "Ephemeral AMQP queue name")
 	bindingKey    = flag.String("k", "machinery_task", "AMQP binding key")
 
-	cnf    config.Config
-	server *machinery.Server
+	cnf                        config.Config
+	server                     *machinery.Server
+	task0, task1, task2, task3 signatures.TaskSignature
 )
 
 func init() {
@@ -47,11 +48,10 @@ func init() {
 
 	server, err = machinery.NewServer(&cnf)
 	errors.Fail(err, "Could not initialize server")
-}
 
-func main() {
-	// First, let's try sending a single task
-	task0 := signatures.TaskSignature{
+	// Let's define some example tasks
+
+	task0 = signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -65,15 +65,7 @@ func main() {
 		},
 	}
 
-	asyncResult, err := server.SendTask(&task0)
-	errors.Fail(err, "Could not send task")
-
-	result, err := asyncResult.Get()
-	errors.Fail(err, "Task failed with error")
-	fmt.Printf("%v\n", result.Interface())
-
-	// Now, let's try a chain of tasks
-	task1 := signatures.TaskSignature{
+	task1 = signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -87,7 +79,7 @@ func main() {
 		},
 	}
 
-	task2 := signatures.TaskSignature{
+	task2 = signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -101,7 +93,7 @@ func main() {
 		},
 	}
 
-	task3 := signatures.TaskSignature{
+	task3 = signatures.TaskSignature{
 		Name: "multiply",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -110,12 +102,41 @@ func main() {
 			},
 		},
 	}
+}
 
-	chain := machinery.NewChain(&task1, &task2, &task3)
-	chainAsyncResult, err := server.SendChain(chain)
+func main() {
+	/*
+	 * First, let's try sending a single task
+	 */
+
+	asyncResult, err := server.SendTask(&task0)
 	errors.Fail(err, "Could not send task")
 
+	result, err := asyncResult.Get()
+	errors.Fail(err, "Getting task state failed with error")
+	fmt.Printf("%v\n", result.Interface())
+
+	/*
+	 * Now let's explore ways of sending multiple tasks
+	 */
+
+	// Now let's try a parallel execution
+	group := machinery.NewGroup(&task1, &task2, &task3)
+	asyncResults, err := server.SendGroup(group)
+	errors.Fail(err, "Could not send group")
+
+	for _, asyncResult := range asyncResults {
+		result, err = asyncResult.Get()
+		errors.Fail(err, "Getting task state failed with error")
+		fmt.Printf("%v\n", result.Interface())
+	}
+
+	// Now let's try chaining task results
+	chain := machinery.NewChain(&task1, &task2, &task3)
+	chainAsyncResult, err := server.SendChain(chain)
+	errors.Fail(err, "Could not send chain")
+
 	result, err = chainAsyncResult.Get()
-	errors.Fail(err, "Chain failed with error")
+	errors.Fail(err, "Getting chain result failed with error")
 	fmt.Printf("%v\n", result.Interface())
 }

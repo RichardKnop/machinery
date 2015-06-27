@@ -122,3 +122,23 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 
 	return backends.NewChainAsyncResult(chain.Tasks, server.backend), nil
 }
+
+// SendGroup triggers a group of parallel tasks
+func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
+	asyncResults := make([]*backends.AsyncResult, len(group.Tasks))
+
+	for i, signature := range group.Tasks {
+		if err := server.broker.Publish(signature); err != nil {
+			return asyncResults, fmt.Errorf("Publish Message: %v", err)
+		}
+
+		// Update task state to PENDING
+		if err := server.backend.SetStatePending(signature); err != nil {
+			return asyncResults, fmt.Errorf("Set State Pending: %v", err)
+		}
+
+		asyncResults[i] = backends.NewAsyncResult(signature, server.backend)
+	}
+
+	return asyncResults, nil
+}

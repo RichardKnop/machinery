@@ -19,6 +19,7 @@ This is an early stage project so far. Feel free to contribute.
     - [Sending Tasks](https://github.com/RichardKnop/machinery#sending-tasks)
     - [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 - [Workflows](https://github.com/RichardKnop/machinery#workflows)
+    - [Groups](https://github.com/RichardKnop/machinery#groups)
     - [Chains](https://github.com/RichardKnop/machinery#chains)
 - [Development Setup](https://github.com/RichardKnop/machinery#development-setup)
 
@@ -319,7 +320,7 @@ You can also do a synchronous blocking call to wait for a task result:
 ```go
 result, err := asyncResult.Get()
 if err != nil {
-    // task failed
+    // getting result of a task failed
     // do something with the error
 }
 fmt.Println(result.Interface())
@@ -328,6 +329,65 @@ fmt.Println(result.Interface())
 ## Workflows
 
 Running a single asynchronous task is fine but often you will want to design a workflow of tasks to be executed in an orchestrated way. There are couple of useful functions to help you design workflows.
+
+### Groups
+
+Groups is a set of tasks which will be executed in parallel, independent of each other. E.g.:
+
+```go
+import (
+    "github.com/RichardKnop/machinery/v1/signatures"
+    machinery "github.com/RichardKnop/machinery/v1"
+)
+
+task1 := signatures.TaskSignature{
+    Name: "add",
+    Args: []signatures.TaskArg{
+        signatures.TaskArg{
+            Type:  "int64",
+            Value: 1,
+        },
+        signatures.TaskArg{
+            Type:  "int64",
+            Value: 1,
+        },
+    },
+}
+
+task2 := signatures.TaskSignature{
+    Name: "add",
+    Args: []signatures.TaskArg{
+        signatures.TaskArg{
+            Type:  "int64",
+            Value: 5,
+        },
+        signatures.TaskArg{
+            Type:  "int64",
+            Value: 5,
+        },
+    },
+}
+
+chain := machinery.NewGroup(&task1, &task2)
+asyncResults, err := server.SendGroup(chain)
+if err != nil {
+    // failed to send the group
+    // do something with the error
+}
+```
+
+SendGroup returns a slice of AsyncResult objects. So you can do a blocking call and wait for the result of groups tasks:
+
+```go
+for _, asyncResult := range asyncResults {
+    result, err := asyncResult.Get()
+    if err != nil {
+        // getting result of a task failed
+        // do something with the error
+    }
+    fmt.Println(result.Interface())
+}
+```
 
 ### Chains
 
@@ -380,7 +440,7 @@ task3 := signatures.TaskSignature{
 chain := machinery.NewChain(&task1, &task2, &task3)
 chainAsyncResult, err := server.SendChain(chain)
 if err != nil {
-    // failed to send the task
+    // failed to send the chain
     // do something with the error
 }
 ```
@@ -396,7 +456,7 @@ SendChain returns ChainAsyncResult which follows AsyncResult's interface. So you
 ```go
 result, err := chainAsyncResult.Get()
 if err != nil {
-    // task chain failed
+    // getting result of a chain failed
     // do something with the error
 }
 fmt.Println(result.Interface())

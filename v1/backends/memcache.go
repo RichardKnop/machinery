@@ -120,8 +120,19 @@ func (memcacheBackend *MemcacheBackend) GetState(signature *signatures.TaskSigna
 
 // PurgeState - deletes stored task state
 func (memcacheBackend *MemcacheBackend) PurgeState(signature *signatures.TaskSignature) error {
+	purgeUUIDs := []string{signature.UUID}
+	if signature.GroupUUID != "" {
+		purgeUUIDs = append(purgeUUIDs, signature.GroupUUID)
+	}
+
 	client := memcache.New(memcacheBackend.servers...)
-	return client.Delete(signature.UUID)
+	for _, purgeUUID := range purgeUUIDs {
+		if err := client.Delete(purgeUUID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Updates a task state
