@@ -490,3 +490,10 @@ $ make deps
 ```
 $ make test
 ```
+
+In order to enable integration tests, you will need to export couple of environment variables:
+
+```
+$ export AMQP_URL=amqp://guest:guest@localhost:5672/
+$ export MEMCACHE_URL=127.0.0.1:11211
+```
