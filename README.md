@@ -1,3 +1,6 @@
+[1]: /assets/example_worker.png
+[2]: /assets/example_worker_receives_tasks.png
+
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg "GoDoc")](http://godoc.org/github.com/RichardKnop/machinery/v1)
 ![Build Status](https://travis-ci.org/RichardKnop/machinery.svg?branch=master)
 
@@ -39,7 +42,7 @@ Second, you will need to launch a worker process:
 $ go run _examples/worker/worker.go
 ```
 
-![Example worker](https://github.com/RichardKnop/machinery/blob/master/assets/example_worker.png)
+![Example worker][1]
 
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
@@ -49,7 +52,7 @@ $ go run _examples/send/send.go
 
 You will be able to see the tasks being processed asynchronously by the worker:
 
-![Example worker receives tasks](https://github.com/RichardKnop/machinery/blob/master/assets/example_worker_receives_tasks.png)
+![Example worker receives tasks][2]
 
 ## Configuration
 
