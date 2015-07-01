@@ -125,18 +125,26 @@ func _testSendGroup(server *Server, t *testing.T) {
 
 	expectedResults := []int64{2, 11, 4}
 
-	for i, asyncResult := range asyncResults {
+	isInSlice := func(lookup interface{}, list []int64) bool {
+		for _, item := range list {
+			if item == lookup {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, asyncResult := range asyncResults {
 		result, err := asyncResult.Get()
 		if err != nil {
 			t.Error(err)
 		}
 
-		if result.Interface() != int64(expectedResults[i]) {
+		if !isInSlice(result.Interface(), expectedResults) {
 			t.Errorf(
-				"result = %v(%v), want int64(%v)",
+				"result = %v(%v), not in slice of expected results: []int64{2, 11, 4}",
 				result.Type().String(),
 				result.Interface(),
-				expectedResults[i],
 			)
 		}
 	}
