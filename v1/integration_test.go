@@ -3,6 +3,8 @@ package machinery
 import (
 	"fmt"
 	"os"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -13,6 +15,12 @@ import (
 var (
 	task0, task1, task2, task3 signatures.TaskSignature
 )
+
+type ascendingInt64s []int64
+
+func (a ascendingInt64s) Len() int           { return len(a) }
+func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
 func init() {
 	task0 = signatures.TaskSignature{
@@ -123,30 +131,30 @@ func _testSendGroup(server *Server, t *testing.T) {
 		t.Error(err)
 	}
 
-	expectedResults := []int64{2, 11, 4}
+	expectedResults := []int64{2, 4, 11}
 
-	isInSlice := func(lookup interface{}, list []int64) bool {
-		for _, item := range list {
-			if item == lookup {
-				return true
-			}
-		}
-		return false
-	}
+	actualResults := make([]int64, 3)
 
-	for _, asyncResult := range asyncResults {
+	for i, asyncResult := range asyncResults {
 		result, err := asyncResult.Get()
 		if err != nil {
 			t.Error(err)
 		}
-
-		if !isInSlice(result.Interface(), expectedResults) {
-			t.Errorf(
-				"result = %v(%v), not in slice of expected results: []int64{2, 11, 4}",
-				result.Type().String(),
-				result.Interface(),
-			)
+		intResult, ok := result.Interface().(int64)
+		if !ok {
+			t.Errorf("Could not convert %v to int64", result.Interface())
 		}
+		actualResults[i] = intResult
+	}
+
+	sort.Sort(ascendingInt64s(actualResults))
+
+	if !reflect.DeepEqual(expectedResults, actualResults) {
+		t.Errorf(
+			"expected results = %v, actual results = %v",
+			expectedResults,
+			actualResults,
+		)
 	}
 }
 
