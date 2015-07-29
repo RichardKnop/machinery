@@ -34,6 +34,12 @@ Add the Machinery library to your $GOPATH/src:
 $ go get github.com/RichardKnop/machinery
 ```
 
+Install dependencies:
+
+```
+$ go get ./...
+```
+
 First, you will need to define some tasks. Look at sample tasks in `_examples/tasks/tasks.go` to see few examples.
 
 Second, you will need to launch a worker process:
