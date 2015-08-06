@@ -4,7 +4,8 @@ import "testing"
 
 func TestTaskStateGroupIsSuccess(t *testing.T) {
 	taskStateGroup := TaskStateGroup{
-		GroupUUID: "groupUUID",
+		GroupUUID:      "groupUUID",
+		GroupTaskCount: 3,
 		States: map[string]TaskState{
 			"taskUUID1": TaskState{
 				TaskUUID: "taskUUID1",
@@ -47,6 +48,16 @@ func TestTaskStateGroupIsSuccess(t *testing.T) {
 		State:    SuccessState,
 	}
 
+	if taskStateGroup.IsSuccess() {
+		t.Errorf("taskStateGroup.IsSuccess() = true, should be false. %v",
+			taskStateGroup)
+	}
+
+	taskStateGroup.States["taskUUID3"] = TaskState{
+		TaskUUID: "taskUUID3",
+		State:    SuccessState,
+	}
+
 	if !taskStateGroup.IsSuccess() {
 		t.Errorf("taskStateGroup.IsSuccess() = false, should be true. %v",
 			taskStateGroup)
@@ -55,7 +66,8 @@ func TestTaskStateGroupIsSuccess(t *testing.T) {
 
 func TestTaskStateGroupIsFailure(t *testing.T) {
 	taskStateGroup := TaskStateGroup{
-		GroupUUID: "groupUUID",
+		GroupUUID:      "groupUUID",
+		GroupTaskCount: 3,
 		States: map[string]TaskState{
 			"taskUUID1": TaskState{
 				TaskUUID: "taskUUID1",
@@ -106,7 +118,8 @@ func TestTaskStateGroupIsFailure(t *testing.T) {
 
 func TestTaskStateGroupIsCompleted(t *testing.T) {
 	taskStateGroup := TaskStateGroup{
-		GroupUUID: "groupUUID",
+		GroupUUID:      "groupUUID",
+		GroupTaskCount: 3,
 		States: map[string]TaskState{
 			"taskUUID1": TaskState{
 				TaskUUID: "taskUUID1",
@@ -139,12 +152,12 @@ func TestTaskStateGroupIsCompleted(t *testing.T) {
 		State:    FailureState,
 	}
 
-	if !taskStateGroup.IsCompleted() {
-		t.Errorf("taskStateGroup.IsCompleted() = false, should be true. %v",
+	if taskStateGroup.IsCompleted() {
+		t.Errorf("taskStateGroup.IsCompleted() = true, should be false. %v",
 			taskStateGroup)
 	}
 
-	taskStateGroup.States["taskUUID2"] = TaskState{
+	taskStateGroup.States["taskUUID3"] = TaskState{
 		TaskUUID: "taskUUID2",
 		State:    SuccessState,
 	}

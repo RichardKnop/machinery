@@ -33,8 +33,9 @@ type TaskState struct {
 
 // TaskStateGroup represents a state of group of tasks
 type TaskStateGroup struct {
-	GroupUUID string
-	States    map[string]TaskState
+	GroupUUID      string
+	GroupTaskCount int
+	States         map[string]TaskState
 }
 
 // NewPendingTaskState ...
@@ -98,30 +99,33 @@ func (taskState *TaskState) IsFailure() bool {
 // IsCompleted returns true if state of all tasks in a group
 // is SUCCESS or FAILURE which means all grouped tasks are completed
 func (taskStateGroup *TaskStateGroup) IsCompleted() bool {
+	completedCount := 0
 	for _, taskState := range taskStateGroup.States {
-		if !taskState.IsSuccess() && !taskState.IsFailure() {
-			return false
+		if taskState.IsSuccess() || taskState.IsFailure() {
+			completedCount++
 		}
 	}
-	return true
+	return completedCount == taskStateGroup.GroupTaskCount
 }
 
 // IsSuccess returns true if state of all grouped tasks is SUCCESSS
 func (taskStateGroup *TaskStateGroup) IsSuccess() bool {
+	successCount := 0
 	for _, taskState := range taskStateGroup.States {
-		if !taskState.IsSuccess() {
-			return false
+		if taskState.IsSuccess() {
+			successCount++
 		}
 	}
-	return true
+	return successCount == taskStateGroup.GroupTaskCount
 }
 
 // IsFailure returns true if state of any single task in the group is FAILURE
 func (taskStateGroup *TaskStateGroup) IsFailure() bool {
+	failureCount := 0
 	for _, taskState := range taskStateGroup.States {
 		if taskState.IsFailure() {
-			return true
+			failureCount++
 		}
 	}
-	return false
+	return failureCount > 0
 }

@@ -10,7 +10,7 @@ import (
 
 // AsyncResult represents a task result
 type AsyncResult struct {
-	signature *signatures.TaskSignature
+	Signature *signatures.TaskSignature
 	taskState *TaskState
 	backend   Backend
 }
@@ -24,7 +24,7 @@ type ChainAsyncResult struct {
 // NewAsyncResult creates AsyncResult instance
 func NewAsyncResult(signature *signatures.TaskSignature, backend Backend) *AsyncResult {
 	return &AsyncResult{
-		signature: signature,
+		Signature: signature,
 		taskState: &TaskState{},
 		backend:   backend,
 	}
@@ -55,7 +55,7 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 			// Purge state if we are using AMQP backend
 			_, ok := asyncResult.backend.(*AMQPBackend)
 			if ok && asyncResult.taskState.IsCompleted() {
-				asyncResult.backend.PurgeState(asyncResult.signature)
+				asyncResult.backend.PurgeState(asyncResult.Signature)
 			}
 
 			return utils.ReflectValue(
@@ -68,7 +68,7 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 			// Purge state if we are using AMQP backend
 			_, ok := asyncResult.backend.(*AMQPBackend)
 			if ok && asyncResult.taskState.IsCompleted() {
-				asyncResult.backend.PurgeState(asyncResult.signature)
+				asyncResult.backend.PurgeState(asyncResult.Signature)
 			}
 
 			return reflect.Value{}, errors.New(asyncResult.taskState.Error)
@@ -82,7 +82,7 @@ func (asyncResult *AsyncResult) GetState() *TaskState {
 		return asyncResult.taskState
 	}
 
-	taskState, err := asyncResult.backend.GetState(asyncResult.signature)
+	taskState, err := asyncResult.backend.GetState(asyncResult.Signature)
 	if err == nil {
 		asyncResult.taskState = taskState
 	}

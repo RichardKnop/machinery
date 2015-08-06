@@ -9,8 +9,9 @@ type Backend interface {
 	SetStatePending(signature *signatures.TaskSignature) error
 	SetStateReceived(signature *signatures.TaskSignature) error
 	SetStateStarted(signature *signatures.TaskSignature) error
-	SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error
-	SetStateFailure(signature *signatures.TaskSignature, err string) error
+	SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) (*TaskStateGroup, error)
+	SetStateFailure(signature *signatures.TaskSignature, err string) (*TaskStateGroup, error)
 	GetState(signature *signatures.TaskSignature) (*TaskState, error)
+	GetStateGroup(groupUUID string) (*TaskStateGroup, error)
 	PurgeState(signature *signatures.TaskSignature) error
 }

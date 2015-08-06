@@ -94,7 +94,7 @@ func (server *Server) GetRegisteredTask(name string) interface{} {
 func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.AsyncResult, error) {
 	// Auto generate a UUID if not set already
 	if signature.UUID == "" {
-		signature.UUID = uuid.New()
+		signature.UUID = fmt.Sprintf("task_%v", uuid.New())
 	}
 
 	if err := server.broker.Publish(signature); err != nil {
@@ -141,4 +141,20 @@ func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 	}
 
 	return asyncResults, nil
+}
+
+// SendChord triggers a group of parallel tasks with a chord callback
+func (server *Server) SendChord(chord *Chord) (*backends.AsyncResult, error) {
+	for _, signature := range chord.Group.Tasks {
+		if err := server.broker.Publish(signature); err != nil {
+			return nil, fmt.Errorf("Publish Message: %v", err)
+		}
+
+		// Update task state to PENDING
+		if err := server.backend.SetStatePending(signature); err != nil {
+			return nil, fmt.Errorf("Set State Pending: %v", err)
+		}
+	}
+
+	return backends.NewAsyncResult(chord.Callback, server.backend), nil
 }
