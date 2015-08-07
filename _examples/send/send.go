@@ -148,10 +148,10 @@ func main() {
 
 	group = machinery.NewGroup(&task0, &task1, &task2)
 	chord := machinery.NewChord(group, &task4)
-	asyncResult, err = server.SendChord(chord)
+	chordAsyncResult, err := server.SendChord(chord)
 	errors.Fail(err, "Could not send chord")
 
-	result, err = asyncResult.Get()
+	result, err = chordAsyncResult.Get()
 	errors.Fail(err, "Getting task state failed with error")
 	fmt.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", result.Interface())
 

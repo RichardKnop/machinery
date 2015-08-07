@@ -1,7 +1,6 @@
 package machinery
 
 import (
-	"fmt"
 	"os"
 	"reflect"
 	"sort"
@@ -13,7 +12,7 @@ import (
 )
 
 var (
-	task0, task1, task2, task3 signatures.TaskSignature
+	task0, task1, task2, task3, task4 signatures.TaskSignature
 )
 
 type ascendingInt64s []int64
@@ -42,11 +41,11 @@ func init() {
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: 1,
+				Value: 2,
 			},
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: 1,
+				Value: 2,
 			},
 		},
 	}
@@ -74,6 +73,10 @@ func init() {
 			},
 		},
 	}
+
+	task4 = signatures.TaskSignature{
+		Name: "multiply",
+	}
 }
 
 func TestIntegration(t *testing.T) {
@@ -87,21 +90,22 @@ func TestIntegration(t *testing.T) {
 	go worker1.Launch()
 	_testSendTask(server1, t)
 	_testSendGroup(server1, t)
+	_testSendChord(server1, t)
 	_testSendChain(server1, t)
 	worker1.Quit()
 
-	memcacheURL := os.Getenv("MEMCACHE_URL")
-	if memcacheURL == "" {
-		return
-	}
-
-	server2 := setup(brokerURL, fmt.Sprintf("memcache://%v", memcacheURL))
-	worker2 := server2.NewWorker("test_worker")
-	go worker2.Launch()
-	_testSendTask(server2, t)
-	_testSendGroup(server2, t)
-	_testSendChain(server2, t)
-	worker2.Quit()
+	// memcacheURL := os.Getenv("MEMCACHE_URL")
+	// if memcacheURL == "" {
+	// 	return
+	// }
+	//
+	// server2 := setup(brokerURL, fmt.Sprintf("memcache://%v", memcacheURL))
+	// worker2 := server2.NewWorker("test_worker")
+	// go worker2.Launch()
+	// _testSendTask(server2, t)
+	// _testSendGroup(server2, t)
+	// _testSendChain(server2, t)
+	// worker2.Quit()
 }
 
 func _testSendTask(server *Server, t *testing.T) {
@@ -125,7 +129,7 @@ func _testSendTask(server *Server, t *testing.T) {
 }
 
 func _testSendGroup(server *Server, t *testing.T) {
-	group := NewGroup(&task1, &task2, &task3)
+	group := NewGroup(&task0, &task1, &task2)
 	asyncResults, err := server.SendGroup(group)
 	if err != nil {
 		t.Error(err)
@@ -158,6 +162,28 @@ func _testSendGroup(server *Server, t *testing.T) {
 	}
 }
 
+func _testSendChord(server *Server, t *testing.T) {
+	group := NewGroup(&task0, &task1, &task2)
+	chord := NewChord(group, &task4)
+	chordAsyncResult, err := server.SendChord(chord)
+	if err != nil {
+		t.Error(err)
+	}
+
+	result, err := chordAsyncResult.Get()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if result.Interface() != int64(88) {
+		t.Errorf(
+			"result = %v(%v), want int64(88)",
+			result.Type().String(),
+			result.Interface(),
+		)
+	}
+}
+
 func _testSendChain(server *Server, t *testing.T) {
 	chain := NewChain(&task1, &task2, &task3)
 	chainAsyncResult, err := server.SendChain(chain)
@@ -170,9 +196,9 @@ func _testSendChain(server *Server, t *testing.T) {
 		t.Error(err)
 	}
 
-	if result.Interface() != int64(52) {
+	if result.Interface() != int64(60) {
 		t.Errorf(
-			"result = %v(%v), want int64(52)",
+			"result = %v(%v), want int64(60)",
 			result.Type().String(),
 			result.Interface(),
 		)
