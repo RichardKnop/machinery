@@ -462,17 +462,17 @@ task3 := signatures.TaskSignature{
 
 group := machinery.NewGroup(&task1, &task2)
 chord := machinery.NewChord(group, &task3)
-asyncResult, err := server.SendChord(chord)
+chordAsyncResult, err := server.SendChord(chord)
 if err != nil {
     // failed to send the chord
     // do something with the error
 }
 ```
 
-SendChord returns an AsyncResult object. So you can do a blocking call and wait for the result of the callback:
+SendChord returns ChordAsyncResult which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the callback:
 
 ```go
-result, err := asyncResult.Get()
+result, err := chordAsyncResult.Get()
 if err != nil {
     // getting result of a chord failed
     // do something with the error
