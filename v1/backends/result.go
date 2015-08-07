@@ -15,6 +15,13 @@ type AsyncResult struct {
 	backend   Backend
 }
 
+// ChordAsyncResult represents a result of a chord
+type ChordAsyncResult struct {
+	groupAsyncResults []*AsyncResult
+	chordAsyncResult  *AsyncResult
+	backend           Backend
+}
+
 // ChainAsyncResult represents a result of a chain of tasks
 type ChainAsyncResult struct {
 	asyncResults []*AsyncResult
@@ -27,6 +34,19 @@ func NewAsyncResult(signature *signatures.TaskSignature, backend Backend) *Async
 		Signature: signature,
 		taskState: &TaskState{},
 		backend:   backend,
+	}
+}
+
+// NewChordAsyncResult creates ChordAsyncResult instance
+func NewChordAsyncResult(groupTasks []*signatures.TaskSignature, chordCallback *signatures.TaskSignature, backend Backend) *ChordAsyncResult {
+	asyncResults := make([]*AsyncResult, len(groupTasks))
+	for i, task := range groupTasks {
+		asyncResults[i] = NewAsyncResult(task, backend)
+	}
+	return &ChordAsyncResult{
+		groupAsyncResults: asyncResults,
+		chordAsyncResult:  NewAsyncResult(chordCallback, backend),
+		backend:           backend,
 	}
 }
 
@@ -51,13 +71,15 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 	for {
 		asyncResult.GetState()
 
-		if asyncResult.taskState.IsSuccess() {
+		if asyncResult.taskState.IsSuccess() || asyncResult.taskState.IsFailure() {
 			// Purge state if we are using AMQP backend
 			_, ok := asyncResult.backend.(*AMQPBackend)
 			if ok && asyncResult.taskState.IsCompleted() {
 				asyncResult.backend.PurgeState(asyncResult.Signature)
 			}
+		}
 
+		if asyncResult.taskState.IsSuccess() {
 			return utils.ReflectValue(
 				asyncResult.taskState.Result.Type,
 				asyncResult.taskState.Result.Value,
@@ -65,12 +87,6 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 		}
 
 		if asyncResult.taskState.IsFailure() {
-			// Purge state if we are using AMQP backend
-			_, ok := asyncResult.backend.(*AMQPBackend)
-			if ok && asyncResult.taskState.IsCompleted() {
-				asyncResult.backend.PurgeState(asyncResult.Signature)
-			}
-
 			return reflect.Value{}, errors.New(asyncResult.taskState.Error)
 		}
 	}
@@ -107,4 +123,23 @@ func (chainAsyncResult *ChainAsyncResult) Get() (reflect.Value, error) {
 	}
 
 	return result, err
+}
+
+// Get returns result of a chord (synchronous blocking call)
+func (chordAsyncResult *ChordAsyncResult) Get() (reflect.Value, error) {
+	if chordAsyncResult.backend == nil {
+		return reflect.Value{}, errors.New("Result backend not configured")
+	}
+
+	var result reflect.Value
+	var err error
+
+	for _, asyncResult := range chordAsyncResult.groupAsyncResults {
+		result, err = asyncResult.Get()
+		if err != nil {
+			return result, err
+		}
+	}
+
+	return chordAsyncResult.chordAsyncResult.Get()
 }
