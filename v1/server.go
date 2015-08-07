@@ -143,8 +143,8 @@ func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 	return asyncResults, nil
 }
 
-// SendChord triggers a group of parallel tasks with a chord callback
-func (server *Server) SendChord(chord *Chord) (*backends.AsyncResult, error) {
+// SendChord triggers a group of parallel tasks with a callback
+func (server *Server) SendChord(chord *Chord) (*backends.ChordAsyncResult, error) {
 	for _, signature := range chord.Group.Tasks {
 		if err := server.broker.Publish(signature); err != nil {
 			return nil, fmt.Errorf("Publish Message: %v", err)
@@ -156,5 +156,5 @@ func (server *Server) SendChord(chord *Chord) (*backends.AsyncResult, error) {
 		}
 	}
 
-	return backends.NewAsyncResult(chord.Callback, server.backend), nil
+	return backends.NewChordAsyncResult(chord.Group.Tasks, chord.Callback, server.backend), nil
 }
