@@ -1,6 +1,7 @@
 package machinery
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"sort"
@@ -84,28 +85,29 @@ func TestIntegration(t *testing.T) {
 	if brokerURL == "" {
 		return
 	}
-
-	server1 := setup(brokerURL, "amqp")
-	worker1 := server1.NewWorker("test_worker")
-	go worker1.Launch()
-	_testSendTask(server1, t)
-	_testSendGroup(server1, t)
-	_testSendChord(server1, t)
-	_testSendChain(server1, t)
-	worker1.Quit()
-
-	// memcacheURL := os.Getenv("MEMCACHE_URL")
-	// if memcacheURL == "" {
-	// 	return
-	// }
 	//
-	// server2 := setup(brokerURL, fmt.Sprintf("memcache://%v", memcacheURL))
-	// worker2 := server2.NewWorker("test_worker")
-	// go worker2.Launch()
-	// _testSendTask(server2, t)
-	// _testSendGroup(server2, t)
-	// _testSendChain(server2, t)
-	// worker2.Quit()
+	// server1 := setup(brokerURL, "amqp")
+	// worker1 := server1.NewWorker("test_worker")
+	// go worker1.Launch()
+	// _testSendTask(server1, t)
+	// _testSendGroup(server1, t)
+	// _testSendChord(server1, t)
+	// _testSendChain(server1, t)
+	// worker1.Quit()
+
+	memcacheURL := os.Getenv("MEMCACHE_URL")
+	if memcacheURL == "" {
+		return
+	}
+
+	server2 := setup(brokerURL, fmt.Sprintf("memcache://%v", memcacheURL))
+	worker2 := server2.NewWorker("test_worker")
+	go worker2.Launch()
+	_testSendTask(server2, t)
+	_testSendGroup(server2, t)
+	_testSendChord(server2, t)
+	_testSendChain(server2, t)
+	worker2.Quit()
 }
 
 func _testSendTask(server *Server, t *testing.T) {

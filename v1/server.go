@@ -97,13 +97,13 @@ func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.A
 		signature.UUID = fmt.Sprintf("task_%v", uuid.New())
 	}
 
-	if err := server.broker.Publish(signature); err != nil {
-		return nil, fmt.Errorf("Publish Message: %v", err)
-	}
-
-	// Update task state to PENDING
+	// Set initial task state to PENDING
 	if err := server.backend.SetStatePending(signature); err != nil {
 		return nil, fmt.Errorf("Set State Pending: %v", err)
+	}
+
+	if err := server.broker.Publish(signature); err != nil {
+		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
 
 	return backends.NewAsyncResult(signature, server.backend), nil
@@ -111,13 +111,13 @@ func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.A
 
 // SendChain triggers a chain of tasks
 func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error) {
-	if err := server.broker.Publish(chain.Tasks[0]); err != nil {
-		return nil, fmt.Errorf("Publish Message: %v", err)
-	}
-
-	// Update task state to PENDING
+	// Set initial task state to PENDING
 	if err := server.backend.SetStatePending(chain.Tasks[0]); err != nil {
 		return nil, fmt.Errorf("Set State Pending: %v", err)
+	}
+
+	if err := server.broker.Publish(chain.Tasks[0]); err != nil {
+		return nil, fmt.Errorf("Publish Message: %v", err)
 	}
 
 	return backends.NewChainAsyncResult(chain.Tasks, server.backend), nil
@@ -127,14 +127,16 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 	asyncResults := make([]*backends.AsyncResult, len(group.Tasks))
 
+	// Set initial task states to PENDING
+	for _, signature := range group.Tasks {
+		if err := server.backend.SetStatePending(signature); err != nil {
+			return asyncResults, fmt.Errorf("Set State Pending: %v", err)
+		}
+	}
+
 	for i, signature := range group.Tasks {
 		if err := server.broker.Publish(signature); err != nil {
 			return asyncResults, fmt.Errorf("Publish Message: %v", err)
-		}
-
-		// Update task state to PENDING
-		if err := server.backend.SetStatePending(signature); err != nil {
-			return asyncResults, fmt.Errorf("Set State Pending: %v", err)
 		}
 
 		asyncResults[i] = backends.NewAsyncResult(signature, server.backend)
@@ -145,14 +147,16 @@ func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 
 // SendChord triggers a group of parallel tasks with a callback
 func (server *Server) SendChord(chord *Chord) (*backends.ChordAsyncResult, error) {
+	// Set initial task states to PENDING
+	for _, signature := range chord.Group.Tasks {
+		if err := server.backend.SetStatePending(signature); err != nil {
+			return nil, fmt.Errorf("Set State Pending: %v", err)
+		}
+	}
+
 	for _, signature := range chord.Group.Tasks {
 		if err := server.broker.Publish(signature); err != nil {
 			return nil, fmt.Errorf("Publish Message: %v", err)
-		}
-
-		// Update task state to PENDING
-		if err := server.backend.SetStatePending(signature); err != nil {
-			return nil, fmt.Errorf("Set State Pending: %v", err)
 		}
 	}
 
