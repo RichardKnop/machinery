@@ -470,6 +470,18 @@ if err != nil {
 }
 ```
 
+The above example execute task1 and task2 in parallel, aggregate their results and pass them to task3. Therefor what would end up happening is:
+
+```
+multiply(add(1, 1), add(5, 5))
+```
+
+More explicitely:
+
+```
+(1 + 1) * (5 + 5) = 2 * 10 = 20
+```
+
 SendChord returns ChordAsyncResult which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the callback:
 
 ```go
@@ -540,7 +552,13 @@ if err != nil {
 The above example execute task1, then task2 and then task3, passing result of each task to the next task in the chain. Therefor what would end up happening is:
 
 ```
-((1 + 1) + (5 + 6)) * 4 = 13 * 4 = 52
+multiply(add(add(1, 1), 5, 5), 4)
+```
+
+More explicitely:
+
+```
+((1 + 1) + (5 + 5)) * 4 = 12 * 4 = 48
 ```
 
 SendChain returns ChainAsyncResult which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:
