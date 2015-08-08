@@ -264,7 +264,7 @@ type TaskSignature struct {
 
 ### Supported Types
 
-Currently supported types are:
+Machinery encodes tasks to JSON before posting them to one of the broker queues. Task results are also encoded to JSON before being stored in the backend. Therefor only types with native JSON representation will be supported. Currently supported types are:
 
 * bool
 * int
