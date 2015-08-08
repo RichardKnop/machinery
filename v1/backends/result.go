@@ -71,12 +71,10 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 	for {
 		asyncResult.GetState()
 
-		if asyncResult.taskState.IsSuccess() || asyncResult.taskState.IsFailure() {
-			// Purge state if we are using AMQP backend
-			_, ok := asyncResult.backend.(*AMQPBackend)
-			if ok && asyncResult.taskState.IsCompleted() {
-				asyncResult.backend.PurgeState(asyncResult.Signature)
-			}
+		// Purge state if we are using AMQP backend
+		_, isAMQPBackend := asyncResult.backend.(*AMQPBackend)
+		if isAMQPBackend && asyncResult.taskState.IsCompleted() {
+			asyncResult.backend.PurgeState(asyncResult.taskState)
 		}
 
 		if asyncResult.taskState.IsSuccess() {

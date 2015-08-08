@@ -101,7 +101,7 @@ func (taskState *TaskState) IsFailure() bool {
 func (taskStateGroup *TaskStateGroup) IsCompleted() bool {
 	completedCount := 0
 	for _, taskState := range taskStateGroup.States {
-		if taskState.IsSuccess() || taskState.IsFailure() {
+		if taskState.IsCompleted() {
 			completedCount++
 		}
 	}

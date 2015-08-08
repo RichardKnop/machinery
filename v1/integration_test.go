@@ -12,18 +12,14 @@ import (
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
-var (
-	task0, task1, task2, task3, task4 signatures.TaskSignature
-)
-
 type ascendingInt64s []int64
 
 func (a ascendingInt64s) Len() int           { return len(a) }
 func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
-func init() {
-	task0 = signatures.TaskSignature{
+func getTasks() []signatures.TaskSignature {
+	task0 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -37,7 +33,7 @@ func init() {
 		},
 	}
 
-	task1 = signatures.TaskSignature{
+	task1 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -51,7 +47,7 @@ func init() {
 		},
 	}
 
-	task2 = signatures.TaskSignature{
+	task2 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -65,7 +61,7 @@ func init() {
 		},
 	}
 
-	task3 = signatures.TaskSignature{
+	task3 := signatures.TaskSignature{
 		Name: "multiply",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -75,8 +71,12 @@ func init() {
 		},
 	}
 
-	task4 = signatures.TaskSignature{
+	task4 := signatures.TaskSignature{
 		Name: "multiply",
+	}
+
+	return []signatures.TaskSignature{
+		task0, task1, task2, task3, task4,
 	}
 }
 
@@ -85,15 +85,15 @@ func TestIntegration(t *testing.T) {
 	if brokerURL == "" {
 		return
 	}
-	//
-	// server1 := setup(brokerURL, "amqp")
-	// worker1 := server1.NewWorker("test_worker")
-	// go worker1.Launch()
-	// _testSendTask(server1, t)
-	// _testSendGroup(server1, t)
-	// _testSendChord(server1, t)
-	// _testSendChain(server1, t)
-	// worker1.Quit()
+
+	server1 := setup(brokerURL, "amqp")
+	worker1 := server1.NewWorker("test_worker")
+	go worker1.Launch()
+	_testSendTask(server1, t)
+	_testSendGroup(server1, t)
+	_testSendChord(server1, t)
+	_testSendChain(server1, t)
+	worker1.Quit()
 
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 	if memcacheURL == "" {
@@ -111,7 +111,9 @@ func TestIntegration(t *testing.T) {
 }
 
 func _testSendTask(server *Server, t *testing.T) {
-	asyncResult, err := server.SendTask(&task0)
+	tasks := getTasks()
+
+	asyncResult, err := server.SendTask(&tasks[0])
 	if err != nil {
 		t.Error(err)
 	}
@@ -131,7 +133,9 @@ func _testSendTask(server *Server, t *testing.T) {
 }
 
 func _testSendGroup(server *Server, t *testing.T) {
-	group := NewGroup(&task0, &task1, &task2)
+	tasks := getTasks()
+
+	group := NewGroup(&tasks[0], &tasks[1], &tasks[2])
 	asyncResults, err := server.SendGroup(group)
 	if err != nil {
 		t.Error(err)
@@ -165,8 +169,10 @@ func _testSendGroup(server *Server, t *testing.T) {
 }
 
 func _testSendChord(server *Server, t *testing.T) {
-	group := NewGroup(&task0, &task1, &task2)
-	chord := NewChord(group, &task4)
+	tasks := getTasks()
+
+	group := NewGroup(&tasks[0], &tasks[1], &tasks[2])
+	chord := NewChord(group, &tasks[4])
 	chordAsyncResult, err := server.SendChord(chord)
 	if err != nil {
 		t.Error(err)
@@ -187,7 +193,9 @@ func _testSendChord(server *Server, t *testing.T) {
 }
 
 func _testSendChain(server *Server, t *testing.T) {
-	chain := NewChain(&task1, &task2, &task3)
+	tasks := getTasks()
+
+	chain := NewChain(&tasks[1], &tasks[2], &tasks[3])
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		t.Error(err)

@@ -190,35 +190,33 @@ func (amqpBackend *AMQPBackend) GetStateGroup(groupUUID string) (*TaskStateGroup
 }
 
 // PurgeState - deletes stored task state
-func (amqpBackend *AMQPBackend) PurgeState(signature *signatures.TaskSignature) error {
-	purgeUUIDs := []string{signature.UUID}
+func (amqpBackend *AMQPBackend) PurgeState(taskState *TaskState) error {
+	return amqpBackend.deleteQueue(taskState.TaskUUID)
+}
 
-	// if signature.GroupUUID != "" {
-	// 	purgeUUIDs = append(purgeUUIDs, signature.GroupUUID)
-	// }
+// PurgeStateGroup - deletes stored task state
+func (amqpBackend *AMQPBackend) PurgeStateGroup(taskStateGroup *TaskStateGroup) error {
+	return amqpBackend.deleteQueue(taskStateGroup.GroupUUID)
+}
 
-	for _, purgeUUID := range purgeUUIDs {
-		conn, channel, queue, _, err := openConn(purgeUUID, amqpBackend.config)
-		if err != nil {
-			return err
-		}
-
-		defer closeConn(channel, conn)
-
-		// First return value is number of messages removed
-		_, err = channel.QueueDelete(
-			queue.Name, // name
-			false,      // ifUnused
-			false,      // ifEmpty
-			false,      // noWait
-		)
-
-		if err != nil {
-			return err
-		}
+// Deletes a queue
+func (amqpBackend *AMQPBackend) deleteQueue(queueName string) error {
+	conn, channel, queue, _, err := openConn(queueName, amqpBackend.config)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	defer closeConn(channel, conn)
+
+	// First return value is number of messages removed
+	_, err = channel.QueueDelete(
+		queue.Name, // name
+		false,      // ifUnused
+		false,      // ifEmpty
+		false,      // noWait
+	)
+
+	return err
 }
 
 // Updates a task state

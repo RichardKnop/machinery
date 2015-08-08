@@ -13,5 +13,6 @@ type Backend interface {
 	SetStateFailure(signature *signatures.TaskSignature, err string) (*TaskStateGroup, error)
 	GetState(signature *signatures.TaskSignature) (*TaskState, error)
 	GetStateGroup(groupUUID string) (*TaskStateGroup, error)
-	PurgeState(signature *signatures.TaskSignature) error
+	PurgeState(taskState *TaskState) error
+	PurgeStateGroup(taskStateGroup *TaskStateGroup) error
 }

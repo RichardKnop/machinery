@@ -3,7 +3,6 @@ package backends
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -159,33 +158,13 @@ func (memcacheBackend *MemcacheBackend) GetStateGroup(groupUUID string) (*TaskSt
 }
 
 // PurgeState - deletes stored task state
-func (memcacheBackend *MemcacheBackend) PurgeState(signature *signatures.TaskSignature) error {
-	if err := memcacheBackend.getClient().Delete(signature.UUID); err != nil {
-		return err
-	}
+func (memcacheBackend *MemcacheBackend) PurgeState(taskState *TaskState) error {
+	return memcacheBackend.getClient().Delete(taskState.TaskUUID)
+}
 
-	if signature.GroupUUID == "" {
-		return nil
-	}
-
-	// Now let's make sure if this was the last task in a group,
-	// that we don't leave an orphan group state around
-
-	taskStateGroup, err := memcacheBackend.GetStateGroup(signature.GroupUUID)
-	if err != nil {
-		log.Printf("Get State Group: %v", err)
-		return nil
-	}
-
-	if !taskStateGroup.IsCompleted() {
-		return nil
-	}
-
-	if err := memcacheBackend.getClient().Delete(taskStateGroup.GroupUUID); err != nil {
-		log.Printf("Delete State Group: %v", err)
-	}
-
-	return nil
+// PurgeStateGroup - deletes stored task state
+func (memcacheBackend *MemcacheBackend) PurgeStateGroup(taskStateGroup *TaskStateGroup) error {
+	return memcacheBackend.getClient().Delete(taskStateGroup.GroupUUID)
 }
 
 // Returns / creates instance of Memcache client

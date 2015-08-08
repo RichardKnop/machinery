@@ -120,6 +120,14 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 
 	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
 
+	if taskStateGroup != nil {
+		// Purge group state if we are using AMQP backend and all tasks finished
+		_, isAMQPBackend := worker.server.backend.(*backends.AMQPBackend)
+		if isAMQPBackend && taskStateGroup.IsCompleted() {
+			worker.server.backend.PurgeStateGroup(taskStateGroup)
+		}
+	}
+
 	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {

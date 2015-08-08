@@ -48,9 +48,9 @@ func init() {
 
 	server, err = machinery.NewServer(&cnf)
 	errors.Fail(err, "Could not initialize server")
+}
 
-	// Let's define some example tasks
-
+func initTasks() {
 	task0 = signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
@@ -112,6 +112,7 @@ func main() {
 	/*
 	 * First, let's try sending a single task
 	 */
+	initTasks()
 	fmt.Println("Single task:")
 
 	asyncResult, err := server.SendTask(&task0)
@@ -126,6 +127,7 @@ func main() {
 	 */
 
 	// Now let's try a parallel execution
+	initTasks()
 	fmt.Println("Group of tasks (parallel execution):")
 
 	group := machinery.NewGroup(&task0, &task1, &task2)
@@ -144,6 +146,7 @@ func main() {
 	}
 
 	// Now let's try a group with a chord
+	initTasks()
 	fmt.Println("Group of tasks with a callback (chord):")
 
 	group = machinery.NewGroup(&task0, &task1, &task2)
@@ -156,6 +159,7 @@ func main() {
 	fmt.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", result.Interface())
 
 	// Now let's try chaining task results
+	initTasks()
 	fmt.Println("Chain of tasks:")
 
 	chain := machinery.NewChain(&task0, &task1, &task2, &task3)
