@@ -3,7 +3,15 @@ package utils
 import "testing"
 
 func TestReflectValue(t *testing.T) {
-	value, err := ReflectValue("int", interface{}(float64(1)))
+	value, err := ReflectValue("bool", interface{}(false))
+	if err != nil {
+		t.Error(err)
+	}
+	if value.Type().String() != "bool" {
+		t.Errorf("type is %v, want bool", value.Type().String())
+	}
+
+	value, err = ReflectValue("int", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -99,7 +107,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want float64", value.Type().String())
 	}
 
-	value, err = ReflectValue("string", interface{}(""))
+	value, err = ReflectValue("string", interface{}("123"))
 	if err != nil {
 		t.Error(err)
 	}
