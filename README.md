@@ -122,7 +122,7 @@ import (
 
 var cnf = config.Config{
 	Broker:        "amqp://guest:guest@localhost:5672/",
-    ResultBackend: "amqp",
+    	ResultBackend: "amqp",
 	Exchange:      "machinery_exchange",
 	ExchangeType:  "direct",
 	DefaultQueue:  "machinery_tasks",
@@ -263,26 +263,26 @@ type TaskSignature struct {
 
 ### Supported Types
 
-Machinery encodes tasks to JSON before posting them to one of the broker queues. Task results are also encoded to JSON before being stored in the backend. Therefor only types with native JSON representation will be supported. Currently supported types are:
+Machinery encodes tasks to JSON before sending them to the broker. Task results are also stored in the backend as JSON encoded strings. Therefor only types with native JSON representation can be supported. Currently supported types are:
 
-* bool
-* int
-* int8
-* int16
-* int32
-* int64
-* unint
-* uint8
-* uint16
-* uint32
-* uint64
-* float32
-* float64
-* string
+* `bool`
+* `int`
+* `int8`
+* `int16`
+* `int32`
+* `int64`
+* `unint`
+* `uint8`
+* `uint16`
+* `uint32`
+* `uint64`
+* `float32`
+* `float64`
+* `string`
 
 ### Sending Tasks
 
-Tasks can be called by passing an instance of TaskSignature to an App instance. E.g:
+Tasks can be called by passing an instance of `TaskSignature` to an `Server` instance. E.g:
 
 ```go
 import "github.com/RichardKnop/machinery/v1/signatures"
@@ -310,7 +310,7 @@ if err != nil {
 
 ### Keeping Results
 
-If you have configured a result backend, the task states will be persisted. Possible states:
+If you configure a result backend, the task states and results will be persisted. Possible states:
 
 ```go
 const (
@@ -344,11 +344,13 @@ type TaskStateGroup struct {
 }
 ```
 
-TaskState struct will be serialized and stored every time a task state changes.
+`TaskResult` represents a return value of a processed task.
 
-TaskStateGroup is used for keeping a state of group of tasks.
+`TaskState` struct will be serialized and stored every time a task state changes.
 
-AsyncResult object allows you to check for the state of a task:
+`TaskStateGroup` is used for keeping a state of group of tasks.
+
+`AsyncResult` object allows you to check for the state of a task:
 
 ```go
 taskState := asyncResult.GetState()
@@ -381,7 +383,7 @@ Running a single asynchronous task is fine but often you will want to design a w
 
 ### Groups
 
-Groups is a set of tasks which will be executed in parallel, independent of each other. E.g.:
+`Group` is a set of tasks which will be executed in parallel, independent of each other. E.g.:
 
 ```go
 import (
@@ -425,7 +427,7 @@ if err != nil {
 }
 ```
 
-SendGroup returns a slice of AsyncResult objects. So you can do a blocking call and wait for the result of groups tasks:
+`SendGroup` returns a slice of `AsyncResult` objects. So you can do a blocking call and wait for the result of groups tasks:
 
 ```go
 for _, asyncResult := range asyncResults {
@@ -440,7 +442,7 @@ for _, asyncResult := range asyncResults {
 
 ### Chords
 
-Chords allow you to define a callback to be executed after all tasks in a group finished processing, e.g.:
+`Chord` allows you to define a callback to be executed after all tasks in a group finished processing, e.g.:
 
 ```go
 import (
@@ -501,7 +503,7 @@ More explicitely:
 (1 + 1) * (5 + 5) = 2 * 10 = 20
 ```
 
-SendChord returns ChordAsyncResult which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the callback:
+`SendChord` returns `ChordAsyncResult` which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the callback:
 
 ```go
 result, err := chordAsyncResult.Get()
@@ -514,7 +516,7 @@ fmt.Println(result.Interface())
 
 ### Chains
 
-Chain is simply a set of tasks which will be executed one by one, each successful task triggering the next task in the chain. E.g.:
+`Chain` is simply a set of tasks which will be executed one by one, each successful task triggering the next task in the chain. E.g.:
 
 ```go
 import (
@@ -580,7 +582,7 @@ More explicitely:
 ((1 + 1) + (5 + 5)) * 4 = 12 * 4 = 48
 ```
 
-SendChain returns ChainAsyncResult which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:
+`SendChain` returns `ChainAsyncResult` which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:
 
 ```go
 result, err := chainAsyncResult.Get()
@@ -597,11 +599,13 @@ First, there are several requirements:
 
 - RabbitMQ
 - Go
+- Memcached (optional)
 
 On OS X systems, you can install them using Homebrew:
 
 ```
 $ brew install rabbitmq
+$ brew install memcached
 $ brew install go
 ```
 
@@ -623,3 +627,5 @@ In order to enable integration tests, you will need to export couple of environm
 $ export AMQP_URL=amqp://guest:guest@localhost:5672/
 $ export MEMCACHE_URL=127.0.0.1:11211
 ```
+
+I recommend to run the integration tests when making changes to the code. Due to Machinery being composed of several parts (worker, client) which run independently of each other, integration tests are important to verify everything works as expected.
