@@ -1,8 +1,9 @@
 DEPS=go list -f '{{range .TestImports}}{{.}} {{end}}' ./...
 
-freeze:
+godep:
 	go get github.com/tools/godep
-	go list ./... | xargs -n1 godep save -r
+	godep save ./...
+
 deps:
 	go get github.com/tools/godep
 	godep restore
