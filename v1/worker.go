@@ -31,7 +31,7 @@ func (worker *Worker) Launch() error {
 	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	log.Printf("- BindingKey: %s", cnf.BindingKey)
 
-	errChan := make(chan error)
+	errorsChan := make(chan error)
 
 	go func() {
 		retryFunc := utils.RetryClosure()
@@ -40,7 +40,7 @@ func (worker *Worker) Launch() error {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
 
 			if !retry {
-				errChan <- err // stop the goroutine
+				errorsChan <- err // stop the goroutine
 				break
 			}
 
@@ -48,7 +48,7 @@ func (worker *Worker) Launch() error {
 		}
 	}()
 
-	return <-errChan
+	return <-errorsChan
 }
 
 // Quit tears down the running worker process
@@ -113,12 +113,22 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 		Type:  result.Type().String(),
 		Value: result.Interface(),
 	}
-	if err := backend.SetStateSuccess(signature, taskResult); err != nil {
+	taskStateGroup, err := backend.SetStateSuccess(signature, taskResult)
+	if err != nil {
 		return fmt.Errorf("Set State Success: %v", err)
 	}
 
 	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
 
+	if taskStateGroup != nil {
+		// Purge group state if we are using AMQP backend and all tasks finished
+		_, isAMQPBackend := worker.server.backend.(*backends.AMQPBackend)
+		if isAMQPBackend && taskStateGroup.IsCompleted() {
+			worker.server.backend.PurgeStateGroup(taskStateGroup)
+		}
+	}
+
+	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {
 			// Pass results of the task to success callbacks
@@ -132,6 +142,25 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 		worker.server.SendTask(successTask)
 	}
 
+	// Optionally trigger chord callback
+	if taskStateGroup != nil && signature.ChordCallback != nil {
+		if !taskStateGroup.IsSuccess() {
+			return nil
+		}
+
+		if signature.ChordCallback.Immutable == false {
+			for _, taskState := range taskStateGroup.States {
+				// Pass results of the task to the chord callback
+				signature.ChordCallback.Args = append(signature.ChordCallback.Args, signatures.TaskArg{
+					Type:  taskState.Result.Type,
+					Value: taskState.Result.Value,
+				})
+			}
+		}
+
+		worker.server.SendTask(signature.ChordCallback)
+	}
+
 	return nil
 }
 
@@ -139,12 +168,14 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) error {
 	// Update task state to FAILURE
 	backend := worker.server.GetBackend()
-	if err := backend.SetStateFailure(signature, err.Error()); err != nil {
+	_, err = backend.SetStateFailure(signature, err.Error())
+	if err != nil {
 		return fmt.Errorf("Set State Failure: %v", err)
 	}
 
 	log.Printf("Failed processing %s. Error = %v", signature.UUID, err)
 
+	// Trigger error callbacks
 	for _, errorTask := range signature.OnError {
 		// Pass error as a first argument to error callbacks
 		args := append([]signatures.TaskArg{signatures.TaskArg{

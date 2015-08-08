@@ -23,6 +23,7 @@ This is an early stage project so far. Feel free to contribute.
     - [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 - [Workflows](https://github.com/RichardKnop/machinery#workflows)
     - [Groups](https://github.com/RichardKnop/machinery#groups)
+    - [Chords](https://github.com/RichardKnop/machinery#chords)
     - [Chains](https://github.com/RichardKnop/machinery#chains)
 - [Development Setup](https://github.com/RichardKnop/machinery#development-setup)
 
@@ -37,7 +38,8 @@ $ go get github.com/RichardKnop/machinery
 Install dependencies:
 
 ```
-$ go get ./...
+$ go get github.com/tools/godep
+$ godep restore
 ```
 
 First, you will need to define some tasks. Look at sample tasks in `_examples/tasks/tasks.go` to see few examples.
@@ -193,6 +195,9 @@ Simply put, when a worker receives a message like this:
 {
     "UUID": "48760a1a-8576-4536-973b-da09048c2ac5",
     "Name": "add",
+    "RoutingKey": "",
+    "GroupUUID": "",
+    "GroupTaskCount": 0,
     "Args": [
         {
             "Type": "int64",
@@ -205,7 +210,8 @@ Simply put, when a worker receives a message like this:
     ],
     "Immutable": false,
     "OnSuccess": null,
-    "OnError": null
+    "OnError": null,
+    "ChordCallback": null
 }
 ```
 
@@ -224,29 +230,36 @@ type TaskArg struct {
 }
 
 type TaskSignature struct {
-	UUID       string
-	Name       string
-	RoutingKey string
-	Args       []TaskArg
-	Immutable  bool
-	OnSuccess  []*TaskSignature
-	OnError    []*TaskSignature
+	UUID           string
+	Name           string
+	RoutingKey     string
+	GroupUUID      string
+	GroupTaskCount int
+	Args           []TaskArg
+	Immutable      bool
+	OnSuccess      []*TaskSignature
+	OnError        []*TaskSignature
+	ChordCallback  *TaskSignature
 }
 ```
 
-UUID is a unique ID of a task. You can either set it yourself or it will be automatically generated.
+`UUID` is a unique ID of a task. You can either set it yourself or it will be automatically generated.
 
-Name is the unique task name by which it is registered against a Server instance.
+`Name` is the unique task name by which it is registered against a Server instance.
 
-RoutingKey is used for routing a task to correct queue. If you leave it empty, the default behaviour will be to set it to the default queue's binding key for direct exchange type and to the default queue name for other exchange types.
+`RoutingKey` is used for routing a task to correct queue. If you leave it empty, the default behaviour will be to set it to the default queue's binding key for direct exchange type and to the default queue name for other exchange types.
 
-Args is a list of arguments that will be passed to the task when it is executed by a worker.
+`GroupUUID`, GroupTaskCount are useful for creating groups of tasks.
 
-Immutable is a flag which defines whether a result of the executed task can be modified or not. This is important with OnSuccess callbacks. Immutable task will not pass its result to its success callbacks while a mutable task will prepend its result to args sent to callback tasks. Long story short, set Immutable to false if you want to pass result of the first task in a chain to the second task.
+`Args` is a list of arguments that will be passed to the task when it is executed by a worker.
 
-OnSuccess defines tasks which will be called after the task has executed successfully. It is a slice of task signature structs.
+`Immutable` is a flag which defines whether a result of the executed task can be modified or not. This is important with `OnSuccess` callbacks. Immutable task will not pass its result to its success callbacks while a mutable task will prepend its result to args sent to callback tasks. Long story short, set Immutable to false if you want to pass result of the first task in a chain to the second task.
 
-OnError defines tasks which will be called after the task execution fails. The first argument passed to error callbacks will be the error returned from the failed task.
+`OnSuccess` defines tasks which will be called after the task has executed successfully. It is a slice of task signature structs.
+
+`OnError` defines tasks which will be called after the task execution fails. The first argument passed to error callbacks will be the error returned from the failed task.
+
+`ChordCallback` is used to create a callback to a group of tasks.
 
 ### Sending Tasks
 
@@ -304,9 +317,17 @@ type TaskState struct {
 	Result   *TaskResult
 	Error    string
 }
+
+type TaskStateGroup struct {
+	GroupUUID      string
+	GroupTaskCount int
+	States         map[string]TaskState
+}
 ```
 
 TaskState struct will be serialized and stored every time a task state changes.
+
+TaskStateGroup is used for keeping a state of group of tasks.
 
 AsyncResult object allows you to check for the state of a task:
 
@@ -377,8 +398,8 @@ task2 := signatures.TaskSignature{
     },
 }
 
-chain := machinery.NewGroup(&task1, &task2)
-asyncResults, err := server.SendGroup(chain)
+group := machinery.NewGroup(&task1, &task2)
+asyncResults, err := server.SendGroup(group)
 if err != nil {
     // failed to send the group
     // do something with the error
@@ -396,6 +417,80 @@ for _, asyncResult := range asyncResults {
     }
     fmt.Println(result.Interface())
 }
+```
+
+### Chords
+
+Chords allow you to define a callback to be executed after all tasks in a group finished processing, e.g.:
+
+```go
+import (
+    "github.com/RichardKnop/machinery/v1/signatures"
+    machinery "github.com/RichardKnop/machinery/v1"
+)
+
+task1 := signatures.TaskSignature{
+    Name: "add",
+    Args: []signatures.TaskArg{
+        signatures.TaskArg{
+            Type:  "int64",
+            Value: 1,
+        },
+        signatures.TaskArg{
+            Type:  "int64",
+            Value: 1,
+        },
+    },
+}
+
+task2 := signatures.TaskSignature{
+    Name: "add",
+    Args: []signatures.TaskArg{
+        signatures.TaskArg{
+            Type:  "int64",
+            Value: 5,
+        },
+        signatures.TaskArg{
+            Type:  "int64",
+            Value: 5,
+        },
+    },
+}
+
+task3 := signatures.TaskSignature{
+    Name: "multiply",
+}
+
+group := machinery.NewGroup(&task1, &task2)
+chord := machinery.NewChord(group, &task3)
+chordAsyncResult, err := server.SendChord(chord)
+if err != nil {
+    // failed to send the chord
+    // do something with the error
+}
+```
+
+The above example execute task1 and task2 in parallel, aggregate their results and pass them to task3. Therefor what would end up happening is:
+
+```
+multiply(add(1, 1), add(5, 5))
+```
+
+More explicitely:
+
+```
+(1 + 1) * (5 + 5) = 2 * 10 = 20
+```
+
+SendChord returns ChordAsyncResult which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the callback:
+
+```go
+result, err := chordAsyncResult.Get()
+if err != nil {
+    // getting result of a chord failed
+    // do something with the error
+}
+fmt.Println(result.Interface())
 ```
 
 ### Chains
@@ -457,7 +552,13 @@ if err != nil {
 The above example execute task1, then task2 and then task3, passing result of each task to the next task in the chain. Therefor what would end up happening is:
 
 ```
-((1 + 1) + (5 + 6)) * 4 = 13 * 4 = 52
+multiply(add(add(1, 1), 5, 5), 4)
+```
+
+More explicitely:
+
+```
+((1 + 1) + (5 + 5)) * 4 = 12 * 4 = 48
 ```
 
 SendChain returns ChainAsyncResult which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:

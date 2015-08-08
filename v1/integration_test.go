@@ -12,18 +12,14 @@ import (
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
-var (
-	task0, task1, task2, task3 signatures.TaskSignature
-)
-
 type ascendingInt64s []int64
 
 func (a ascendingInt64s) Len() int           { return len(a) }
 func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
-func init() {
-	task0 = signatures.TaskSignature{
+func getTasks() []signatures.TaskSignature {
+	task0 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -37,21 +33,21 @@ func init() {
 		},
 	}
 
-	task1 = signatures.TaskSignature{
+	task1 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: 1,
+				Value: 2,
 			},
 			signatures.TaskArg{
 				Type:  "int64",
-				Value: 1,
+				Value: 2,
 			},
 		},
 	}
 
-	task2 = signatures.TaskSignature{
+	task2 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -65,7 +61,7 @@ func init() {
 		},
 	}
 
-	task3 = signatures.TaskSignature{
+	task3 := signatures.TaskSignature{
 		Name: "multiply",
 		Args: []signatures.TaskArg{
 			signatures.TaskArg{
@@ -73,6 +69,14 @@ func init() {
 				Value: 4,
 			},
 		},
+	}
+
+	task4 := signatures.TaskSignature{
+		Name: "multiply",
+	}
+
+	return []signatures.TaskSignature{
+		task0, task1, task2, task3, task4,
 	}
 }
 
@@ -87,6 +91,7 @@ func TestIntegration(t *testing.T) {
 	go worker1.Launch()
 	_testSendTask(server1, t)
 	_testSendGroup(server1, t)
+	_testSendChord(server1, t)
 	_testSendChain(server1, t)
 	worker1.Quit()
 
@@ -100,12 +105,15 @@ func TestIntegration(t *testing.T) {
 	go worker2.Launch()
 	_testSendTask(server2, t)
 	_testSendGroup(server2, t)
+	_testSendChord(server2, t)
 	_testSendChain(server2, t)
 	worker2.Quit()
 }
 
 func _testSendTask(server *Server, t *testing.T) {
-	asyncResult, err := server.SendTask(&task0)
+	tasks := getTasks()
+
+	asyncResult, err := server.SendTask(&tasks[0])
 	if err != nil {
 		t.Error(err)
 	}
@@ -125,7 +133,9 @@ func _testSendTask(server *Server, t *testing.T) {
 }
 
 func _testSendGroup(server *Server, t *testing.T) {
-	group := NewGroup(&task1, &task2, &task3)
+	tasks := getTasks()
+
+	group := NewGroup(&tasks[0], &tasks[1], &tasks[2])
 	asyncResults, err := server.SendGroup(group)
 	if err != nil {
 		t.Error(err)
@@ -158,8 +168,34 @@ func _testSendGroup(server *Server, t *testing.T) {
 	}
 }
 
+func _testSendChord(server *Server, t *testing.T) {
+	tasks := getTasks()
+
+	group := NewGroup(&tasks[0], &tasks[1], &tasks[2])
+	chord := NewChord(group, &tasks[4])
+	chordAsyncResult, err := server.SendChord(chord)
+	if err != nil {
+		t.Error(err)
+	}
+
+	result, err := chordAsyncResult.Get()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if result.Interface() != int64(88) {
+		t.Errorf(
+			"result = %v(%v), want int64(88)",
+			result.Type().String(),
+			result.Interface(),
+		)
+	}
+}
+
 func _testSendChain(server *Server, t *testing.T) {
-	chain := NewChain(&task1, &task2, &task3)
+	tasks := getTasks()
+
+	chain := NewChain(&tasks[1], &tasks[2], &tasks[3])
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		t.Error(err)
@@ -170,9 +206,9 @@ func _testSendChain(server *Server, t *testing.T) {
 		t.Error(err)
 	}
 
-	if result.Interface() != int64(52) {
+	if result.Interface() != int64(60) {
 		t.Errorf(
-			"result = %v(%v), want int64(52)",
+			"result = %v(%v), want int64(60)",
 			result.Type().String(),
 			result.Interface(),
 		)

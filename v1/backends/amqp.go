@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/streadway/amqp"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/streadway/amqp"
 )
 
 // AMQPBackend represents an AMQP result backend
@@ -31,11 +31,16 @@ func (amqpBackend *AMQPBackend) SetStatePending(signature *signatures.TaskSignat
 		return err
 	}
 
-	if signature.GroupUUID != "" {
-		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	if signature.GroupUUID == "" {
+		return nil
 	}
 
-	return nil
+	_, err := amqpBackend.updateStateGroup(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+		taskState,
+	)
+	return err
 }
 
 // SetStateReceived - sets task state to RECEIVED
@@ -46,11 +51,16 @@ func (amqpBackend *AMQPBackend) SetStateReceived(signature *signatures.TaskSigna
 		return err
 	}
 
-	if signature.GroupUUID != "" {
-		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	if signature.GroupUUID == "" {
+		return nil
 	}
 
-	return nil
+	_, err := amqpBackend.updateStateGroup(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+		taskState,
+	)
+	return err
 }
 
 // SetStateStarted - sets task state to STARTED
@@ -61,41 +71,54 @@ func (amqpBackend *AMQPBackend) SetStateStarted(signature *signatures.TaskSignat
 		return err
 	}
 
-	if signature.GroupUUID != "" {
-		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	if signature.GroupUUID == "" {
+		return nil
 	}
 
-	return nil
+	_, err := amqpBackend.updateStateGroup(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+		taskState,
+	)
+	return err
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (amqpBackend *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
+func (amqpBackend *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) (*TaskStateGroup, error) {
 	taskState := NewSuccessTaskState(signature, result)
 
 	if err := amqpBackend.updateState(taskState); err != nil {
-		return err
+		return nil, err
 	}
 
-	if signature.GroupUUID != "" {
-		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	if signature.GroupUUID == "" {
+		return nil, nil
 	}
 
-	return nil
+	return amqpBackend.updateStateGroup(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+		taskState,
+	)
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
+func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) (*TaskStateGroup, error) {
 	taskState := NewFailureTaskState(signature, err)
 
 	if err := amqpBackend.updateState(taskState); err != nil {
-		return err
+		return nil, err
 	}
 
-	if signature.GroupUUID != "" {
-		return amqpBackend.updateStateGroup(signature.GroupUUID, taskState)
+	if signature.GroupUUID == "" {
+		return nil, nil
 	}
 
-	return nil
+	return amqpBackend.updateStateGroup(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+		taskState,
+	)
 }
 
 // GetState returns the latest task state. It will only return the status once
@@ -103,12 +126,12 @@ func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignat
 func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*TaskState, error) {
 	taskState := TaskState{}
 
-	conn, channel, queue, err := open(signature.UUID, amqpBackend.config)
+	conn, channel, queue, _, err := openConn(signature.UUID, amqpBackend.config)
 	if err != nil {
 		return nil, err
 	}
 
-	defer close(channel, conn)
+	defer closeConn(channel, conn)
 
 	d, ok, err := channel.Get(
 		queue.Name, // queue name
@@ -132,52 +155,85 @@ func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*
 	return &taskState, nil
 }
 
-// PurgeState - deletes stored task state
-func (amqpBackend *AMQPBackend) PurgeState(signature *signatures.TaskSignature) error {
-	purgeUUIDs := []string{signature.UUID}
-	if signature.GroupUUID != "" {
-		purgeUUIDs = append(purgeUUIDs, signature.GroupUUID)
+// GetStateGroup returns the latest task state group. It will only return the status once
+// as the message will get consumed and removed from the queue.
+func (amqpBackend *AMQPBackend) GetStateGroup(groupUUID string) (*TaskStateGroup, error) {
+	taskStateGroup := TaskStateGroup{}
+
+	conn, channel, queue, _, err := openConn(groupUUID, amqpBackend.config)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, purgeUUID := range purgeUUIDs {
-		conn, channel, queue, err := open(purgeUUID, amqpBackend.config)
-		if err != nil {
-			return err
-		}
+	defer closeConn(channel, conn)
 
-		defer close(channel, conn)
-
-		// First return value is number of messages removed
-		_, err = channel.QueueDelete(
-			queue.Name, // name
-			false,      // ifUnused
-			false,      // ifEmpty
-			false,      // noWait
-		)
-
-		if err != nil {
-			return err
-		}
+	d, ok, err := channel.Get(
+		queue.Name, // queue name
+		false,      // multiple
+	)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, errors.New("No state ready")
 	}
 
-	return nil
+	defer d.Ack(false)
+
+	if err := json.Unmarshal([]byte(d.Body), &taskStateGroup); err != nil {
+		log.Printf("Failed to unmarshal task state group: %v", string(d.Body))
+		log.Print(err)
+		return nil, err
+	}
+
+	return &taskStateGroup, nil
 }
 
-// Updates a task state
-func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
-	conn, channel, _, err := open(taskState.TaskUUID, amqpBackend.config)
+// PurgeState - deletes stored task state
+func (amqpBackend *AMQPBackend) PurgeState(taskState *TaskState) error {
+	return amqpBackend.deleteQueue(taskState.TaskUUID)
+}
+
+// PurgeStateGroup - deletes stored task state
+func (amqpBackend *AMQPBackend) PurgeStateGroup(taskStateGroup *TaskStateGroup) error {
+	return amqpBackend.deleteQueue(taskStateGroup.GroupUUID)
+}
+
+// Deletes a queue
+func (amqpBackend *AMQPBackend) deleteQueue(queueName string) error {
+	conn, channel, queue, _, err := openConn(queueName, amqpBackend.config)
 	if err != nil {
 		return err
 	}
 
-	defer close(channel, conn)
+	defer closeConn(channel, conn)
+
+	// First return value is number of messages removed
+	_, err = channel.QueueDelete(
+		queue.Name, // name
+		false,      // ifUnused
+		false,      // ifEmpty
+		false,      // noWait
+	)
+
+	return err
+}
+
+// Updates a task state
+func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
+	conn, channel, _, confirmsChan, err := openConn(taskState.TaskUUID, amqpBackend.config)
+	if err != nil {
+		return err
+	}
+
+	defer closeConn(channel, conn)
 
 	message, err := json.Marshal(taskState)
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	return channel.Publish(
+	if err := channel.Publish(
 		amqpBackend.config.Exchange, // exchange
 		taskState.TaskUUID,          // routing key
 		false,                       // mandatory
@@ -187,41 +243,56 @@ func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
 			Body:         message,
 			DeliveryMode: amqp.Transient,
 		},
-	)
-}
-
-// Updates a task state group
-func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, taskState *TaskState) error {
-	conn, channel, queue, err := open(groupUUID, amqpBackend.config)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 
-	defer close(channel, conn)
+	confirmed := <-confirmsChan
 
-	var taskStateGroup TaskStateGroup
+	if confirmed.Ack {
+		return nil
+	}
+
+	return fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
+}
+
+// Updates a task state group
+func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCount int, taskState *TaskState) (*TaskStateGroup, error) {
+	if groupUUID == "" || groupTaskCount == 0 {
+		return nil, nil
+	}
+
+	conn, channel, queue, confirmsChan, err := openConn(groupUUID, amqpBackend.config)
+	if err != nil {
+		return nil, err
+	}
+
+	defer closeConn(channel, conn)
+
+	var taskStateGroup *TaskStateGroup
 
 	d, ok, err := channel.Get(
 		queue.Name, // queue name
 		false,      // multiple
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !ok {
-		taskStateGroup = TaskStateGroup{
-			GroupUUID: groupUUID,
-			States:    make(map[string]TaskState),
+		taskStateGroup = &TaskStateGroup{
+			GroupUUID:      groupUUID,
+			GroupTaskCount: groupTaskCount,
+			States:         make(map[string]TaskState),
 		}
 	} else {
-		d.Ack(false)
+		defer d.Ack(false)
 
-		taskStateGroup = TaskStateGroup{}
+		taskStateGroup = &TaskStateGroup{}
 
 		if err := json.Unmarshal([]byte(d.Body), &taskStateGroup); err != nil {
 			log.Printf("Failed to unmarshal task state group: %v", string(d.Body))
 			log.Print(err)
-			return err
+			return nil, err
 		}
 	}
 
@@ -229,10 +300,10 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, taskState *Ta
 
 	message, err := json.Marshal(taskStateGroup)
 	if err != nil {
-		return fmt.Errorf("JSON Encode Message: %v", err)
+		return nil, fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	return channel.Publish(
+	if err := channel.Publish(
 		amqpBackend.config.Exchange, // exchange
 		groupUUID,                   // routing key
 		false,                       // mandatory
@@ -242,11 +313,21 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, taskState *Ta
 			Body:         message,
 			DeliveryMode: amqp.Transient,
 		},
-	)
+	); err != nil {
+		return nil, err
+	}
+
+	confirmed := <-confirmsChan
+
+	if confirmed.Ack {
+		return taskStateGroup, nil
+	}
+
+	return nil, fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
 }
 
 // Connects to the message queue, opens a channel, declares a queue
-func open(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel, amqp.Queue, error) {
+func openConn(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
 	var conn *amqp.Connection
 	var channel *amqp.Channel
 	var queue amqp.Queue
@@ -254,12 +335,12 @@ func open(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel,
 
 	conn, err = amqp.Dial(cnf.Broker)
 	if err != nil {
-		return conn, channel, queue, fmt.Errorf("Dial: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
 	}
 
 	channel, err = conn.Channel()
 	if err != nil {
-		return conn, channel, queue, fmt.Errorf("Channel: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Channel: %s", err)
 	}
 
 	err = channel.ExchangeDeclare(
@@ -272,7 +353,7 @@ func open(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel,
 		nil,              // arguments
 	)
 	if err != nil {
-		return conn, channel, queue, fmt.Errorf("Exchange: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Exchange: %s", err)
 	}
 
 	resultsExpireIn := cnf.ResultsExpireIn * 1000
@@ -292,7 +373,7 @@ func open(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel,
 		arguments,
 	)
 	if err != nil {
-		return conn, channel, queue, fmt.Errorf("Queue Declare: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Queue Declare: %s", err)
 	}
 
 	if err := channel.QueueBind(
@@ -302,14 +383,22 @@ func open(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel,
 		false,        // noWait
 		nil,          // arguments
 	); err != nil {
-		return conn, channel, queue, fmt.Errorf("Queue Bind: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
 	}
 
-	return conn, channel, queue, nil
+	confirmsChan := make(chan amqp.Confirmation, 1)
+
+	// Enable publish confirmations
+	if err := channel.Confirm(false); err != nil {
+		close(confirmsChan)
+		return conn, channel, queue, nil, fmt.Errorf("Channel could not be put into confirm mode: %s", err)
+	}
+
+	return conn, channel, queue, channel.NotifyPublish(confirmsChan), nil
 }
 
 // Closes the connection
-func close(channel *amqp.Channel, conn *amqp.Connection) error {
+func closeConn(channel *amqp.Channel, conn *amqp.Connection) error {
 	if err := channel.Close(); err != nil {
 		return fmt.Errorf("Channel Close: %s", err)
 	}
