@@ -5,5 +5,5 @@ deps:
 	godep restore
 	$(DEPS) | xargs -n1 go get -d
 
-test: deps
+test:
 	go list ./... | xargs -n1 go test -timeout=3s
