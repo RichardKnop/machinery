@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	aBool    = true
 	typesMap = map[string]reflect.Type{
 		"int":     reflect.TypeOf(int(1)),
 		"int8":    reflect.TypeOf(int8(1)),
@@ -20,6 +21,7 @@ var (
 		"uint64":  reflect.TypeOf(uint64(1)),
 		"float32": reflect.TypeOf(float32(0.5)),
 		"float64": reflect.TypeOf(float64(0.5)),
+		"bool":    reflect.TypeOf(aBool),
 		"string":  reflect.TypeOf(string("")),
 	}
 
@@ -76,6 +78,17 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 		}
 
 		theValue.Elem().SetString(stringValue)
+		return theValue.Elem(), nil
+	}
+
+	// Booleans
+	if theType == "bool" {
+		boolValue, ok := value.(bool)
+		if !ok {
+			return reflectedValue, typeConversionError(value, theType)
+		}
+
+		theValue.Elem().SetBool(boolValue)
 		return theValue.Elem(), nil
 	}
 
