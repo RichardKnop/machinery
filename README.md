@@ -19,6 +19,7 @@ This is an early stage project so far. Feel free to contribute.
 - [Tasks](https://github.com/RichardKnop/machinery#tasks)
     - [Registering Tasks](https://github.com/RichardKnop/machinery#registering-tasks)
     - [Signatures](https://github.com/RichardKnop/machinery#signatures)
+    - [Supported Types](https://github.com/RichardKnop/machinery#supported-types)
     - [Sending Tasks](https://github.com/RichardKnop/machinery#sending-tasks)
     - [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 - [Workflows](https://github.com/RichardKnop/machinery#workflows)
@@ -260,6 +261,25 @@ type TaskSignature struct {
 `OnError` defines tasks which will be called after the task execution fails. The first argument passed to error callbacks will be the error returned from the failed task.
 
 `ChordCallback` is used to create a callback to a group of tasks.
+
+### Supported Types
+
+Currently supported types are:
+
+* bool
+* int
+* int8
+* int16
+* int32
+* int64
+* unint
+* uint8
+* uint16
+* uint32
+* uint64
+* float32
+* float64
+* string
 
 ### Sending Tasks
 
