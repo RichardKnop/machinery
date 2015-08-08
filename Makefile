@@ -1,7 +1,8 @@
 DEPS=go list -f '{{range .TestImports}}{{.}} {{end}}' ./...
 
 deps:
-	go get -d -v ./...
+	go get github.com/tools/godep
+	godep restore
 	$(DEPS) | xargs -n1 go get -d
 
 test: deps

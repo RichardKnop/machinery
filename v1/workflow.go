@@ -3,7 +3,7 @@ package machinery
 import (
 	"fmt"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/RichardKnop/machinery/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
