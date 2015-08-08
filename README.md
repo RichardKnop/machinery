@@ -64,7 +64,7 @@ You will be able to see the tasks being processed asynchronously by the worker:
 
 ## Configuration
 
-Machinery has several configuration options. Configuration is encapsulated by a Config struct and injected as a dependency to objects that need it.
+Machinery has several configuration options. Configuration is encapsulated by a `Config` struct and injected as a dependency to objects that need it.
 
 ```go
 type Config struct {
@@ -111,7 +111,7 @@ The queue is bind to the exchange with this key, e.g. `machinery_task`.
 
 ## Server
 
-A Machinery library must be instantiated before use. The way this is done is by creating a Server instance. Server is a base object which stores Machinery configuration and registered tasks. E.g.:
+A Machinery library must be instantiated before use. The way this is done is by creating a `Server` instance. `Server` is a base object which stores Machinery configuration and registered tasks. E.g.:
 
 ```go
 
@@ -137,7 +137,7 @@ if err != nil {
 
 ## Workers
 
-In order to consume tasks, you need to have one or more workers running. All you need to run a worker is a Server instance with registered tasks. E.g.:
+In order to consume tasks, you need to have one or more workers running. All you need to run a worker is a `Server` instance with registered tasks. E.g.:
 
 ```go
 worker := server.NewWorker("worker_name")
