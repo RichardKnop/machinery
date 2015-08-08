@@ -39,8 +39,7 @@ $ go get github.com/RichardKnop/machinery
 Install dependencies:
 
 ```
-$ go get github.com/tools/godep
-$ godep restore
+$ make deps
 ```
 
 First, you will need to define some tasks. Look at sample tasks in `_examples/tasks/tasks.go` to see few examples.
