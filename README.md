@@ -121,12 +121,12 @@ import (
 )
 
 var cnf = config.Config{
-	Broker:        "amqp://guest:guest@localhost:5672/",
-    	ResultBackend: "amqp",
-	Exchange:      "machinery_exchange",
-	ExchangeType:  "direct",
-	DefaultQueue:  "machinery_tasks",
-	BindingKey:    "machinery_task",
+    Broker:        "amqp://guest:guest@localhost:5672/",
+    ResultBackend: "amqp",
+    Exchange:      "machinery_exchange",
+    ExchangeType:  "direct",
+    DefaultQueue:  "machinery_tasks",
+    BindingKey:    "machinery_task",
 }
 
 server, err := machinery.NewServer(&cnf)
@@ -155,19 +155,19 @@ Tasks are a building block of Machinery applications. A task is a function which
 
 ```go
 func Add(args ...int64) (int64, error) {
-	sum := int64(0)
-	for _, arg := range args {
-		sum += arg
-	}
-	return sum, nil
+    sum := int64(0)
+    for _, arg := range args {
+        sum += arg
+    }
+    return sum, nil
 }
 
 func Multiply(args ...int64) (int64, error) {
-	sum := int64(1)
-	for _, arg := range args {
-		sum *= arg
-	}
-	return sum, nil
+    sum := int64(1)
+    for _, arg := range args {
+        sum *= arg
+    }
+    return sum, nil
 }
 ```
 
@@ -225,21 +225,21 @@ A signature wraps calling arguments, execution options (such as immutability) an
 
 ```go
 type TaskArg struct {
-	Type  string
-	Value interface{}
+    Type  string
+    Value interface{}
 }
 
 type TaskSignature struct {
-	UUID           string
-	Name           string
-	RoutingKey     string
-	GroupUUID      string
-	GroupTaskCount int
-	Args           []TaskArg
-	Immutable      bool
-	OnSuccess      []*TaskSignature
-	OnError        []*TaskSignature
-	ChordCallback  *TaskSignature
+    UUID           string
+    Name           string
+    RoutingKey     string
+    GroupUUID      string
+    GroupTaskCount int
+    Args           []TaskArg
+    Immutable      bool
+    OnSuccess      []*TaskSignature
+    OnError        []*TaskSignature
+    ChordCallback  *TaskSignature
 }
 ```
 
@@ -314,11 +314,11 @@ If you configure a result backend, the task states and results will be persisted
 
 ```go
 const (
-	PendingState  = "PENDING"
-	ReceivedState = "RECEIVED"
-	StartedState  = "STARTED"
-	SuccessState  = "SUCCESS"
-	FailureState  = "FAILURE"
+    PendingState  = "PENDING"
+    ReceivedState = "RECEIVED"
+    StartedState  = "STARTED"
+    SuccessState  = "SUCCESS"
+    FailureState  = "FAILURE"
 )
 ```
 
@@ -326,21 +326,21 @@ const (
 
 ```go
 type TaskResult struct {
-	Type  string
-	Value interface{}
+    Type  string
+    Value interface{}
 }
 
 type TaskState struct {
-	TaskUUID string
-	State    string
-	Result   *TaskResult
-	Error    string
+    TaskUUID string
+    State    string
+    Result   *TaskResult
+    Error    string
 }
 
 type TaskStateGroup struct {
-	GroupUUID      string
-	GroupTaskCount int
-	States         map[string]TaskState
+    GroupUUID      string
+    GroupTaskCount int
+    States         map[string]TaskState
 }
 ```
 
