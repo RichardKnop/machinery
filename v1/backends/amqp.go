@@ -13,13 +13,20 @@ import (
 
 // AMQPBackend represents an AMQP result backend
 type AMQPBackend struct {
-	config *config.Config
+	config          *config.Config
+	resultsExpireIn int32
 }
 
 // NewAMQPBackend creates AMQPBackend instance
 func NewAMQPBackend(cnf *config.Config) Backend {
+	resultsExpireIn := cnf.ResultsExpireIn * 1000
+	if resultsExpireIn == 0 {
+		// // expire results after 1 hour by default
+		resultsExpireIn = 3600 * 1000
+	}
 	return Backend(&AMQPBackend{
-		config: cnf,
+		config:          cnf,
+		resultsExpireIn: int32(resultsExpireIn),
 	})
 }
 
@@ -126,12 +133,12 @@ func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignat
 func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*TaskState, error) {
 	taskState := TaskState{}
 
-	conn, channel, queue, _, err := openConn(signature.UUID, amqpBackend.config)
+	conn, channel, queue, _, err := amqpBackend.open(signature.UUID)
 	if err != nil {
 		return nil, err
 	}
 
-	defer closeConn(channel, conn)
+	defer amqpBackend.close(channel, conn)
 
 	d, ok, err := channel.Get(
 		queue.Name, // queue name
@@ -160,12 +167,12 @@ func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*
 func (amqpBackend *AMQPBackend) GetStateGroup(groupUUID string) (*TaskStateGroup, error) {
 	taskStateGroup := TaskStateGroup{}
 
-	conn, channel, queue, _, err := openConn(groupUUID, amqpBackend.config)
+	conn, channel, queue, _, err := amqpBackend.open(groupUUID)
 	if err != nil {
 		return nil, err
 	}
 
-	defer closeConn(channel, conn)
+	defer amqpBackend.close(channel, conn)
 
 	d, ok, err := channel.Get(
 		queue.Name, // queue name
@@ -201,12 +208,12 @@ func (amqpBackend *AMQPBackend) PurgeStateGroup(taskStateGroup *TaskStateGroup) 
 
 // Deletes a queue
 func (amqpBackend *AMQPBackend) deleteQueue(queueName string) error {
-	conn, channel, queue, _, err := openConn(queueName, amqpBackend.config)
+	conn, channel, queue, _, err := amqpBackend.open(queueName)
 	if err != nil {
 		return err
 	}
 
-	defer closeConn(channel, conn)
+	defer amqpBackend.close(channel, conn)
 
 	// First return value is number of messages removed
 	_, err = channel.QueueDelete(
@@ -221,12 +228,12 @@ func (amqpBackend *AMQPBackend) deleteQueue(queueName string) error {
 
 // Updates a task state
 func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
-	conn, channel, _, confirmsChan, err := openConn(taskState.TaskUUID, amqpBackend.config)
+	conn, channel, _, confirmsChan, err := amqpBackend.open(taskState.TaskUUID)
 	if err != nil {
 		return err
 	}
 
-	defer closeConn(channel, conn)
+	defer amqpBackend.close(channel, conn)
 
 	message, err := json.Marshal(taskState)
 	if err != nil {
@@ -262,12 +269,12 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCoun
 		return nil, nil
 	}
 
-	conn, channel, queue, confirmsChan, err := openConn(groupUUID, amqpBackend.config)
+	conn, channel, queue, confirmsChan, err := amqpBackend.open(groupUUID)
 	if err != nil {
 		return nil, err
 	}
 
-	defer closeConn(channel, conn)
+	defer amqpBackend.close(channel, conn)
 
 	var taskStateGroup *TaskStateGroup
 
@@ -327,13 +334,13 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCoun
 }
 
 // Connects to the message queue, opens a channel, declares a queue
-func openConn(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
+func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
 	var conn *amqp.Connection
 	var channel *amqp.Channel
 	var queue amqp.Queue
 	var err error
 
-	conn, err = amqp.Dial(cnf.Broker)
+	conn, err = amqp.Dial(amqpBackend.config.Broker)
 	if err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
 	}
@@ -344,19 +351,19 @@ func openConn(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Chan
 	}
 
 	err = channel.ExchangeDeclare(
-		cnf.Exchange,     // name of the exchange
-		cnf.ExchangeType, // type
-		true,             // durable
-		false,            // delete when complete
-		false,            // internal
-		false,            // noWait
-		nil,              // arguments
+		amqpBackend.config.Exchange,     // name of the exchange
+		amqpBackend.config.ExchangeType, // type
+		true,  // durable
+		false, // delete when complete
+		false, // internal
+		false, // noWait
+		nil,   // arguments
 	)
 	if err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Exchange: %s", err)
 	}
 
-	resultsExpireIn := cnf.ResultsExpireIn * 1000
+	resultsExpireIn := amqpBackend.config.ResultsExpireIn * 1000
 	if resultsExpireIn == 0 {
 		// // expire results after 1 hour by default
 		resultsExpireIn = 3600 * 1000
@@ -377,11 +384,11 @@ func openConn(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Chan
 	}
 
 	if err := channel.QueueBind(
-		queue.Name,   // name of the queue
-		taskUUID,     // binding key
-		cnf.Exchange, // source exchange
-		false,        // noWait
-		nil,          // arguments
+		queue.Name,                  // name of the queue
+		taskUUID,                    // binding key
+		amqpBackend.config.Exchange, // source exchange
+		false, // noWait
+		nil,   // arguments
 	); err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
 	}
@@ -398,7 +405,7 @@ func openConn(taskUUID string, cnf *config.Config) (*amqp.Connection, *amqp.Chan
 }
 
 // Closes the connection
-func closeConn(channel *amqp.Channel, conn *amqp.Connection) error {
+func (amqpBackend *AMQPBackend) close(channel *amqp.Channel, conn *amqp.Connection) error {
 	if err := channel.Close(); err != nil {
 		return fmt.Errorf("Channel Close: %s", err)
 	}
