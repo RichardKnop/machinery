@@ -221,7 +221,7 @@ Ideally, tasks should be idempotent which means there will be no unintended cons
 
 ### Signatures
 
-A signature wraps calling arguments, execution options (such as immutability) and success/error callbacks of a task so it can be send across the wire to workers. Task signatures implement a simple interface:
+A signature wraps calling arguments, execution options (such as immutability) and success/error callbacks of a task so it can be sent across the wire to workers. Task signatures implement a simple interface:
 
 ```go
 type TaskArg struct {
