@@ -16,6 +16,10 @@ func BrokerFactory(cnf *config.Config, stopChan chan int) (brokers.Broker, error
 		return brokers.NewAMQPBroker(cnf, stopChan), nil
 	}
 
+	// if strings.HasPrefix(cnf.Broker, "redis://") {
+	// 	return brokers.NewRedisBroker(cnf, stopChan), nil
+	// }
+
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
 }
 
