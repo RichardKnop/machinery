@@ -11,7 +11,11 @@ import (
 )
 
 func TestBrokerFactoryAMQP(t *testing.T) {
-	cnf := config.Config{
+	var cnf config.Config
+
+	// 1) AMQP broker test
+
+	cnf = config.Config{
 		Broker:       "amqp://guest:guest@localhost:5672/",
 		Exchange:     "machinery_exchange",
 		ExchangeType: "direct",
@@ -28,20 +32,20 @@ func TestBrokerFactoryAMQP(t *testing.T) {
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
-}
 
-func TestBrokerFactoryRedis(t *testing.T) {
-	cnf := config.Config{
+	// 1) Redis broker test
+
+	cnf = config.Config{
 		Broker:       "redis://localhost:6379",
 		DefaultQueue: "machinery_tasks",
 	}
 
-	actual, err := BrokerFactory(&cnf)
+	actual, err = BrokerFactory(&cnf)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	expected := brokers.NewRedisBroker(&cnf)
+	expected = brokers.NewRedisBroker(&cnf, "localhost:6379")
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
@@ -65,6 +69,7 @@ func TestBrokerFactoryError(t *testing.T) {
 
 func TestBackendFactory(t *testing.T) {
 	var cnf config.Config
+
 	// 1) AMQP backend test
 
 	cnf = config.Config{ResultBackend: "amqp"}
@@ -93,6 +98,23 @@ func TestBackendFactory(t *testing.T) {
 
 	servers := []string{"10.0.0.1:11211", "10.0.0.2:11211"}
 	expected = backends.NewMemcacheBackend(&cnf, servers)
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("conn = %v, want %v", actual, expected)
+	}
+
+	// 2) Redis backend test
+
+	cnf = config.Config{
+		ResultBackend: "redis://localhost:6379",
+	}
+	actual, err = BackendFactory(&cnf)
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	expected = backends.NewRedisBackend(&cnf, "localhost:6379")
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)

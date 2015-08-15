@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -14,13 +13,15 @@ import (
 // RedisBroker represents a Redis broker
 type RedisBroker struct {
 	config   *config.Config
+	host     string
 	stopChan chan int
 }
 
 // NewRedisBroker creates new RedisBroker instance
-func NewRedisBroker(cnf *config.Config) Broker {
+func NewRedisBroker(cnf *config.Config, host string) Broker {
 	return Broker(&RedisBroker{
 		config: cnf,
+		host:   host,
 	})
 }
 
@@ -107,15 +108,7 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 }
 
 func (redisBroker *RedisBroker) open() (redis.Conn, error) {
-	network := "tcp"
-	parts := strings.Split(redisBroker.config.Broker, "redis://")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf(
-			"Redis broker connection string should be in format redis://host:port, instead got %s",
-			redisBroker.config.Broker,
-		)
-	}
-	return redis.Dial(network, parts[1])
+	return redis.Dial("tcp", redisBroker.host)
 }
 
 func (redisBroker *RedisBroker) closeConn(conn redis.Conn) error {

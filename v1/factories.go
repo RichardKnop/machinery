@@ -17,7 +17,14 @@ func BrokerFactory(cnf *config.Config) (brokers.Broker, error) {
 	}
 
 	if strings.HasPrefix(cnf.Broker, "redis://") {
-		return brokers.NewRedisBroker(cnf), nil
+		parts := strings.Split(cnf.Broker, "redis://")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(
+				"Redis broker connection string should be in format redis://host:port, instead got %s",
+				cnf.Broker,
+			)
+		}
+		return brokers.NewRedisBroker(cnf, parts[1]), nil
 	}
 
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
@@ -31,9 +38,26 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "memcache://") {
-		serversString := strings.Split(cnf.ResultBackend, "memcache://")[1]
-		servers := strings.Split(serversString, ",")
+		parts := strings.Split(cnf.ResultBackend, "memcache://")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(
+				"Memcache result backend connection string should be in format memcache://server1:port,server2:port, instead got %s",
+				cnf.ResultBackend,
+			)
+		}
+		servers := strings.Split(parts[1], ",")
 		return backends.NewMemcacheBackend(cnf, servers), nil
+	}
+
+	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
+		parts := strings.Split(cnf.ResultBackend, "redis://")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(
+				"Redis result backend connection string should be in format redis://host:port, instead got %s",
+				cnf.ResultBackend,
+			)
+		}
+		return backends.NewRedisBackend(cnf, parts[1]), nil
 	}
 
 	return nil, fmt.Errorf("Factory failed with result backend: %v", cnf.ResultBackend)
