@@ -8,6 +8,7 @@ go:
 services:
   - rabbitmq
   - memcached
+  - redis-server
 
 branches:
   only:
