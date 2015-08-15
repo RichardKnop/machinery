@@ -28,28 +28,26 @@ func NewRedisBroker(cnf *config.Config) Broker {
 
 // StartConsuming enters a loop and waits for incoming messages
 func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
-	conn, err := openRedisConn(redisBroker.config)
+	conn, err := redisBroker.open()
 	if err != nil {
-		return true, err // retry true
+		return true, fmt.Errorf("Dial: %s", err) // retry true
 	}
 
-	defer conn.Close()
-
-	redisBroker.stopChan = make(chan int)
+	defer redisBroker.closeConn(conn)
 
 	psc := redis.PubSubConn{Conn: conn}
 	if err := psc.Subscribe(redisBroker.config.DefaultQueue); err != nil {
 		return true, err // retry true
 	}
-	// Unsubscribe from all connections. This will cause the receiving
-	// goroutine to exit.
-	defer psc.Unsubscribe()
+	defer redisBroker.closePubSub(psc)
 
+	redisBroker.stopChan = make(chan int)
 	deliveries := make(chan signatures.TaskSignature)
 	errors := make(chan error)
 
 	log.Print("[*] Waiting for messages. To exit press CTRL+C")
 
+	// Receving goroutine
 	go func() {
 		for {
 			switch n := psc.Receive().(type) {
@@ -73,20 +71,15 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 		}
 	}()
 
+	// Iterate over delivered tasks and process them
 	for {
 		select {
 		case signature := <-deliveries:
 			taskProcessor.Process(&signature)
 		case err := <-errors:
-			// Unsubscribe from all connections. This will cause the receiving
-			// goroutine to exit.
-			psc.Unsubscribe()
-			return true, err
+			return true, err // retry true
 		case <-redisBroker.stopChan:
-			// Unsubscribe from all connections. This will cause the receiving
-			// goroutine to exit.
-			psc.Unsubscribe()
-			return false, nil
+			return false, nil // retry false
 		}
 	}
 }
@@ -99,12 +92,12 @@ func (redisBroker *RedisBroker) StopConsuming() {
 
 // Publish places a new message on the default queue
 func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) error {
-	conn, err := openRedisConn(redisBroker.config)
+	conn, err := redisBroker.open()
 	if err != nil {
-		return err
+		fmt.Errorf("Dial: %s", err)
 	}
 
-	defer conn.Close()
+	defer redisBroker.closeConn(conn)
 
 	message, err := json.Marshal(signature)
 	if err != nil {
@@ -115,8 +108,30 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 	return conn.Flush()
 }
 
-func openRedisConn(cnf *config.Config) (redis.Conn, error) {
+func (redisBroker *RedisBroker) open() (redis.Conn, error) {
 	network := "tcp"
-	address := strings.Split(cnf.Broker, "redis://")[1]
+	address := strings.Split(redisBroker.config.Broker, "redis://")[1]
 	return redis.Dial(network, address)
+}
+
+func (redisBroker *RedisBroker) closeConn(conn redis.Conn) error {
+	if err := conn.Close(); err != nil {
+		return fmt.Errorf("Connection Close: %s", err)
+	}
+
+	return nil
+}
+
+func (redisBroker *RedisBroker) closePubSub(psc redis.PubSubConn) error {
+	// Unsubscribe from all connections. This will cause the receiving
+	// goroutine to exit.
+	if err := psc.Unsubscribe(); err != nil {
+		return fmt.Errorf("PubSub Unsubscribe: %s", err)
+	}
+
+	if err := psc.Close(); err != nil {
+		return fmt.Errorf("PubSub Close: %s", err)
+	}
+
+	return nil
 }
