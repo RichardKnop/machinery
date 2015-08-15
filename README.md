@@ -611,6 +611,7 @@ On OS X systems, you can install them using Homebrew:
 
 ```
 $ brew install rabbitmq
+$ brew install redis
 $ brew install memcached
 $ brew install go
 ```
@@ -627,11 +628,12 @@ $ make deps
 $ make test
 ```
 
-In order to enable integration tests, you will need to export couple of environment variables:
+In order to enable integration tests, you will need to export few environment variables:
 
 ```
 $ export AMQP_URL=amqp://guest:guest@localhost:5672/
 $ export MEMCACHE_URL=127.0.0.1:11211
+$ export REDIS_URL=127.0.0.1:6379
 ```
 
 I recommend to run the integration tests when making changes to the code. Due to Machinery being composed of several parts (worker, client) which run independently of each other, integration tests are important to verify everything works as expected.
