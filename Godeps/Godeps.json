@@ -16,6 +16,10 @@
 			"Rev": "72a68649ba712ee7c4b5b4a943a626bcd7d90eb8"
 		},
 		{
+			"ImportPath": "github.com/garyburd/redigo/redis",
+			"Rev": "6628c86d6a89ce7983c7c9b5e98c1df795fbd256"
+		},
+		{
 			"ImportPath": "github.com/streadway/amqp",
 			"Rev": "1aedb1f9e106db5d7403222313a0504a06def5b3"
 		},
