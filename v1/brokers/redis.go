@@ -38,6 +38,13 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 	redisBroker.stopChan = make(chan int)
 
 	psc := redis.PubSubConn{Conn: conn}
+	if err := psc.Subscribe(redisBroker.config.DefaultQueue); err != nil {
+		return true, err // retry true
+	}
+	// Unsubscribe from all connections. This will cause the receiving
+	// goroutine to exit.
+	defer psc.Unsubscribe()
+
 	deliveries := make(chan signatures.TaskSignature)
 	errors := make(chan error)
 
@@ -65,11 +72,6 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 			}
 		}
 	}()
-
-	psc.Subscribe(redisBroker.config.DefaultQueue)
-	// Unsubscribe from all connections. This will cause the receiving
-	// goroutine to exit.
-	defer psc.Unsubscribe()
 
 	for {
 		select {
@@ -109,9 +111,8 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	log.Print(message)
-
-	return nil
+	conn.Do("PUBLISH", redisBroker.config.DefaultQueue, message)
+	return conn.Flush()
 }
 
 func openRedisConn(cnf *config.Config) (redis.Conn, error) {
