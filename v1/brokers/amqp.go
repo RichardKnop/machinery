@@ -19,7 +19,7 @@ type AMQPBroker struct {
 	stopChan chan int
 }
 
-// NewAMQPBroker creates new AMQPConnection instance
+// NewAMQPBroker creates new AMQPBroker instance
 func NewAMQPBroker(cnf *config.Config) Broker {
 	return Broker(&AMQPBroker{
 		config: cnf,

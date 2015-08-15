@@ -19,11 +19,10 @@ type RedisBroker struct {
 	stopChan chan int
 }
 
-// NewRedisBroker creates new AMQPConnection instance
-func NewRedisBroker(cnf *config.Config, stopChan chan int) Broker {
+// NewRedisBroker creates new RedisBroker instance
+func NewRedisBroker(cnf *config.Config) Broker {
 	return Broker(&RedisBroker{
-		config:   cnf,
-		stopChan: stopChan,
+		config: cnf,
 	})
 }
 
@@ -35,6 +34,8 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 	}
 
 	defer conn.Close()
+
+	redisBroker.stopChan = make(chan int)
 
 	psc := redis.PubSubConn{Conn: conn}
 	deliveries := make(chan signatures.TaskSignature)
