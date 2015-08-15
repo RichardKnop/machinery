@@ -13,8 +13,8 @@ import (
 // Define flagss
 var (
 	configPath    = flag.String("c", "config.yml", "Path to a configuration file")
-	broker        = flag.String("b", "amqp://guest:guest@localhost:5672/", "Broker URL")
-	resultBackend = flag.String("r", "amqp", "Result backend")
+	broker        = flag.String("b", "redis://localhost:6379", "Broker URL")
+	resultBackend = flag.String("r", "memcache://127.0.0.1:11211", "Result backend")
 	exchange      = flag.String("e", "machinery_exchange", "Durable, non-auto-deleted AMQP exchange name")
 	exchangeType  = flag.String("t", "direct", "Exchange type - direct|fanout|topic|x-custom")
 	defaultQueue  = flag.String("q", "machinery_tasks", "Ephemeral AMQP queue name")
