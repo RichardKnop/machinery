@@ -135,12 +135,7 @@ func (redisBackend *RedisBackend) GetState(signature *signatures.TaskSignature) 
 		return nil, err
 	}
 
-	conn.Send("GET", signature.UUID)
-	if err := conn.Flush(); err != nil {
-		return nil, err
-	}
-
-	item, err := redis.Bytes(conn.Receive())
+	item, err := redis.Bytes(conn.Do("GET", signature.UUID))
 	if err != nil {
 		return nil, err
 	}
@@ -161,12 +156,7 @@ func (redisBackend *RedisBackend) GetStateGroup(groupUUID string) (*TaskStateGro
 		return nil, err
 	}
 
-	conn.Send("GET", groupUUID)
-	if err := conn.Flush(); err != nil {
-		return nil, err
-	}
-
-	item, err := redis.Bytes(conn.Receive())
+	item, err := redis.Bytes(conn.Do("GET", groupUUID))
 	if err != nil {
 		return nil, err
 	}
@@ -185,8 +175,8 @@ func (redisBackend *RedisBackend) PurgeState(taskState *TaskState) error {
 		return err
 	}
 
-	conn.Send("DEL", taskState.TaskUUID)
-	if err := conn.Flush(); err != nil {
+	_, err = conn.Do("DEL", taskState.TaskUUID)
+	if err != nil {
 		return err
 	}
 
@@ -200,8 +190,88 @@ func (redisBackend *RedisBackend) PurgeStateGroup(taskStateGroup *TaskStateGroup
 		return err
 	}
 
-	conn.Send("DEL", taskStateGroup.GroupUUID)
-	if err := conn.Flush(); err != nil {
+	_, err = conn.Do("DEL", taskStateGroup.GroupUUID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Updates a task state
+func (redisBackend *RedisBackend) updateState(taskState *TaskState) error {
+	encoded, err := json.Marshal(&taskState)
+	if err != nil {
+		return err
+	}
+
+	conn, err := redisBackend.open()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Do("SET", taskState.TaskUUID, encoded)
+	if err != nil {
+		return err
+	}
+
+	return redisBackend.setExpirationTime(taskState.TaskUUID)
+}
+
+// Updates a task state group
+func (redisBackend *RedisBackend) updateStateGroup(groupUUID string, groupTaskCount int, taskState *TaskState) (*TaskStateGroup, error) {
+	var taskStateGroup *TaskStateGroup
+
+	conn, err := redisBackend.open()
+	if err != nil {
+		return nil, err
+	}
+
+	item, err := redis.Bytes(conn.Do("GET", groupUUID))
+
+	if err != nil {
+		taskStateGroup = &TaskStateGroup{
+			GroupUUID:      groupUUID,
+			GroupTaskCount: groupTaskCount,
+			States:         make(map[string]TaskState),
+		}
+	} else {
+		if err := json.Unmarshal(item, &taskStateGroup); err != nil {
+			return nil, err
+		}
+	}
+
+	taskStateGroup.States[taskState.TaskUUID] = *taskState
+
+	encoded, err := json.Marshal(taskStateGroup)
+	if err != nil {
+		return nil, fmt.Errorf("JSON Encode Message: %v", err)
+	}
+
+	_, err = conn.Do("SET", groupUUID, encoded)
+	if err != nil {
+		return nil, err
+	}
+
+	return taskStateGroup, redisBackend.setExpirationTime(groupUUID)
+}
+
+// Sets expiration timestamp on a stored state
+func (redisBackend *RedisBackend) setExpirationTime(key string) error {
+	expiresIn := redisBackend.config.ResultsExpireIn
+	if expiresIn == 0 {
+		// // expire results after 1 hour by default
+		expiresIn = 3600
+	}
+	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
+
+	conn, err := redisBackend.open()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Do("EXPIREAT", key, expirationTimestamp)
+	if err != nil {
 		return err
 	}
 
@@ -227,88 +297,4 @@ func (redisBackend *RedisBackend) open() (redis.Conn, error) {
 	}
 
 	return redisBackend.conn, nil
-}
-
-// Updates a task state
-func (redisBackend *RedisBackend) updateState(taskState *TaskState) error {
-	encoded, err := json.Marshal(&taskState)
-	if err != nil {
-		return err
-	}
-
-	conn, err := redisBackend.open()
-	if err != nil {
-		return err
-	}
-
-	conn.Send("SET", taskState.TaskUUID, encoded)
-	if err := conn.Flush(); err != nil {
-		return err
-	}
-
-	return redisBackend.setExpirationTime(taskState.TaskUUID)
-}
-
-// Updates a task state group
-func (redisBackend *RedisBackend) updateStateGroup(groupUUID string, groupTaskCount int, taskState *TaskState) (*TaskStateGroup, error) {
-	var taskStateGroup *TaskStateGroup
-
-	conn, err := redisBackend.open()
-	if err != nil {
-		return nil, err
-	}
-
-	conn.Send("GET", groupUUID)
-	if err := conn.Flush(); err != nil {
-		return nil, err
-	}
-
-	item, err := redis.Bytes(conn.Receive())
-	if err != nil {
-		taskStateGroup = &TaskStateGroup{
-			GroupUUID:      groupUUID,
-			GroupTaskCount: groupTaskCount,
-			States:         make(map[string]TaskState),
-		}
-	} else {
-		if err := json.Unmarshal(item, &taskStateGroup); err != nil {
-			return taskStateGroup, err
-		}
-	}
-
-	taskStateGroup.States[taskState.TaskUUID] = *taskState
-
-	encoded, err := json.Marshal(taskStateGroup)
-	if err != nil {
-		return taskStateGroup, fmt.Errorf("JSON Encode Message: %v", err)
-	}
-
-	conn.Send("SET", groupUUID, encoded)
-	if err := conn.Flush(); err != nil {
-		return nil, err
-	}
-
-	return taskStateGroup, redisBackend.setExpirationTime(groupUUID)
-}
-
-// Sets expiration timestamp on a stored state
-func (redisBackend *RedisBackend) setExpirationTime(key string) error {
-	expiresIn := redisBackend.config.ResultsExpireIn
-	if expiresIn == 0 {
-		// // expire results after 1 hour by default
-		expiresIn = 3600
-	}
-	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
-
-	conn, err := redisBackend.open()
-	if err != nil {
-		return err
-	}
-
-	conn.Send("EXPIREAT", key, expirationTimestamp)
-	if err := conn.Flush(); err != nil {
-		return err
-	}
-
-	return nil
 }

@@ -167,14 +167,6 @@ func (memcacheBackend *MemcacheBackend) PurgeStateGroup(taskStateGroup *TaskStat
 	return memcacheBackend.getClient().Delete(taskStateGroup.GroupUUID)
 }
 
-// Returns / creates instance of Memcache client
-func (memcacheBackend *MemcacheBackend) getClient() *memcache.Client {
-	if memcacheBackend.client == nil {
-		memcacheBackend.client = memcache.New(memcacheBackend.servers...)
-	}
-	return memcacheBackend.client
-}
-
 // Updates a task state
 func (memcacheBackend *MemcacheBackend) updateState(taskState *TaskState) error {
 	encoded, err := json.Marshal(&taskState)
@@ -249,4 +241,12 @@ func (memcacheBackend *MemcacheBackend) setExpirationTime(key string) error {
 	}
 
 	return nil
+}
+
+// Returns / creates instance of Memcache client
+func (memcacheBackend *MemcacheBackend) getClient() *memcache.Client {
+	if memcacheBackend.client == nil {
+		memcacheBackend.client = memcache.New(memcacheBackend.servers...)
+	}
+	return memcacheBackend.client
 }
