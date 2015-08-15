@@ -117,6 +117,28 @@ func TestIntegration(t *testing.T) {
 		// 	worker3.Quit()
 		// }
 	}
+
+	// if redisURL != "" {
+	// 	server4 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("redis://%v", redisURL))
+	// 	worker4 := server4.NewWorker("test_worker")
+	// 	go worker4.Launch()
+	// 	_testSendTask(server4, t)
+	// 	_testSendGroup(server4, t)
+	// 	_testSendChord(server4, t)
+	// 	_testSendChain(server4, t)
+	// 	worker4.Quit()
+	//
+	// 	if memcacheURL != "" {
+	// 		server5 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
+	// 		worker5 := server2.NewWorker("test_worker")
+	// 		go worker5.Launch()
+	// 		_testSendTask(server5, t)
+	// 		_testSendGroup(server5, t)
+	// 		_testSendChord(server5, t)
+	// 		_testSendChain(server5, t)
+	// 		worker5.Quit()
+	// 	}
+	// }
 }
 
 func _testSendTask(server *Server, t *testing.T) {

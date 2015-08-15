@@ -14,6 +14,7 @@ import (
 type RedisBroker struct {
 	config   *config.Config
 	host     string
+	conn     redis.Conn
 	stopChan chan int
 }
 
@@ -108,6 +109,9 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 }
 
 func (redisBroker *RedisBroker) open() (redis.Conn, error) {
+	// We need to return a new Redis connection every time as after
+	// subscribing to a channel, PUBLISH is not allowed on that connection
+	// e.g. ERR only (P)SUBSCRIBE / (P)UNSUBSCRIBE / QUIT allowed in this context
 	return redis.Dial("tcp", redisBroker.host)
 }
 

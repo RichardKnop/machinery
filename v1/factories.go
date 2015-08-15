@@ -37,6 +37,10 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 		return backends.NewAMQPBackend(cnf), nil
 	}
 
+	if strings.HasPrefix(cnf.ResultBackend, "amqp://") {
+		return backends.NewAMQPBackend(cnf), nil
+	}
+
 	if strings.HasPrefix(cnf.ResultBackend, "memcache://") {
 		parts := strings.Split(cnf.ResultBackend, "memcache://")
 		if len(parts) != 2 {

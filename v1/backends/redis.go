@@ -3,7 +3,6 @@ package backends
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
@@ -281,15 +280,7 @@ func (redisBackend *RedisBackend) setExpirationTime(key string) error {
 // Returns / creates instance of Redis connection
 func (redisBackend *RedisBackend) open() (redis.Conn, error) {
 	if redisBackend.conn == nil {
-		network := "tcp"
-		parts := strings.Split(redisBackend.config.Broker, "redis://")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf(
-				"Redis backend connection string should be in format redis://host:port, instead got %s",
-				redisBackend.config.Broker,
-			)
-		}
-		conn, err := redis.Dial(network, parts[1])
+		conn, err := redis.Dial("tcp", redisBackend.host)
 		if err != nil {
 			return nil, fmt.Errorf("Dial: %v", err)
 		}
