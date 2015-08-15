@@ -133,6 +133,7 @@ func (redisBackend *RedisBackend) GetState(signature *signatures.TaskSignature) 
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 
 	item, err := redis.Bytes(conn.Do("GET", signature.UUID))
 	if err != nil {
@@ -154,6 +155,7 @@ func (redisBackend *RedisBackend) GetStateGroup(groupUUID string) (*TaskStateGro
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 
 	item, err := redis.Bytes(conn.Do("GET", groupUUID))
 	if err != nil {
@@ -173,6 +175,7 @@ func (redisBackend *RedisBackend) PurgeState(taskState *TaskState) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	_, err = conn.Do("DEL", taskState.TaskUUID)
 	if err != nil {
@@ -188,6 +191,7 @@ func (redisBackend *RedisBackend) PurgeStateGroup(taskStateGroup *TaskStateGroup
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	_, err = conn.Do("DEL", taskStateGroup.GroupUUID)
 	if err != nil {
@@ -208,6 +212,7 @@ func (redisBackend *RedisBackend) updateState(taskState *TaskState) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	_, err = conn.Do("SET", taskState.TaskUUID, encoded)
 	if err != nil {
@@ -225,6 +230,7 @@ func (redisBackend *RedisBackend) updateStateGroup(groupUUID string, groupTaskCo
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 
 	item, err := redis.Bytes(conn.Do("GET", groupUUID))
 
@@ -268,6 +274,7 @@ func (redisBackend *RedisBackend) setExpirationTime(key string) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	_, err = conn.Do("EXPIREAT", key, expirationTimestamp)
 	if err != nil {
@@ -279,13 +286,5 @@ func (redisBackend *RedisBackend) setExpirationTime(key string) error {
 
 // Returns / creates instance of Redis connection
 func (redisBackend *RedisBackend) open() (redis.Conn, error) {
-	if redisBackend.conn == nil {
-		conn, err := redis.Dial("tcp", redisBackend.host)
-		if err != nil {
-			return nil, fmt.Errorf("Dial: %v", err)
-		}
-		redisBackend.conn = conn
-	}
-
-	return redisBackend.conn, nil
+	return redis.Dial("tcp", redisBackend.host)
 }

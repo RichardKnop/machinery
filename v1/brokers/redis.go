@@ -14,7 +14,6 @@ import (
 type RedisBroker struct {
 	config   *config.Config
 	host     string
-	conn     redis.Conn
 	stopChan chan int
 }
 
@@ -32,14 +31,14 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 	if err != nil {
 		return true, fmt.Errorf("Dial: %s", err) // retry true
 	}
-
-	defer redisBroker.closeConn(conn)
+	defer conn.Close()
 
 	psc := redis.PubSubConn{Conn: conn}
 	if err := psc.Subscribe(redisBroker.config.DefaultQueue); err != nil {
 		return true, err // retry true
 	}
-	defer redisBroker.closePubSub(psc)
+	defer psc.Unsubscribe()
+	defer psc.Close()
 
 	redisBroker.stopChan = make(chan int)
 	deliveries := make(chan signatures.TaskSignature)
@@ -67,6 +66,8 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 				}
 			case error:
 				log.Print(n)
+				errors <- n
+				continue
 			}
 		}
 	}()
@@ -96,43 +97,21 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 	if err != nil {
 		fmt.Errorf("Dial: %s", err)
 	}
-
-	defer redisBroker.closeConn(conn)
+	defer conn.Close()
 
 	message, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
-	conn.Do("PUBLISH", redisBroker.config.DefaultQueue, message)
-	return conn.Flush()
+	_, err = conn.Do("PUBLISH", redisBroker.config.DefaultQueue, message)
+	return err
 }
 
+// Returns / creates instance of Redis connection
 func (redisBroker *RedisBroker) open() (redis.Conn, error) {
 	// We need to return a new Redis connection every time as after
 	// subscribing to a channel, PUBLISH is not allowed on that connection
 	// e.g. ERR only (P)SUBSCRIBE / (P)UNSUBSCRIBE / QUIT allowed in this context
 	return redis.Dial("tcp", redisBroker.host)
-}
-
-func (redisBroker *RedisBroker) closeConn(conn redis.Conn) error {
-	if err := conn.Close(); err != nil {
-		return fmt.Errorf("Connection Close: %s", err)
-	}
-
-	return nil
-}
-
-func (redisBroker *RedisBroker) closePubSub(psc redis.PubSubConn) error {
-	// Unsubscribe from all connections. This will cause the receiving
-	// goroutine to exit.
-	if err := psc.Unsubscribe(); err != nil {
-		return fmt.Errorf("PubSub Unsubscribe: %s", err)
-	}
-
-	if err := psc.Close(); err != nil {
-		return fmt.Errorf("PubSub Close: %s", err)
-	}
-
-	return nil
 }
