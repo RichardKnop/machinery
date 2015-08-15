@@ -20,10 +20,9 @@ type AMQPBroker struct {
 }
 
 // NewAMQPBroker creates new AMQPConnection instance
-func NewAMQPBroker(cnf *config.Config, stopChan chan int) Broker {
+func NewAMQPBroker(cnf *config.Config) Broker {
 	return Broker(&AMQPBroker{
-		config:   cnf,
-		stopChan: stopChan,
+		config: cnf,
 	})
 }
 
@@ -35,6 +34,8 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 	}
 
 	defer amqpBroker.close(channel, conn)
+
+	amqpBroker.stopChan = make(chan int)
 
 	if err := channel.Qos(
 		3,     // prefetch count

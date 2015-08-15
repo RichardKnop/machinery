@@ -11,9 +11,9 @@ import (
 
 // BrokerFactory creates a new object with brokers.Broker interface
 // Currently only AMQP broker is supported
-func BrokerFactory(cnf *config.Config, stopChan chan int) (brokers.Broker, error) {
+func BrokerFactory(cnf *config.Config) (brokers.Broker, error) {
 	if strings.HasPrefix(cnf.Broker, "amqp://") {
-		return brokers.NewAMQPBroker(cnf, stopChan), nil
+		return brokers.NewAMQPBroker(cnf), nil
 	}
 
 	// if strings.HasPrefix(cnf.Broker, "redis://") {

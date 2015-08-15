@@ -19,14 +19,12 @@ func TestBrokerFactory(t *testing.T) {
 		BindingKey:   "machinery_task",
 	}
 
-	stopChan := make(chan int)
-
-	actual, err := BrokerFactory(&cnf, stopChan)
+	actual, err := BrokerFactory(&cnf)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	expected := brokers.NewAMQPBroker(&cnf, stopChan)
+	expected := brokers.NewAMQPBroker(&cnf)
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
@@ -37,7 +35,7 @@ func TestBrokerFactoryError(t *testing.T) {
 		Broker: "BOGUS",
 	}
 
-	conn, err := BrokerFactory(&cnf, make(chan int))
+	conn, err := BrokerFactory(&cnf)
 	if conn != nil {
 		t.Errorf("conn = %v, should be nil", conn)
 	}
