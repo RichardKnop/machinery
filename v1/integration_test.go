@@ -81,33 +81,42 @@ func getTasks() []signatures.TaskSignature {
 }
 
 func TestIntegration(t *testing.T) {
-	brokerURL := os.Getenv("AMQP_URL")
-	if brokerURL == "" {
-		return
-	}
-
-	server1 := setup(brokerURL, "amqp")
-	worker1 := server1.NewWorker("test_worker")
-	go worker1.Launch()
-	_testSendTask(server1, t)
-	_testSendGroup(server1, t)
-	_testSendChord(server1, t)
-	_testSendChain(server1, t)
-	worker1.Quit()
-
+	amqpURL := os.Getenv("AMQP_URL")
+	// redisURL := os.Getenv("REDIS_URL")
 	memcacheURL := os.Getenv("MEMCACHE_URL")
-	if memcacheURL == "" {
-		return
-	}
 
-	server2 := setup(brokerURL, fmt.Sprintf("memcache://%v", memcacheURL))
-	worker2 := server2.NewWorker("test_worker")
-	go worker2.Launch()
-	_testSendTask(server2, t)
-	_testSendGroup(server2, t)
-	_testSendChord(server2, t)
-	_testSendChain(server2, t)
-	worker2.Quit()
+	if amqpURL != "" {
+		server1 := setup(amqpURL, "amqp")
+		worker1 := server1.NewWorker("test_worker")
+		go worker1.Launch()
+		_testSendTask(server1, t)
+		_testSendGroup(server1, t)
+		_testSendChord(server1, t)
+		_testSendChain(server1, t)
+		worker1.Quit()
+
+		if memcacheURL != "" {
+			server2 := setup(amqpURL, fmt.Sprintf("memcache://%v", memcacheURL))
+			worker2 := server2.NewWorker("test_worker")
+			go worker2.Launch()
+			_testSendTask(server2, t)
+			_testSendGroup(server2, t)
+			_testSendChord(server2, t)
+			_testSendChain(server2, t)
+			worker2.Quit()
+		}
+
+		// if redisURL != "" {
+		// 	server3 := setup(amqpURL, fmt.Sprintf("redis://%v", redisURL))
+		// 	worker3 := server3.NewWorker("test_worker")
+		// 	go worker3.Launch()
+		// 	_testSendTask(server3, t)
+		// 	_testSendGroup(server3, t)
+		// 	_testSendChord(server3, t)
+		// 	_testSendChain(server3, t)
+		// 	worker3.Quit()
+		// }
+	}
 }
 
 func _testSendTask(server *Server, t *testing.T) {
