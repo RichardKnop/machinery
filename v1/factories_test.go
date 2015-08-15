@@ -72,7 +72,7 @@ func TestBackendFactory(t *testing.T) {
 
 	// 1) AMQP backend test
 
-	cnf = config.Config{ResultBackend: "amqp"}
+	cnf = config.Config{ResultBackend: "amqp://guest:guest@localhost:5672/"}
 	actual, err := BackendFactory(&cnf)
 
 	if err != nil {

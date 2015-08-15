@@ -86,7 +86,7 @@ func TestIntegration(t *testing.T) {
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 
 	if amqpURL != "" {
-		server1 := setup(amqpURL, "amqp")
+		server1 := setup(amqpURL, amqpURL)
 		worker1 := server1.NewWorker("test_worker")
 		go worker1.Launch()
 		_testSendTask(server1, t)
