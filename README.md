@@ -80,14 +80,20 @@ type Config struct {
 
 ### Broker
 
-A message broker. Currently only AMQP is supported. Use full AMQP URL such as `amqp://guest:guest@localhost:5672/`.
+A message broker. Currently supported brokers are:
+
+* AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
+* Redis (use Redis URL such as `redis://127.0.0.1:6379`)
 
 ### ResultBackend
 
 Result backend to use for keeping task states and results. This setting is optional, you can run Machinery without keeping track of task results.
 
-* Use `amqp` which will assume full AMQP connection details from Broker setting.
-* To use Memcache backend: `memcache://10.0.0.1:11211,10.0.0.2:11211`.
+Currently supported backends are:
+
+* AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
+* Redis (use Redis URL such as `redis://127.0.0.1:6379`)
+* Memcache (use Memcache URL such as `memcache://10.0.0.1:11211,10.0.0.2:11211`)
 
 ### ResultsExpireIn
 
@@ -95,11 +101,11 @@ How long to store task results for in seconds. Defaults to 3600 (1 hour).
 
 ### Exchange
 
-Exchange name, e.g. `machinery_exchange`.
+Exchange name, e.g. `machinery_exchange`. Only required for AMQP.
 
 ### ExchangeType
 
-Exchange type, e.g. `direct`.
+Exchange type, e.g. `direct`. Only required for AMQP.
 
 ### DefaultQueue
 
@@ -107,7 +113,7 @@ Default queue name, e.g. `machinery_tasks`.
 
 ### BindingKey
 
-The queue is bind to the exchange with this key, e.g. `machinery_task`.
+The queue is bind to the exchange with this key, e.g. `machinery_task`. Only required for AMQP.
 
 ## Server
 

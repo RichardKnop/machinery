@@ -167,14 +167,6 @@ func (memcacheBackend *MemcacheBackend) PurgeStateGroup(taskStateGroup *TaskStat
 	return memcacheBackend.getClient().Delete(taskStateGroup.GroupUUID)
 }
 
-// Returns / creates instance of Memcache client
-func (memcacheBackend *MemcacheBackend) getClient() *memcache.Client {
-	if memcacheBackend.client == nil {
-		memcacheBackend.client = memcache.New(memcacheBackend.servers...)
-	}
-	return memcacheBackend.client
-}
-
 // Updates a task state
 func (memcacheBackend *MemcacheBackend) updateState(taskState *TaskState) error {
 	encoded, err := json.Marshal(&taskState)
@@ -211,7 +203,7 @@ func (memcacheBackend *MemcacheBackend) updateStateGroup(groupUUID string, group
 		}
 	} else {
 		if err := json.Unmarshal(item.Value, &taskStateGroup); err != nil {
-			return taskStateGroup, err
+			return nil, err
 		}
 	}
 
@@ -219,14 +211,14 @@ func (memcacheBackend *MemcacheBackend) updateStateGroup(groupUUID string, group
 
 	encoded, err := json.Marshal(taskStateGroup)
 	if err != nil {
-		return taskStateGroup, fmt.Errorf("JSON Encode Message: %v", err)
+		return nil, fmt.Errorf("JSON Encode Message: %v", err)
 	}
 
 	if err := memcacheBackend.getClient().Set(&memcache.Item{
 		Key:   groupUUID,
 		Value: encoded,
 	}); err != nil {
-		return taskStateGroup, err
+		return nil, err
 	}
 
 	return taskStateGroup, memcacheBackend.setExpirationTime(groupUUID)
@@ -249,4 +241,12 @@ func (memcacheBackend *MemcacheBackend) setExpirationTime(key string) error {
 	}
 
 	return nil
+}
+
+// Returns / creates instance of Memcache client
+func (memcacheBackend *MemcacheBackend) getClient() *memcache.Client {
+	if memcacheBackend.client == nil {
+		memcacheBackend.client = memcache.New(memcacheBackend.servers...)
+	}
+	return memcacheBackend.client
 }
