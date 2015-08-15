@@ -65,7 +65,6 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 					return
 				}
 			case error:
-				log.Print(n)
 				errors <- n
 				continue
 			}

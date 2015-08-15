@@ -128,16 +128,16 @@ func TestIntegration(t *testing.T) {
 		_testSendChain(server4, t)
 		worker4.Quit()
 
-		// if memcacheURL != "" {
-		// 	server5 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
-		// 	worker5 := server5.NewWorker("test_worker")
-		// 	go worker5.Launch()
-		// 	// _testSendTask(server5, t)
-		// 	// _testSendGroup(server5, t)
-		// 	// _testSendChord(server5, t)
-		// 	// _testSendChain(server5, t)
-		// 	worker5.Quit()
-		// }
+		if memcacheURL != "" {
+			server5 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
+			worker5 := server5.NewWorker("test_worker")
+			go worker5.Launch()
+			_testSendTask(server5, t)
+			_testSendGroup(server5, t)
+			_testSendChord(server5, t)
+			_testSendChain(server5, t)
+			worker5.Quit()
+		}
 	}
 }
 
