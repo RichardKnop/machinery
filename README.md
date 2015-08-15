@@ -128,7 +128,7 @@ import (
 
 var cnf = config.Config{
     Broker:        "amqp://guest:guest@localhost:5672/",
-    ResultBackend: "amqp",
+    ResultBackend: "amqp://guest:guest@localhost:5672/",
     Exchange:      "machinery_exchange",
     ExchangeType:  "direct",
     DefaultQueue:  "machinery_tasks",
