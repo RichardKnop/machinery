@@ -10,7 +10,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
-func TestBrokerFactory(t *testing.T) {
+func TestBrokerFactoryAMQP(t *testing.T) {
 	cnf := config.Config{
 		Broker:       "amqp://guest:guest@localhost:5672/",
 		Exchange:     "machinery_exchange",
@@ -25,6 +25,23 @@ func TestBrokerFactory(t *testing.T) {
 	}
 
 	expected := brokers.NewAMQPBroker(&cnf)
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("conn = %v, want %v", actual, expected)
+	}
+}
+
+func TestBrokerFactoryRedis(t *testing.T) {
+	cnf := config.Config{
+		Broker:       "redis://localhost:6379",
+		DefaultQueue: "machinery_tasks",
+	}
+
+	actual, err := BrokerFactory(&cnf)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	expected := brokers.NewRedisBroker(&cnf)
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}

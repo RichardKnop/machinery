@@ -108,8 +108,14 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 
 func (redisBroker *RedisBroker) open() (redis.Conn, error) {
 	network := "tcp"
-	address := strings.Split(redisBroker.config.Broker, "redis://")[1]
-	return redis.Dial(network, address)
+	parts := strings.Split(redisBroker.config.Broker, "redis://")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf(
+			"Redis broker connection string should be in format redis://host:port, instead got %s",
+			redisBroker.config.Broker,
+		)
+	}
+	return redis.Dial(network, parts[1])
 }
 
 func (redisBroker *RedisBroker) closeConn(conn redis.Conn) error {
