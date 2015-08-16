@@ -53,6 +53,34 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 	}
 }
 
+// StopConsuming quits the loop
+func (redisBroker *RedisBroker) StopConsuming() {
+	// Notifying the quit channel stops receiving goroutine
+	redisBroker.quitChan <- 1
+	// Wait for the receiving goroutine to have stopped
+	redisBroker.wg.Wait()
+	// Notifying the quit channel stops consuming of messages
+	redisBroker.stopChan <- 1
+}
+
+// Publish places a new message on the default queue
+func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) error {
+	conn, err := redisBroker.open()
+	if err != nil {
+		fmt.Errorf("Dial: %s", err)
+	}
+	defer conn.Close()
+
+	message, err := json.Marshal(signature)
+	if err != nil {
+		return fmt.Errorf("JSON Encode Message: %v", err)
+	}
+
+	_, err = conn.Do("RPUSH", redisBroker.config.DefaultQueue, message)
+	return err
+}
+
+// Consumes messages
 func (redisBroker *RedisBroker) consume(errorsChan chan error, taskProcessor TaskProcessor) {
 	defer redisBroker.wg.Done()
 
@@ -106,33 +134,6 @@ func (redisBroker *RedisBroker) consume(errorsChan chan error, taskProcessor Tas
 			}
 		}
 	}
-}
-
-// StopConsuming quits the loop
-func (redisBroker *RedisBroker) StopConsuming() {
-	// Notifying the quit channel stops receiving goroutine
-	redisBroker.quitChan <- 1
-	// Wait for the receiving goroutine to have stopped
-	redisBroker.wg.Wait()
-	// Notifying the quit channel stops consuming of messages
-	redisBroker.stopChan <- 1
-}
-
-// Publish places a new message on the default queue
-func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) error {
-	conn, err := redisBroker.open()
-	if err != nil {
-		fmt.Errorf("Dial: %s", err)
-	}
-	defer conn.Close()
-
-	message, err := json.Marshal(signature)
-	if err != nil {
-		return fmt.Errorf("JSON Encode Message: %v", err)
-	}
-
-	_, err = conn.Do("RPUSH", redisBroker.config.DefaultQueue, message)
-	return err
 }
 
 // Returns / creates instance of Redis connection
