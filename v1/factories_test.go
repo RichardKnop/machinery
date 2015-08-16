@@ -10,7 +10,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
-func TestBrokerFactoryAMQP(t *testing.T) {
+func TestBrokerFactory(t *testing.T) {
 	var cnf config.Config
 
 	// 1) AMQP broker test

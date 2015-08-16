@@ -8,13 +8,15 @@ import (
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/utils"
 )
 
 // RedisBroker represents a Redis broker
 type RedisBroker struct {
-	config   *config.Config
-	host     string
-	stopChan chan int
+	config    *config.Config
+	host      string
+	retryFunc func()
+	stopChan  chan int
 }
 
 // NewRedisBroker creates new RedisBroker instance
@@ -27,16 +29,25 @@ func NewRedisBroker(cnf *config.Config, host string) Broker {
 
 // StartConsuming enters a loop and waits for incoming messages
 func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
+	if redisBroker.retryFunc == nil {
+		redisBroker.retryFunc = utils.RetryClosure()
+	}
+
 	conn, err := redisBroker.open()
 	if err != nil {
+		redisBroker.retryFunc()
 		return true, fmt.Errorf("Dial: %s", err) // retry true
 	}
+
+	redisBroker.retryFunc = utils.RetryClosure()
+
 	defer conn.Close()
 
 	psc := redis.PubSubConn{Conn: conn}
 	if err := psc.Subscribe(redisBroker.config.DefaultQueue); err != nil {
 		return true, err // retry true
 	}
+
 	defer psc.Unsubscribe()
 	defer psc.Close()
 

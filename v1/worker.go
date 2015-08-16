@@ -34,9 +34,7 @@ func (worker *Worker) Launch() error {
 	errorsChan := make(chan error)
 
 	go func() {
-		retryFunc := utils.RetryClosure()
 		for {
-			retryFunc()
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
 
 			if !retry {

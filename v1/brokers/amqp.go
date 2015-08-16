@@ -8,12 +8,14 @@ import (
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/streadway/amqp"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/utils"
 )
 
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
-	config   *config.Config
-	stopChan chan int
+	config    *config.Config
+	retryFunc func()
+	stopChan  chan int
 }
 
 // NewAMQPBroker creates new AMQPBroker instance
@@ -25,10 +27,17 @@ func NewAMQPBroker(cnf *config.Config) Broker {
 
 // StartConsuming enters a loop and waits for incoming messages
 func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
+	if amqpBroker.retryFunc == nil {
+		amqpBroker.retryFunc = utils.RetryClosure()
+	}
+
 	conn, channel, queue, _, err := amqpBroker.open()
 	if err != nil {
+		amqpBroker.retryFunc()
 		return true, err // retry true
 	}
+
+	amqpBroker.retryFunc = utils.RetryClosure()
 
 	defer amqpBroker.close(channel, conn)
 
