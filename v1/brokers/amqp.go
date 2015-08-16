@@ -13,9 +13,6 @@ import (
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
 	config   *config.Config
-	conn     *amqp.Connection
-	channel  *amqp.Channel
-	queue    amqp.Queue
 	stopChan chan int
 }
 
