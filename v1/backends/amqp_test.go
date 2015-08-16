@@ -11,14 +11,14 @@ import (
 )
 
 func TestGetStateAMQP(t *testing.T) {
-	brokerURL := os.Getenv("AMQP_URL")
-	if brokerURL == "" {
+	amqpURL := os.Getenv("AMQP_URL")
+	if amqpURL == "" {
 		return
 	}
 
 	cnf := config.Config{
-		Broker:        brokerURL,
-		ResultBackend: "amqp",
+		Broker:        amqpURL,
+		ResultBackend: amqpURL,
 		Exchange:      "test_exchange",
 		ExchangeType:  "direct",
 		DefaultQueue:  "test_queue",

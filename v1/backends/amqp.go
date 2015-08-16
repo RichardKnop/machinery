@@ -340,7 +340,7 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 	var queue amqp.Queue
 	var err error
 
-	conn, err = amqp.Dial(amqpBackend.config.Broker)
+	conn, err = amqp.Dial(amqpBackend.config.ResultBackend)
 	if err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
 	}

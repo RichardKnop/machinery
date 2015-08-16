@@ -138,9 +138,6 @@ func (redisBroker *RedisBroker) consume(errorsChan chan error, taskProcessor Tas
 
 // Returns / creates instance of Redis connection
 func (redisBroker *RedisBroker) open() (redis.Conn, error) {
-	// We need to return a new Redis connection every time as after
-	// subscribing to a channel, PUBLISH is not allowed on that connection
-	// e.g. ERR only (P)SUBSCRIBE / (P)UNSUBSCRIBE / QUIT allowed in this context
 	return redis.Dial("tcp", redisBroker.host)
 }
 

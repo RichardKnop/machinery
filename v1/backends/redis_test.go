@@ -9,9 +9,9 @@ import (
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
-func TestGetStateMemcache(t *testing.T) {
-	memcacheURL := os.Getenv("MEMCACHE_URL")
-	if memcacheURL == "" {
+func TestGetStateRedis(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
 		return
 	}
 
@@ -21,7 +21,7 @@ func TestGetStateMemcache(t *testing.T) {
 	}
 
 	go func() {
-		backend := NewMemcacheBackend(&config.Config{}, []string{memcacheURL})
+		backend := NewRedisBackend(&config.Config{}, redisURL)
 
 		backend.SetStatePending(signature)
 
@@ -42,7 +42,7 @@ func TestGetStateMemcache(t *testing.T) {
 		backend.SetStateSuccess(signature, &taskResult)
 	}()
 
-	backend := NewMemcacheBackend(&config.Config{}, []string{memcacheURL})
+	backend := NewRedisBackend(&config.Config{}, redisURL)
 
 	for {
 		taskState, err := backend.GetState(signature)
