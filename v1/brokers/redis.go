@@ -7,11 +7,10 @@ import (
 	"sync"
 	"time"
 
-	//"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
+	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
-	"github.com/garyburd/redigo/redis"
 )
 
 // RedisBroker represents a Redis broker
@@ -89,7 +88,6 @@ func (redisBroker *RedisBroker) consume(errorsChan chan error, taskProcessor Tas
 
 			item, err := redis.Bytes(multiBulk[1], nil)
 			if err != nil {
-				log.Print("BBBBBB")
 				errorsChan <- err
 				return
 			}
