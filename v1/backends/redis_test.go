@@ -56,3 +56,32 @@ func TestGetStateRedis(t *testing.T) {
 		}
 	}
 }
+
+func TestPurgeStateRedis(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		return
+	}
+
+	signature := &signatures.TaskSignature{
+		UUID:      "testTaskUUID",
+		GroupUUID: "testGroupUUID",
+	}
+
+	backend := NewRedisBackend(&config.Config{}, redisURL)
+
+	backend.SetStatePending(signature)
+	taskState, err := backend.GetState(signature)
+	if err != nil {
+		t.Error(err)
+	}
+
+	backend.PurgeState(taskState)
+	taskState, err = backend.GetState(signature)
+	if taskState != nil {
+		t.Errorf("taskState = %v, want nil", taskState)
+	}
+	if err == nil {
+		t.Error("Should have gotten error back")
+	}
+}
