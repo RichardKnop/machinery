@@ -327,6 +327,7 @@ func TestConfirmMultipleOrdersDeliveryTags(t *testing.T) {
 		// Single tag, plus multiple, should produce
 		// 2, 1, 3, 4
 		srv.send(1, &basicAck{DeliveryTag: 2})
+		srv.send(1, &basicAck{DeliveryTag: 1})
 		srv.send(1, &basicAck{DeliveryTag: 4, Multiple: true})
 
 		srv.recv(1, &basicPublish{})
@@ -355,10 +356,12 @@ func TestConfirmMultipleOrdersDeliveryTags(t *testing.T) {
 
 	ch.Confirm(false)
 
-	ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 1")})
-	ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 2")})
-	ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 3")})
-	ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 4")})
+	go func() {
+		ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 1")})
+		ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 2")})
+		ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 3")})
+		ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 4")})
+	}()
 
 	// received out of order, consumed in order
 	for i, tag := range []uint64{1, 2, 3, 4} {
@@ -367,10 +370,12 @@ func TestConfirmMultipleOrdersDeliveryTags(t *testing.T) {
 		}
 	}
 
-	ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 5")})
-	ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 6")})
-	ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 7")})
-	ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 8")})
+	go func() {
+		ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 5")})
+		ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 6")})
+		ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 7")})
+		ch.Publish("", "q", false, false, Publishing{Body: []byte("pub 8")})
+	}()
 
 	for i, tag := range []uint64{5, 6, 7, 8} {
 		if ack := <-confirm; tag != ack.DeliveryTag {
