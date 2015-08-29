@@ -121,28 +121,37 @@ func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error
 	return fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
 }
 
-// Consumes messages
-func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) error {
-	consumeOne := func(d amqp.Delivery) error {
-		log.Printf("Received new message: %s", d.Body)
+// Consume a single message
+func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor, errorsChan chan error) {
+	log.Printf("Received new message: %s", d.Body)
 
-		signature := signatures.TaskSignature{}
-		if err := json.Unmarshal(d.Body, &signature); err != nil {
-			d.Nack(false, false) // multiple, requeue both false
-			return err
-		}
-
-		d.Ack(false) // multiple false
-
-		return taskProcessor.Process(&signature)
+	signature := signatures.TaskSignature{}
+	if err := json.Unmarshal(d.Body, &signature); err != nil {
+		d.Nack(false, false) // multiple, requeue both false
+		errorsChan <- err
+		return
 	}
 
+	d.Ack(false) // multiple false
+
+	if err := taskProcessor.Process(&signature); err != nil {
+		errorsChan <- err
+	}
+}
+
+// Consumes messages...
+func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) error {
+	errorsChan := make(chan error)
 	for {
 		select {
+		case err := <-errorsChan:
+			return err
 		case d := <-deliveries:
-			if err := consumeOne(d); err != nil {
-				return err
-			}
+			// Consume the task inside a gotourine so multiple tasks
+			// can be processed concurrently
+			go func() {
+				amqpBroker.consumeOne(d, taskProcessor, errorsChan)
+			}()
 		case <-amqpBroker.stopChan:
 			return nil
 		}
