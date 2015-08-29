@@ -80,7 +80,23 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 	return err
 }
 
-// Consumes messages
+// Consume a single message
+func (redisBroker *RedisBroker) consumeOne(item []byte, taskProcessor TaskProcessor, errorsChan chan error) error {
+	log.Printf("Received new message: %s", item)
+
+	signature := signatures.TaskSignature{}
+	if err := json.Unmarshal(item, &signature); err != nil {
+		return err
+	}
+
+	if err := taskProcessor.Process(&signature); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Consumes messages...
 func (redisBroker *RedisBroker) consume(errorsChan chan error, taskProcessor TaskProcessor) {
 	defer redisBroker.wg.Done()
 
@@ -120,15 +136,7 @@ func (redisBroker *RedisBroker) consume(errorsChan chan error, taskProcessor Tas
 				return
 			}
 
-			log.Printf("Received new message: %s", item)
-
-			signature := signatures.TaskSignature{}
-			if err := json.Unmarshal(item, &signature); err != nil {
-				errorsChan <- err
-				return
-			}
-
-			if err := taskProcessor.Process(&signature); err != nil {
+			if err := redisBroker.consumeOne(item, taskProcessor, errorsChan); err != nil {
 				errorsChan <- err
 				return
 			}
