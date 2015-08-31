@@ -20,29 +20,21 @@ func TestGetStateRedis(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
+	backend := NewRedisBackend(&config.Config{}, redisURL)
+
 	go func() {
-		backend := NewRedisBackend(&config.Config{}, redisURL)
-
 		backend.SetStatePending(signature)
-
 		time.Sleep(2 * time.Millisecond)
-
 		backend.SetStateReceived(signature)
-
 		time.Sleep(2 * time.Millisecond)
-
 		backend.SetStateStarted(signature)
-
 		time.Sleep(2 * time.Millisecond)
-
 		taskResult := TaskResult{
 			Type:  "float64",
 			Value: 2,
 		}
 		backend.SetStateSuccess(signature, &taskResult)
 	}()
-
-	backend := NewRedisBackend(&config.Config{}, redisURL)
 
 	for {
 		taskState, err := backend.GetState(signature.UUID)

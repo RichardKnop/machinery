@@ -86,16 +86,19 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 
 // Waits for all task processing goroutines to finish
 func (redisBroker *RedisBroker) stopProcessing() {
-	// Wait for any task processing goroutines to have stopped
+	log.Print("Waiting for all task processing goroutines to finish")
 	redisBroker.processingGoroutineWG.Wait()
+	log.Print("All task processing goroutines finished")
 }
 
 // Stops the Redis receiving goroutine
 func (redisBroker *RedisBroker) stopReceiving() {
 	// Notifying the quit channel stops receiving goroutine
 	redisBroker.quitChan <- 1
-	// Wait for the receiving goroutine to have stopped
+
+	log.Print("Waiting for the receiving goroutine to have stopped")
 	redisBroker.receivingGoroutineWG.Wait()
+	log.Print("Receiving goroutine stopped")
 }
 
 // Consume a single message

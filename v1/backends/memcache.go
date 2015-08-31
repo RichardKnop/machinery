@@ -141,22 +141,6 @@ func (memcacheBackend *MemcacheBackend) GetState(taskUUID string) (*TaskState, e
 	return &taskState, nil
 }
 
-// GetStateGroup returns the latest task state group
-func (memcacheBackend *MemcacheBackend) GetStateGroup(groupUUID string) (*TaskStateGroup, error) {
-	taskStateGroup := TaskStateGroup{}
-
-	item, err := memcacheBackend.getClient().Get(groupUUID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := json.Unmarshal(item.Value, &taskStateGroup); err != nil {
-		return nil, err
-	}
-
-	return &taskStateGroup, nil
-}
-
 // PurgeState - deletes stored task state
 func (memcacheBackend *MemcacheBackend) PurgeState(taskState *TaskState) error {
 	return memcacheBackend.getClient().Delete(taskState.TaskUUID)

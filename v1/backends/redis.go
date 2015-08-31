@@ -147,28 +147,6 @@ func (redisBackend *RedisBackend) GetState(taskUUID string) (*TaskState, error) 
 	return &taskState, nil
 }
 
-// GetStateGroup returns the latest task state group
-func (redisBackend *RedisBackend) GetStateGroup(groupUUID string) (*TaskStateGroup, error) {
-	taskStateGroup := TaskStateGroup{}
-
-	conn, err := redisBackend.open()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	item, err := redis.Bytes(conn.Do("GET", groupUUID))
-	if err != nil {
-		return nil, err
-	}
-
-	if err := json.Unmarshal(item, &taskStateGroup); err != nil {
-		return nil, err
-	}
-
-	return &taskStateGroup, nil
-}
-
 // PurgeState - deletes stored task state
 func (redisBackend *RedisBackend) PurgeState(taskState *TaskState) error {
 	conn, err := redisBackend.open()

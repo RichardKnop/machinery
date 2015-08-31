@@ -162,40 +162,6 @@ func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	return &taskState, nil
 }
 
-// GetStateGroup returns the latest task state group. It will only return the status once
-// as the message will get consumed and removed from the queue.
-func (amqpBackend *AMQPBackend) GetStateGroup(groupUUID string) (*TaskStateGroup, error) {
-	taskStateGroup := TaskStateGroup{}
-
-	conn, channel, queue, _, err := amqpBackend.open(groupUUID)
-	if err != nil {
-		return nil, err
-	}
-
-	defer amqpBackend.close(channel, conn)
-
-	d, ok, err := channel.Get(
-		queue.Name, // queue name
-		false,      // multiple
-	)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, errors.New("No state ready")
-	}
-
-	defer d.Ack(false)
-
-	if err := json.Unmarshal([]byte(d.Body), &taskStateGroup); err != nil {
-		log.Printf("Failed to unmarshal task state group: %v", string(d.Body))
-		log.Print(err)
-		return nil, err
-	}
-
-	return &taskStateGroup, nil
-}
-
 // PurgeState - deletes stored task state
 func (amqpBackend *AMQPBackend) PurgeState(taskState *TaskState) error {
 	return amqpBackend.deleteQueue(taskState.TaskUUID)
