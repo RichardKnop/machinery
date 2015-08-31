@@ -214,7 +214,7 @@ func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
-			DeliveryMode: amqp.Transient,
+			DeliveryMode: amqp.Persistent, // Persistent // Transient
 		},
 	); err != nil {
 		return err
@@ -284,7 +284,7 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCoun
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
-			DeliveryMode: amqp.Transient,
+			DeliveryMode: amqp.Persistent, // Persistent // Transient
 		},
 	); err != nil {
 		return nil, err
