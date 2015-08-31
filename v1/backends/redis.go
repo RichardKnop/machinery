@@ -3,7 +3,6 @@ package backends
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
@@ -90,8 +89,6 @@ func (redisBackend *RedisBackend) SetStateStarted(signature *signatures.TaskSign
 func (redisBackend *RedisBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) (*TaskStateGroup, error) {
 	taskState := NewSuccessTaskState(signature, result)
 	var taskStateGroup *TaskStateGroup
-
-	log.Printf("SET STATE OF TASK %s TO %s", taskState.TaskUUID, taskState)
 
 	if err := redisBackend.updateState(taskState); err != nil {
 		return taskStateGroup, err
