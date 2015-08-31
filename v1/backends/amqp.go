@@ -130,10 +130,10 @@ func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignat
 
 // GetState returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
-func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*TaskState, error) {
+func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := TaskState{}
 
-	conn, channel, queue, _, err := amqpBackend.open(signature.UUID)
+	conn, channel, queue, _, err := amqpBackend.open(taskUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCoun
 		taskStateGroup = &TaskStateGroup{
 			GroupUUID:      groupUUID,
 			GroupTaskCount: groupTaskCount,
-			States:         make(map[string]TaskState),
+			States:         make(map[string]*TaskState),
 		}
 	} else {
 		defer d.Ack(false)
@@ -303,7 +303,7 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCoun
 		}
 	}
 
-	taskStateGroup.States[taskState.TaskUUID] = *taskState
+	taskStateGroup.States[taskState.TaskUUID] = taskState
 
 	message, err := json.Marshal(taskStateGroup)
 	if err != nil {

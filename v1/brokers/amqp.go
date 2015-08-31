@@ -75,7 +75,7 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 
 // StopConsuming quits the loop
 func (amqpBroker *AMQPBroker) StopConsuming() {
-	// Notifying the quit channel stops consuming of messages
+	// Notifying the stop channel stops consuming of messages
 	amqpBroker.stopChan <- 1
 }
 

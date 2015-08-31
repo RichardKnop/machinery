@@ -66,7 +66,7 @@ func TestGetStateAMQP(t *testing.T) {
 	backend := NewAMQPBackend(amqpConfig)
 
 	for {
-		taskState, err := backend.GetState(signature)
+		taskState, err := backend.GetState(signature.UUID)
 
 		if err != nil {
 			log.Print(err)
@@ -94,13 +94,13 @@ func TestPurgeStateAMQP(t *testing.T) {
 
 	backend.SetStatePending(signature)
 	backend.SetStateReceived(signature)
-	taskState, err := backend.GetState(signature)
+	taskState, err := backend.GetState(signature.UUID)
 	if err != nil {
 		t.Error(err)
 	}
 
 	backend.PurgeState(taskState)
-	taskState, err = backend.GetState(signature)
+	taskState, err = backend.GetState(signature.UUID)
 	if taskState != nil {
 		t.Errorf("taskState = %v, want nil", taskState)
 	}

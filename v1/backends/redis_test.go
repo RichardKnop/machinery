@@ -45,7 +45,7 @@ func TestGetStateRedis(t *testing.T) {
 	backend := NewRedisBackend(&config.Config{}, redisURL)
 
 	for {
-		taskState, err := backend.GetState(signature)
+		taskState, err := backend.GetState(signature.UUID)
 
 		if err != nil {
 			continue
@@ -71,13 +71,13 @@ func TestPurgeStateRedis(t *testing.T) {
 	backend := NewRedisBackend(&config.Config{}, redisURL)
 
 	backend.SetStatePending(signature)
-	taskState, err := backend.GetState(signature)
+	taskState, err := backend.GetState(signature.UUID)
 	if err != nil {
 		t.Error(err)
 	}
 
 	backend.PurgeState(taskState)
-	taskState, err = backend.GetState(signature)
+	taskState, err = backend.GetState(signature.UUID)
 	if taskState != nil {
 		t.Errorf("taskState = %v, want nil", taskState)
 	}

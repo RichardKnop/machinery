@@ -11,7 +11,7 @@ type Backend interface {
 	SetStateStarted(signature *signatures.TaskSignature) error
 	SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) (*TaskStateGroup, error)
 	SetStateFailure(signature *signatures.TaskSignature, err string) (*TaskStateGroup, error)
-	GetState(signature *signatures.TaskSignature) (*TaskState, error)
+	GetState(taskUUID string) (*TaskState, error)
 	GetStateGroup(groupUUID string) (*TaskStateGroup, error)
 	PurgeState(taskState *TaskState) error
 	PurgeStateGroup(taskStateGroup *TaskStateGroup) error

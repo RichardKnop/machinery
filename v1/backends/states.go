@@ -35,7 +35,7 @@ type TaskState struct {
 type TaskStateGroup struct {
 	GroupUUID      string
 	GroupTaskCount int
-	States         map[string]TaskState
+	States         map[string]*TaskState
 }
 
 // NewPendingTaskState ...

@@ -3,6 +3,7 @@ package backends
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
@@ -40,7 +41,7 @@ func (redisBackend *RedisBackend) SetStatePending(signature *signatures.TaskSign
 	_, err := redisBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 	return err
 }
@@ -60,7 +61,7 @@ func (redisBackend *RedisBackend) SetStateReceived(signature *signatures.TaskSig
 	_, err := redisBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 	return err
 }
@@ -80,7 +81,7 @@ func (redisBackend *RedisBackend) SetStateStarted(signature *signatures.TaskSign
 	_, err := redisBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 	return err
 }
@@ -89,6 +90,8 @@ func (redisBackend *RedisBackend) SetStateStarted(signature *signatures.TaskSign
 func (redisBackend *RedisBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) (*TaskStateGroup, error) {
 	taskState := NewSuccessTaskState(signature, result)
 	var taskStateGroup *TaskStateGroup
+
+	log.Printf("SET STATE OF TASK %s TO %s", taskState.TaskUUID, taskState)
 
 	if err := redisBackend.updateState(taskState); err != nil {
 		return taskStateGroup, err
@@ -101,7 +104,7 @@ func (redisBackend *RedisBackend) SetStateSuccess(signature *signatures.TaskSign
 	return redisBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 }
 
@@ -121,12 +124,12 @@ func (redisBackend *RedisBackend) SetStateFailure(signature *signatures.TaskSign
 	return redisBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 }
 
 // GetState returns the latest task state
-func (redisBackend *RedisBackend) GetState(signature *signatures.TaskSignature) (*TaskState, error) {
+func (redisBackend *RedisBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := TaskState{}
 
 	conn, err := redisBackend.open()
@@ -135,7 +138,7 @@ func (redisBackend *RedisBackend) GetState(signature *signatures.TaskSignature) 
 	}
 	defer conn.Close()
 
-	item, err := redis.Bytes(conn.Do("GET", signature.UUID))
+	item, err := redis.Bytes(conn.Do("GET", taskUUID))
 	if err != nil {
 		return nil, err
 	}
@@ -223,14 +226,19 @@ func (redisBackend *RedisBackend) updateState(taskState *TaskState) error {
 }
 
 // Updates a task state group
-func (redisBackend *RedisBackend) updateStateGroup(groupUUID string, groupTaskCount int, taskState *TaskState) (*TaskStateGroup, error) {
-	var taskStateGroup *TaskStateGroup
+func (redisBackend *RedisBackend) updateStateGroup(groupUUID string, groupTaskCount int, taskUUID string) (*TaskStateGroup, error) {
+	if groupUUID == "" || groupTaskCount == 0 {
+		return nil, nil
+	}
 
 	conn, err := redisBackend.open()
 	if err != nil {
 		return nil, err
 	}
+
 	defer conn.Close()
+
+	var taskStateGroup *TaskStateGroup
 
 	item, err := redis.Bytes(conn.Do("GET", groupUUID))
 
@@ -238,7 +246,7 @@ func (redisBackend *RedisBackend) updateStateGroup(groupUUID string, groupTaskCo
 		taskStateGroup = &TaskStateGroup{
 			GroupUUID:      groupUUID,
 			GroupTaskCount: groupTaskCount,
-			States:         make(map[string]TaskState),
+			States:         make(map[string]*TaskState),
 		}
 	} else {
 		if err := json.Unmarshal(item, &taskStateGroup); err != nil {
@@ -246,7 +254,25 @@ func (redisBackend *RedisBackend) updateStateGroup(groupUUID string, groupTaskCo
 		}
 	}
 
-	taskStateGroup.States[taskState.TaskUUID] = *taskState
+	taskState, err := redisBackend.GetState(taskUUID)
+	if err != nil {
+		return nil, err
+	}
+	taskStateGroup.States[taskUUID] = taskState
+
+	// Due to asynchronous nature of task processing, a different task's state
+	// might have changed while updating the task state group
+	// Therefor we fetch correct states from the backend all the time
+	for uuid := range taskStateGroup.States {
+		if uuid == taskUUID {
+			continue
+		}
+		taskState, err := redisBackend.GetState(uuid)
+		if err != nil {
+			return nil, err
+		}
+		taskStateGroup.States[uuid] = taskState
+	}
 
 	encoded, err := json.Marshal(taskStateGroup)
 	if err != nil {

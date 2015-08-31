@@ -96,7 +96,7 @@ func (asyncResult *AsyncResult) GetState() *TaskState {
 		return asyncResult.taskState
 	}
 
-	taskState, err := asyncResult.backend.GetState(asyncResult.Signature)
+	taskState, err := asyncResult.backend.GetState(asyncResult.Signature.UUID)
 	if err == nil {
 		asyncResult.taskState = taskState
 	}
