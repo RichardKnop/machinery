@@ -20,21 +20,15 @@ func TestGetStateMemcache(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
+	backend := NewMemcacheBackend(&config.Config{}, []string{memcacheURL})
+
 	go func() {
-		backend := NewMemcacheBackend(&config.Config{}, []string{memcacheURL})
-
 		backend.SetStatePending(signature)
-
 		time.Sleep(2 * time.Millisecond)
-
 		backend.SetStateReceived(signature)
-
 		time.Sleep(2 * time.Millisecond)
-
 		backend.SetStateStarted(signature)
-
 		time.Sleep(2 * time.Millisecond)
-
 		taskResult := TaskResult{
 			Type:  "float64",
 			Value: 2,
@@ -42,10 +36,8 @@ func TestGetStateMemcache(t *testing.T) {
 		backend.SetStateSuccess(signature, &taskResult)
 	}()
 
-	backend := NewMemcacheBackend(&config.Config{}, []string{memcacheURL})
-
 	for {
-		taskState, err := backend.GetState(signature)
+		taskState, err := backend.GetState(signature.UUID)
 
 		if err != nil {
 			continue
@@ -71,13 +63,13 @@ func TestPurgeStateMemcache(t *testing.T) {
 	backend := NewMemcacheBackend(&config.Config{}, []string{memcacheURL})
 
 	backend.SetStatePending(signature)
-	taskState, err := backend.GetState(signature)
+	taskState, err := backend.GetState(signature.UUID)
 	if err != nil {
 		t.Error(err)
 	}
 
 	backend.PurgeState(taskState)
-	taskState, err = backend.GetState(signature)
+	taskState, err = backend.GetState(signature.UUID)
 	if taskState != nil {
 		t.Errorf("taskState = %v, want nil", taskState)
 	}

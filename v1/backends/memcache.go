@@ -40,7 +40,7 @@ func (memcacheBackend *MemcacheBackend) SetStatePending(signature *signatures.Ta
 	_, err := memcacheBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 	return err
 }
@@ -60,7 +60,7 @@ func (memcacheBackend *MemcacheBackend) SetStateReceived(signature *signatures.T
 	_, err := memcacheBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 	return err
 }
@@ -80,7 +80,7 @@ func (memcacheBackend *MemcacheBackend) SetStateStarted(signature *signatures.Ta
 	_, err := memcacheBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 	return err
 }
@@ -88,48 +88,47 @@ func (memcacheBackend *MemcacheBackend) SetStateStarted(signature *signatures.Ta
 // SetStateSuccess - sets task state to SUCCESS
 func (memcacheBackend *MemcacheBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) (*TaskStateGroup, error) {
 	taskState := NewSuccessTaskState(signature, result)
-	var taskStateGroup *TaskStateGroup
 
 	if err := memcacheBackend.updateState(taskState); err != nil {
-		return taskStateGroup, err
+		return nil, err
 	}
 
 	if signature.GroupUUID == "" {
-		return taskStateGroup, nil
+		return nil, nil
 	}
 
 	return memcacheBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (memcacheBackend *MemcacheBackend) SetStateFailure(signature *signatures.TaskSignature, err string) (*TaskStateGroup, error) {
+func (memcacheBackend *MemcacheBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
 	taskState := NewFailureTaskState(signature, err)
-	var taskStateGroup *TaskStateGroup
 
 	if err := memcacheBackend.updateState(taskState); err != nil {
-		return taskStateGroup, err
+		return err
 	}
 
 	if signature.GroupUUID == "" {
-		return taskStateGroup, nil
+		return nil
 	}
 
-	return memcacheBackend.updateStateGroup(
+	_, errr := memcacheBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-		taskState,
+		signature.UUID,
 	)
+	return errr
 }
 
 // GetState returns the latest task state
-func (memcacheBackend *MemcacheBackend) GetState(signature *signatures.TaskSignature) (*TaskState, error) {
+func (memcacheBackend *MemcacheBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := TaskState{}
 
-	item, err := memcacheBackend.getClient().Get(signature.UUID)
+	item, err := memcacheBackend.getClient().Get(taskUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -139,22 +138,6 @@ func (memcacheBackend *MemcacheBackend) GetState(signature *signatures.TaskSigna
 	}
 
 	return &taskState, nil
-}
-
-// GetStateGroup returns the latest task state group
-func (memcacheBackend *MemcacheBackend) GetStateGroup(groupUUID string) (*TaskStateGroup, error) {
-	taskStateGroup := TaskStateGroup{}
-
-	item, err := memcacheBackend.getClient().Get(groupUUID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := json.Unmarshal(item.Value, &taskStateGroup); err != nil {
-		return nil, err
-	}
-
-	return &taskStateGroup, nil
 }
 
 // PurgeState - deletes stored task state
@@ -191,7 +174,11 @@ func (memcacheBackend *MemcacheBackend) updateState(taskState *TaskState) error 
 }
 
 // Updates a task state group
-func (memcacheBackend *MemcacheBackend) updateStateGroup(groupUUID string, groupTaskCount int, taskState *TaskState) (*TaskStateGroup, error) {
+func (memcacheBackend *MemcacheBackend) updateStateGroup(groupUUID string, groupTaskCount int, taskUUID string) (*TaskStateGroup, error) {
+	if groupUUID == "" || groupTaskCount == 0 {
+		return nil, nil
+	}
+
 	var taskStateGroup *TaskStateGroup
 
 	item, err := memcacheBackend.getClient().Get(groupUUID)
@@ -199,7 +186,7 @@ func (memcacheBackend *MemcacheBackend) updateStateGroup(groupUUID string, group
 		taskStateGroup = &TaskStateGroup{
 			GroupUUID:      groupUUID,
 			GroupTaskCount: groupTaskCount,
-			States:         make(map[string]TaskState),
+			States:         make(map[string]*TaskState),
 		}
 	} else {
 		if err := json.Unmarshal(item.Value, &taskStateGroup); err != nil {
@@ -207,7 +194,25 @@ func (memcacheBackend *MemcacheBackend) updateStateGroup(groupUUID string, group
 		}
 	}
 
-	taskStateGroup.States[taskState.TaskUUID] = *taskState
+	taskState, err := memcacheBackend.GetState(taskUUID)
+	if err != nil {
+		return nil, err
+	}
+	taskStateGroup.States[taskUUID] = taskState
+
+	// Due to asynchronous nature of task processing, a different task's state
+	// might have changed while updating the task state group
+	// Therefor we fetch correct states from the backend all the time
+	for uuid := range taskStateGroup.States {
+		if uuid == taskUUID {
+			continue
+		}
+		taskState, err := memcacheBackend.GetState(uuid)
+		if err != nil {
+			return nil, err
+		}
+		taskStateGroup.States[uuid] = taskState
+	}
 
 	encoded, err := json.Marshal(taskStateGroup)
 	if err != nil {

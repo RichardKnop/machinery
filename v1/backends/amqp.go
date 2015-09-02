@@ -33,61 +33,19 @@ func NewAMQPBackend(cnf *config.Config) Backend {
 // SetStatePending - sets task state to PENDING
 func (amqpBackend *AMQPBackend) SetStatePending(signature *signatures.TaskSignature) error {
 	taskState := NewPendingTaskState(signature)
-
-	if err := amqpBackend.updateState(taskState); err != nil {
-		return err
-	}
-
-	if signature.GroupUUID == "" {
-		return nil
-	}
-
-	_, err := amqpBackend.updateStateGroup(
-		signature.GroupUUID,
-		signature.GroupTaskCount,
-		taskState,
-	)
-	return err
+	return amqpBackend.updateState(taskState)
 }
 
 // SetStateReceived - sets task state to RECEIVED
 func (amqpBackend *AMQPBackend) SetStateReceived(signature *signatures.TaskSignature) error {
 	taskState := NewReceivedTaskState(signature)
-
-	if err := amqpBackend.updateState(taskState); err != nil {
-		return err
-	}
-
-	if signature.GroupUUID == "" {
-		return nil
-	}
-
-	_, err := amqpBackend.updateStateGroup(
-		signature.GroupUUID,
-		signature.GroupTaskCount,
-		taskState,
-	)
-	return err
+	return amqpBackend.updateState(taskState)
 }
 
 // SetStateStarted - sets task state to STARTED
 func (amqpBackend *AMQPBackend) SetStateStarted(signature *signatures.TaskSignature) error {
 	taskState := NewStartedTaskState(signature)
-
-	if err := amqpBackend.updateState(taskState); err != nil {
-		return err
-	}
-
-	if signature.GroupUUID == "" {
-		return nil
-	}
-
-	_, err := amqpBackend.updateStateGroup(
-		signature.GroupUUID,
-		signature.GroupTaskCount,
-		taskState,
-	)
-	return err
+	return amqpBackend.updateState(taskState)
 }
 
 // SetStateSuccess - sets task state to SUCCESS
@@ -110,30 +68,17 @@ func (amqpBackend *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignat
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) (*TaskStateGroup, error) {
+func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
 	taskState := NewFailureTaskState(signature, err)
-
-	if err := amqpBackend.updateState(taskState); err != nil {
-		return nil, err
-	}
-
-	if signature.GroupUUID == "" {
-		return nil, nil
-	}
-
-	return amqpBackend.updateStateGroup(
-		signature.GroupUUID,
-		signature.GroupTaskCount,
-		taskState,
-	)
+	return amqpBackend.updateState(taskState)
 }
 
 // GetState returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
-func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*TaskState, error) {
+func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := TaskState{}
 
-	conn, channel, queue, _, err := amqpBackend.open(signature.UUID)
+	conn, channel, queue, _, err := amqpBackend.open(taskUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -160,40 +105,6 @@ func (amqpBackend *AMQPBackend) GetState(signature *signatures.TaskSignature) (*
 	}
 
 	return &taskState, nil
-}
-
-// GetStateGroup returns the latest task state group. It will only return the status once
-// as the message will get consumed and removed from the queue.
-func (amqpBackend *AMQPBackend) GetStateGroup(groupUUID string) (*TaskStateGroup, error) {
-	taskStateGroup := TaskStateGroup{}
-
-	conn, channel, queue, _, err := amqpBackend.open(groupUUID)
-	if err != nil {
-		return nil, err
-	}
-
-	defer amqpBackend.close(channel, conn)
-
-	d, ok, err := channel.Get(
-		queue.Name, // queue name
-		false,      // multiple
-	)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, errors.New("No state ready")
-	}
-
-	defer d.Ack(false)
-
-	if err := json.Unmarshal([]byte(d.Body), &taskStateGroup); err != nil {
-		log.Printf("Failed to unmarshal task state group: %v", string(d.Body))
-		log.Print(err)
-		return nil, err
-	}
-
-	return &taskStateGroup, nil
 }
 
 // PurgeState - deletes stored task state
@@ -248,7 +159,7 @@ func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
-			DeliveryMode: amqp.Transient,
+			DeliveryMode: amqp.Persistent, // Persistent // Transient
 		},
 	); err != nil {
 		return err
@@ -263,7 +174,19 @@ func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
 	return fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
 }
 
-// Updates a task state group
+// NOTE: Using AMQP as a result backend is quite tricky since every time we
+// read a message from the queue keeping task states, the message is removed
+// from the queue. This leads to problems with keeping a reliable state of a
+// group of tasks since concurrent processes updating the group state cause
+// race conditions and inconsistent state.
+//
+// This is avoided by a "clever" hack. We only call updateStateGroup when a
+// task state is set to SUCCESS and instead of TaskStateGroup object we only
+// store a serialised TaskState in the group queue. After publishing the
+// SUCCESS state of a task to the queue we use channel.QueueInspect to get
+// the number of unacknowledged messages in the queue, if it is equal to the
+// total number of tasks in the group we can safely assume all tasks succeeded
+// and return a TaskStateGroup object with all successful states.
 func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCount int, taskState *TaskState) (*TaskStateGroup, error) {
 	if groupUUID == "" || groupTaskCount == 0 {
 		return nil, nil
@@ -276,36 +199,7 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCoun
 
 	defer amqpBackend.close(channel, conn)
 
-	var taskStateGroup *TaskStateGroup
-
-	d, ok, err := channel.Get(
-		queue.Name, // queue name
-		false,      // multiple
-	)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		taskStateGroup = &TaskStateGroup{
-			GroupUUID:      groupUUID,
-			GroupTaskCount: groupTaskCount,
-			States:         make(map[string]TaskState),
-		}
-	} else {
-		defer d.Ack(false)
-
-		taskStateGroup = &TaskStateGroup{}
-
-		if err := json.Unmarshal([]byte(d.Body), &taskStateGroup); err != nil {
-			log.Printf("Failed to unmarshal task state group: %v", string(d.Body))
-			log.Print(err)
-			return nil, err
-		}
-	}
-
-	taskStateGroup.States[taskState.TaskUUID] = *taskState
-
-	message, err := json.Marshal(taskStateGroup)
+	message, err := json.Marshal(taskState)
 	if err != nil {
 		return nil, fmt.Errorf("JSON Encode Message: %v", err)
 	}
@@ -318,7 +212,7 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCoun
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
-			DeliveryMode: amqp.Transient,
+			DeliveryMode: amqp.Persistent, // Persistent // Transient
 		},
 	); err != nil {
 		return nil, err
@@ -326,11 +220,50 @@ func (amqpBackend *AMQPBackend) updateStateGroup(groupUUID string, groupTaskCoun
 
 	confirmed := <-confirmsChan
 
-	if confirmed.Ack {
+	if !confirmed.Ack {
+		return nil, fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
+	}
+
+	queueState, err := channel.QueueInspect(groupUUID)
+	if err != nil {
+		return nil, fmt.Errorf("Queue Inspect: %v", err)
+	}
+
+	taskStateGroup := &TaskStateGroup{
+		GroupUUID:      groupUUID,
+		GroupTaskCount: groupTaskCount,
+		States:         make(map[string]*TaskState),
+	}
+
+	if queueState.Messages != groupTaskCount {
 		return taskStateGroup, nil
 	}
 
-	return nil, fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
+	deliveries, err := channel.Consume(
+		queue.Name, // queue
+		"",         // consumer tag
+		false,      // auto-ack
+		true,       // exclusive
+		false,      // no-local
+		false,      // no-wait
+		nil,        // arguments
+	)
+	if err != nil {
+		return taskStateGroup, fmt.Errorf("Queue Consume: %s", err)
+	}
+
+	for i := 0; i < groupTaskCount; i++ {
+		d := <-deliveries
+
+		taskState = &TaskState{}
+		if err := json.Unmarshal([]byte(d.Body), &taskState); err != nil {
+			return taskStateGroup, err
+		}
+
+		taskStateGroup.States[taskState.TaskUUID] = taskState
+	}
+
+	return taskStateGroup, nil
 }
 
 // Connects to the message queue, opens a channel, declares a queue

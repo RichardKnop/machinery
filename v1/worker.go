@@ -166,8 +166,7 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) error {
 	// Update task state to FAILURE
 	backend := worker.server.GetBackend()
-	_, err = backend.SetStateFailure(signature, err.Error())
-	if err != nil {
+	if err := backend.SetStateFailure(signature, err.Error()); err != nil {
 		return fmt.Errorf("Set State Failure: %v", err)
 	}
 

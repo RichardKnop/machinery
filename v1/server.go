@@ -2,6 +2,7 @@ package machinery
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	"github.com/RichardKnop/machinery/v1/backends"
@@ -127,38 +128,78 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 	asyncResults := make([]*backends.AsyncResult, len(group.Tasks))
 
-	// Set initial task states to PENDING
-	for _, signature := range group.Tasks {
-		if err := server.backend.SetStatePending(signature); err != nil {
-			return asyncResults, fmt.Errorf("Set State Pending: %v", err)
-		}
-	}
+	var wg sync.WaitGroup
+	wg.Add(len(group.Tasks))
+	errorsChan := make(chan error)
 
 	for i, signature := range group.Tasks {
-		if err := server.broker.Publish(signature); err != nil {
-			return asyncResults, fmt.Errorf("Publish Message: %v", err)
-		}
+		go func(s *signatures.TaskSignature, index int) {
+			defer wg.Done()
 
-		asyncResults[i] = backends.NewAsyncResult(signature, server.backend)
+			// Set initial task states to PENDING
+			if err := server.backend.SetStatePending(s); err != nil {
+				errorsChan <- err
+				return
+			}
+
+			// Publish task
+			if err := server.broker.Publish(s); err != nil {
+				errorsChan <- fmt.Errorf("Publish Message: %v", err)
+				return
+			}
+
+			asyncResults[index] = backends.NewAsyncResult(s, server.backend)
+		}(signature, i)
 	}
 
-	return asyncResults, nil
+	done := make(chan int)
+	go func() {
+		wg.Wait()
+		done <- 1
+	}()
+
+	select {
+	case err := <-errorsChan:
+		return asyncResults, err
+	case <-done:
+		return asyncResults, nil
+	}
 }
 
 // SendChord triggers a group of parallel tasks with a callback
 func (server *Server) SendChord(chord *Chord) (*backends.ChordAsyncResult, error) {
-	// Set initial task states to PENDING
-	for _, signature := range chord.Group.Tasks {
-		if err := server.backend.SetStatePending(signature); err != nil {
-			return nil, fmt.Errorf("Set State Pending: %v", err)
-		}
+	var wg sync.WaitGroup
+	wg.Add(len(chord.Group.Tasks))
+	errorsChan := make(chan error)
+
+	for i, signature := range chord.Group.Tasks {
+		go func(s *signatures.TaskSignature, index int) {
+			defer wg.Done()
+
+			// Set initial task states to PENDING
+			if err := server.backend.SetStatePending(s); err != nil {
+				errorsChan <- err
+				return
+			}
+
+			// Publish task
+			if err := server.broker.Publish(s); err != nil {
+				errorsChan <- fmt.Errorf("Publish Message: %v", err)
+				return
+			}
+		}(signature, i)
 	}
 
-	for _, signature := range chord.Group.Tasks {
-		if err := server.broker.Publish(signature); err != nil {
-			return nil, fmt.Errorf("Publish Message: %v", err)
-		}
-	}
+	done := make(chan int)
+	go func() {
+		wg.Wait()
+		done <- 1
+	}()
 
-	return backends.NewChordAsyncResult(chord.Group.Tasks, chord.Callback, server.backend), nil
+	select {
+	case err := <-errorsChan:
+		return nil, err
+	case <-done:
+		return backends.NewChordAsyncResult(chord.Group.Tasks, chord.Callback, server.backend), nil
+	}
 }
