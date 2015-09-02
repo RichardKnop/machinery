@@ -127,12 +127,12 @@ func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProc
 
 	signature := signatures.TaskSignature{}
 	if err := json.Unmarshal(d.Body, &signature); err != nil {
-		d.Nack(false, false) // multiple, requeue both false
+		d.Nack(false, false) // multiple, requeue
 		errorsChan <- err
 		return
 	}
 
-	d.Ack(false) // multiple false
+	d.Ack(false) // multiple
 
 	if err := taskProcessor.Process(&signature); err != nil {
 		errorsChan <- err

@@ -91,9 +91,11 @@ Result backend to use for keeping task states and results. This setting is optio
 
 Currently supported backends are:
 
-* AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
 * Redis (use Redis URL such as `redis://127.0.0.1:6379`)
 * Memcache (use Memcache URL such as `memcache://10.0.0.1:11211,10.0.0.2:11211`)
+* AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
+
+> Keep in mind AMQP is not recommended as a result backend. See [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 
 ### ResultsExpireIn
 

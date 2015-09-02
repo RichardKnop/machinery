@@ -88,14 +88,13 @@ func (memcacheBackend *MemcacheBackend) SetStateStarted(signature *signatures.Ta
 // SetStateSuccess - sets task state to SUCCESS
 func (memcacheBackend *MemcacheBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) (*TaskStateGroup, error) {
 	taskState := NewSuccessTaskState(signature, result)
-	var taskStateGroup *TaskStateGroup
 
 	if err := memcacheBackend.updateState(taskState); err != nil {
-		return taskStateGroup, err
+		return nil, err
 	}
 
 	if signature.GroupUUID == "" {
-		return taskStateGroup, nil
+		return nil, nil
 	}
 
 	return memcacheBackend.updateStateGroup(
@@ -106,23 +105,23 @@ func (memcacheBackend *MemcacheBackend) SetStateSuccess(signature *signatures.Ta
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (memcacheBackend *MemcacheBackend) SetStateFailure(signature *signatures.TaskSignature, err string) (*TaskStateGroup, error) {
+func (memcacheBackend *MemcacheBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
 	taskState := NewFailureTaskState(signature, err)
-	var taskStateGroup *TaskStateGroup
 
 	if err := memcacheBackend.updateState(taskState); err != nil {
-		return taskStateGroup, err
+		return err
 	}
 
 	if signature.GroupUUID == "" {
-		return taskStateGroup, nil
+		return nil
 	}
 
-	return memcacheBackend.updateStateGroup(
+	_, errr := memcacheBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
 		signature.UUID,
 	)
+	return errr
 }
 
 // GetState returns the latest task state

@@ -88,14 +88,13 @@ func (redisBackend *RedisBackend) SetStateStarted(signature *signatures.TaskSign
 // SetStateSuccess - sets task state to SUCCESS
 func (redisBackend *RedisBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) (*TaskStateGroup, error) {
 	taskState := NewSuccessTaskState(signature, result)
-	var taskStateGroup *TaskStateGroup
 
 	if err := redisBackend.updateState(taskState); err != nil {
-		return taskStateGroup, err
+		return nil, err
 	}
 
 	if signature.GroupUUID == "" {
-		return taskStateGroup, nil
+		return nil, nil
 	}
 
 	return redisBackend.updateStateGroup(
@@ -106,23 +105,23 @@ func (redisBackend *RedisBackend) SetStateSuccess(signature *signatures.TaskSign
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (redisBackend *RedisBackend) SetStateFailure(signature *signatures.TaskSignature, err string) (*TaskStateGroup, error) {
+func (redisBackend *RedisBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
 	taskState := NewFailureTaskState(signature, err)
-	var taskStateGroup *TaskStateGroup
 
 	if err := redisBackend.updateState(taskState); err != nil {
-		return taskStateGroup, err
+		return err
 	}
 
 	if signature.GroupUUID == "" {
-		return taskStateGroup, nil
+		return nil
 	}
 
-	return redisBackend.updateStateGroup(
+	_, errr := redisBackend.updateStateGroup(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
 		signature.UUID,
 	)
+	return errr
 }
 
 // GetState returns the latest task state
