@@ -354,7 +354,7 @@ type TaskStateGroup struct {
 
 `TaskResult` represents a return value of a processed task.
 
-`TaskState` struct will be serialized and stored every time a task state changes.
+`TaskState` struct will be serialised and stored every time a task state changes.
 
 `TaskStateGroup` is used for keeping a state of group of tasks.
 
