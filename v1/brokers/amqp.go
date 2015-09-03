@@ -2,6 +2,7 @@ package brokers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -123,6 +124,12 @@ func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error
 
 // Consume a single message
 func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor, errorsChan chan error) {
+	if len(d.Body) == 0 {
+		d.Nack(false, false)                                   // multiple, requeue
+		errorsChan <- errors.New("Received an empty message.") // RabbitMQ down?
+		return
+	}
+
 	log.Printf("Received new message: %s", d.Body)
 
 	signature := signatures.TaskSignature{}
