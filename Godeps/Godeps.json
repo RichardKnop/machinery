@@ -17,11 +17,11 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Rev": "9d4db5d1dbeff473d50e1bb82f5405c8cca0f0ac"
+			"Rev": "d8dbe4d94f15fe89232e0402c6e8a0ddf21af3ab"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "9d4db5d1dbeff473d50e1bb82f5405c8cca0f0ac"
+			"Rev": "d8dbe4d94f15fe89232e0402c6e8a0ddf21af3ab"
 		},
 		{
 			"ImportPath": "github.com/streadway/amqp",
