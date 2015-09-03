@@ -132,6 +132,9 @@ func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 	wg.Add(len(group.Tasks))
 	errorsChan := make(chan error)
 
+	// Init group
+	server.backend.InitGroup(group.GroupUUID, group.GetUUIDs())
+
 	for i, signature := range group.Tasks {
 		go func(s *signatures.TaskSignature, index int) {
 			defer wg.Done()
@@ -168,38 +171,14 @@ func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 
 // SendChord triggers a group of parallel tasks with a callback
 func (server *Server) SendChord(chord *Chord) (*backends.ChordAsyncResult, error) {
-	var wg sync.WaitGroup
-	wg.Add(len(chord.Group.Tasks))
-	errorsChan := make(chan error)
-
-	for i, signature := range chord.Group.Tasks {
-		go func(s *signatures.TaskSignature, index int) {
-			defer wg.Done()
-
-			// Set initial task states to PENDING
-			if err := server.backend.SetStatePending(s); err != nil {
-				errorsChan <- err
-				return
-			}
-
-			// Publish task
-			if err := server.broker.Publish(s); err != nil {
-				errorsChan <- fmt.Errorf("Publish Message: %v", err)
-				return
-			}
-		}(signature, i)
-	}
-
-	done := make(chan int)
-	go func() {
-		wg.Wait()
-		done <- 1
-	}()
-
-	select {
-	case err := <-errorsChan:
+	_, err := server.SendGroup(chord.Group)
+	if err != nil {
 		return nil, err
-	case <-done:
-		return backends.NewChordAsyncResult(chord.Group.Tasks, chord.Callback, server.backend), nil
 	}
+
+	return backends.NewChordAsyncResult(
+		chord.Group.Tasks,
+		chord.Callback,
+		server.backend,
+	), nil
 }

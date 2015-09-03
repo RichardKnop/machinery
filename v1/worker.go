@@ -111,20 +111,11 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 		Type:  result.Type().String(),
 		Value: result.Interface(),
 	}
-	taskStateGroup, err := backend.SetStateSuccess(signature, taskResult)
-	if err != nil {
+	if err := backend.SetStateSuccess(signature, taskResult); err != nil {
 		return fmt.Errorf("Set State Success: %v", err)
 	}
 
 	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
-
-	if taskStateGroup != nil {
-		// Purge group state if we are using AMQP backend and all tasks finished
-		_, isAMQPBackend := worker.server.backend.(*backends.AMQPBackend)
-		if isAMQPBackend && taskStateGroup.IsCompleted() {
-			worker.server.backend.PurgeStateGroup(taskStateGroup)
-		}
-	}
 
 	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
@@ -140,23 +131,50 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 		worker.server.SendTask(successTask)
 	}
 
-	// Optionally trigger chord callback
-	if taskStateGroup != nil && signature.ChordCallback != nil {
-		if !taskStateGroup.IsSuccess() {
+	if signature.GroupUUID != "" {
+		groupCompleted, err := worker.server.GetBackend().GroupCompleted(
+			signature.GroupUUID,
+			signature.GroupTaskCount,
+		)
+		if err != nil {
+			return fmt.Errorf("GroupCompleted: %v", err)
+		}
+		if !groupCompleted {
 			return nil
 		}
 
-		if signature.ChordCallback.Immutable == false {
-			for _, taskState := range taskStateGroup.States {
-				// Pass results of the task to the chord callback
-				signature.ChordCallback.Args = append(signature.ChordCallback.Args, signatures.TaskArg{
-					Type:  taskState.Result.Type,
-					Value: taskState.Result.Value,
-				})
+		// Optionally trigger chord callback
+		if signature.ChordCallback != nil {
+			taskStates, err := worker.server.GetBackend().GroupTaskStates(
+				signature.GroupUUID,
+				signature.GroupTaskCount,
+			)
+			if err != nil {
+				return nil
 			}
+
+			for _, taskState := range taskStates {
+				if !taskState.IsSuccess() {
+					return nil
+				}
+
+				if signature.ChordCallback.Immutable == false {
+					// Pass results of the task to the chord callback
+					signature.ChordCallback.Args = append(signature.ChordCallback.Args, signatures.TaskArg{
+						Type:  taskState.Result.Type,
+						Value: taskState.Result.Value,
+					})
+				}
+			}
+
+			worker.server.SendTask(signature.ChordCallback)
 		}
 
-		worker.server.SendTask(signature.ChordCallback)
+		// Purge group state if we are using AMQP backend and all tasks finished
+		_, isAMQPBackend := worker.server.backend.(*backends.AMQPBackend)
+		if isAMQPBackend {
+			worker.server.backend.PurgeGroupMeta(signature.GroupUUID)
+		}
 	}
 
 	return nil

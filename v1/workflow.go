@@ -14,7 +14,8 @@ type Chain struct {
 
 // Group creates a set of tasks to be executed in parallel
 type Group struct {
-	Tasks []*signatures.TaskSignature
+	GroupUUID string
+	Tasks     []*signatures.TaskSignature
 }
 
 // Chord adds an optional callback to the group to be executed
@@ -22,6 +23,15 @@ type Group struct {
 type Chord struct {
 	Group    *Group
 	Callback *signatures.TaskSignature
+}
+
+// GetUUIDs returns slice of task UUIDS
+func (group *Group) GetUUIDs() []string {
+	taskUUIDs := make([]string, len(group.Tasks))
+	for i, signature := range group.Tasks {
+		taskUUIDs[i] = signature.UUID
+	}
+	return taskUUIDs
 }
 
 // NewChain creates Chain instance
@@ -45,17 +55,20 @@ func NewChain(tasks ...*signatures.TaskSignature) *Chain {
 // NewGroup creates Group instance
 func NewGroup(tasks ...*signatures.TaskSignature) *Group {
 	// Generate a group UUID
-	groupUUID := uuid.New()
+	groupUUID := fmt.Sprintf("group_%v", uuid.New())
 
 	// Auto generate task UUIDs
 	// Group tasks by common UUID
 	for _, task := range tasks {
 		task.UUID = fmt.Sprintf("task_%v", uuid.New())
-		task.GroupUUID = fmt.Sprintf("group_%v", groupUUID)
+		task.GroupUUID = groupUUID
 		task.GroupTaskCount = len(tasks)
 	}
 
-	return &Group{Tasks: tasks}
+	return &Group{
+		GroupUUID: groupUUID,
+		Tasks:     tasks,
+	}
 }
 
 // NewChord creates Chord instance

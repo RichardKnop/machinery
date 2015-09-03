@@ -2,168 +2,38 @@ package backends
 
 import "testing"
 
-func TestTaskStateGroupIsSuccess(t *testing.T) {
-	taskStateGroup := TaskStateGroup{
-		GroupUUID:      "groupUUID",
-		GroupTaskCount: 3,
-		States: map[string]*TaskState{
-			"taskUUID1": &TaskState{
-				TaskUUID: "taskUUID1",
-				State:    ReceivedState,
-			},
-			"taskUUID2": &TaskState{
-				TaskUUID: "taskUUID2",
-				State:    PendingState,
-			},
-		},
+func TestTaskStateIsCompleted(t *testing.T) {
+	taskState := &TaskState{
+		TaskUUID: "taskUUID",
+		State:    PendingState,
 	}
 
-	if taskStateGroup.IsSuccess() {
-		t.Errorf("taskStateGroup.IsSuccess() = true, should be false. %v",
-			taskStateGroup)
+	if taskState.IsCompleted() {
+		t.Errorf("taskState.IsCompleted() = true, should be false. %v",
+			taskState)
 	}
 
-	taskStateGroup.States["taskUUID1"] = &TaskState{
-		TaskUUID: "taskUUID1",
-		State:    SuccessState,
+	taskState.State = ReceivedState
+	if taskState.IsCompleted() {
+		t.Errorf("taskState.IsCompleted() = true, should be false. %v",
+			taskState)
 	}
 
-	if taskStateGroup.IsSuccess() {
-		t.Errorf("taskStateGroup.IsSuccess() = true, should be false. %v",
-			taskStateGroup)
+	taskState.State = StartedState
+	if taskState.IsCompleted() {
+		t.Errorf("taskState.IsCompleted() = true, should be false. %v",
+			taskState)
 	}
 
-	taskStateGroup.States["taskUUID2"] = &TaskState{
-		TaskUUID: "taskUUID2",
-		State:    FailureState,
+	taskState.State = SuccessState
+	if !taskState.IsCompleted() {
+		t.Errorf("taskState.IsCompleted() = false, should be true. %v",
+			taskState)
 	}
 
-	if taskStateGroup.IsSuccess() {
-		t.Errorf("taskStateGroup.IsSuccess() = true, should be false. %v",
-			taskStateGroup)
-	}
-
-	taskStateGroup.States["taskUUID2"] = &TaskState{
-		TaskUUID: "taskUUID2",
-		State:    SuccessState,
-	}
-
-	if taskStateGroup.IsSuccess() {
-		t.Errorf("taskStateGroup.IsSuccess() = true, should be false. %v",
-			taskStateGroup)
-	}
-
-	taskStateGroup.States["taskUUID3"] = &TaskState{
-		TaskUUID: "taskUUID3",
-		State:    SuccessState,
-	}
-
-	if !taskStateGroup.IsSuccess() {
-		t.Errorf("taskStateGroup.IsSuccess() = false, should be true. %v",
-			taskStateGroup)
-	}
-}
-
-func TestTaskStateGroupIsFailure(t *testing.T) {
-	taskStateGroup := TaskStateGroup{
-		GroupUUID:      "groupUUID",
-		GroupTaskCount: 3,
-		States: map[string]*TaskState{
-			"taskUUID1": &TaskState{
-				TaskUUID: "taskUUID1",
-				State:    ReceivedState,
-			},
-			"taskUUID2": &TaskState{
-				TaskUUID: "taskUUID2",
-				State:    PendingState,
-			},
-		},
-	}
-
-	if taskStateGroup.IsFailure() {
-		t.Errorf("taskStateGroup.IsFailure() = true, should be false. %v",
-			taskStateGroup)
-	}
-
-	taskStateGroup.States["taskUUID1"] = &TaskState{
-		TaskUUID: "taskUUID1",
-		State:    SuccessState,
-	}
-
-	if taskStateGroup.IsFailure() {
-		t.Errorf("taskStateGroup.IsFailure() = true, should be false. %v",
-			taskStateGroup)
-	}
-
-	taskStateGroup.States["taskUUID2"] = &TaskState{
-		TaskUUID: "taskUUID2",
-		State:    SuccessState,
-	}
-
-	if taskStateGroup.IsFailure() {
-		t.Errorf("taskStateGroup.IsFailure() = true, should be false. %v",
-			taskStateGroup)
-	}
-
-	taskStateGroup.States["taskUUID2"] = &TaskState{
-		TaskUUID: "taskUUID2",
-		State:    FailureState,
-	}
-
-	if !taskStateGroup.IsFailure() {
-		t.Errorf("taskStateGroup.IsFailure() = false, should be true. %v",
-			taskStateGroup)
-	}
-}
-
-func TestTaskStateGroupIsCompleted(t *testing.T) {
-	taskStateGroup := TaskStateGroup{
-		GroupUUID:      "groupUUID",
-		GroupTaskCount: 3,
-		States: map[string]*TaskState{
-			"taskUUID1": &TaskState{
-				TaskUUID: "taskUUID1",
-				State:    ReceivedState,
-			},
-			"taskUUID2": &TaskState{
-				TaskUUID: "taskUUID2",
-				State:    PendingState,
-			},
-		},
-	}
-
-	if taskStateGroup.IsCompleted() {
-		t.Errorf("taskStateGroup.IsCompleted() = true, should be false. %v",
-			taskStateGroup)
-	}
-
-	taskStateGroup.States["taskUUID1"] = &TaskState{
-		TaskUUID: "taskUUID1",
-		State:    SuccessState,
-	}
-
-	if taskStateGroup.IsCompleted() {
-		t.Errorf("taskStateGroup.IsCompleted() = true, should be false. %v",
-			taskStateGroup)
-	}
-
-	taskStateGroup.States["taskUUID2"] = &TaskState{
-		TaskUUID: "taskUUID2",
-		State:    FailureState,
-	}
-
-	if taskStateGroup.IsCompleted() {
-		t.Errorf("taskStateGroup.IsCompleted() = true, should be false. %v",
-			taskStateGroup)
-	}
-
-	taskStateGroup.States["taskUUID3"] = &TaskState{
-		TaskUUID: "taskUUID2",
-		State:    SuccessState,
-	}
-
-	if !taskStateGroup.IsCompleted() {
-		t.Errorf("taskStateGroup.IsCompleted() = false, should be true. %v",
-			taskStateGroup)
+	taskState.State = FailureState
+	if !taskState.IsCompleted() {
+		t.Errorf("taskState.IsCompleted() = false, should be true. %v",
+			taskState)
 	}
 }

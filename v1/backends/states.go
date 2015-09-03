@@ -31,11 +31,12 @@ type TaskState struct {
 	Error    string
 }
 
-// TaskStateGroup represents a state of group of tasks
-type TaskStateGroup struct {
-	GroupUUID      string
-	GroupTaskCount int
-	States         map[string]*TaskState
+// GroupMeta stores useful metadata about tasks within the same group
+// E.g. UUIDs of all tasks which are used in order to check if all tasks
+// completed successfully or not and thus whether to trigger chord callback
+type GroupMeta struct {
+	GroupUUID string
+	TaskUUIDs []string
 }
 
 // NewPendingTaskState ...
@@ -94,38 +95,4 @@ func (taskState *TaskState) IsSuccess() bool {
 // IsFailure returns true if state is FAILURE
 func (taskState *TaskState) IsFailure() bool {
 	return taskState.State == FailureState
-}
-
-// IsCompleted returns true if state of all tasks in a group
-// is SUCCESS or FAILURE which means all grouped tasks are completed
-func (taskStateGroup *TaskStateGroup) IsCompleted() bool {
-	completedCount := 0
-	for _, taskState := range taskStateGroup.States {
-		if taskState.IsCompleted() {
-			completedCount++
-		}
-	}
-	return completedCount == taskStateGroup.GroupTaskCount
-}
-
-// IsSuccess returns true if state of all grouped tasks is SUCCESSS
-func (taskStateGroup *TaskStateGroup) IsSuccess() bool {
-	successCount := 0
-	for _, taskState := range taskStateGroup.States {
-		if taskState.IsSuccess() {
-			successCount++
-		}
-	}
-	return successCount == taskStateGroup.GroupTaskCount
-}
-
-// IsFailure returns true if state of any single task in the group is FAILURE
-func (taskStateGroup *TaskStateGroup) IsFailure() bool {
-	failureCount := 0
-	for _, taskState := range taskStateGroup.States {
-		if taskState.IsFailure() {
-			failureCount++
-		}
-	}
-	return failureCount > 0
 }

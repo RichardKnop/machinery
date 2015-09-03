@@ -128,6 +128,7 @@ func TestIntegration(t *testing.T) {
 		_testSendChain(server4, t)
 		worker4.Quit()
 
+		// TODO: https://github.com/RichardKnop/machinery/issues/24
 		if memcacheURL != "" {
 			// server5 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
 			// worker5 := server5.NewWorker("test_worker")

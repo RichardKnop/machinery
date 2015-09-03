@@ -9,6 +9,65 @@ import (
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
+func TestGroupCompletedRedis(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		return
+	}
+
+	groupUUID := "testGroupUUID"
+	task1 := &signatures.TaskSignature{
+		UUID:      "testTaskUUID1",
+		GroupUUID: groupUUID,
+	}
+	task2 := &signatures.TaskSignature{
+		UUID:      "testTaskUUID2",
+		GroupUUID: groupUUID,
+	}
+
+	backend := NewRedisBackend(&config.Config{}, redisURL)
+
+	// Cleanup before the test
+	backend.PurgeState(task1.UUID)
+	backend.PurgeState(task2.UUID)
+	backend.PurgeGroupMeta(groupUUID)
+
+	groupCompleted, err := backend.GroupCompleted(groupUUID, 2)
+	if groupCompleted {
+		t.Error("groupCompleted = true, should be false")
+	}
+	if err == nil {
+		t.Errorf("err should not be nil")
+	}
+
+	backend.InitGroup(groupUUID, []string{task1.UUID, task2.UUID})
+
+	groupCompleted, _ = backend.GroupCompleted(groupUUID, 2)
+	if groupCompleted {
+		t.Error("groupCompleted = true, should be false")
+	}
+
+	backend.SetStatePending(task1)
+	backend.SetStateStarted(task2)
+	groupCompleted, _ = backend.GroupCompleted(groupUUID, 2)
+	if groupCompleted {
+		t.Error("groupCompleted = true, should be false")
+	}
+
+	backend.SetStateStarted(task1)
+	backend.SetStateSuccess(task2, &TaskResult{})
+	groupCompleted, _ = backend.GroupCompleted(groupUUID, 2)
+	if groupCompleted {
+		t.Error("groupCompleted = true, should be false")
+	}
+
+	backend.SetStateFailure(task1, "Some error")
+	groupCompleted, _ = backend.GroupCompleted(groupUUID, 2)
+	if !groupCompleted {
+		t.Error("groupCompleted = false, should be true")
+	}
+}
+
 func TestGetStateRedis(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
@@ -68,7 +127,7 @@ func TestPurgeStateRedis(t *testing.T) {
 		t.Error(err)
 	}
 
-	backend.PurgeState(taskState)
+	backend.PurgeState(taskState.TaskUUID)
 	taskState, err = backend.GetState(signature.UUID)
 	if taskState != nil {
 		t.Errorf("taskState = %v, want nil", taskState)
