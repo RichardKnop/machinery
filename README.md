@@ -87,7 +87,7 @@ A message broker. Currently supported brokers are:
 
 ### ResultBackend
 
-Result backend to use for keeping task states and results. This setting is optional, you can run Machinery without keeping track of task results.
+Result backend to use for keeping task states and results.
 
 Currently supported backends are:
 

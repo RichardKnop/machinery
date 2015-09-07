@@ -7,41 +7,45 @@ import (
 )
 
 func TestRegisterTasks(t *testing.T) {
-	server, err := NewServer(&config.Config{
-		Broker:       "amqp://guest:guest@localhost:5672/",
-		Exchange:     "machinery_exchange",
-		ExchangeType: "direct",
-		DefaultQueue: "machinery_tasks",
-		BindingKey:   "machinery_task",
-	})
-	if err != nil {
-		t.Error(err)
-	}
-
+	server := getTestServer(t)
 	server.RegisterTasks(map[string]interface{}{
 		"test_task": func() {},
 	})
 
-	if server.GetRegisteredTask("test_task") == nil {
+	_, err := server.GetRegisteredTask("test_task")
+	if err != nil {
 		t.Error("test_task is not registered but it should be")
 	}
 }
 
 func TestRegisterTask(t *testing.T) {
+	server := getTestServer(t)
+	server.RegisterTask("test_task", func() {})
+
+	_, err := server.GetRegisteredTask("test_task")
+	if err != nil {
+		t.Error("test_task is not registered but it should be")
+	}
+}
+
+func TestGetRegisteredTask(t *testing.T) {
+	_, err := getTestServer(t).GetRegisteredTask("test_task")
+	if err == nil {
+		t.Error("test_task is registered but it should not be")
+	}
+}
+
+func getTestServer(t *testing.T) *Server {
 	server, err := NewServer(&config.Config{
-		Broker:       "amqp://guest:guest@localhost:5672/",
-		Exchange:     "machinery_exchange",
-		ExchangeType: "direct",
-		DefaultQueue: "machinery_tasks",
-		BindingKey:   "machinery_task",
+		Broker:        "amqp://guest:guest@localhost:5672/",
+		ResultBackend: "redis://127.0.0.1:6379",
+		Exchange:      "machinery_exchange",
+		ExchangeType:  "direct",
+		DefaultQueue:  "machinery_tasks",
+		BindingKey:    "machinery_task",
 	})
 	if err != nil {
 		t.Error(err)
 	}
-
-	server.RegisterTask("test_task", func() {})
-
-	if server.GetRegisteredTask("test_task") == nil {
-		t.Error("test_task is not registered but it should be")
-	}
+	return server
 }

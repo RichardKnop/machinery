@@ -27,8 +27,10 @@ func NewServer(cnf *config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	// Backend is optional so we ignore the error
-	backend, _ := BackendFactory(cnf)
+	backend, err := BackendFactory(cnf)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Server{
 		config:          cnf,
@@ -87,8 +89,12 @@ func (server *Server) RegisterTask(name string, task interface{}) {
 }
 
 // GetRegisteredTask returns registered task by name
-func (server *Server) GetRegisteredTask(name string) interface{} {
-	return server.registeredTasks[name]
+func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
+	task, ok := server.registeredTasks[name]
+	if !ok {
+		return nil, fmt.Errorf("Task not registered: %s", name)
+	}
+	return task, nil
 }
 
 // SendTask publishes a task to the default queue

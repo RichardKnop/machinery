@@ -56,9 +56,9 @@ func (worker *Worker) Quit() {
 
 // Process handles received tasks and triggers success/error callbacks
 func (worker *Worker) Process(signature *signatures.TaskSignature) error {
-	task := worker.server.GetRegisteredTask(signature.Name)
-	if task == nil {
-		return fmt.Errorf("Task not registered: %v", signature.Name)
+	task, err := worker.server.GetRegisteredTask(signature.Name)
+	if err != nil {
+		return err
 	}
 
 	backend := worker.server.GetBackend()
