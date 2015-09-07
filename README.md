@@ -345,10 +345,9 @@ type TaskState struct {
     Error    string
 }
 
-type TaskStateGroup struct {
-    GroupUUID      string
-    GroupTaskCount int
-    States         map[string]TaskState
+type GroupMeta struct {
+	GroupUUID string
+	TaskUUIDs []string
 }
 ```
 
@@ -356,7 +355,7 @@ type TaskStateGroup struct {
 
 `TaskState` struct will be serialised and stored every time a task state changes.
 
-`TaskStateGroup` is used for keeping a state of group of tasks.
+`GroupMeta` stores useful metadata about tasks within the same group. E.g. UUIDs of all tasks which are used in order to check if all tasks completed successfully or not and thus whether to trigger chord callback.
 
 `AsyncResult` object allows you to check for the state of a task:
 
