@@ -86,6 +86,7 @@ func TestIntegration(t *testing.T) {
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 
 	if amqpURL != "" {
+		// AMQP broker, AMQP result backend
 		server1 := setup(amqpURL, amqpURL)
 		worker1 := server1.NewWorker("test_worker")
 		go worker1.Launch()
@@ -96,6 +97,7 @@ func TestIntegration(t *testing.T) {
 		worker1.Quit()
 
 		if redisURL != "" {
+			// AMQP broker, Redis result backend
 			server2 := setup(amqpURL, fmt.Sprintf("redis://%v", redisURL))
 			worker2 := server2.NewWorker("test_worker")
 			go worker2.Launch()
@@ -107,6 +109,7 @@ func TestIntegration(t *testing.T) {
 		}
 
 		if memcacheURL != "" {
+			// AMQP broker, Memcache result backend
 			server3 := setup(amqpURL, fmt.Sprintf("memcache://%v", memcacheURL))
 			worker3 := server3.NewWorker("test_worker")
 			go worker3.Launch()
@@ -119,7 +122,9 @@ func TestIntegration(t *testing.T) {
 	}
 
 	if redisURL != "" {
-		server4 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("redis://%v", redisURL))
+		// Redis broker, Redis result backend
+		redisURL := fmt.Sprintf("redis://%v", redisURL)
+		server4 := setup(redisURL, redisURL)
 		worker4 := server4.NewWorker("test_worker")
 		go worker4.Launch()
 		_testSendTask(server4, t)
@@ -130,6 +135,7 @@ func TestIntegration(t *testing.T) {
 
 		// TODO: https://github.com/RichardKnop/machinery/issues/24
 		if memcacheURL != "" {
+			// Redis broker, Memcache result backend
 			// server5 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
 			// worker5 := server5.NewWorker("test_worker")
 			// go worker5.Launch()

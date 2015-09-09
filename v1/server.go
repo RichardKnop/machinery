@@ -1,6 +1,7 @@
 package machinery
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -27,10 +28,8 @@ func NewServer(cnf *config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	backend, err := BackendFactory(cnf)
-	if err != nil {
-		return nil, err
-	}
+	// Backend is optional so we ignore the error
+	backend, _ := BackendFactory(cnf)
 
 	return &Server{
 		config:          cnf,
@@ -99,6 +98,11 @@ func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
 
 // SendTask publishes a task to the default queue
 func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.AsyncResult, error) {
+	// Make sure result backend is defined
+	if server.backend == nil {
+		return nil, errors.New("Result backend required")
+	}
+
 	// Auto generate a UUID if not set already
 	if signature.UUID == "" {
 		signature.UUID = fmt.Sprintf("task_%v", uuid.New())
@@ -118,13 +122,9 @@ func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.A
 
 // SendChain triggers a chain of tasks
 func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error) {
-	// Set initial task state to PENDING
-	if err := server.backend.SetStatePending(chain.Tasks[0]); err != nil {
-		return nil, fmt.Errorf("Set State Pending: %v", err)
-	}
-
-	if err := server.broker.Publish(chain.Tasks[0]); err != nil {
-		return nil, fmt.Errorf("Publish Message: %v", err)
+	_, err := server.SendTask(chain.Tasks[0])
+	if err != nil {
+		return nil, err
 	}
 
 	return backends.NewChainAsyncResult(chain.Tasks, server.backend), nil
@@ -132,6 +132,11 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 
 // SendGroup triggers a group of parallel tasks
 func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
+	// Make sure result backend is defined
+	if server.backend == nil {
+		return nil, errors.New("Result backend required")
+	}
+
 	asyncResults := make([]*backends.AsyncResult, len(group.Tasks))
 
 	var wg sync.WaitGroup
