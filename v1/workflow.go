@@ -60,7 +60,9 @@ func NewGroup(tasks ...*signatures.TaskSignature) *Group {
 	// Auto generate task UUIDs
 	// Group tasks by common UUID
 	for _, task := range tasks {
-		task.UUID = fmt.Sprintf("task_%v", uuid.New())
+		if task.UUID == "" {
+			task.UUID = fmt.Sprintf("task_%v", uuid.New())
+		}
 		task.GroupUUID = groupUUID
 		task.GroupTaskCount = len(tasks)
 	}
