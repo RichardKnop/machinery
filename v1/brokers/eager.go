@@ -3,7 +3,7 @@ package brokers
 import (
 	"errors"
 
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
 type EagerBroker struct {
