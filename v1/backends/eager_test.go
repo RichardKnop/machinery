@@ -227,7 +227,7 @@ func (s *EagerBackendTestSuite) TestSetStateSuccess() {
 	// task4
 	{
 		t := s.st[3]
-		result := &TaskResult{"int", 3}
+		result := &TaskResult{"float64", float64(300.0)}
 		s.backend.SetStateSuccess(t, result)
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)

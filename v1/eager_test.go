@@ -42,6 +42,10 @@ func (s *EagerIntegrationTestSuite) SetupSuite() {
 	s.srv.RegisterTask("float_result", func(i float64) (float64, error) {
 		return i + 100.0, nil
 	})
+
+	s.srv.RegisterTask("int_result", func(i int64) (int64, error) {
+		return i + 100, nil
+	})
 }
 
 func (s *EagerIntegrationTestSuite) TestCalled() {
@@ -60,27 +64,58 @@ func (s *EagerIntegrationTestSuite) TestCalled() {
 }
 
 func (s *EagerIntegrationTestSuite) TestSuccessResult() {
-	result, err := s.srv.SendTask(&signatures.TaskSignature{
-		Name: "float_result",
-		Args: []signatures.TaskArg{
-			signatures.TaskArg{
-				Type:  "float64",
-				Value: 100.0,
+	// float64
+	{
+		result, err := s.srv.SendTask(&signatures.TaskSignature{
+			Name: "float_result",
+			Args: []signatures.TaskArg{
+				signatures.TaskArg{
+					Type:  "float64",
+					Value: 100.0,
+				},
 			},
-		},
-	})
+		})
 
-	s.NotNil(result)
-	s.Nil(err)
-	if result != nil {
-		s.True(result.GetState().IsCompleted())
-		s.True(result.GetState().IsSuccess())
-
-		ret, err := result.Get()
+		s.NotNil(result)
 		s.Nil(err)
-		s.Equal(reflect.Float64, ret.Kind())
-		if ret.Kind() == reflect.Float64 {
-			s.Equal(200.0, ret.Float())
+		if result != nil {
+			s.True(result.GetState().IsCompleted())
+			s.True(result.GetState().IsSuccess())
+
+			ret, err := result.Get()
+			s.Nil(err)
+			s.Equal(reflect.Float64, ret.Kind())
+			if ret.Kind() == reflect.Float64 {
+				s.Equal(200.0, ret.Float())
+			}
 		}
+	}
+
+	// int
+	{
+		result, err := s.srv.SendTask(&signatures.TaskSignature{
+			Name: "int_result",
+			Args: []signatures.TaskArg{
+				signatures.TaskArg{
+					Type:  "int64",
+					Value: 100,
+				},
+			},
+		})
+
+		s.NotNil(result)
+		s.Nil(err)
+		if result != nil {
+			s.True(result.GetState().IsCompleted())
+			s.True(result.GetState().IsSuccess())
+
+			ret, err := result.Get()
+			s.Nil(err)
+			s.Equal(reflect.Int64, ret.Kind())
+			if ret.Kind() == reflect.Int64 {
+				s.Equal(int64(200), ret.Int())
+			}
+		}
+
 	}
 }

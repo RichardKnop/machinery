@@ -1,6 +1,7 @@
 package backends
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -9,13 +10,13 @@ import (
 
 type EagerBackend struct {
 	groups map[string][]string
-	tasks  map[string]*TaskState
+	tasks  map[string][]byte
 }
 
 func NewEagerBackend() Backend {
 	return Backend(&EagerBackend{
 		groups: make(map[string][]string),
-		tasks:  make(map[string]*TaskState),
+		tasks:  make(map[string][]byte),
 	})
 }
 
@@ -99,11 +100,18 @@ func (e *EagerBackend) SetStateFailure(signature *signatures.TaskSignature, err 
 }
 
 func (e *EagerBackend) GetState(taskUUID string) (*TaskState, error) {
-	t, ok := e.tasks[taskUUID]
+	b, ok := e.tasks[taskUUID]
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("task not found: %v", taskUUID))
 	}
-	return t, nil
+
+	ret := &TaskState{}
+	err := json.Unmarshal(b, ret)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("json unmarshal failed %v", b))
+	}
+
+	return ret, nil
 }
 
 func (e *EagerBackend) PurgeState(taskUUID string) error {
@@ -131,6 +139,12 @@ func (e *EagerBackend) PurgeGroupMeta(groupUUID string) error {
 //
 
 func (e *EagerBackend) updateState(s *TaskState) error {
-	e.tasks[s.TaskUUID] = s
+	// simulate the behavior of json marshal/unmarshal
+	msg, err := json.Marshal(s)
+	if err != nil {
+		return errors.New(fmt.Sprintf("json marshal failed %v", s))
+	}
+
+	e.tasks[s.TaskUUID] = msg
 	return nil
 }
