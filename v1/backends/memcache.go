@@ -2,7 +2,6 @@ package backends
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/bradfitz/gomemcache/memcache"
@@ -59,7 +58,6 @@ func (memcacheBackend *MemcacheBackend) GroupCompleted(groupUUID string, groupTa
 
 	for _, taskUUID := range groupMeta.TaskUUIDs {
 		taskState, err := memcacheBackend.GetState(taskUUID)
-		log.Print(taskState)
 		if err != nil {
 			return false, err
 		}

@@ -39,10 +39,9 @@ func (worker *Worker) Launch() error {
 
 			if !retry {
 				errorsChan <- err // stop the goroutine
-				break
+				return
 			}
 
-			log.Print(err)
 		}
 	}()
 

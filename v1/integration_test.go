@@ -123,8 +123,7 @@ func TestIntegration(t *testing.T) {
 
 	if redisURL != "" {
 		// Redis broker, Redis result backend
-		redisURL := fmt.Sprintf("redis://%v", redisURL)
-		server4 := setup(redisURL, redisURL)
+		server4 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("redis://%v", redisURL))
 		worker4 := server4.NewWorker("test_worker")
 		go worker4.Launch()
 		_testSendTask(server4, t)
@@ -136,14 +135,14 @@ func TestIntegration(t *testing.T) {
 		// TODO: https://github.com/RichardKnop/machinery/issues/24
 		if memcacheURL != "" {
 			// Redis broker, Memcache result backend
-			// server5 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
-			// worker5 := server5.NewWorker("test_worker")
-			// go worker5.Launch()
-			// _testSendTask(server5, t)
-			// _testSendGroup(server5, t)
-			// _testSendChord(server5, t)
-			// _testSendChain(server5, t)
-			// worker5.Quit()
+			server5 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
+			worker5 := server5.NewWorker("test_worker")
+			go worker5.Launch()
+			_testSendTask(server5, t)
+			_testSendGroup(server5, t)
+			_testSendChord(server5, t)
+			_testSendChain(server5, t)
+			worker5.Quit()
 		}
 	}
 }
