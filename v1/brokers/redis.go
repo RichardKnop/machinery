@@ -99,9 +99,7 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 
 // StopConsuming quits the loop
 func (redisBroker *RedisBroker) StopConsuming() {
-	redisBroker.stopReceivingChan <- 1
-	// Waiting for the receiving goroutine to have stopped
-	redisBroker.wg.Wait()
+	redisBroker.stopReceiving()
 	// Notifying the stop channel stops consuming of messages
 	redisBroker.stopChan <- 1
 }
@@ -154,6 +152,13 @@ func (redisBroker *RedisBroker) consume(deliveries <-chan []byte, taskProcessor 
 			return nil
 		}
 	}
+}
+
+// Stops the receving goroutine
+func (redisBroker *RedisBroker) stopReceiving() {
+	redisBroker.stopReceivingChan <- 1
+	// Waiting for the receiving goroutine to have stopped
+	redisBroker.wg.Wait()
 }
 
 // Returns / creates instance of Redis connection
