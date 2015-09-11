@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/stretchr/testify/assert"
 )
 
 // This suite is intended to store values to make sure that only
