@@ -27,6 +27,10 @@ func BrokerFactory(cnf *config.Config) (brokers.Broker, error) {
 		return brokers.NewRedisBroker(cnf, parts[1]), nil
 	}
 
+	if strings.HasPrefix(cnf.Broker, "eager") {
+		return brokers.NewEagerBroker(), nil
+	}
+
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
 }
 
@@ -58,6 +62,10 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 			)
 		}
 		return backends.NewRedisBackend(cnf, parts[1]), nil
+	}
+
+	if strings.HasPrefix(cnf.ResultBackend, "eager") {
+		return backends.NewEagerBackend(), nil
 	}
 
 	return nil, fmt.Errorf("Factory failed with result backend: %v", cnf.ResultBackend)
