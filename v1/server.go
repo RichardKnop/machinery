@@ -43,7 +43,7 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	if ok {
 		// we don't have to call worker.Lauch
 		// in eager mode
-		eager.AssignWorker(srv.NewWorker("eagar"))
+		eager.AssignWorker(srv.NewWorker("eager"))
 	}
 
 	return srv, err
