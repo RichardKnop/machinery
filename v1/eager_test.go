@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/stretchr/testify/suite"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/stretchr/testify/suite"
 )
 
 type EagerIntegrationTestSuite struct {
