@@ -15,8 +15,6 @@ import (
 
 var once sync.Once
 var conn *amqp.Connection
-var channel *amqp.Channel
-var queue amqp.Queue
 
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
@@ -87,6 +85,7 @@ func (amqpBroker *AMQPBroker) StopConsuming() {
 // Publish places a new message on the default queue
 func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error {
 	_, channel, _, confirmsChan, err := amqpBroker.open()
+	defer channel.Close()
 	if err != nil {
 		return err
 	}
@@ -177,11 +176,30 @@ func (amqpBroker *AMQPBroker) connect() {
 		fmt.Printf("Dial: %s\n", err)
 	}
 
+}
+
+// Connects to the message queue, opens a channel, declares a queue
+func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
+	var err error
+	var channel *amqp.Channel
+	var queue amqp.Queue
+	if conn == nil {
+		connected := make(chan bool)
+		go func() {
+			once.Do(amqpBroker.connect)
+			connected <- true
+		}()
+		<-connected
+	}
+
+	if conn == nil {
+		return conn, channel, queue, nil, fmt.Errorf("Can't connect to the server")
+	}
+
 	channel, err = conn.Channel()
 	if err != nil {
 		fmt.Printf("Channel: %s\n", err)
 	}
-
 	if err := channel.ExchangeDeclare(
 		amqpBroker.config.Exchange,     // name of the exchange
 		amqpBroker.config.ExchangeType, // type
@@ -214,23 +232,6 @@ func (amqpBroker *AMQPBroker) connect() {
 		nil,   // arguments
 	); err != nil {
 		fmt.Printf("Queue Bind: %s\n", err)
-	}
-
-}
-
-// Connects to the message queue, opens a channel, declares a queue
-func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
-	if conn == nil {
-		connected := make(chan bool)
-		go func() {
-			once.Do(amqpBroker.connect)
-			connected <- true
-		}()
-		<-connected
-	}
-
-	if conn == nil {
-		return conn, channel, queue, nil, fmt.Errorf("Can't connect to the server")
 	}
 
 	confirmsChan := make(chan amqp.Confirmation, 1)
