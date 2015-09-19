@@ -37,6 +37,7 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 	}
 
 	_, channel, queue, _, err := amqpBroker.open()
+	defer channel.Close()
 	if err != nil {
 		amqpBroker.retryFunc()
 		return true, err // retry true
@@ -166,7 +167,7 @@ func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProce
 	}
 }
 
-// Connects to the message queue, opens a channel, declares a queue
+// Connects to the message queue
 func (amqpBroker *AMQPBroker) connect() {
 
 	var err error
@@ -184,12 +185,7 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 	var channel *amqp.Channel
 	var queue amqp.Queue
 	if conn == nil {
-		connected := make(chan bool)
-		go func() {
-			once.Do(amqpBroker.connect)
-			connected <- true
-		}()
-		<-connected
+		once.Do(amqpBroker.connect)
 	}
 
 	if conn == nil {
