@@ -17,15 +17,15 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Rev": "d8dbe4d94f15fe89232e0402c6e8a0ddf21af3ab"
+			"Rev": "9c474d0715937065f7e5b9f8d724a72ba55763e7"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "d8dbe4d94f15fe89232e0402c6e8a0ddf21af3ab"
+			"Rev": "9c474d0715937065f7e5b9f8d724a72ba55763e7"
 		},
 		{
 			"ImportPath": "github.com/streadway/amqp",
-			"Rev": "f4879ba28fffbb576743b03622a9ff20461826b2"
+			"Rev": "79beb307dcf5904fb8cb061276f1c14f222012c2"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",

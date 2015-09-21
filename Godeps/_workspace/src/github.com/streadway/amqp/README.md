@@ -14,7 +14,7 @@ enhancements.
 
 # Goals
 
-Provide an functional interface that closely represents the AMQP 0.9.1 model
+Provide a functional interface that closely represents the AMQP 0.9.1 model
 targeted to RabbitMQ as a server.  This includes the minimum necessary to
 interact the semantics of the protocol.
 
