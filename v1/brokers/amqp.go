@@ -5,12 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/streadway/amqp"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 )
+
+var once sync.Once
+var conn *amqp.Connection
 
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
@@ -32,15 +36,14 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 		amqpBroker.retryFunc = utils.RetryClosure()
 	}
 
-	conn, channel, queue, _, err := amqpBroker.open()
+	_, channel, queue, _, err := amqpBroker.open()
+	defer channel.Close()
 	if err != nil {
 		amqpBroker.retryFunc()
 		return true, err // retry true
 	}
 
 	amqpBroker.retryFunc = utils.RetryClosure()
-
-	defer amqpBroker.close(channel, conn)
 
 	amqpBroker.stopChan = make(chan int)
 
@@ -82,12 +85,11 @@ func (amqpBroker *AMQPBroker) StopConsuming() {
 
 // Publish places a new message on the default queue
 func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error {
-	conn, channel, _, confirmsChan, err := amqpBroker.open()
+	_, channel, _, confirmsChan, err := amqpBroker.open()
+	defer channel.Close()
 	if err != nil {
 		return err
 	}
-
-	defer amqpBroker.close(channel, conn)
 
 	message, err := json.Marshal(signature)
 	if err != nil {
@@ -165,23 +167,35 @@ func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProce
 	}
 }
 
-// Connects to the message queue, opens a channel, declares a queue
-func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
-	var conn *amqp.Connection
-	var channel *amqp.Channel
-	var queue amqp.Queue
-	var err error
+// Connects to the message queue
+func (amqpBroker *AMQPBroker) connect() {
 
+	var err error
+	fmt.Println("connecting...")
 	conn, err = amqp.Dial(amqpBroker.config.Broker)
 	if err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
+		fmt.Printf("Dial: %s\n", err)
+	}
+
+}
+
+// Connects to the message queue, opens a channel, declares a queue
+func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
+	var err error
+	var channel *amqp.Channel
+	var queue amqp.Queue
+	if conn == nil {
+		once.Do(amqpBroker.connect)
+	}
+
+	if conn == nil {
+		return conn, channel, queue, nil, fmt.Errorf("Can't connect to the server")
 	}
 
 	channel, err = conn.Channel()
 	if err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Channel: %s", err)
+		fmt.Printf("Channel: %s\n", err)
 	}
-
 	if err := channel.ExchangeDeclare(
 		amqpBroker.config.Exchange,     // name of the exchange
 		amqpBroker.config.ExchangeType, // type
@@ -191,7 +205,7 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		false, // noWait
 		nil,   // arguments
 	); err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Exchange: %s", err)
+		fmt.Printf("Exchange: %s\n", err)
 	}
 
 	queue, err = channel.QueueDeclare(
@@ -203,7 +217,7 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		nil,   // arguments
 	)
 	if err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Queue Declare: %s", err)
+		fmt.Printf("Queue Declare: %s\n", err)
 	}
 
 	if err := channel.QueueBind(
@@ -213,29 +227,15 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		false, // noWait
 		nil,   // arguments
 	); err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
+		fmt.Printf("Queue Bind: %s\n", err)
 	}
 
 	confirmsChan := make(chan amqp.Confirmation, 1)
-
 	// Enable publish confirmations
 	if err := channel.Confirm(false); err != nil {
 		close(confirmsChan)
-		return conn, channel, queue, nil, fmt.Errorf("Channel could not be put into confirm mode: %s", err)
+		fmt.Printf("Channel could not be put into confirm mode: %s\n", err)
 	}
 
 	return conn, channel, queue, channel.NotifyPublish(confirmsChan), nil
-}
-
-// Closes the connection
-func (amqpBroker *AMQPBroker) close(channel *amqp.Channel, conn *amqp.Connection) error {
-	if err := channel.Close(); err != nil {
-		return fmt.Errorf("Channel Close: %s", err)
-	}
-
-	if err := conn.Close(); err != nil {
-		return fmt.Errorf("Connection Close: %s", err)
-	}
-
-	return nil
 }
