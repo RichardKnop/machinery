@@ -23,6 +23,14 @@ type EagerMode interface {
 //
 // Broker interface
 //
+func (e *EagerBroker) SetRegisteredTaskNames(names []string) {
+	// do nothing
+}
+
+func (e *EagerBroker)  IsTaskRegistered(name string) bool {
+	return true
+}
+
 func (e *EagerBroker) StartConsuming(consumerTag string, p TaskProcessor) (bool, error) {
 	return true, nil
 }

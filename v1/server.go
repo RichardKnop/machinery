@@ -90,11 +90,19 @@ func (server *Server) SetConfig(cnf *config.Config) {
 // RegisterTasks registers all tasks at once
 func (server *Server) RegisterTasks(tasks map[string]interface{}) {
 	server.registeredTasks = tasks
+	server.broker.SetRegisteredTaskNames(server.getRegisteredTaskNames())
 }
 
 // RegisterTask registers a single task
 func (server *Server) RegisterTask(name string, task interface{}) {
 	server.registeredTasks[name] = task
+	server.broker.SetRegisteredTaskNames(server.getRegisteredTaskNames())
+}
+
+// IsTaskRegistered returns true if the task name is registered with this broker
+func (server *Server)  IsTaskRegistered(name string) bool {
+	_, ok := server.registeredTasks[name]
+	return ok
 }
 
 // GetRegisteredTask returns registered task by name
@@ -202,4 +210,14 @@ func (server *Server) SendChord(chord *Chord) (*backends.ChordAsyncResult, error
 		chord.Callback,
 		server.backend,
 	), nil
+}
+
+func (server *Server) getRegisteredTaskNames() []string {
+	names := make([]string, len(server.registeredTasks))
+
+	for name, _ := range server.registeredTasks {
+		names = append(names, name)
+	}
+
+	return names
 }

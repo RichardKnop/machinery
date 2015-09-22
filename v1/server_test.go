@@ -7,7 +7,7 @@ import (
 )
 
 func TestRegisterTasks(t *testing.T) {
-	server := getTestServer(t)
+	server := _getTestServer(t)
 	server.RegisterTasks(map[string]interface{}{
 		"test_task": func() {},
 	})
@@ -19,7 +19,7 @@ func TestRegisterTasks(t *testing.T) {
 }
 
 func TestRegisterTask(t *testing.T) {
-	server := getTestServer(t)
+	server := _getTestServer(t)
 	server.RegisterTask("test_task", func() {})
 
 	_, err := server.GetRegisteredTask("test_task")
@@ -29,13 +29,13 @@ func TestRegisterTask(t *testing.T) {
 }
 
 func TestGetRegisteredTask(t *testing.T) {
-	_, err := getTestServer(t).GetRegisteredTask("test_task")
+	_, err := _getTestServer(t).GetRegisteredTask("test_task")
 	if err == nil {
 		t.Error("test_task is registered but it should not be")
 	}
 }
 
-func getTestServer(t *testing.T) *Server {
+func _getTestServer(t *testing.T) *Server {
 	server, err := NewServer(&config.Config{
 		Broker:        "amqp://guest:guest@localhost:5672/",
 		ResultBackend: "redis://127.0.0.1:6379",
