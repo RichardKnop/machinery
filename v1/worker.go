@@ -57,6 +57,7 @@ func (worker *Worker) Quit() {
 func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 	task, err := worker.server.GetRegisteredTask(signature.Name)
 	if err != nil {
+		worker.server.GetBroker().Publish(signature)
 		return err
 	}
 
