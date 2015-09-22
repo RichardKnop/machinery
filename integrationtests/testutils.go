@@ -1,12 +1,11 @@
-package machinery
+package integrationtests
 
 import (
-	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"testing"
 
+	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/errors"
 	"github.com/RichardKnop/machinery/v1/signatures"
@@ -18,7 +17,7 @@ func (a ascendingInt64s) Len() int           { return len(a) }
 func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
-func getTasks() []signatures.TaskSignature {
+func _getTasks() []signatures.TaskSignature {
 	task0 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
@@ -80,75 +79,8 @@ func getTasks() []signatures.TaskSignature {
 	}
 }
 
-func TestIntegration(t *testing.T) {
-	amqpURL := os.Getenv("AMQP_URL")
-	redisURL := os.Getenv("REDIS_URL")
-	memcacheURL := os.Getenv("MEMCACHE_URL")
-
-	if amqpURL != "" {
-		// AMQP broker, AMQP result backend
-		server1 := setup(amqpURL, amqpURL)
-		worker1 := server1.NewWorker("test_worker")
-		go worker1.Launch()
-		_testSendTask(server1, t)
-		_testSendGroup(server1, t)
-		_testSendChord(server1, t)
-		_testSendChain(server1, t)
-		worker1.Quit()
-
-		if redisURL != "" {
-			// AMQP broker, Redis result backend
-			server2 := setup(amqpURL, fmt.Sprintf("redis://%v", redisURL))
-			worker2 := server2.NewWorker("test_worker")
-			go worker2.Launch()
-			_testSendTask(server2, t)
-			_testSendGroup(server2, t)
-			_testSendChord(server2, t)
-			_testSendChain(server2, t)
-			worker2.Quit()
-		}
-
-		if memcacheURL != "" {
-			// AMQP broker, Memcache result backend
-			server3 := setup(amqpURL, fmt.Sprintf("memcache://%v", memcacheURL))
-			worker3 := server3.NewWorker("test_worker")
-			go worker3.Launch()
-			_testSendTask(server3, t)
-			_testSendGroup(server3, t)
-			_testSendChord(server3, t)
-			_testSendChain(server3, t)
-			worker3.Quit()
-		}
-	}
-
-	if redisURL != "" {
-		// Redis broker, Redis result backend
-		server4 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("redis://%v", redisURL))
-		worker4 := server4.NewWorker("test_worker")
-		go worker4.Launch()
-		_testSendTask(server4, t)
-		_testSendGroup(server4, t)
-		_testSendChord(server4, t)
-		_testSendChain(server4, t)
-		worker4.Quit()
-
-		// TODO: https://github.com/RichardKnop/machinery/issues/24
-		if memcacheURL != "" {
-			// Redis broker, Memcache result backend
-			server5 := setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
-			worker5 := server5.NewWorker("test_worker")
-			go worker5.Launch()
-			_testSendTask(server5, t)
-			_testSendGroup(server5, t)
-			_testSendChord(server5, t)
-			_testSendChain(server5, t)
-			worker5.Quit()
-		}
-	}
-}
-
-func _testSendTask(server *Server, t *testing.T) {
-	tasks := getTasks()
+func _testSendTask(server *machinery.Server, t *testing.T) {
+	tasks := _getTasks()
 
 	asyncResult, err := server.SendTask(&tasks[0])
 	if err != nil {
@@ -169,10 +101,10 @@ func _testSendTask(server *Server, t *testing.T) {
 	}
 }
 
-func _testSendGroup(server *Server, t *testing.T) {
-	tasks := getTasks()
+func _testSendGroup(server *machinery.Server, t *testing.T) {
+	tasks := _getTasks()
 
-	group := NewGroup(&tasks[0], &tasks[1], &tasks[2])
+	group := machinery.NewGroup(&tasks[0], &tasks[1], &tasks[2])
 	asyncResults, err := server.SendGroup(group)
 	if err != nil {
 		t.Error(err)
@@ -205,11 +137,11 @@ func _testSendGroup(server *Server, t *testing.T) {
 	}
 }
 
-func _testSendChord(server *Server, t *testing.T) {
-	tasks := getTasks()
+func _testSendChord(server *machinery.Server, t *testing.T) {
+	tasks := _getTasks()
 
-	group := NewGroup(&tasks[0], &tasks[1], &tasks[2])
-	chord := NewChord(group, &tasks[4])
+	group := machinery.NewGroup(&tasks[0], &tasks[1], &tasks[2])
+	chord := machinery.NewChord(group, &tasks[4])
 	chordAsyncResult, err := server.SendChord(chord)
 	if err != nil {
 		t.Error(err)
@@ -229,10 +161,10 @@ func _testSendChord(server *Server, t *testing.T) {
 	}
 }
 
-func _testSendChain(server *Server, t *testing.T) {
-	tasks := getTasks()
+func _testSendChain(server *machinery.Server, t *testing.T) {
+	tasks := _getTasks()
 
-	chain := NewChain(&tasks[1], &tasks[2], &tasks[3])
+	chain := machinery.NewChain(&tasks[1], &tasks[2], &tasks[3])
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		t.Error(err)
@@ -252,7 +184,7 @@ func _testSendChain(server *Server, t *testing.T) {
 	}
 }
 
-func setup(brokerURL, backend string) *Server {
+func _setup(brokerURL, backend string) *machinery.Server {
 	cnf := config.Config{
 		Broker:        brokerURL,
 		ResultBackend: backend,
@@ -262,7 +194,7 @@ func setup(brokerURL, backend string) *Server {
 		BindingKey:    "test_task",
 	}
 
-	server, err := NewServer(&cnf)
+	server, err := machinery.NewServer(&cnf)
 	errors.Fail(err, "Could not initialize server")
 
 	tasks := map[string]interface{}{
