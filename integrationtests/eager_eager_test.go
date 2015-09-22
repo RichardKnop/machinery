@@ -1,10 +1,11 @@
-package machinery
+package integrationtests
 
 import (
 	"reflect"
 	"testing"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/stretchr/testify/suite"
+	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
@@ -12,7 +13,7 @@ import (
 type EagerIntegrationTestSuite struct {
 	suite.Suite
 
-	srv    *Server
+	srv    *machinery.Server
 	called float64
 }
 
@@ -28,7 +29,7 @@ func (s *EagerIntegrationTestSuite) SetupSuite() {
 		Broker:        "eager",
 		ResultBackend: "eager",
 	}
-	s.srv, err = NewServer(&cnf)
+	s.srv, err = machinery.NewServer(&cnf)
 	s.Nil(err)
 	s.NotNil(s.srv)
 
