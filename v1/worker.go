@@ -37,11 +37,12 @@ func (worker *Worker) Launch() error {
 		for {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
 
-			if !retry {
+			if retry {
+				log.Printf("Going to retry launching the worker. Error: %v", err)
+			} else {
 				errorsChan <- err // stop the goroutine
 				return
 			}
-
 		}
 	}()
 
@@ -55,9 +56,15 @@ func (worker *Worker) Quit() {
 
 // Process handles received tasks and triggers success/error callbacks
 func (worker *Worker) Process(signature *signatures.TaskSignature) error {
+	// If the task is not registered with this worker, do not continue
+	// but only return nil as we do not want to restart the worker process
+	if !worker.server.IsTaskRegistered(signature.Name) {
+		return nil
+	}
+
 	task, err := worker.server.GetRegisteredTask(signature.Name)
 	if err != nil {
-		return err
+		return nil
 	}
 
 	backend := worker.server.GetBackend()

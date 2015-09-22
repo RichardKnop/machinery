@@ -15,14 +15,15 @@ import (
 
 // RedisBroker represents a Redis broker
 type RedisBroker struct {
-	config            *config.Config
-	host              string
-	pool              *redis.Pool
-	retryFunc         func()
-	stopChan          chan int
-	stopReceivingChan chan int
-	errorsChan        chan error
-	wg                sync.WaitGroup
+	config              *config.Config
+	registeredTaskNames []string
+	host                string
+	pool                *redis.Pool
+	retryFunc           func()
+	stopChan            chan int
+	stopReceivingChan   chan int
+	errorsChan          chan error
+	wg                  sync.WaitGroup
 }
 
 // NewRedisBroker creates new RedisBroker instance
@@ -31,6 +32,21 @@ func NewRedisBroker(cnf *config.Config, host string) Broker {
 		config: cnf,
 		host:   host,
 	})
+}
+
+// SetRegisteredTaskNames sets registered task names
+func (redisBroker *RedisBroker) SetRegisteredTaskNames(names []string) {
+	redisBroker.registeredTaskNames = names
+}
+
+// IsTaskRegistered returns true if the task is registered with this broker
+func (redisBroker *RedisBroker) IsTaskRegistered(name string) bool {
+	for _, registeredTaskName := range redisBroker.registeredTaskNames {
+		if registeredTaskName == name {
+			return true
+		}
+	}
+	return false
 }
 
 // StartConsuming enters a loop and waits for incoming messages
@@ -83,6 +99,25 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 				if err != nil {
 					redisBroker.errorsChan <- err
 					return
+				}
+
+				signature := signatures.TaskSignature{}
+				if err := json.Unmarshal(item, &signature); err != nil {
+					redisBroker.errorsChan <- err
+					return
+				}
+
+				// If the task is not registered, we requeue it,
+				// there might be different workers for processing specific tasks
+				if !redisBroker.IsTaskRegistered(signature.Name) {
+					_, err := conn.Do("RPUSH", redisBroker.config.DefaultQueue, item)
+
+					if err != nil {
+						redisBroker.errorsChan <- err
+						return
+					}
+
+					continue
 				}
 
 				deliveries <- item

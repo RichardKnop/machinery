@@ -18,9 +18,10 @@ var conn *amqp.Connection
 
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
-	config    *config.Config
-	retryFunc func()
-	stopChan  chan int
+	config              *config.Config
+	registeredTaskNames []string
+	retryFunc           func()
+	stopChan            chan int
 }
 
 // NewAMQPBroker creates new AMQPBroker instance
@@ -28,6 +29,21 @@ func NewAMQPBroker(cnf *config.Config) Broker {
 	return Broker(&AMQPBroker{
 		config: cnf,
 	})
+}
+
+// SetRegisteredTaskNames sets registered task names
+func (amqpBroker *AMQPBroker) SetRegisteredTaskNames(names []string) {
+	amqpBroker.registeredTaskNames = names
+}
+
+// IsTaskRegistered returns true if the task is registered with this broker
+func (amqpBroker *AMQPBroker) IsTaskRegistered(name string) bool {
+	for _, registeredTaskName := range amqpBroker.registeredTaskNames {
+		if registeredTaskName == name {
+			return true
+		}
+	}
+	return false
 }
 
 // StartConsuming enters a loop and waits for incoming messages
@@ -138,6 +154,13 @@ func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProc
 	if err := json.Unmarshal(d.Body, &signature); err != nil {
 		d.Nack(false, false) // multiple, requeue
 		errorsChan <- err
+		return
+	}
+
+	// If the task is not registered, we nack it and requeue,
+	// there might be different workers for processing specific tasks
+	if !amqpBroker.IsTaskRegistered(signature.Name) {
+		d.Nack(false, true) // multiple, requeue
 		return
 	}
 
