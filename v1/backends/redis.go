@@ -2,6 +2,8 @@ package backends
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
@@ -69,12 +71,12 @@ func (redisBackend *RedisBackend) GroupCompleted(groupUUID string, groupTaskCoun
 		return false, err
 	}
 
-	for _, taskUUID := range groupMeta.TaskUUIDs {
-		taskState, err := redisBackend.GetState(taskUUID)
-		if err != nil {
-			return false, err
-		}
+	taskStates, err := redisBackend.getStates(groupMeta.TaskUUIDs...)
+	if err != nil {
+		return false, err
+	}
 
+	for _, taskState := range taskStates {
 		if !taskState.IsCompleted() {
 			return false, nil
 		}
@@ -104,16 +106,7 @@ func (redisBackend *RedisBackend) GroupTaskStates(groupUUID string, groupTaskCou
 		return taskStates, err
 	}
 
-	for i, taskUUID := range groupMeta.TaskUUIDs {
-		taskState, err := redisBackend.GetState(taskUUID)
-		if err != nil {
-			return taskStates, err
-		}
-
-		taskStates[i] = taskState
-	}
-
-	return taskStates, nil
+	return redisBackend.getStates(groupMeta.TaskUUIDs...)
 }
 
 // SetStatePending - sets task state to PENDING
@@ -198,6 +191,48 @@ func (redisBackend *RedisBackend) PurgeGroupMeta(groupUUID string) error {
 	}
 
 	return nil
+}
+
+// getStates Returns multiple task states with MGET
+func (redisBackend *RedisBackend) getStates(taskUUIDs ...string) ([]*TaskState, error) {
+	taskStates := make([]*TaskState, len(taskUUIDs))
+
+	log.Print("Getting states")
+	log.Print(taskUUIDs)
+
+	conn, err := redisBackend.open()
+	if err != nil {
+		return taskStates, err
+	}
+	defer conn.Close()
+
+	// conn.Do requires []interface{}... can't pass []string unfortunately
+	taskUUIDInterfaces := make([]interface{}, len(taskUUIDs))
+	for i, taskUUID := range taskUUIDs {
+		taskUUIDInterfaces[i] = interface{}(taskUUID)
+	}
+
+	reply, err := redis.Values(conn.Do("MGET", taskUUIDInterfaces...))
+	if err != nil {
+		return taskStates, err
+	}
+
+	for i, value := range reply {
+		bytes, ok := value.([]byte)
+		if !ok {
+			return taskStates, fmt.Errorf("Expected byte array, instead got: %v", value)
+		}
+
+		taskState := TaskState{}
+		if err := json.Unmarshal(bytes, &taskState); err != nil {
+			log.Print(err)
+			return taskStates, err
+		}
+
+		taskStates[i] = &taskState
+	}
+
+	return taskStates, nil
 }
 
 // Updates a task state
