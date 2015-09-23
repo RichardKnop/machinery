@@ -54,20 +54,8 @@ func (redisBackend *RedisBackend) InitGroup(groupUUID string, taskUUIDs []string
 
 // GroupCompleted - returns true if all tasks in a group finished
 func (redisBackend *RedisBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
-	groupMeta := GroupMeta{}
-
-	conn, err := redisBackend.open()
+	groupMeta, err := redisBackend.getGroupMeta(groupUUID)
 	if err != nil {
-		return false, err
-	}
-	defer conn.Close()
-
-	item, err := redis.Bytes(conn.Do("GET", groupUUID))
-	if err != nil {
-		return false, err
-	}
-
-	if err := json.Unmarshal(item, &groupMeta); err != nil {
 		return false, err
 	}
 
@@ -89,20 +77,8 @@ func (redisBackend *RedisBackend) GroupCompleted(groupUUID string, groupTaskCoun
 func (redisBackend *RedisBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
 	taskStates := make([]*TaskState, groupTaskCount)
 
-	groupMeta := GroupMeta{}
-
-	conn, err := redisBackend.open()
+	groupMeta, err := redisBackend.getGroupMeta(groupUUID)
 	if err != nil {
-		return taskStates, err
-	}
-	defer conn.Close()
-
-	item, err := redis.Bytes(conn.Do("GET", groupUUID))
-	if err != nil {
-		return taskStates, err
-	}
-
-	if err := json.Unmarshal(item, &groupMeta); err != nil {
 		return taskStates, err
 	}
 
@@ -191,6 +167,27 @@ func (redisBackend *RedisBackend) PurgeGroupMeta(groupUUID string) error {
 	}
 
 	return nil
+}
+
+// Fetches GroupMeta from the backend, convenience function to avoid repetition
+func (redisBackend *RedisBackend) getGroupMeta(groupUUID string) (*GroupMeta, error) {
+	conn, err := redisBackend.open()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	item, err := redis.Bytes(conn.Do("GET", groupUUID))
+	if err != nil {
+		return nil, err
+	}
+
+	groupMeta := GroupMeta{}
+	if err := json.Unmarshal(item, &groupMeta); err != nil {
+		return nil, err
+	}
+
+	return &groupMeta, nil
 }
 
 // getStates Returns multiple task states with MGET
