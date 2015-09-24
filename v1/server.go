@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/RichardKnop/machinery/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
+	"code.google.com/p/go-uuid/uuid"
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -100,7 +100,7 @@ func (server *Server) RegisterTask(name string, task interface{}) {
 }
 
 // IsTaskRegistered returns true if the task name is registered with this broker
-func (server *Server)  IsTaskRegistered(name string) bool {
+func (server *Server) IsTaskRegistered(name string) bool {
 	_, ok := server.registeredTasks[name]
 	return ok
 }

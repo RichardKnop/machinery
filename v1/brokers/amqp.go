@@ -7,10 +7,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/streadway/amqp"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
+	"github.com/streadway/amqp"
 )
 
 var once sync.Once
