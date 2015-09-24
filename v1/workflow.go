@@ -3,8 +3,8 @@ package machinery
 import (
 	"fmt"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/pborman/uuid"
 )
 
 // Chain creates a chain of tasks to be executed one after another

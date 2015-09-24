@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/pborman/uuid"
 )
 
 // Server is the main Machinery object and stores all configuration
