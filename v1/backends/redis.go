@@ -6,9 +6,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/garyburd/redigo/redis"
 )
 
 // RedisBackend represents a Memcache result backend

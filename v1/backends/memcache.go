@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/bradfitz/gomemcache/memcache"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/bradfitz/gomemcache/memcache"
 )
 
 // MemcacheBackend represents a Memcache result backend

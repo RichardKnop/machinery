@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/RichardKnop/machinery/Godeps/_workspace/src/gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // Config holds all configuration for our program

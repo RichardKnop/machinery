@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/RichardKnop/machinery/Godeps/_workspace/src/github.com/streadway/amqp"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/streadway/amqp"
 )
 
 // AMQPBackend represents an AMQP result backend
