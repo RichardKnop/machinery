@@ -1,5 +1,5 @@
-[1]: /assets/example_worker.png
-[2]: /assets/example_worker_receives_tasks.png
+[1]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker.png
+[2]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker_receives_tasks.png
 
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg "GoDoc")](http://godoc.org/github.com/RichardKnop/machinery/v1)
 ![Build Status](https://travis-ci.org/RichardKnop/machinery.svg?branch=master)
