@@ -1,8 +1,10 @@
 DEPS=go list -f '{{range .TestImports}}{{.}} {{end}}' ./...
 
+export GO15VENDOREXPERIMENT=1
+
 godep:
 	go get github.com/tools/godep
-	godep save -r ./...
+	godep save ./...
 
 deps:
 	go get github.com/tools/godep
