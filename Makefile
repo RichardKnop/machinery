@@ -10,4 +10,4 @@ deps:
 	$(DEPS) | xargs -n1 go get -d
 
 test:
-	go list ./... | xargs -n1 go test -timeout=3s
+	go list ./... | grep -v vendor | xargs -n1 go test -timeout=3s
