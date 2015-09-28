@@ -173,13 +173,18 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 				}
 			}
 
-			worker.server.SendTask(signature.ChordCallback)
+			_, err = worker.server.SendTask(signature.ChordCallback)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Purge group state if we are using AMQP backend and all tasks finished
-		_, isAMQPBackend := worker.server.backend.(*backends.AMQPBackend)
-		if isAMQPBackend {
-			worker.server.backend.PurgeGroupMeta(signature.GroupUUID)
+		if worker.hasAMQPBackend() {
+			err = worker.server.backend.PurgeGroupMeta(signature.GroupUUID)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -208,4 +213,10 @@ func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err err
 	}
 
 	return nil
+}
+
+// Returns true if the worker uses AMQP backend
+func (worker *Worker) hasAMQPBackend() bool {
+	_, ok := worker.server.backend.(*backends.AMQPBackend)
+	return ok
 }
