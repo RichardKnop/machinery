@@ -164,11 +164,12 @@ func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProc
 		return
 	}
 
-	d.Ack(false) // multiple
 
 	if err := taskProcessor.Process(&signature); err != nil {
 		errorsChan <- err
 	}
+	
+	d.Ack(false) // multiple
 }
 
 // Consumes messages...
