@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -9,8 +8,7 @@ import (
 // Only use this to handle critical errors
 func Fail(err error, msg string) {
 	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-		panic(fmt.Sprintf("%s: %s", msg, err))
+		log.Panicf("%s: %s", msg, err)
 	}
 }
 
@@ -18,6 +16,6 @@ func Fail(err error, msg string) {
 // Use this to log errors that should not exit the program
 func Log(err error, msg string) {
 	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
+		log.Printf("[ERROR] %s: %s", msg, err)
 	}
 }
