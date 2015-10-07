@@ -54,14 +54,7 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
-		parts := strings.Split(cnf.ResultBackend, "redis://")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf(
-				"Redis result backend connection string should be in format redis://host:port, instead got %s",
-				cnf.ResultBackend,
-			)
-		}
-		return backends.NewRedisBackend(cnf, parts[1]), nil
+		return backends.NewRedisBackend(cnf, cnf.ResultBackend), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "eager") {

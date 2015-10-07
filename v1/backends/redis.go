@@ -278,5 +278,5 @@ func (redisBackend *RedisBackend) setExpirationTime(key string) error {
 
 // Returns / creates instance of Redis connection
 func (redisBackend *RedisBackend) open() (redis.Conn, error) {
-	return redis.Dial("tcp", redisBackend.host)
+	return redis.DialURL(redisBackend.host)
 }
