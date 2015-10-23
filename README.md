@@ -83,7 +83,7 @@ type Config struct {
 A message broker. Currently supported brokers are:
 
 * AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
-* Redis (use Redis URL such as `redis://127.0.0.1:6379`)
+* Redis (use Redis URL such as `redis://127.0.0.1:6379`, or to use password redis://password@127.0.0.1:6379)
 
 ### ResultBackend
 
