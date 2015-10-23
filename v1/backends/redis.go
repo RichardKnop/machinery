@@ -13,16 +13,18 @@ import (
 
 // RedisBackend represents a Memcache result backend
 type RedisBackend struct {
-	config *config.Config
-	host   string
-	conn   redis.Conn
+	config   *config.Config
+	host     string
+	password string
+	conn     redis.Conn
 }
 
 // NewRedisBackend creates RedisBackend instance
-func NewRedisBackend(cnf *config.Config, host string) Backend {
+func NewRedisBackend(cnf *config.Config, host, password string) Backend {
 	return Backend(&RedisBackend{
-		config: cnf,
-		host:   host,
+		config:   cnf,
+		host:     host,
+		password: password,
 	})
 }
 
@@ -278,5 +280,9 @@ func (redisBackend *RedisBackend) setExpirationTime(key string) error {
 
 // Returns / creates instance of Redis connection
 func (redisBackend *RedisBackend) open() (redis.Conn, error) {
+	if redisBackend.password != "" {
+		return redis.Dial("tcp", redisBackend.host,
+			redis.DialPassword(redisBackend.password))
+	}
 	return redis.Dial("tcp", redisBackend.host)
 }
