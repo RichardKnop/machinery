@@ -91,7 +91,7 @@ Result backend to use for keeping task states and results.
 
 Currently supported backends are:
 
-* Redis (use Redis URL such as `redis://127.0.0.1:6379`)
+* Redis (use Redis URL such as `redis://127.0.0.1:6379`, or to use password `redis://password@127.0.0.1:6379`)
 * Memcache (use Memcache URL such as `memcache://10.0.0.1:11211,10.0.0.2:11211`)
 * AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
 

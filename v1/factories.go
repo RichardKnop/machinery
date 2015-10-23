@@ -24,7 +24,18 @@ func BrokerFactory(cnf *config.Config) (brokers.Broker, error) {
 				cnf.Broker,
 			)
 		}
-		return brokers.NewRedisBroker(cnf, parts[1]), nil
+
+		var redisHost, redisPassword string
+
+		parts = strings.Split(parts[1], "@")
+		if len(parts) == 2 {
+			redisHost = parts[1]
+			redisPassword = parts[0]
+		} else {
+			redisHost = parts[0]
+		}
+
+		return brokers.NewRedisBroker(cnf, redisHost, redisPassword), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "eager") {
@@ -57,11 +68,22 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 		parts := strings.Split(cnf.ResultBackend, "redis://")
 		if len(parts) != 2 {
 			return nil, fmt.Errorf(
-				"Redis result backend connection string should be in format redis://host:port, instead got %s",
+				"Redis result backend connection string should be in format redis://password@host:port, instead got %s",
 				cnf.ResultBackend,
 			)
 		}
-		return backends.NewRedisBackend(cnf, parts[1]), nil
+
+		var redisHost, redisPassword string
+
+		parts = strings.Split(parts[1], "@")
+		if len(parts) == 2 {
+			redisHost = parts[1]
+			redisPassword = parts[0]
+		} else {
+			redisHost = parts[0]
+		}
+
+		return backends.NewRedisBackend(cnf, redisHost, redisPassword), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "eager") {

@@ -35,6 +35,23 @@ func TestBrokerFactory(t *testing.T) {
 
 	// 1) Redis broker test
 
+	// with password
+	cnf = config.Config{
+		Broker:       "redis://password@localhost:6379",
+		DefaultQueue: "machinery_tasks",
+	}
+
+	actual, err = BrokerFactory(&cnf)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	expected = brokers.NewRedisBroker(&cnf, "localhost:6379", "password")
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("conn = %v, want %v", actual, expected)
+	}
+
+	// without password
 	cnf = config.Config{
 		Broker:       "redis://localhost:6379",
 		DefaultQueue: "machinery_tasks",
@@ -45,7 +62,7 @@ func TestBrokerFactory(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	expected = brokers.NewRedisBroker(&cnf, "localhost:6379")
+	expected = brokers.NewRedisBroker(&cnf, "localhost:6379", "")
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
@@ -105,6 +122,23 @@ func TestBackendFactory(t *testing.T) {
 
 	// 2) Redis backend test
 
+	// with password
+	cnf = config.Config{
+		ResultBackend: "redis://password@localhost:6379",
+	}
+	actual, err = BackendFactory(&cnf)
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	expected = backends.NewRedisBackend(&cnf, "localhost:6379", "password")
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("conn = %v, want %v", actual, expected)
+	}
+
+	// without password
 	cnf = config.Config{
 		ResultBackend: "redis://localhost:6379",
 	}
@@ -114,7 +148,7 @@ func TestBackendFactory(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	expected = backends.NewRedisBackend(&cnf, "localhost:6379")
+	expected = backends.NewRedisBackend(&cnf, "localhost:6379", "")
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)

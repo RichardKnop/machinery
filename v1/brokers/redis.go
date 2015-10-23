@@ -18,6 +18,7 @@ type RedisBroker struct {
 	config              *config.Config
 	registeredTaskNames []string
 	host                string
+	password            string
 	pool                *redis.Pool
 	retryFunc           func()
 	stopChan            chan int
@@ -27,10 +28,11 @@ type RedisBroker struct {
 }
 
 // NewRedisBroker creates new RedisBroker instance
-func NewRedisBroker(cnf *config.Config, host string) Broker {
+func NewRedisBroker(cnf *config.Config, host, password string) Broker {
 	return Broker(&RedisBroker{
-		config: cnf,
-		host:   host,
+		config:   cnf,
+		host:     host,
+		password: password,
 	})
 }
 
@@ -143,7 +145,7 @@ func (redisBroker *RedisBroker) StopConsuming() {
 func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) error {
 	conn, err := redisBroker.open()
 	if err != nil {
-		fmt.Errorf("Dial: %s", err)
+		return fmt.Errorf("Dial: %s", err)
 	}
 	defer conn.Close()
 
@@ -198,6 +200,10 @@ func (redisBroker *RedisBroker) stopReceiving() {
 
 // Returns / creates instance of Redis connection
 func (redisBroker *RedisBroker) open() (redis.Conn, error) {
+	if redisBroker.password != "" {
+		return redis.Dial("tcp", redisBroker.host,
+			redis.DialPassword(redisBroker.password))
+	}
 	return redis.Dial("tcp", redisBroker.host)
 }
 
@@ -207,7 +213,16 @@ func (redisBroker *RedisBroker) newPool() *redis.Pool {
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", redisBroker.host)
+			var c redis.Conn
+			var err error
+
+			if redisBroker.password != "" {
+				c, err = redis.Dial("tcp", redisBroker.host,
+					redis.DialPassword(redisBroker.password))
+			} else {
+				c, err = redis.Dial("tcp", redisBroker.host)
+			}
+
 			if err != nil {
 				return nil, err
 			}
