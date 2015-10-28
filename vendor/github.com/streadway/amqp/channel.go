@@ -197,7 +197,15 @@ func (me *Channel) sendOpen(msg message) (err error) {
 	if content, ok := msg.(messageWithContent); ok {
 		props, body := content.getContent()
 		class, _ := content.id()
-		size := me.connection.Config.FrameSize - frameHeaderSize
+
+		// catch client max frame size==0 and server max frame size==0
+		// set size to length of what we're trying to publish
+		var size int
+		if me.connection.Config.FrameSize > 0 {
+			size = me.connection.Config.FrameSize - frameHeaderSize
+		} else {
+			size = len(body)
+		}
 
 		if err = me.connection.send(&methodFrame{
 			ChannelId: me.id,
@@ -215,6 +223,7 @@ func (me *Channel) sendOpen(msg message) (err error) {
 			return
 		}
 
+		// chunk body into size (max frame size - frame header size)
 		for i, j := 0, size; i < len(body); i, j = j, j+size {
 			if j > len(body) {
 				j = len(body)

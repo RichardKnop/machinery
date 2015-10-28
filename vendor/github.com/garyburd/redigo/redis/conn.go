@@ -56,7 +56,7 @@ type conn struct {
 // DialTimeout acts like Dial but takes timeouts for establishing the
 // connection to the server, writing a command and reading a reply.
 //
-// DialTimeout is deprecated.
+// Deprecated: Use Dial with options instead.
 func DialTimeout(network, address string, connectTimeout, readTimeout, writeTimeout time.Duration) (Conn, error) {
 	return Dial(network, address,
 		DialConnectTimeout(connectTimeout),
@@ -162,7 +162,7 @@ func Dial(network, address string, options ...DialOption) (Conn, error) {
 	return c, nil
 }
 
-var pathDBRegexp = regexp.MustCompile(`/(\d)\z`)
+var pathDBRegexp = regexp.MustCompile(`/(\d+)\z`)
 
 // DialURL connects to a Redis server at the given URL using the Redis
 // URI scheme. URLs should follow the draft IANA specification for the

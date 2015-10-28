@@ -12,19 +12,19 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Rev": "9c474d0715937065f7e5b9f8d724a72ba55763e7"
+			"Rev": "7ec56c98db25aa5eeed5e028188fda8fe6fb4bf3"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "9c474d0715937065f7e5b9f8d724a72ba55763e7"
+			"Rev": "7ec56c98db25aa5eeed5e028188fda8fe6fb4bf3"
 		},
 		{
 			"ImportPath": "github.com/pborman/uuid",
-			"Rev": "ca53cad383cad2479bbba7f7a1a05797ec1386e4"
+			"Rev": "cccd189d45f7ac3368a0d127efb7f4d08ae0b655"
 		},
 		{
 			"ImportPath": "github.com/streadway/amqp",
-			"Rev": "79beb307dcf5904fb8cb061276f1c14f222012c2"
+			"Rev": "b4f3ceab0337f013208d31348b578d83c0064744"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
@@ -43,7 +43,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "7ad95dd0798a40da1ccdff6dff35fd177b5edf40"
+			"Rev": "53feefa2559fb8dfa8d81baad31be332c97d6c77"
 		}
 	]
 }
