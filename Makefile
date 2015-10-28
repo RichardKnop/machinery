@@ -8,7 +8,7 @@ update-deps:
 	go get github.com/tools/godep
 	godep save ./...
 
-restore-deps:
+install-deps:
 	go get github.com/tools/godep
 	godep restore
 	$(DEPS) | xargs -n1 go get -d

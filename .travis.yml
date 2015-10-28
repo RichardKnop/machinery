@@ -14,4 +14,4 @@ branches:
   only:
     - master
 
-script: make deps && make test
+script: make install-deps && make test
