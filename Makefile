@@ -3,8 +3,8 @@ DEPS=go list -f '{{range .TestImports}}{{.}} {{end}}' ./...
 export GO15VENDOREXPERIMENT=1
 
 update-deps:
-	rm -R Godeps
-	rm -R vendor
+	rm -rf Godeps
+	rm -rf vendor
 	go get github.com/tools/godep
 	godep save ./...
 
