@@ -2,7 +2,7 @@
 [2]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker_receives_tasks.png
 
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg "GoDoc")](http://godoc.org/github.com/RichardKnop/machinery/v1)
-[![Build Status](https://travis-ci.org/RichardKnop/machinery.svg?branch=master "Build Status")](https://travis-ci.org/RichardKnop/machinery)
+[![Travis Status for RichardKnop/machinery](https://travis-ci.org/RichardKnop/machinery.svg?branch=master "Build Status")](https://travis-ci.org/RichardKnop/machinery)
 
 # Machinery
 
