@@ -20,6 +20,7 @@ type RedisBroker struct {
 	host                string
 	password            string
 	pool                *redis.Pool
+	retry               bool
 	retryFunc           func()
 	stopChan            chan int
 	stopReceivingChan   chan int
@@ -33,6 +34,7 @@ func NewRedisBroker(cnf *config.Config, host, password string) Broker {
 		config:   cnf,
 		host:     host,
 		password: password,
+		retry:    true,
 	})
 }
 
@@ -63,7 +65,7 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 	_, err := redisBroker.pool.Get().Do("PING")
 	if err != nil {
 		redisBroker.retryFunc()
-		return true, err // retry true
+		return redisBroker.retry, err // retry true
 	}
 
 	redisBroker.retryFunc = utils.RetryClosure()
@@ -128,14 +130,17 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 	}()
 
 	if err := redisBroker.consume(deliveries, taskProcessor); err != nil {
-		return true, err // retry true
+		return redisBroker.retry, err // retry true
 	}
 
-	return false, nil
+	return redisBroker.retry, nil
 }
 
 // StopConsuming quits the loop
 func (redisBroker *RedisBroker) StopConsuming() {
+	// Do not retry from now on
+	redisBroker.retry = false
+	// Stop the receiving goroutine
 	redisBroker.stopReceiving()
 	// Notifying the stop channel stops consuming of messages
 	redisBroker.stopChan <- 1
