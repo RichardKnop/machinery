@@ -193,22 +193,25 @@ func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProce
 // Connects to the message queue, opens a channel, declares a queue
 func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
 	var (
-		err     error
 		conn    *amqp.Connection
 		channel *amqp.Channel
 		queue   amqp.Queue
+		err     error
 	)
 
+	// Connect
 	conn, err = amqp.Dial(amqpBroker.config.Broker)
 	if err != nil {
-		return conn, channel, queue, nil, err
+		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
 	}
 
+	// Open a channel
 	channel, err = conn.Channel()
 	if err != nil {
-		return conn, channel, queue, nil, err
+		return conn, channel, queue, nil, fmt.Errorf("Channel: %s", err)
 	}
 
+	// Declare an exchange
 	if err := channel.ExchangeDeclare(
 		amqpBroker.config.Exchange,     // name of the exchange
 		amqpBroker.config.ExchangeType, // type
@@ -218,9 +221,10 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		false, // noWait
 		nil,   // arguments
 	); err != nil {
-		return conn, channel, queue, nil, err
+		return conn, channel, queue, nil, fmt.Errorf("Exchange Declare: %s", err)
 	}
 
+	// Declare a queue
 	queue, err = channel.QueueDeclare(
 		amqpBroker.config.DefaultQueue, // name
 		true,  // durable
@@ -230,9 +234,10 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		nil,   // arguments
 	)
 	if err != nil {
-		return conn, channel, queue, nil, err
+		return conn, channel, queue, nil, fmt.Errorf("Queue Declare: %s", err)
 	}
 
+	// Bind the queue
 	if err := channel.QueueBind(
 		queue.Name,                   // name of the queue
 		amqpBroker.config.BindingKey, // binding key
@@ -240,14 +245,13 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		false, // noWait
 		nil,   // arguments
 	); err != nil {
-		return conn, channel, queue, nil, err
+		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
 	}
 
 	// Enable publish confirmations
 	if err := channel.Confirm(false); err != nil {
-		return conn, channel, queue, nil, err
+		return conn, channel, queue, nil, fmt.Errorf("Channel could not be put into confirm mode: %s", err)
 	}
 
-	confirmsChan := make(chan amqp.Confirmation, 1)
-	return conn, channel, queue, channel.NotifyPublish(confirmsChan), nil
+	return conn, channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), nil
 }

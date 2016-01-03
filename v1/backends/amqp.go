@@ -306,21 +306,26 @@ func (amqpBackend *AMQPBackend) markTaskSuccess(signature *signatures.TaskSignat
 
 // Connects to the message queue, opens a channel, declares a queue
 func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
-	var conn *amqp.Connection
-	var channel *amqp.Channel
-	var queue amqp.Queue
-	var err error
+	var (
+		conn    *amqp.Connection
+		channel *amqp.Channel
+		queue   amqp.Queue
+		err     error
+	)
 
+	// Connect
 	conn, err = amqp.Dial(amqpBackend.config.ResultBackend)
 	if err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
 	}
 
+	// Open a channel
 	channel, err = conn.Channel()
 	if err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Channel: %s", err)
 	}
 
+	// Declare an exchange
 	err = channel.ExchangeDeclare(
 		amqpBackend.config.Exchange,     // name of the exchange
 		amqpBackend.config.ExchangeType, // type
@@ -331,9 +336,10 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 		nil,   // arguments
 	)
 	if err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Exchange: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Exchange Declare: %s", err)
 	}
 
+	// Declare a queue
 	arguments := amqp.Table{
 		"x-message-ttl": int32(amqpBackend.getExpiresIn()),
 	}
@@ -349,6 +355,7 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 		return conn, channel, queue, nil, fmt.Errorf("Queue Declare: %s", err)
 	}
 
+	// Bind the queue
 	if err := channel.QueueBind(
 		queue.Name,                  // name of the queue
 		taskUUID,                    // binding key
@@ -359,15 +366,12 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
 	}
 
-	confirmsChan := make(chan amqp.Confirmation, 1)
-
 	// Enable publish confirmations
 	if err := channel.Confirm(false); err != nil {
-		close(confirmsChan)
 		return conn, channel, queue, nil, fmt.Errorf("Channel could not be put into confirm mode: %s", err)
 	}
 
-	return conn, channel, queue, channel.NotifyPublish(confirmsChan), nil
+	return conn, channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), nil
 }
 
 // Closes the connection

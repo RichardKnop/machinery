@@ -218,8 +218,10 @@ func (redisBroker *RedisBroker) newPool() *redis.Pool {
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			var c redis.Conn
-			var err error
+			var (
+				c   redis.Conn
+				err error
+			)
 
 			if redisBroker.password != "" {
 				c, err = redis.Dial("tcp", redisBroker.host,

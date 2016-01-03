@@ -110,8 +110,10 @@ func (chainAsyncResult *ChainAsyncResult) Get() (reflect.Value, error) {
 		return reflect.Value{}, errors.New("Result backend not configured")
 	}
 
-	var result reflect.Value
-	var err error
+	var (
+		result reflect.Value
+		err    error
+	)
 
 	for _, asyncResult := range chainAsyncResult.asyncResults {
 		result, err = asyncResult.Get()
@@ -129,8 +131,10 @@ func (chordAsyncResult *ChordAsyncResult) Get() (reflect.Value, error) {
 		return reflect.Value{}, errors.New("Result backend not configured")
 	}
 
-	var result reflect.Value
-	var err error
+	var (
+		result reflect.Value
+		err    error
+	)
 
 	for _, asyncResult := range chordAsyncResult.groupAsyncResults {
 		result, err = asyncResult.Get()
