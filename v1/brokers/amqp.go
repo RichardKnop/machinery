@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"sync"
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
@@ -13,13 +12,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
-var once sync.Once
-var conn *amqp.Connection
-
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
 	config              *config.Config
 	registeredTaskNames []string
+	retry               bool
 	retryFunc           func()
 	stopChan            chan int
 }
@@ -28,6 +25,7 @@ type AMQPBroker struct {
 func NewAMQPBroker(cnf *config.Config) Broker {
 	return Broker(&AMQPBroker{
 		config: cnf,
+		retry:  true,
 	})
 }
 
@@ -56,7 +54,7 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 	defer channel.Close()
 	if err != nil {
 		amqpBroker.retryFunc()
-		return true, err // retry true
+		return amqpBroker.retry, err // retry true
 	}
 
 	amqpBroker.retryFunc = utils.RetryClosure()
@@ -68,7 +66,7 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 		0,     // prefetch size
 		false, // global
 	); err != nil {
-		return false, fmt.Errorf("Channel Qos: %s", err)
+		return amqpBroker.retry, fmt.Errorf("Channel Qos: %s", err)
 	}
 
 	deliveries, err := channel.Consume(
@@ -81,20 +79,22 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 		nil,         // arguments
 	)
 	if err != nil {
-		return false, fmt.Errorf("Queue Consume: %s", err)
+		return amqpBroker.retry, fmt.Errorf("Queue Consume: %s", err)
 	}
 
 	log.Print("[*] Waiting for messages. To exit press CTRL+C")
 
 	if err := amqpBroker.consume(deliveries, taskProcessor); err != nil {
-		return true, err // retry true
+		return amqpBroker.retry, err // retry true
 	}
 
-	return false, nil
+	return amqpBroker.retry, nil
 }
 
 // StopConsuming quits the loop
 func (amqpBroker *AMQPBroker) StopConsuming() {
+	// Do not retry from now on
+	amqpBroker.retry = false
 	// Notifying the stop channel stops consuming of messages
 	amqpBroker.stopChan <- 1
 }
@@ -164,11 +164,10 @@ func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProc
 		return
 	}
 
-
 	if err := taskProcessor.Process(&signature); err != nil {
 		errorsChan <- err
 	}
-	
+
 	d.Ack(false) // multiple
 }
 
@@ -191,35 +190,25 @@ func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProce
 	}
 }
 
-// Connects to the message queue
-func (amqpBroker *AMQPBroker) connect() {
-
-	var err error
-	fmt.Println("connecting...")
-	conn, err = amqp.Dial(amqpBroker.config.Broker)
-	if err != nil {
-		fmt.Printf("Dial: %s\n", err)
-	}
-
-}
-
 // Connects to the message queue, opens a channel, declares a queue
 func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
-	var err error
-	var channel *amqp.Channel
-	var queue amqp.Queue
-	if conn == nil {
-		once.Do(amqpBroker.connect)
-	}
+	var (
+		err     error
+		conn    *amqp.Connection
+		channel *amqp.Channel
+		queue   amqp.Queue
+	)
 
-	if conn == nil {
-		return conn, channel, queue, nil, fmt.Errorf("Can't connect to the server")
+	conn, err = amqp.Dial(amqpBroker.config.Broker)
+	if err != nil {
+		return conn, channel, queue, nil, err
 	}
 
 	channel, err = conn.Channel()
 	if err != nil {
-		fmt.Printf("Channel: %s\n", err)
+		return conn, channel, queue, nil, err
 	}
+
 	if err := channel.ExchangeDeclare(
 		amqpBroker.config.Exchange,     // name of the exchange
 		amqpBroker.config.ExchangeType, // type
@@ -229,7 +218,7 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		false, // noWait
 		nil,   // arguments
 	); err != nil {
-		fmt.Printf("Exchange: %s\n", err)
+		return conn, channel, queue, nil, err
 	}
 
 	queue, err = channel.QueueDeclare(
@@ -241,7 +230,7 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		nil,   // arguments
 	)
 	if err != nil {
-		fmt.Printf("Queue Declare: %s\n", err)
+		return conn, channel, queue, nil, err
 	}
 
 	if err := channel.QueueBind(
@@ -251,15 +240,14 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		false, // noWait
 		nil,   // arguments
 	); err != nil {
-		fmt.Printf("Queue Bind: %s\n", err)
+		return conn, channel, queue, nil, err
+	}
+
+	// Enable publish confirmations
+	if err := channel.Confirm(false); err != nil {
+		return conn, channel, queue, nil, err
 	}
 
 	confirmsChan := make(chan amqp.Confirmation, 1)
-	// Enable publish confirmations
-	if err := channel.Confirm(false); err != nil {
-		close(confirmsChan)
-		fmt.Printf("Channel could not be put into confirm mode: %s\n", err)
-	}
-
 	return conn, channel, queue, channel.NotifyPublish(confirmsChan), nil
 }
