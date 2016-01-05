@@ -77,6 +77,7 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 	reflectedTask := reflect.ValueOf(task)
 	relfectedArgs, err := worker.reflectArgs(signature.Args)
 	if err != nil {
+		worker.finalizeError(signature, err)
 		return fmt.Errorf("Reflect task args: %v", err)
 	}
 
