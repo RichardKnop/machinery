@@ -39,10 +39,11 @@ $ go get github.com/RichardKnop/machinery
 Install dependencies:
 
 ```
-$ make deps
+$ cd $GOPATH/src/github.com/RichardKnop/machinery
+$ make install-deps
 ```
 
-First, you will need to define some tasks. Look at sample tasks in `_examples/tasks/tasks.go` to see few examples.
+First, you will need to define some tasks. Look at sample tasks in `_examples/tasks/tasks.go` to see a few examples.
 
 Second, you will need to launch a worker process:
 
