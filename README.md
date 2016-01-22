@@ -43,12 +43,12 @@ $ cd $GOPATH/src/github.com/RichardKnop/machinery
 $ make install-deps
 ```
 
-First, you will need to define some tasks. Look at sample tasks in `_examples/tasks/tasks.go` to see a few examples.
+First, you will need to define some tasks. Look at sample tasks in `examples/tasks/tasks.go` to see a few examples.
 
 Second, you will need to launch a worker process:
 
 ```
-$ go run _examples/worker/worker.go
+$ go run examples/worker/worker.go
 ```
 
 ![Example worker][1]
@@ -56,7 +56,7 @@ $ go run _examples/worker/worker.go
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
 ```
-$ go run _examples/send/send.go
+$ go run examples/send/send.go
 ```
 
 You will be able to see the tasks being processed asynchronously by the worker:
