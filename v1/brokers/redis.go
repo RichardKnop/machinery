@@ -89,7 +89,7 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 			case <-redisBroker.stopReceivingChan:
 				return
 			default:
-				itemBytes, err := conn.Do("LPOP", redisBroker.config.DefaultQueue)
+				itemBytes, err := conn.Do("BLPOP", redisBroker.config.DefaultQueue, "1")
 				if err != nil {
 					redisBroker.errorsChan <- err
 					return
@@ -99,12 +99,18 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 					continue
 				}
 
-				item, err := redis.Bytes(itemBytes, nil)
+				items, err := redis.ByteSlices(itemBytes, nil)
 				if err != nil {
 					redisBroker.errorsChan <- err
 					return
 				}
 
+				if len(items) != 2 {
+					log.Println("Got unexpected amount of byte arrays, ignoring")
+					continue
+				}
+				// items[0] - queue name (key), items[1] - value
+				item := items[1]
 				signature := signatures.TaskSignature{}
 				if err := json.Unmarshal(item, &signature); err != nil {
 					redisBroker.errorsChan <- err
