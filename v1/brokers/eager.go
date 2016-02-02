@@ -27,7 +27,7 @@ func (e *EagerBroker) SetRegisteredTaskNames(names []string) {
 	// do nothing
 }
 
-func (e *EagerBroker)  IsTaskRegistered(name string) bool {
+func (e *EagerBroker) IsTaskRegistered(name string) bool {
 	return true
 }
 
