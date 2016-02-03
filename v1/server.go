@@ -9,7 +9,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/pborman/uuid"
+	"github.com/RichardKnop/uuid"
 )
 
 // Server is the main Machinery object and stores all configuration

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/pborman/uuid"
+	"github.com/RichardKnop/uuid"
 )
 
 // Chain creates a chain of tasks to be executed one after another
