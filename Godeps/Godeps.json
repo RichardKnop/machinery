@@ -6,9 +6,13 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/RichardKnop/uuid",
+			"Rev": "dee7705ef7b324f27ceb85a121c61f2c2e8ce988"
+		},
+		{
 			"ImportPath": "github.com/bradfitz/gomemcache/memcache",
-			"Comment": "release.r60-40-g72a6864",
-			"Rev": "72a68649ba712ee7c4b5b4a943a626bcd7d90eb8"
+			"Comment": "release.r60-41-gfb1f79c",
+			"Rev": "fb1f79c6b65acda83063cbc69f6bba1522558bfc"
 		},
 		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
@@ -23,12 +27,8 @@
 			"Rev": "836b6e58b3358112c8291565d01c35b8764070d7"
 		},
 		{
-			"ImportPath": "github.com/pborman/uuid",
-			"Rev": "dee7705ef7b324f27ceb85a121c61f2c2e8ce988"
-		},
-		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
-			"Rev": "e8554b8641db39598be7f6342874b958f12ae1d4"
+			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
 		},
 		{
 			"ImportPath": "github.com/streadway/amqp",
@@ -36,18 +36,18 @@
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Comment": "v1.0-88-ge3a8ff8",
-			"Rev": "e3a8ff8ce36581f87a15341206f205b1da467059"
+			"Comment": "v1.1.3-2-g9f9027f",
+			"Rev": "9f9027faeb0dad515336ed2f28317f9f8f527ab4"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/require",
-			"Comment": "v1.0-88-ge3a8ff8",
-			"Rev": "e3a8ff8ce36581f87a15341206f205b1da467059"
+			"Comment": "v1.1.3-2-g9f9027f",
+			"Rev": "9f9027faeb0dad515336ed2f28317f9f8f527ab4"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/suite",
-			"Comment": "v1.0-88-ge3a8ff8",
-			"Rev": "e3a8ff8ce36581f87a15341206f205b1da467059"
+			"Comment": "v1.1.3-2-g9f9027f",
+			"Rev": "9f9027faeb0dad515336ed2f28317f9f8f527ab4"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",

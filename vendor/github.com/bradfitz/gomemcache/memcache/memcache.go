@@ -147,9 +147,6 @@ type Item struct {
 	// Value is the Item's value.
 	Value []byte
 
-	// Object is the Item's value for use with a Codec.
-	Object interface{}
-
 	// Flags are server-opaque flags whose semantics are entirely
 	// up to the app.
 	Flags uint32
