@@ -96,7 +96,7 @@ Currently supported backends are:
 
 ### ResultsExpireIn
 
-How long to store task results for in seconds. Defaults to 3600 (1 hour).
+How long to store task results for in seconds. Defaults to `3600` (1 hour).
 
 ### Exchange
 
