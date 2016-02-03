@@ -12,35 +12,31 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 
 So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processes on a single server using Golang's goroutines.
 
-- [First Steps](https://github.com/RichardKnop/machinery#first-steps)
-- [Configuration](https://github.com/RichardKnop/machinery#configuration)
-- [Server](https://github.com/RichardKnop/machinery#server)
-- [Workers](https://github.com/RichardKnop/machinery#workers)
-- [Tasks](https://github.com/RichardKnop/machinery#tasks)
-    - [Registering Tasks](https://github.com/RichardKnop/machinery#registering-tasks)
-    - [Signatures](https://github.com/RichardKnop/machinery#signatures)
-    - [Supported Types](https://github.com/RichardKnop/machinery#supported-types)
-    - [Sending Tasks](https://github.com/RichardKnop/machinery#sending-tasks)
-    - [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
-- [Workflows](https://github.com/RichardKnop/machinery#workflows)
-    - [Groups](https://github.com/RichardKnop/machinery#groups)
-    - [Chords](https://github.com/RichardKnop/machinery#chords)
-    - [Chains](https://github.com/RichardKnop/machinery#chains)
-- [Development Setup](https://github.com/RichardKnop/machinery#development-setup)
+* [First Steps](#first-steps)
+* [Configuration](#configuration)
+* [Server](#server)
+* [Workers](#workers)
+* [Tasks](#tasks)
+  * [Registering Tasks](#registering-tasks)
+  * [Signatures](#signatures)
+  * [Supported Types](#supported-types)
+  * [Sending Tasks](#sending-tasks)
+  * [Keeping Results](#keeping-results)
+* [Workflows](#workflows)
+  * [Groups](#groups)
+  * [Chords](#chords)
+  * [Chains](#chains)
+* [Development](#development)
+  * [Requirements](#requirements)
+  * [Dependencies](#dependencies)
+  * [Testing](#testing)
 
 ## First Steps
 
 Add the Machinery library to your $GOPATH/src:
 
 ```
-$ go get github.com/RichardKnop/machinery
-```
-
-Install dependencies:
-
-```
-$ cd $GOPATH/src/github.com/RichardKnop/machinery
-$ make install-deps
+go get github.com/RichardKnop/machinery
 ```
 
 First, you will need to define some tasks. Look at sample tasks in `examples/tasks/tasks.go` to see a few examples.
@@ -48,7 +44,7 @@ First, you will need to define some tasks. Look at sample tasks in `examples/tas
 Second, you will need to launch a worker process:
 
 ```
-$ go run examples/worker/worker.go
+go run examples/worker/worker.go
 ```
 
 ![Example worker][1]
@@ -56,7 +52,7 @@ $ go run examples/worker/worker.go
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
 ```
-$ go run examples/send/send.go
+go run examples/send/send.go
 ```
 
 You will be able to see the tasks being processed asynchronously by the worker:
@@ -84,7 +80,7 @@ type Config struct {
 A message broker. Currently supported brokers are:
 
 * AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
-* Redis (use Redis URL such as `redis://127.0.0.1:6379`, or to use password redis://password@127.0.0.1:6379)
+* Redis (use Redis URL such as `redis://127.0.0.1:6379`, or to use password `redis://password@127.0.0.1:6379`)
 
 ### ResultBackend
 
@@ -601,30 +597,43 @@ if err != nil {
 fmt.Println(result.Interface())
 ```
 
-## Development Setup
+## Development
 
-First, there are several requirements:
+### Requirements
 
-- RabbitMQ
-- Go
-- Memcached (optional)
+* Go
+* RabbitMQ
+* Redis (optional)
+* Memcached (optional)
 
-On OS X systems, you can install them using Homebrew:
-
-```
-$ brew install rabbitmq
-$ brew install redis
-$ brew install memcached
-$ brew install go
-```
-
-Then get all Machinery dependencies.
+On OS X systems, you can install requirements using [Homebrew](http://brew.sh/):
 
 ```
-$ make deps
+brew install go
+brew install rabbitmq
+brew install redis
+brew install memcached
 ```
 
-### Tests
+### Dependencies
+
+According to [Go 1.5 Vendor experiment](https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo), all dependencies are stored in the vendor directory. This approach is called `vendoring` and is the best practice for Go projects to lock versions of dependencies in order to achieve reproducible builds.
+
+To update dependencies during development:
+
+```
+make update-deps
+```
+
+To install dependencies:
+
+```
+make install-deps
+```
+
+### Testing
+
+To run tests:
 
 ```
 $ make test
@@ -633,9 +642,9 @@ $ make test
 In order to enable integration tests, you will need to export few environment variables:
 
 ```
-$ export AMQP_URL=amqp://guest:guest@localhost:5672/
-$ export MEMCACHE_URL=127.0.0.1:11211
-$ export REDIS_URL=127.0.0.1:6379
+export AMQP_URL=amqp://guest:guest@localhost:5672/
+export REDIS_URL=127.0.0.1:6379
+export MEMCACHE_URL=127.0.0.1:11211
 ```
 
 I recommend to run the integration tests when making changes to the code. Due to Machinery being composed of several parts (worker, client) which run independently of each other, integration tests are important to verify everything works as expected.
