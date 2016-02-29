@@ -16,16 +16,19 @@ type RedisBackend struct {
 	config   *config.Config
 	host     string
 	password string
-	conn     redis.Conn
+	pool     *redis.Pool
 }
 
 // NewRedisBackend creates RedisBackend instance
 func NewRedisBackend(cnf *config.Config, host, password string) Backend {
-	return Backend(&RedisBackend{
+	be := &RedisBackend{
 		config:   cnf,
 		host:     host,
 		password: password,
-	})
+	}
+	be.pool = be.newPool()
+	return Backend(be)
+
 }
 
 // InitGroup - saves UUIDs of all tasks in a group
@@ -40,10 +43,7 @@ func (redisBackend *RedisBackend) InitGroup(groupUUID string, taskUUIDs []string
 		return err
 	}
 
-	conn, err := redisBackend.open()
-	if err != nil {
-		return err
-	}
+	conn := redisBackend.pool.Get()
 	defer conn.Close()
 
 	_, err = conn.Do("SET", groupUUID, encoded)
@@ -121,10 +121,7 @@ func (redisBackend *RedisBackend) SetStateFailure(signature *signatures.TaskSign
 func (redisBackend *RedisBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := TaskState{}
 
-	conn, err := redisBackend.open()
-	if err != nil {
-		return nil, err
-	}
+	conn := redisBackend.pool.Get()
 	defer conn.Close()
 
 	item, err := redis.Bytes(conn.Do("GET", taskUUID))
@@ -141,13 +138,10 @@ func (redisBackend *RedisBackend) GetState(taskUUID string) (*TaskState, error) 
 
 // PurgeState - deletes stored task state
 func (redisBackend *RedisBackend) PurgeState(taskUUID string) error {
-	conn, err := redisBackend.open()
-	if err != nil {
-		return err
-	}
+	conn := redisBackend.pool.Get()
 	defer conn.Close()
 
-	_, err = conn.Do("DEL", taskUUID)
+	_, err := conn.Do("DEL", taskUUID)
 	if err != nil {
 		return err
 	}
@@ -157,13 +151,10 @@ func (redisBackend *RedisBackend) PurgeState(taskUUID string) error {
 
 // PurgeGroupMeta - deletes stored group meta data
 func (redisBackend *RedisBackend) PurgeGroupMeta(groupUUID string) error {
-	conn, err := redisBackend.open()
-	if err != nil {
-		return err
-	}
+	conn := redisBackend.pool.Get()
 	defer conn.Close()
 
-	_, err = conn.Do("DEL", groupUUID)
+	_, err := conn.Do("DEL", groupUUID)
 	if err != nil {
 		return err
 	}
@@ -173,10 +164,7 @@ func (redisBackend *RedisBackend) PurgeGroupMeta(groupUUID string) error {
 
 // Fetches GroupMeta from the backend, convenience function to avoid repetition
 func (redisBackend *RedisBackend) getGroupMeta(groupUUID string) (*GroupMeta, error) {
-	conn, err := redisBackend.open()
-	if err != nil {
-		return nil, err
-	}
+	conn := redisBackend.pool.Get()
 	defer conn.Close()
 
 	item, err := redis.Bytes(conn.Do("GET", groupUUID))
@@ -199,10 +187,7 @@ func (redisBackend *RedisBackend) getStates(taskUUIDs ...string) ([]*TaskState, 
 	log.Print("Getting states")
 	log.Print(taskUUIDs)
 
-	conn, err := redisBackend.open()
-	if err != nil {
-		return taskStates, err
-	}
+	conn := redisBackend.pool.Get()
 	defer conn.Close()
 
 	// conn.Do requires []interface{}... can't pass []string unfortunately
@@ -241,10 +226,7 @@ func (redisBackend *RedisBackend) updateState(taskState *TaskState) error {
 		return err
 	}
 
-	conn, err := redisBackend.open()
-	if err != nil {
-		return err
-	}
+	conn := redisBackend.pool.Get()
 	defer conn.Close()
 
 	_, err = conn.Do("SET", taskState.TaskUUID, encoded)
@@ -264,13 +246,10 @@ func (redisBackend *RedisBackend) setExpirationTime(key string) error {
 	}
 	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
 
-	conn, err := redisBackend.open()
-	if err != nil {
-		return err
-	}
+	conn := redisBackend.pool.Get()
 	defer conn.Close()
 
-	_, err = conn.Do("EXPIREAT", key, expirationTimestamp)
+	_, err := conn.Do("EXPIREAT", key, expirationTimestamp)
 	if err != nil {
 		return err
 	}
@@ -278,11 +257,33 @@ func (redisBackend *RedisBackend) setExpirationTime(key string) error {
 	return nil
 }
 
-// Returns / creates instance of Redis connection
-func (redisBackend *RedisBackend) open() (redis.Conn, error) {
-	if redisBackend.password != "" {
-		return redis.Dial("tcp", redisBackend.host,
-			redis.DialPassword(redisBackend.password))
+// Returns a new pool of Redis connections
+func (redisBackend *RedisBackend) newPool() *redis.Pool {
+	return &redis.Pool{
+		MaxActive:   10,
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			var (
+				c   redis.Conn
+				err error
+			)
+
+			if redisBackend.password != "" {
+				c, err = redis.Dial("tcp", redisBackend.host,
+					redis.DialPassword(redisBackend.password))
+			} else {
+				c, err = redis.Dial("tcp", redisBackend.host)
+			}
+
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
 	}
-	return redis.Dial("tcp", redisBackend.host)
 }
