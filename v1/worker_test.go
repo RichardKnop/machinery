@@ -2,6 +2,7 @@ package machinery
 
 import (
 	. "github.com/RichardKnop/machinery/v1/signatures"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -30,5 +31,17 @@ func TestInvalidArgRobustness(t *testing.T) {
 
 	if results != nil {
 		t.Errorf("results = %v, want nil", results)
+	}
+}
+
+func TestInterfaceValuedResult(t *testing.T) {
+	f := func() interface{} { return math.Pi }
+	value := reflect.ValueOf(f())
+	taskResult := createTaskResult(value)
+	if taskResult.Type != "float64" {
+		t.Errorf("taskResult.Type = %v, want \"float64\"", taskResult.Type)
+	}
+	if taskResult.Value != math.Pi {
+		t.Errorf("taskResult.Value = %v, want %v", taskResult.Value, math.Pi)
 	}
 }

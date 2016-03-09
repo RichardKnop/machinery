@@ -143,27 +143,32 @@ func tryCall(f reflect.Value, args []reflect.Value) (results []reflect.Value, er
 	return results, err
 }
 
+func createTaskResult(value reflect.Value) *backends.TaskResult {
+	return &backends.TaskResult{
+		Type:  reflect.TypeOf(value.Interface()).String(),
+		Value: value.Interface(),
+	}
+}
+
 // Task succeeded, update state and trigger success callbacks
 func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, result reflect.Value) error {
 	// Update task state to SUCCESS
 	backend := worker.server.GetBackend()
-	taskResult := &backends.TaskResult{
-		Type:  result.Type().String(),
-		Value: result.Interface(),
-	}
+
+	taskResult := createTaskResult(result)
 	if err := backend.SetStateSuccess(signature, taskResult); err != nil {
 		return fmt.Errorf("Set State Success: %v", err)
 	}
 
-	log.Printf("Processed %s. Result = %v", signature.UUID, result.Interface())
+	log.Printf("Processed %s. Result = %v", signature.UUID, taskResult.Value)
 
 	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {
 			// Pass results of the task to success callbacks
 			args := append([]signatures.TaskArg{signatures.TaskArg{
-				Type:  result.Type().String(),
-				Value: result.Interface(),
+				Type:  taskResult.Type,
+				Value: taskResult.Value,
 			}}, successTask.Args...)
 			successTask.Args = args
 		}
