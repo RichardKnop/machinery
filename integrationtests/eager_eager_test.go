@@ -53,7 +53,7 @@ func (s *EagerIntegrationTestSuite) TestCalled() {
 	_, err := s.srv.SendTask(&signatures.TaskSignature{
 		Name: "float_called",
 		Args: []signatures.TaskArg{
-			signatures.TaskArg{
+			{
 				Type:  "float64",
 				Value: 100.0,
 			},
@@ -70,7 +70,7 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 		result, err := s.srv.SendTask(&signatures.TaskSignature{
 			Name: "float_result",
 			Args: []signatures.TaskArg{
-				signatures.TaskArg{
+				{
 					Type:  "float64",
 					Value: 100.0,
 				},
@@ -97,7 +97,7 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 		result, err := s.srv.SendTask(&signatures.TaskSignature{
 			Name: "int_result",
 			Args: []signatures.TaskArg{
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 100,
 				},

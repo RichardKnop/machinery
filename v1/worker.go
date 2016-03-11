@@ -166,7 +166,7 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {
 			// Pass results of the task to success callbacks
-			args := append([]signatures.TaskArg{signatures.TaskArg{
+			args := append([]signatures.TaskArg{{
 				Type:  taskResult.Type,
 				Value: taskResult.Value,
 			}}, successTask.Args...)
@@ -243,7 +243,7 @@ func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err err
 	// Trigger error callbacks
 	for _, errorTask := range signature.OnError {
 		// Pass error as a first argument to error callbacks
-		args := append([]signatures.TaskArg{signatures.TaskArg{
+		args := append([]signatures.TaskArg{{
 			Type:  reflect.TypeOf(err).String(),
 			Value: reflect.ValueOf(err).Interface(),
 		}}, errorTask.Args...)

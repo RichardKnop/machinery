@@ -10,11 +10,11 @@ func TestNewChain(t *testing.T) {
 	task1 := signatures.TaskSignature{
 		Name: "foo",
 		Args: []signatures.TaskArg{
-			signatures.TaskArg{
+			{
 				Type:  "float64",
 				Value: interface{}(1),
 			},
-			signatures.TaskArg{
+			{
 				Type:  "float64",
 				Value: interface{}(1),
 			},
@@ -24,11 +24,11 @@ func TestNewChain(t *testing.T) {
 	task2 := signatures.TaskSignature{
 		Name: "bar",
 		Args: []signatures.TaskArg{
-			signatures.TaskArg{
+			{
 				Type:  "float64",
 				Value: interface{}(5),
 			},
-			signatures.TaskArg{
+			{
 				Type:  "float64",
 				Value: interface{}(6),
 			},
@@ -38,7 +38,7 @@ func TestNewChain(t *testing.T) {
 	task3 := signatures.TaskSignature{
 		Name: "qux",
 		Args: []signatures.TaskArg{
-			signatures.TaskArg{
+			{
 				Type:  "float64",
 				Value: interface{}(4),
 			},

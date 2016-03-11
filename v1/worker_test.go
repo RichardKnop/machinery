@@ -13,7 +13,7 @@ func TestInvalidArgRobustness(t *testing.T) {
 
 	// Construct an invalid argument list and reflect it
 	args := []TaskArg{
-		TaskArg{"bool", true},
+		{"bool", true},
 	}
 
 	argValues, err := reflectArgs(args)
