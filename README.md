@@ -187,7 +187,7 @@ server.RegisterTasks(map[string]interface{}{
 })
 ```
 
-Task can also be registered one by one:
+Tasks can also be registered one by one:
 
 ```go
 server.RegisterTask("add", Add)
@@ -495,13 +495,13 @@ if err != nil {
 }
 ```
 
-The above example execute task1 and task2 in parallel, aggregate their results and pass them to task3. Therefor what would end up happening is:
+The above example executes task1 and task2 in parallel, aggregates their results and passes them to task3. Therefore what would end up happening is:
 
 ```
 multiply(add(1, 1), add(5, 5))
 ```
 
-More explicitely:
+More explicitly:
 
 ```
 (1 + 1) * (5 + 5) = 2 * 10 = 20
@@ -574,13 +574,13 @@ if err != nil {
 }
 ```
 
-The above example execute task1, then task2 and then task3, passing result of each task to the next task in the chain. Therefor what would end up happening is:
+The above example executes task1, then task2 and then task3, passing the result of each task to the next task in the chain. Therefore what would end up happening is:
 
 ```
 multiply(add(add(1, 1), 5, 5), 4)
 ```
 
-More explicitely:
+More explicitly:
 
 ```
 ((1 + 1) + (5 + 5)) * 4 = 12 * 4 = 48

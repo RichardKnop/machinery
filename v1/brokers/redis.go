@@ -202,7 +202,7 @@ func (redisBroker *RedisBroker) consume(deliveries <-chan []byte, taskProcessor 
 	}
 }
 
-// Stops the receving goroutine
+// Stops the receiving goroutine
 func (redisBroker *RedisBroker) stopReceiving() {
 	redisBroker.stopReceivingChan <- 1
 	// Waiting for the receiving goroutine to have stopped
