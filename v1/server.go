@@ -215,7 +215,7 @@ func (server *Server) SendChord(chord *Chord) (*backends.ChordAsyncResult, error
 func (server *Server) getRegisteredTaskNames() []string {
 	names := make([]string, len(server.registeredTasks))
 
-	for name, _ := range server.registeredTasks {
+	for name := range server.registeredTasks {
 		names = append(names, name)
 	}
 

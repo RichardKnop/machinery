@@ -14,7 +14,7 @@ install-deps:
 	$(DEPS) | xargs -n1 go get -d
 
 fmt:
-	bash -c 'go list ./... | grep -v vendor | xargs -n1 go fmt'
+	bash -c 'git ls-files "**.go" | grep -v ^vendor/ | xargs -n1 gofmt -e -s -w'
 
 test:
 	bash -c 'go list ./... | grep -v vendor | xargs -n1 go test -timeout=30s'

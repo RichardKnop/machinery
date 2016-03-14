@@ -51,11 +51,11 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 		task1 := signatures.TaskSignature{
 			Name: "add",
 			Args: []signatures.TaskArg{
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 2,
 				},
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 3,
 				},
@@ -65,11 +65,11 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 		task2 := signatures.TaskSignature{
 			Name: "multiply",
 			Args: []signatures.TaskArg{
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 4,
 				},
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 5,
 				},
@@ -155,11 +155,11 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 		task1 := signatures.TaskSignature{
 			Name: "add",
 			Args: []signatures.TaskArg{
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 2,
 				},
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 3,
 				},
@@ -169,11 +169,11 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 		task2 := signatures.TaskSignature{
 			Name: "multiply",
 			Args: []signatures.TaskArg{
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 4,
 				},
-				signatures.TaskArg{
+				{
 					Type:  "int64",
 					Value: 5,
 				},

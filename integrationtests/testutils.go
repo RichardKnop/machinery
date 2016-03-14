@@ -21,11 +21,11 @@ func _getTasks() []signatures.TaskSignature {
 	task0 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
-			signatures.TaskArg{
+			{
 				Type:  "int64",
 				Value: 1,
 			},
-			signatures.TaskArg{
+			{
 				Type:  "int64",
 				Value: 1,
 			},
@@ -35,11 +35,11 @@ func _getTasks() []signatures.TaskSignature {
 	task1 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
-			signatures.TaskArg{
+			{
 				Type:  "int64",
 				Value: 2,
 			},
-			signatures.TaskArg{
+			{
 				Type:  "int64",
 				Value: 2,
 			},
@@ -49,11 +49,11 @@ func _getTasks() []signatures.TaskSignature {
 	task2 := signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
-			signatures.TaskArg{
+			{
 				Type:  "int64",
 				Value: 5,
 			},
-			signatures.TaskArg{
+			{
 				Type:  "int64",
 				Value: 6,
 			},
@@ -63,7 +63,7 @@ func _getTasks() []signatures.TaskSignature {
 	task3 := signatures.TaskSignature{
 		Name: "multiply",
 		Args: []signatures.TaskArg{
-			signatures.TaskArg{
+			{
 				Type:  "int64",
 				Value: 4,
 			},

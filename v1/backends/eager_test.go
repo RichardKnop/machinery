@@ -24,12 +24,12 @@ func (s *EagerBackendTestSuite) SetupSuite() {
 
 	// 2 non-group state
 	s.st = []*signatures.TaskSignature{
-		&signatures.TaskSignature{UUID: "1"},
-		&signatures.TaskSignature{UUID: "2"},
-		&signatures.TaskSignature{UUID: "3"},
-		&signatures.TaskSignature{UUID: "4"},
-		&signatures.TaskSignature{UUID: "5"},
-		&signatures.TaskSignature{UUID: "6"},
+		{UUID: "1"},
+		{UUID: "2"},
+		{UUID: "3"},
+		{UUID: "4"},
+		{UUID: "5"},
+		{UUID: "6"},
 	}
 
 	for _, t := range s.st {
