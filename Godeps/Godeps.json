@@ -32,7 +32,7 @@
 		},
 		{
 			"ImportPath": "github.com/streadway/amqp",
-			"Rev": "b4f3ceab0337f013208d31348b578d83c0064744"
+			"Rev": "2e25825abdbd7752ff08b270d313b93519a0a232"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
