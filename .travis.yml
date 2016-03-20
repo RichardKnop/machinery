@@ -8,6 +8,7 @@ services:
   - rabbitmq
   - memcached
   - redis-server
+  - mongodb
 
 branches:
   only:

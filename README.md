@@ -91,6 +91,7 @@ Currently supported backends are:
 * Redis (use Redis URL such as `redis://127.0.0.1:6379`, or to use password `redis://password@127.0.0.1:6379`)
 * Memcache (use Memcache URL such as `memcache://10.0.0.1:11211,10.0.0.2:11211`)
 * AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
+* Mongodb (use Mongodb URL such as `mongodb://{host}:{port}/{database}` [docs](https://docs.mongodb.org/manual/reference/connection-string/))
 
 > Keep in mind AMQP is not recommended as a result backend. See [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 
@@ -276,7 +277,7 @@ Machinery encodes tasks to JSON before sending them to the broker. Task results 
 * `int16`
 * `int32`
 * `int64`
-* `unint`
+* `uint`
 * `uint8`
 * `uint16`
 * `uint32`
@@ -645,6 +646,7 @@ In order to enable integration tests, you will need to export few environment va
 export AMQP_URL=amqp://guest:guest@localhost:5672/
 export REDIS_URL=127.0.0.1:6379
 export MEMCACHE_URL=127.0.0.1:11211
+export MONGODB_URL=mongodb://{host}:{port}/{database}
 ```
 
 I recommend to run the integration tests when making changes to the code. Due to Machinery being composed of several parts (worker, client) which run independently of each other, integration tests are important to verify everything works as expected.
