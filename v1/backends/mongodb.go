@@ -159,7 +159,6 @@ func (m *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
 
 func (m *MongodbBackend) setState(signature *signatures.TaskSignature, update bson.M) error {
 	newTask := bson.M{
-		"_id":        signature.UUID,
 		"group_uuid": signature.GroupUUID,
 		"createdAt":  time.Now(),
 	}
