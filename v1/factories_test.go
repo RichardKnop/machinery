@@ -153,6 +153,20 @@ func TestBackendFactory(t *testing.T) {
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
+
+	// 4) MongoDB backend test
+
+	cnf = config.Config{
+		ResultBackend: "mongodb://localhost:27017/tasks",
+	}
+	actual, err = BackendFactory(&cnf)
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if actual == nil {
+		t.Errorf("MongoDB backend is nil")
+	}
 }
 
 func TestBackendFactoryError(t *testing.T) {

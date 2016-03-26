@@ -86,6 +86,10 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 		return backends.NewRedisBackend(cnf, redisHost, redisPassword), nil
 	}
 
+	if strings.HasPrefix(cnf.ResultBackend, "mongodb://") {
+		return backends.NewMongodbBackend(cnf)
+	}
+
 	if strings.HasPrefix(cnf.ResultBackend, "eager") {
 		return backends.NewEagerBackend(), nil
 	}
