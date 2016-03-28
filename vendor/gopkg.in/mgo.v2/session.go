@@ -63,6 +63,8 @@ const (
 	Strong    Mode = 2 // Same as Primary.
 )
 
+// mgo.v3: Drop Strong mode, suffix all modes with "Mode".
+
 // When changing the Session type, check if newSession and copySession
 // need to be updated too.
 
@@ -73,21 +75,22 @@ const (
 // multiple goroutines will cause them to share the same underlying socket.
 // See the documentation on Session.SetMode for more details.
 type Session struct {
-	m            sync.RWMutex
-	cluster_     *mongoCluster
-	slaveSocket  *mongoSocket
-	masterSocket *mongoSocket
-	slaveOk      bool
-	consistency  Mode
-	queryConfig  query
-	safeOp       *queryOp
-	syncTimeout  time.Duration
-	sockTimeout  time.Duration
-	defaultdb    string
-	sourcedb     string
-	dialCred     *Credential
-	creds        []Credential
-	poolLimit    int
+	m                sync.RWMutex
+	cluster_         *mongoCluster
+	slaveSocket      *mongoSocket
+	masterSocket     *mongoSocket
+	slaveOk          bool
+	consistency      Mode
+	queryConfig      query
+	safeOp           *queryOp
+	syncTimeout      time.Duration
+	sockTimeout      time.Duration
+	defaultdb        string
+	sourcedb         string
+	dialCred         *Credential
+	creds            []Credential
+	poolLimit        int
+	bypassValidation bool
 }
 
 type Database struct {
@@ -315,7 +318,7 @@ type DialInfo struct {
 	// Timeout is the amount of time to wait for a server to respond when
 	// first connecting and on follow up operations in the session. If
 	// timeout is zero, the call may block forever waiting for a connection
-	// to be established.
+	// to be established. Timeout does not affect logic in DialServer.
 	Timeout time.Duration
 
 	// FailFast will cause connection and query attempts to fail faster when
@@ -1031,6 +1034,7 @@ type Index struct {
 }
 
 // mgo.v3: Drop Minf and Maxf and transform Min and Max to floats.
+// mgo.v3: Drop DropDups as it's unsupported past 2.8.
 
 type indexKeyInfo struct {
 	name    string
@@ -1675,6 +1679,24 @@ func (s *Session) SetPoolLimit(limit int) {
 	s.m.Unlock()
 }
 
+// SetBypassValidation sets whether the server should bypass the registered
+// validation expressions executed when documents are inserted or modified,
+// in the interest of preserving properties for documents in the collection
+// being modfified. The default is to not bypass, and thus to perform the
+// validation expressions registered for modified collections. 
+//
+// Document validation was introuced in MongoDB 3.2.
+//
+// Relevant documentation:
+//
+//   https://docs.mongodb.org/manual/release-notes/3.2/#bypass-validation
+//
+func (s *Session) SetBypassValidation(bypass bool) {
+	s.m.Lock()
+	s.bypassValidation = bypass
+	s.m.Unlock()
+}
+
 // SetBatch sets the default batch size used when fetching documents from the
 // database. It's possible to change this setting on a per-query basis as
 // well, using the Query.Batch method.
@@ -1716,8 +1738,8 @@ type Safe struct {
 	W        int    // Min # of servers to ack before success
 	WMode    string // Write mode for MongoDB 2.0+ (e.g. "majority")
 	WTimeout int    // Milliseconds to wait for W before timing out
-	FSync    bool   // Should servers sync to disk before returning success
-	J        bool   // Wait for next group commit if journaling; no effect otherwise
+	FSync    bool   // Sync via the journal if present, or via data files sync otherwise
+	J        bool   // Sync via the journal if present
 }
 
 // Safe returns the current safety mode for the session.
@@ -1761,10 +1783,18 @@ func (s *Session) Safe() (safe *Safe) {
 // the links below for more details (note that MongoDB internally reuses the
 // "w" field name for WMode).
 //
-// If safe.FSync is true and journaling is disabled, the servers will be
-// forced to sync all files to disk immediately before returning. If the
-// same option is true but journaling is enabled, the server will instead
-// await for the next group commit before returning.
+// If safe.J is true, servers will block until write operations have been
+// committed to the journal. Cannot be used in combination with FSync. Prior
+// to MongoDB 2.6 this option was ignored if the server was running without
+// journaling. Starting with MongoDB 2.6 write operations will fail with an
+// exception if this option is used when the server is running without
+// journaling.
+//
+// If safe.FSync is true and the server is running without journaling, blocks
+// until the server has synced all data files to disk. If the server is running
+// with journaling, this acts the same as the J option, blocking until write
+// operations have been committed to the journal. Cannot be used in
+// combination with J.
 //
 // Since MongoDB 2.0.0, the safe.J option can also be used instead of FSync
 // to force the server to wait for a group commit in case journaling is
@@ -2469,7 +2499,10 @@ func (c *Collection) UpsertId(id interface{}, update interface{}) (info *ChangeI
 //     http://www.mongodb.org/display/DOCS/Removing
 //
 func (c *Collection) Remove(selector interface{}) error {
-	lerr, err := c.writeOp(&deleteOp{c.FullName, selector, 1}, true)
+	if selector == nil {
+		selector = bson.D{}
+	}
+	lerr, err := c.writeOp(&deleteOp{c.FullName, selector, 1, 1}, true)
 	if err == nil && lerr != nil && lerr.N == 0 {
 		return ErrNotFound
 	}
@@ -2495,7 +2528,10 @@ func (c *Collection) RemoveId(id interface{}) error {
 //     http://www.mongodb.org/display/DOCS/Removing
 //
 func (c *Collection) RemoveAll(selector interface{}) (info *ChangeInfo, err error) {
-	lerr, err := c.writeOp(&deleteOp{c.FullName, selector, 0}, true)
+	if selector == nil {
+		selector = bson.D{}
+	}
+	lerr, err := c.writeOp(&deleteOp{c.FullName, selector, 0, 0}, true)
 	if err == nil && lerr != nil {
 		info = &ChangeInfo{Removed: lerr.N}
 	}
@@ -4011,7 +4047,7 @@ type BuildInfo struct {
 	VersionArray   []int  `bson:"versionArray"` // On MongoDB 2.0+; assembled from Version otherwise
 	GitVersion     string `bson:"gitVersion"`
 	OpenSSLVersion string `bson:"OpenSSLVersion"`
-	SysInfo        string `bson:"sysInfo"`
+	SysInfo        string `bson:"sysInfo"` // Deprecated and empty on MongoDB 3.2+.
 	Bits           int
 	Debug          bool
 	MaxObjectSize  int `bson:"maxBsonObjectSize"`
@@ -4052,6 +4088,9 @@ func (s *Session) BuildInfo() (info BuildInfo, err error) {
 		// Strip off the " modules: enterprise" suffix. This is a _git version_.
 		// That information may be moved to another field if people need it.
 		info.GitVersion = info.GitVersion[:i]
+	}
+	if info.SysInfo == "deprecated" {
+		info.SysInfo = ""
 	}
 	return
 }
@@ -4234,6 +4273,7 @@ func (c *Collection) writeOp(op interface{}, ordered bool) (lerr *LastError, err
 
 	s.m.RLock()
 	safeOp := s.safeOp
+	bypassValidation := s.bypassValidation
 	s.m.RUnlock()
 
 	if socket.ServerInfo().MaxWireVersion >= 2 {
@@ -4248,7 +4288,7 @@ func (c *Collection) writeOp(op interface{}, ordered bool) (lerr *LastError, err
 					l = len(all)
 				}
 				op.documents = all[i:l]
-				lerr, err := c.writeOpCommand(socket, safeOp, op, ordered)
+				lerr, err := c.writeOpCommand(socket, safeOp, op, ordered, bypassValidation)
 				if err != nil {
 					errors = append(errors, lerr.errors...)
 					if op.flags&1 == 0 {
@@ -4261,22 +4301,41 @@ func (c *Collection) writeOp(op interface{}, ordered bool) (lerr *LastError, err
 			}
 			return &LastError{errors: errors}, errors[0]
 		}
-		return c.writeOpCommand(socket, safeOp, op, ordered)
+		return c.writeOpCommand(socket, safeOp, op, ordered, bypassValidation)
 	} else if updateOps, ok := op.(bulkUpdateOp); ok {
-		var errors []error
+		var lerr LastError
 		for _, updateOp := range updateOps {
-			lerr, err := c.writeOpQuery(socket, safeOp, updateOp, ordered)
+			oplerr, err := c.writeOpQuery(socket, safeOp, updateOp, ordered)
 			if err != nil {
-				errors = append(errors, lerr.errors...)
+				lerr.N += oplerr.N
+				lerr.modified += oplerr.modified
+				lerr.errors = append(lerr.errors, oplerr.errors...)
 				if ordered {
-					return &LastError{errors: errors}, err
+					break
 				}
 			}
 		}
-		if len(errors) == 0 {
+		if len(lerr.errors) == 0 {
 			return nil, nil
 		}
-		return &LastError{errors: errors}, errors[0]
+		return &lerr, lerr.errors[0]
+	} else if deleteOps, ok := op.(bulkDeleteOp); ok {
+		var lerr LastError
+		for _, deleteOp := range deleteOps {
+			oplerr, err := c.writeOpQuery(socket, safeOp, deleteOp, ordered)
+			if err != nil {
+				lerr.N += oplerr.N
+				lerr.modified += oplerr.modified
+				lerr.errors = append(lerr.errors, oplerr.errors...)
+				if ordered {
+					break
+				}
+			}
+		}
+		if len(lerr.errors) == 0 {
+			return nil, nil
+		}
+		return &lerr, lerr.errors[0]
 	}
 	return c.writeOpQuery(socket, safeOp, op, ordered)
 }
@@ -4321,7 +4380,7 @@ func (c *Collection) writeOpQuery(socket *mongoSocket, safeOp *queryOp, op inter
 	return result, nil
 }
 
-func (c *Collection) writeOpCommand(socket *mongoSocket, safeOp *queryOp, op interface{}, ordered bool) (lerr *LastError, err error) {
+func (c *Collection) writeOpCommand(socket *mongoSocket, safeOp *queryOp, op interface{}, ordered, bypassValidation bool) (lerr *LastError, err error) {
 	var writeConcern interface{}
 	if safeOp == nil {
 		writeConcern = bson.D{{"w", 0}}
@@ -4357,16 +4416,23 @@ func (c *Collection) writeOpCommand(socket *mongoSocket, safeOp *queryOp, op int
 		}
 	case *deleteOp:
 		// http://docs.mongodb.org/manual/reference/command/delete
-		selector := op.selector
-		if selector == nil {
-			selector = bson.D{}
-		}
 		cmd = bson.D{
 			{"delete", c.Name},
-			{"deletes", []bson.D{{{"q", selector}, {"limit", op.flags & 1}}}},
+			{"deletes", []interface{}{op}},
 			{"writeConcern", writeConcern},
-			//{"ordered", <bool>},
+			{"ordered", ordered},
 		}
+	case bulkDeleteOp:
+		// http://docs.mongodb.org/manual/reference/command/delete
+		cmd = bson.D{
+			{"delete", c.Name},
+			{"deletes", op},
+			{"writeConcern", writeConcern},
+			{"ordered", ordered},
+		}
+	}
+	if bypassValidation {
+		cmd = append(cmd, bson.DocElem{"bypassDocumentValidation", true})
 	}
 
 	var result writeCmdResult

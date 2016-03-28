@@ -25,6 +25,7 @@ const (
 	bulkInsert bulkOp = iota + 1
 	bulkUpdate
 	bulkUpdateAll
+	bulkRemove
 )
 
 type bulkAction struct {
@@ -33,6 +34,7 @@ type bulkAction struct {
 }
 
 type bulkUpdateOp []interface{}
+type bulkDeleteOp []interface{}
 
 // BulkError holds an error returned from running a Bulk operation.
 //
@@ -60,18 +62,21 @@ func (e *bulkError) Error() string {
 	if len(e.errs) == 1 {
 		return e.errs[0].Error()
 	}
-	msgs := make(map[string]bool)
+	msgs := make([]string, 0, len(e.errs))
+	seen := make(map[string]bool)
 	for _, err := range e.errs {
-		msgs[err.Error()] = true
+		msg := err.Error()
+		if !seen[msg] {
+			seen[msg] = true
+			msgs = append(msgs, msg)
+		}
 	}
 	if len(msgs) == 1 {
-		for msg := range msgs {
-			return msg
-		}
+		return msgs[0]
 	}
 	var buf bytes.Buffer
 	buf.WriteString("multiple errors in bulk operation:\n")
-	for msg := range msgs {
+	for _, msg := range msgs {
 		buf.WriteString("  - ")
 		buf.WriteString(msg)
 		buf.WriteByte('\n')
@@ -80,9 +85,6 @@ func (e *bulkError) Error() string {
 }
 
 // Bulk returns a value to prepare the execution of a bulk operation.
-//
-// WARNING: This API is still experimental.
-//
 func (c *Collection) Bulk() *Bulk {
 	return &Bulk{c: c, ordered: true}
 }
@@ -115,6 +117,40 @@ func (b *Bulk) action(op bulkOp) *bulkAction {
 func (b *Bulk) Insert(docs ...interface{}) {
 	action := b.action(bulkInsert)
 	action.docs = append(action.docs, docs...)
+}
+
+// Remove queues up the provided selectors for removing matching documents.
+// Each selector will remove only a single matching document.
+func (b *Bulk) Remove(selectors ...interface{}) {
+	action := b.action(bulkRemove)
+	for _, selector := range selectors {
+		if selector == nil {
+			selector = bson.D{}
+		}
+		action.docs = append(action.docs, &deleteOp{
+			Collection: b.c.FullName,
+			Selector:   selector,
+			Flags:      1,
+			Limit:      1,
+		})
+	}
+}
+
+// RemoveAll queues up the provided selectors for removing all matching documents.
+// Each selector will remove all matching documents.
+func (b *Bulk) RemoveAll(selectors ...interface{}) {
+	action := b.action(bulkRemove)
+	for _, selector := range selectors {
+		if selector == nil {
+			selector = bson.D{}
+		}
+		action.docs = append(action.docs, &deleteOp{
+			Collection: b.c.FullName,
+			Selector:   selector,
+			Flags:      0,
+			Limit:      0,
+		})
+	}
 }
 
 // Update queues up the provided pairs of updating instructions.
@@ -205,6 +241,8 @@ func (b *Bulk) Run() (*BulkResult, error) {
 			ok = b.runInsert(action, &result, &berr)
 		case bulkUpdate:
 			ok = b.runUpdate(action, &result, &berr)
+		case bulkRemove:
+			ok = b.runRemove(action, &result, &berr)
 		default:
 			panic("unknown bulk operation")
 		}
@@ -231,19 +269,17 @@ func (b *Bulk) runInsert(action *bulkAction, result *BulkResult, berr *bulkError
 }
 
 func (b *Bulk) runUpdate(action *bulkAction, result *BulkResult, berr *bulkError) bool {
-	ok := true
-	for _, op := range action.docs {
-		lerr, err := b.c.writeOp(op, b.ordered)
-		if !b.checkSuccess(berr, lerr, err) {
-			ok = false
-			if b.ordered {
-				break
-			}
-		}
-		result.Matched += lerr.N
-		result.Modified += lerr.modified
-	}
-	return ok
+	lerr, err := b.c.writeOp(bulkUpdateOp(action.docs), b.ordered)
+	result.Matched += lerr.N
+	result.Modified += lerr.modified
+	return b.checkSuccess(berr, lerr, err)
+}
+
+func (b *Bulk) runRemove(action *bulkAction, result *BulkResult, berr *bulkError) bool {
+	lerr, err := b.c.writeOp(bulkDeleteOp(action.docs), b.ordered)
+	result.Matched += lerr.N
+	result.Modified += lerr.modified
+	return b.checkSuccess(berr, lerr, err)
 }
 
 func (b *Bulk) checkSuccess(berr *bulkError, lerr *LastError, err error) bool {
