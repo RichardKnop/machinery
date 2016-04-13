@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"fmt"
 	"os"
 
@@ -16,6 +17,7 @@ type Config struct {
 	ExchangeType    string `yaml:"exchange_type"`
 	DefaultQueue    string `yaml:"default_queue"`
 	BindingKey      string `yaml:"binding_key"`
+	TLSConfig       *tls.Config
 }
 
 // ReadFromFile reads data from a file
