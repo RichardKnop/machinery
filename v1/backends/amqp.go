@@ -314,7 +314,9 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 	)
 
 	// Connect
-	conn, err = amqp.Dial(amqpBackend.config.ResultBackend)
+	// From amqp docs: DialTLS will use the provided tls.Config when it encounters an amqps:// scheme
+	// and will dial a plain connection when it encounters an amqp:// scheme.
+	conn, err = amqp.DialTLS(amqpBackend.config.Broker, amqpBackend.config.TLSConfig)
 	if err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
 	}
