@@ -200,7 +200,10 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 	)
 
 	// Connect
-	conn, err = amqp.Dial(amqpBroker.config.Broker)
+	// From amqp docs: DialTLS will use the provided tls.Config when it encounters an amqps:// scheme
+	// and will dial a plain connection when it encounters an amqp:// scheme.
+	conn, err = amqp.DialTLS(amqpBroker.config.Broker, amqpBroker.config.TLSConfig)
+
 	if err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
 	}
