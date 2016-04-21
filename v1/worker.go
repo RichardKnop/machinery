@@ -36,12 +36,12 @@ func (worker *Worker) Launch() error {
 	go func() {
 		for {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
+			if err != nil {
+				errorsChan <- err
+			}
 
 			if retry {
 				log.Printf("Going to retry launching the worker. Error: %v", err)
-			} else {
-				errorsChan <- err // stop the goroutine
-				return
 			}
 		}
 	}()
