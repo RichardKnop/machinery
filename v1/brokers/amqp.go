@@ -51,7 +51,9 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 	}
 
 	_, channel, queue, _, err := amqpBroker.open()
-	defer channel.Close()
+	if channel != nil {
+		defer channel.Close()
+	}
 	if err != nil {
 		amqpBroker.retryFunc()
 		return amqpBroker.retry, err // retry true
