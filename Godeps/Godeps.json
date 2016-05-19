@@ -1,6 +1,7 @@
 {
 	"ImportPath": "github.com/RichardKnop/machinery",
 	"GoVersion": "go1.6",
+	"GodepVersion": "v62",
 	"Packages": [
 		"./..."
 	],
@@ -20,11 +21,13 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Rev": "836b6e58b3358112c8291565d01c35b8764070d7"
+			"Comment": "v1.0.0",
+			"Rev": "8873b2f1995f59d4bcdd2b0dc9858e2cb9bf0c13"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "836b6e58b3358112c8291565d01c35b8764070d7"
+			"Comment": "v1.0.0",
+			"Rev": "8873b2f1995f59d4bcdd2b0dc9858e2cb9bf0c13"
 		},
 		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
@@ -36,21 +39,36 @@
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Comment": "v1.1.3-6-g6fe211e",
-			"Rev": "6fe211e493929a8aac0469b93f28b1d0688a9a3a"
+			"Comment": "v1.1.3-16-g6cb3b85",
+			"Rev": "6cb3b85ef5a0efef77caef88363ec4d4b5c0976d"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/require",
-			"Comment": "v1.1.3-6-g6fe211e",
-			"Rev": "6fe211e493929a8aac0469b93f28b1d0688a9a3a"
+			"Comment": "v1.1.3-16-g6cb3b85",
+			"Rev": "6cb3b85ef5a0efef77caef88363ec4d4b5c0976d"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/suite",
-			"Comment": "v1.1.3-6-g6fe211e",
-			"Rev": "6fe211e493929a8aac0469b93f28b1d0688a9a3a"
+			"Comment": "v1.1.3-16-g6cb3b85",
+			"Rev": "6cb3b85ef5a0efef77caef88363ec4d4b5c0976d"
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
+			"Comment": "r2015.12.06",
+			"Rev": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/bson",
+			"Comment": "r2015.12.06",
+			"Rev": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/internal/sasl",
+			"Comment": "r2015.12.06",
+			"Rev": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/internal/scram",
 			"Comment": "r2015.12.06",
 			"Rev": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49"
 		},
