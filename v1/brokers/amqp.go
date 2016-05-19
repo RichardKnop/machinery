@@ -50,14 +50,13 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 		amqpBroker.retryFunc = utils.RetryClosure()
 	}
 
-	_, channel, queue, _, err := amqpBroker.open()
-	if channel != nil {
-		defer channel.Close()
-	}
+	conn, channel, queue, _, err := amqpBroker.open()
 	if err != nil {
 		amqpBroker.retryFunc()
 		return amqpBroker.retry, err // retry true
 	}
+
+	defer amqpBroker.close(channel, conn)
 
 	amqpBroker.retryFunc = utils.RetryClosure()
 
@@ -103,11 +102,12 @@ func (amqpBroker *AMQPBroker) StopConsuming() {
 
 // Publish places a new message on the default queue
 func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error {
-	_, channel, _, confirmsChan, err := amqpBroker.open()
-	defer channel.Close()
+	conn, channel, _, confirmsChan, err := amqpBroker.open()
 	if err != nil {
 		return err
 	}
+
+	defer amqpBroker.close(channel, conn)
 
 	message, err := json.Marshal(signature)
 	if err != nil {
@@ -259,4 +259,21 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 	}
 
 	return conn, channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), nil
+}
+
+// Closes the connection
+func (amqpBroker *AMQPBroker) close(channel *amqp.Channel, conn *amqp.Connection) error {
+	if channel != nil {
+		if err := channel.Close(); err != nil {
+			return fmt.Errorf("Channel Close: %s", err)
+		}
+	}
+
+	if conn != nil {
+		if err := conn.Close(); err != nil {
+			return fmt.Errorf("Connection Close: %s", err)
+		}
+	}
+
+	return nil
 }

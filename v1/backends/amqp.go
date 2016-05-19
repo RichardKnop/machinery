@@ -378,12 +378,16 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 
 // Closes the connection
 func (amqpBackend *AMQPBackend) close(channel *amqp.Channel, conn *amqp.Connection) error {
-	if err := channel.Close(); err != nil {
-		return fmt.Errorf("Channel Close: %s", err)
+	if channel != nil {
+		if err := channel.Close(); err != nil {
+			return fmt.Errorf("Channel Close: %s", err)
+		}
 	}
 
-	if err := conn.Close(); err != nil {
-		return fmt.Errorf("Connection Close: %s", err)
+	if conn != nil {
+		if err := conn.Close(); err != nil {
+			return fmt.Errorf("Connection Close: %s", err)
+		}
 	}
 
 	return nil
