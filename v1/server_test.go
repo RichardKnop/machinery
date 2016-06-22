@@ -35,6 +35,16 @@ func TestGetRegisteredTask(t *testing.T) {
 	}
 }
 
+func TestGetRegisteredTaskNames(t *testing.T) {
+	server := _getTestServer(t)
+	taskName := "test_task"
+	server.RegisterTask(taskName, func() {})
+	names := server.getRegisteredTaskNames()
+	if len(names) != 1 || names[0] != taskName {
+		t.Error("server registered one task but got:", len(names), names)
+	}
+}
+
 func _getTestServer(t *testing.T) *Server {
 	server, err := NewServer(&config.Config{
 		Broker:        "amqp://guest:guest@localhost:5672/",
