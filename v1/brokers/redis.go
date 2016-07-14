@@ -19,6 +19,7 @@ type RedisBroker struct {
 	registeredTaskNames []string
 	host                string
 	password            string
+	db                  int
 	pool                *redis.Pool
 	retry               bool
 	retryFunc           func()
@@ -29,11 +30,12 @@ type RedisBroker struct {
 }
 
 // NewRedisBroker creates new RedisBroker instance
-func NewRedisBroker(cnf *config.Config, host, password string) Broker {
+func NewRedisBroker(cnf *config.Config, host, password string, db int) Broker {
 	return Broker(&RedisBroker{
 		config:   cnf,
 		host:     host,
 		password: password,
+		db:       db,
 		retry:    true,
 	})
 }
@@ -211,11 +213,8 @@ func (redisBroker *RedisBroker) stopReceiving() {
 
 // Returns / creates instance of Redis connection
 func (redisBroker *RedisBroker) open() (redis.Conn, error) {
-	if redisBroker.password != "" {
-		return redis.Dial("tcp", redisBroker.host,
-			redis.DialPassword(redisBroker.password))
-	}
-	return redis.Dial("tcp", redisBroker.host)
+	// package redis takes care of pwd or db
+	return redis.Dial("tcp", redisBroker.host, redis.DialPassword(redisBroker.password), redis.DialDatabase(redisBroker.db))
 }
 
 // Returns a new pool of Redis connections
@@ -234,6 +233,9 @@ func (redisBroker *RedisBroker) newPool() *redis.Pool {
 					redis.DialPassword(redisBroker.password))
 			} else {
 				c, err = redis.Dial("tcp", redisBroker.host)
+			}
+			if redisBroker.db != 0 {
+				_, err = c.Do("SELECT", redisBroker.db)
 			}
 
 			if err != nil {

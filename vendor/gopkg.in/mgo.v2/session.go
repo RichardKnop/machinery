@@ -1683,7 +1683,7 @@ func (s *Session) SetPoolLimit(limit int) {
 // validation expressions executed when documents are inserted or modified,
 // in the interest of preserving properties for documents in the collection
 // being modfified. The default is to not bypass, and thus to perform the
-// validation expressions registered for modified collections. 
+// validation expressions registered for modified collections.
 //
 // Document validation was introuced in MongoDB 3.2.
 //

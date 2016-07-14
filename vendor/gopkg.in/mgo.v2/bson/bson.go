@@ -201,7 +201,6 @@ func readRandomUint32() uint32 {
 	return uint32((uint32(b[0]) << 0) | (uint32(b[1]) << 8) | (uint32(b[2]) << 16) | (uint32(b[3]) << 24))
 }
 
-
 // machineId stores machine id generated once and used in subsequent calls
 // to NewObjectId function.
 var machineId = readMachineId()
