@@ -97,9 +97,9 @@ func (amqpBackend *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount
 	for i := 0; i < groupTaskCount; i++ {
 		d := <-deliveries
 
-		taskState := &TaskState{}
+		taskState := new(TaskState)
 
-		if err := json.Unmarshal([]byte(d.Body), &taskState); err != nil {
+		if err := json.Unmarshal([]byte(d.Body), taskState); err != nil {
 			d.Nack(false, false) // multiple, requeue
 			return taskStates, err
 		}
@@ -154,7 +154,7 @@ func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignat
 // GetState - returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
 func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
-	taskState := TaskState{}
+	taskState := new(TaskState)
 
 	conn, channel, queue, _, err := amqpBackend.open(taskUUID)
 	if err != nil {
@@ -176,13 +176,13 @@ func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 
 	d.Ack(false)
 
-	if err := json.Unmarshal([]byte(d.Body), &taskState); err != nil {
+	if err := json.Unmarshal([]byte(d.Body), taskState); err != nil {
 		log.Printf("Failed to unmarshal task state: %v", string(d.Body))
 		log.Print(err)
 		return nil, err
 	}
 
-	return &taskState, nil
+	return taskState, nil
 }
 
 // PurgeState - deletes stored task state

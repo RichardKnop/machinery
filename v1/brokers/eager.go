@@ -8,39 +8,44 @@ import (
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
+// EagerBroker represents an "eager" in-memory broker
 type EagerBroker struct {
 	worker TaskProcessor
 }
 
+// NewEagerBroker creates new EagerBroker instance
 func NewEagerBroker() Broker {
-	return &EagerBroker{}
+	return new(EagerBroker)
 }
 
+// EagerMode interface with methods specific for this broker
 type EagerMode interface {
 	AssignWorker(p TaskProcessor)
 }
 
-//
-// Broker interface
-//
-func (e *EagerBroker) SetRegisteredTaskNames(names []string) {
+// SetRegisteredTaskNames sets registered task names
+func (eagerBroker *EagerBroker) SetRegisteredTaskNames(names []string) {
 	// do nothing
 }
 
-func (e *EagerBroker) IsTaskRegistered(name string) bool {
+// IsTaskRegistered returns true if the task is registered with this broker
+func (eagerBroker *EagerBroker) IsTaskRegistered(name string) bool {
 	return true
 }
 
-func (e *EagerBroker) StartConsuming(consumerTag string, p TaskProcessor) (bool, error) {
+// StartConsuming enters a loop and waits for incoming messages
+func (eagerBroker *EagerBroker) StartConsuming(consumerTag string, p TaskProcessor) (bool, error) {
 	return true, nil
 }
 
-func (e *EagerBroker) StopConsuming() {
+// StopConsuming quits the loop
+func (eagerBroker *EagerBroker) StopConsuming() {
 	// do nothing
 }
 
-func (e *EagerBroker) Publish(task *signatures.TaskSignature) error {
-	if e.worker == nil {
+// Publish places a new message on the default queue
+func (eagerBroker *EagerBroker) Publish(task *signatures.TaskSignature) error {
+	if eagerBroker.worker == nil {
 		return errors.New("worker is not assigned in eager-mode")
 	}
 
@@ -48,22 +53,25 @@ func (e *EagerBroker) Publish(task *signatures.TaskSignature) error {
 	// and unmarshal it back
 	message, err := json.Marshal(task)
 	if err != nil {
-		return errors.New(fmt.Sprintf("json marshaling failed: %v", err))
+		return fmt.Errorf("json marshaling failed: %v", err)
 	}
 
-	sig_ := signatures.TaskSignature{}
-	err = json.Unmarshal(message, &sig_)
+	signature := new(signatures.TaskSignature)
+	err = json.Unmarshal(message, &signature)
 	if err != nil {
-		return errors.New(fmt.Sprintf("json unmarshaling failed: %v", err))
+		return fmt.Errorf("json unmarshaling failed: %v", err)
 	}
 
 	// blocking call to the task directly
-	return e.worker.Process(&sig_)
+	return eagerBroker.worker.Process(signature)
 }
 
-//
-// Eager interface
-//
-func (e *EagerBroker) AssignWorker(p TaskProcessor) {
-	e.worker = p
+// GetPendingTasks returns a slice of task.Signatures waiting in the queue
+func (eagerBroker *EagerBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature, error) {
+	return []*signatures.TaskSignature{}, errors.New("Not implemented")
+}
+
+// AssignWorker assigns a worker to the eager broker
+func (eagerBroker *EagerBroker) AssignWorker(w TaskProcessor) {
+	eagerBroker.worker = w
 }

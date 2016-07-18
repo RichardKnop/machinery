@@ -142,6 +142,11 @@ func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error
 	return fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
 }
 
+// GetPendingTasks returns a slice of task.Signatures waiting in the queue
+func (amqpBroker *AMQPBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature, error) {
+	return nil, errors.New("Not implemented")
+}
+
 // Consume a single message
 func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor, errorsChan chan error) {
 	if len(d.Body) == 0 {

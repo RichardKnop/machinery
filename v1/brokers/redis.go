@@ -111,8 +111,8 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 				}
 				// items[0] - queue name (key), items[1] - value
 				item := items[1]
-				signature := signatures.TaskSignature{}
-				if err := json.Unmarshal(item, &signature); err != nil {
+				signature := new(signatures.TaskSignature)
+				if err := json.Unmarshal(item, signature); err != nil {
 					redisBroker.errorsChan <- err
 					return
 				}
@@ -169,17 +169,50 @@ func (redisBroker *RedisBroker) Publish(signature *signatures.TaskSignature) err
 	return err
 }
 
+// GetPendingTasks returns a slice of task.Signatures waiting in the queue
+func (redisBroker *RedisBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature, error) {
+	conn, err := redisBroker.open()
+	if err != nil {
+		return nil, fmt.Errorf("Dial: %s", err)
+	}
+	defer conn.Close()
+
+	if queue == "" {
+		queue = redisBroker.config.DefaultQueue
+	}
+	bytes, err := conn.Do("LRANGE", queue, 0, 10)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return nil, err
+	}
+	results, err := redis.ByteSlices(bytes, err)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return nil, err
+	}
+
+	var taskSignatures []*signatures.TaskSignature
+	for _, result := range results {
+		var taskSignature signatures.TaskSignature
+		if err := json.Unmarshal(result, &taskSignature); err != nil {
+			return nil, err
+		}
+		taskSignatures = append(taskSignatures, &taskSignature)
+	}
+	return taskSignatures, nil
+}
+
 // Consume a single message
 func (redisBroker *RedisBroker) consumeOne(item []byte, taskProcessor TaskProcessor) {
 	log.Printf("Received new message: %s", item)
 
-	signature := signatures.TaskSignature{}
-	if err := json.Unmarshal(item, &signature); err != nil {
+	signature := new(signatures.TaskSignature)
+	if err := json.Unmarshal(item, signature); err != nil {
 		redisBroker.errorsChan <- err
 		return
 	}
 
-	if err := taskProcessor.Process(&signature); err != nil {
+	if err := taskProcessor.Process(signature); err != nil {
 		redisBroker.errorsChan <- err
 	}
 }

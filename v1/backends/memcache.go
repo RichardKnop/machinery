@@ -45,14 +45,14 @@ func (memcacheBackend *MemcacheBackend) InitGroup(groupUUID string, taskUUIDs []
 
 // GroupCompleted - returns true if all tasks in a group finished
 func (memcacheBackend *MemcacheBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
-	groupMeta := GroupMeta{}
+	groupMeta := new(GroupMeta)
 
 	item, err := memcacheBackend.getClient().Get(groupUUID)
 	if err != nil {
 		return false, err
 	}
 
-	if err := json.Unmarshal(item.Value, &groupMeta); err != nil {
+	if err := json.Unmarshal(item.Value, groupMeta); err != nil {
 		return false, err
 	}
 
@@ -74,14 +74,14 @@ func (memcacheBackend *MemcacheBackend) GroupCompleted(groupUUID string, groupTa
 func (memcacheBackend *MemcacheBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
 	taskStates := make([]*TaskState, groupTaskCount)
 
-	groupMeta := GroupMeta{}
+	groupMeta := new(GroupMeta)
 
 	item, err := memcacheBackend.getClient().Get(groupUUID)
 	if err != nil {
 		return taskStates, err
 	}
 
-	if err := json.Unmarshal(item.Value, &groupMeta); err != nil {
+	if err := json.Unmarshal(item.Value, groupMeta); err != nil {
 		return taskStates, err
 	}
 
@@ -129,18 +129,18 @@ func (memcacheBackend *MemcacheBackend) SetStateFailure(signature *signatures.Ta
 
 // GetState - returns the latest task state
 func (memcacheBackend *MemcacheBackend) GetState(taskUUID string) (*TaskState, error) {
-	taskState := TaskState{}
+	taskState := new(TaskState)
 
 	item, err := memcacheBackend.getClient().Get(taskUUID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := json.Unmarshal(item.Value, &taskState); err != nil {
+	if err := json.Unmarshal(item.Value, taskState); err != nil {
 		return nil, err
 	}
 
-	return &taskState, nil
+	return taskState, nil
 }
 
 // PurgeState - deletes stored task state

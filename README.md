@@ -21,6 +21,7 @@ So called tasks (or jobs if you like) are executed concurrently either by many w
   * [Signatures](#signatures)
   * [Supported Types](#supported-types)
   * [Sending Tasks](#sending-tasks)
+  * [Get Pending Tasks](#get-pending-tasks)
   * [Keeping Results](#keeping-results)
 * [Workflows](#workflows)
   * [Groups](#groups)
@@ -291,7 +292,9 @@ Machinery encodes tasks to JSON before sending them to the broker. Task results 
 Tasks can be called by passing an instance of `TaskSignature` to an `Server` instance. E.g:
 
 ```go
-import "github.com/RichardKnop/machinery/v1/signatures"
+import (
+  "github.com/RichardKnop/machinery/v1/signatures"
+)
 
 task := signatures.TaskSignature{
   Name: "add",
@@ -313,6 +316,16 @@ if err != nil {
   // do something with the error
 }
 ```
+
+### Get Pending Tasks
+
+Tasks currently waiting in the queue to be consumed by workers can be inspected, e.g.:
+
+```go
+server.GetBroker().GetPendingTasks("some_queue")
+```
+
+> Currently only supported by Redis broker.
 
 ### Keeping Results
 

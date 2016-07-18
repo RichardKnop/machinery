@@ -1,6 +1,8 @@
 package brokers
 
-import "github.com/RichardKnop/machinery/v1/signatures"
+import (
+	"github.com/RichardKnop/machinery/v1/signatures"
+)
 
 // Broker - a common interface for all brokers
 type Broker interface {
@@ -9,6 +11,7 @@ type Broker interface {
 	StartConsuming(consumerTag string, p TaskProcessor) (bool, error)
 	StopConsuming()
 	Publish(task *signatures.TaskSignature) error
+	GetPendingTasks(queue string) ([]*signatures.TaskSignature, error)
 }
 
 // TaskProcessor - can process a delivered task

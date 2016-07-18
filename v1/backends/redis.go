@@ -116,7 +116,7 @@ func (redisBackend *RedisBackend) SetStateFailure(signature *signatures.TaskSign
 
 // GetState - returns the latest task state
 func (redisBackend *RedisBackend) GetState(taskUUID string) (*TaskState, error) {
-	taskState := TaskState{}
+	taskState := new(TaskState)
 
 	conn := redisBackend.open()
 	defer conn.Close()
@@ -126,11 +126,11 @@ func (redisBackend *RedisBackend) GetState(taskUUID string) (*TaskState, error) 
 		return nil, err
 	}
 
-	if err := json.Unmarshal(item, &taskState); err != nil {
+	if err := json.Unmarshal(item, taskState); err != nil {
 		return nil, err
 	}
 
-	return &taskState, nil
+	return taskState, nil
 }
 
 // PurgeState - deletes stored task state
@@ -169,12 +169,12 @@ func (redisBackend *RedisBackend) getGroupMeta(groupUUID string) (*GroupMeta, er
 		return nil, err
 	}
 
-	groupMeta := GroupMeta{}
+	groupMeta := new(GroupMeta)
 	if err := json.Unmarshal(item, &groupMeta); err != nil {
 		return nil, err
 	}
 
-	return &groupMeta, nil
+	return groupMeta, nil
 }
 
 // getStates Returns multiple task states with MGET
@@ -204,13 +204,13 @@ func (redisBackend *RedisBackend) getStates(taskUUIDs ...string) ([]*TaskState, 
 			return taskStates, fmt.Errorf("Expected byte array, instead got: %v", value)
 		}
 
-		taskState := TaskState{}
-		if err := json.Unmarshal(bytes, &taskState); err != nil {
+		taskState := new(TaskState)
+		if err := json.Unmarshal(bytes, taskState); err != nil {
 			log.Print(err)
 			return taskStates, err
 		}
 
-		taskStates[i] = &taskState
+		taskStates[i] = taskState
 	}
 
 	return taskStates, nil
