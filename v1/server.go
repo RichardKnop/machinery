@@ -31,12 +31,12 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	// Backend is optional so we ignore the error
 	backend, _ := BackendFactory(cnf)
 
-	srv, err := &Server{
+	srv := &Server{
 		config:          cnf,
 		registeredTasks: make(map[string]interface{}),
 		broker:          broker,
 		backend:         backend,
-	}, nil
+	}
 
 	// init for eager-mode
 	eager, ok := broker.(brokers.EagerMode)
@@ -46,7 +46,7 @@ func NewServer(cnf *config.Config) (*Server, error) {
 		eager.AssignWorker(srv.NewWorker("eager"))
 	}
 
-	return srv, err
+	return srv, nil
 }
 
 // NewWorker creates Worker instance

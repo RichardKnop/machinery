@@ -46,7 +46,7 @@ func TestBrokerFactory(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	expected = brokers.NewRedisBroker(&cnf, "localhost:6379", "password")
+	expected = brokers.NewRedisBroker(&cnf, "localhost:6379", "password", 0)
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
@@ -62,7 +62,7 @@ func TestBrokerFactory(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	expected = brokers.NewRedisBroker(&cnf, "localhost:6379", "")
+	expected = brokers.NewRedisBroker(&cnf, "localhost:6379", "", 0)
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
 	}
@@ -132,7 +132,7 @@ func TestBackendFactory(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	expected = backends.NewRedisBackend(&cnf, "localhost:6379", "password")
+	expected = backends.NewRedisBackend(&cnf, "localhost:6379", "password", 0)
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
@@ -148,7 +148,7 @@ func TestBackendFactory(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	expected = backends.NewRedisBackend(&cnf, "localhost:6379", "")
+	expected = backends.NewRedisBackend(&cnf, "localhost:6379", "", 0)
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("conn = %v, want %v", actual, expected)
@@ -183,5 +183,44 @@ func TestBackendFactoryError(t *testing.T) {
 	expectedErr := errors.New("Factory failed with result backend: BOGUS")
 	if err.Error() != expectedErr.Error() {
 		t.Errorf("err = %v, want %v", err, expectedErr)
+	}
+}
+
+func TestParseRedisURL(t *testing.T) {
+	var host, pwd, url string
+	var db int
+	var err error
+
+	url = "non_redis://127.0.0.1:5672"
+	_, _, _, err = parseRedisURL(url)
+	if err == nil {
+		t.Error("invalid redis scheme")
+	}
+
+	url = "redis:/"
+	_, _, _, err = parseRedisURL(url)
+	if err == nil {
+		t.Error("invalid redis url format")
+	}
+
+	url = "redis://127.0.0.1:5672"
+	host, pwd, db, _ = parseRedisURL(url)
+	if host != "127.0.0.1:5672" || pwd != "" || db != 0 {
+		t.Error("parse %v err, got %v, %v, %v", url, host, pwd, db)
+	}
+
+	url = "redis://pwd@127.0.0.1:5672"
+	host, pwd, db, _ = parseRedisURL(url)
+	if host != "127.0.0.1:5672" || pwd != "pwd" || db != 0 {
+		t.Error("parse %v err, got %v, %v, %v", url, host, pwd, db)
+	}
+
+	url = "redis://pwd@127.0.0.1:5672/2"
+	host, pwd, db, err = parseRedisURL(url)
+	if err != nil {
+		t.Error("parse redis url got err:", err)
+	}
+	if host != "127.0.0.1:5672" || pwd != "pwd" || db != 2 {
+		t.Error("parse %v err, got %v, %v, %v", url, host, pwd, db)
 	}
 }

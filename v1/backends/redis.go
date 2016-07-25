@@ -16,14 +16,16 @@ type RedisBackend struct {
 	config   *config.Config
 	host     string
 	password string
+	db       int
 	pool     *redis.Pool
 }
 
 // NewRedisBackend creates RedisBackend instance
-func NewRedisBackend(cnf *config.Config, host, password string) Backend {
+func NewRedisBackend(cnf *config.Config, host, password string, db int) Backend {
 	return Backend(&RedisBackend{
 		config:   cnf,
 		host:     host,
+		db:       db,
 		password: password,
 	})
 }
@@ -278,6 +280,9 @@ func (redisBackend *RedisBackend) newPool() *redis.Pool {
 					redis.DialPassword(redisBackend.password))
 			} else {
 				c, err = redis.Dial("tcp", redisBackend.host)
+			}
+			if redisBackend.db != 0 {
+				_, err = c.Do("SELECT", redisBackend.db)
 			}
 
 			if err != nil {
