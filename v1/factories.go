@@ -1,13 +1,14 @@
 package machinery
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
-	"strconv"
 )
 
 // BrokerFactory creates a new object with brokers.Broker interface
@@ -85,7 +86,7 @@ func parseRedisURL(url string) (host, password string, db int, err error) {
 
 	parts := strings.Split(url, "redis://")
 	if parts[0] != "" {
-		err = fmt.Errorf("No redis scheme found")
+		err = errors.New("No redis scheme found")
 		return
 	}
 	if len(parts) != 2 {
