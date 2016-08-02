@@ -28,7 +28,7 @@ func BrokerFactory(cnf *config.Config) (brokers.Broker, error) {
 			)
 		}
 
-		redisHost, redisPassword, redisDB, err := parseRedisURL(cnf.Broker)
+		redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.Broker)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +62,7 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
-		redisHost, redisPassword, redisDB, err := parseRedisURL(cnf.ResultBackend)
+		redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +81,8 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 	return nil, fmt.Errorf("Factory failed with result backend: %v", cnf.ResultBackend)
 }
 
-func parseRedisURL(url string) (host, password string, db int, err error) {
+// ParseRedisURL ...
+func ParseRedisURL(url string) (host, password string, db int, err error) {
 	// redis://pwd@host/db
 
 	parts := strings.Split(url, "redis://")

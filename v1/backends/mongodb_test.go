@@ -1,11 +1,13 @@
-package backends
+package backends_test
 
 import (
 	"os"
 	"testing"
 
+	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -15,12 +17,12 @@ var (
 	taskUUIDs = []string{"1", "2", "3"}
 )
 
-func initTestMongodbBackend() (Backend, error) {
+func initTestMongodbBackend() (backends.Backend, error) {
 	conf := &config.Config{
 		ResultBackend:   MongoDBConnectionString,
 		ResultsExpireIn: 30,
 	}
-	backend, err := NewMongodbBackend(conf)
+	backend, err := backends.NewMongodbBackend(conf)
 	if err != nil {
 		return nil, err
 	}
@@ -38,11 +40,8 @@ func initTestMongodbBackend() (Backend, error) {
 
 func TestNewMongodbBackend(t *testing.T) {
 	backend, err := initTestMongodbBackend()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if backend == nil {
-		t.Fatal("MongodbBackend is nil")
+	if assert.NoError(t, err) {
+		assert.NotNil(t, backend)
 	}
 }
 
@@ -50,11 +49,8 @@ func TestEmptyState(t *testing.T) {
 	backend, _ := initTestMongodbBackend()
 
 	taskState, err := backend.GetState(taskUUIDs[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if taskState.State != "" {
-		t.Fatal("Not empty taskState")
+	if assert.NoError(t, err) {
+		assert.Equal(t, "", taskState.State, "Not empty state")
 	}
 }
 
@@ -64,16 +60,11 @@ func TestSetStatePending(t *testing.T) {
 	err := backend.SetStatePending(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	taskState, err := backend.GetState(taskUUIDs[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if taskState.State != PendingState {
-		t.Fatal("Not PendingState")
+	if assert.NoError(t, err) {
+		taskState, err := backend.GetState(taskUUIDs[0])
+		if assert.NoError(t, err) {
+			assert.Equal(t, backends.PendingState, taskState.State, "Not PendingState")
+		}
 	}
 }
 
@@ -83,16 +74,11 @@ func TestSetStateReceived(t *testing.T) {
 	err := backend.SetStateReceived(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	taskState, err := backend.GetState(taskUUIDs[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if taskState.State != ReceivedState {
-		t.Fatal("Not ReceivedState")
+	if assert.NoError(t, err) {
+		taskState, err := backend.GetState(taskUUIDs[0])
+		if assert.NoError(t, err) {
+			assert.Equal(t, backends.ReceivedState, taskState.State, "Not ReceivedState")
+		}
 	}
 }
 
@@ -102,16 +88,11 @@ func TestSetStateStarted(t *testing.T) {
 	err := backend.SetStateStarted(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	taskState, err := backend.GetState(taskUUIDs[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if taskState.State != StartedState {
-		t.Fatal("Not StartedState")
+	if assert.NoError(t, err) {
+		taskState, err := backend.GetState(taskUUIDs[0])
+		if assert.NoError(t, err) {
+			assert.Equal(t, backends.StartedState, taskState.State, "Not StartedState")
+		}
 	}
 }
 
@@ -123,26 +104,17 @@ func TestSetStateSuccess(t *testing.T) {
 
 	err := backend.SetStateSuccess(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
-	}, &TaskResult{
+	}, &backends.TaskResult{
 		Type:  resultType,
 		Value: resultValue,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	taskState, err := backend.GetState(taskUUIDs[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if taskState.State != SuccessState {
-		t.Fatal("Not SuccessState")
-	}
-	if taskState.Result.Type != resultType {
-		t.Fatal("Wrong result type")
-	}
-	if taskState.Result.Value.(float64) != float64(resultValue) {
-		t.Fatal("Wrong result value")
+	if assert.NoError(t, err) {
+		taskState, err := backend.GetState(taskUUIDs[0])
+		if assert.NoError(t, err) {
+			assert.Equal(t, backends.SuccessState, taskState.State, "Not SuccessState")
+			assert.Equal(t, resultType, taskState.Result.Type, "Wrong result type")
+			assert.Equal(t, float64(resultValue), taskState.Result.Value.(float64), "Wrong result value")
+		}
 	}
 }
 
@@ -154,19 +126,12 @@ func TestSetStateFailure(t *testing.T) {
 	err := backend.SetStateFailure(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	}, failStrig)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	taskState, err := backend.GetState(taskUUIDs[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if taskState.State != FailureState {
-		t.Fatal("Not FailureState")
-	}
-	if taskState.Error != failStrig {
-		t.Fatal("Wrong fail error")
+	if assert.NoError(t, err) {
+		taskState, err := backend.GetState(taskUUIDs[0])
+		if assert.NoError(t, err) {
+			assert.Equal(t, backends.FailureState, taskState.State, "Not SuccessState")
+			assert.Equal(t, failStrig, taskState.Error, "Wrong fail error")
+		}
 	}
 }
 
@@ -175,61 +140,49 @@ func TestGroupCompleted(t *testing.T) {
 	taskResultsState := make(map[string]string)
 
 	isCompleted, err := backend.GroupCompleted(groupUUID, len(taskUUIDs))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if isCompleted {
-		t.Fatal("Actualy group is not completed")
+	if assert.NoError(t, err) {
+		assert.False(t, isCompleted, "Actualy group is not completed")
 	}
 
 	err = backend.SetStateFailure(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	}, "Fail is ok")
-	if err != nil {
-		t.Fatal(err)
-	}
-	taskResultsState[taskUUIDs[0]] = FailureState
+	assert.NoError(t, err)
+	taskResultsState[taskUUIDs[0]] = backends.FailureState
 
 	err = backend.SetStateSuccess(&signatures.TaskSignature{
 		UUID: taskUUIDs[1],
-	}, &TaskResult{
+	}, &backends.TaskResult{
 		Type:  "string",
 		Value: "Result ok",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	taskResultsState[taskUUIDs[1]] = SuccessState
+	assert.NoError(t, err)
+	taskResultsState[taskUUIDs[1]] = backends.SuccessState
 
 	err = backend.SetStateSuccess(&signatures.TaskSignature{
 		UUID: taskUUIDs[2],
-	}, &TaskResult{
+	}, &backends.TaskResult{
 		Type:  "string",
 		Value: "Result ok",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	taskResultsState[taskUUIDs[2]] = SuccessState
+	assert.NoError(t, err)
+	taskResultsState[taskUUIDs[2]] = backends.SuccessState
 
 	isCompleted, err = backend.GroupCompleted(groupUUID, len(taskUUIDs))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !isCompleted {
-		t.Fatal("Actualy group is completed")
+	if assert.NoError(t, err) {
+		assert.True(t, isCompleted, "Actualy group is completed")
 	}
 
 	groupTasksStates, err := backend.GroupTaskStates(groupUUID, len(taskUUIDs))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(groupTasksStates) != len(taskUUIDs) {
-		t.Fatal("Wrong len tasksStates")
-	}
-	for i := range groupTasksStates {
-		if groupTasksStates[i].State != taskResultsState[groupTasksStates[i].TaskUUID] {
-			t.Fatal("Wrong state on", groupTasksStates[i].TaskUUID)
+	if assert.NoError(t, err) {
+		assert.Equal(t, len(groupTasksStates), len(taskUUIDs), "Wrong len tasksStates")
+		for i := range groupTasksStates {
+			assert.Equal(
+				t,
+				taskResultsState[groupTasksStates[i].TaskUUID],
+				groupTasksStates[i].State,
+				"Wrong state on", groupTasksStates[i].TaskUUID,
+			)
 		}
 	}
 }
@@ -240,15 +193,11 @@ func TestMongodbDropIndexes(t *testing.T) {
 		ResultsExpireIn: 5,
 	}
 
-	_, err := NewMongodbBackend(conf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err := backends.NewMongodbBackend(conf)
+	assert.NoError(t, err)
 
 	conf.ResultsExpireIn = 7
 
-	_, err = NewMongodbBackend(conf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err = backends.NewMongodbBackend(conf)
+	assert.NoError(t, err)
 }

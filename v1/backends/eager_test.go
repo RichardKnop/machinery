@@ -1,8 +1,9 @@
-package backends
+package backends_test
 
 import (
 	"testing"
 
+	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/stretchr/testify/suite"
 )
@@ -10,7 +11,7 @@ import (
 type EagerBackendTestSuite struct {
 	suite.Suite
 
-	backend Backend
+	backend backends.Backend
 	st      []*signatures.TaskSignature
 	groups  []struct {
 		id    string
@@ -20,7 +21,7 @@ type EagerBackendTestSuite struct {
 
 func (s *EagerBackendTestSuite) SetupSuite() {
 	// prepare common test data
-	s.backend = NewEagerBackend()
+	s.backend = backends.NewEagerBackend()
 
 	// 2 non-group state
 	s.st = []*signatures.TaskSignature{
@@ -192,7 +193,7 @@ func (s *EagerBackendTestSuite) TestSetStatePending() {
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(PendingState, st.State)
+			s.Equal(backends.PendingState, st.State)
 		}
 	}
 }
@@ -205,7 +206,7 @@ func (s *EagerBackendTestSuite) TestSetStateReceived() {
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(ReceivedState, st.State)
+			s.Equal(backends.ReceivedState, st.State)
 		}
 	}
 }
@@ -218,7 +219,7 @@ func (s *EagerBackendTestSuite) TestSetStateStarted() {
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(StartedState, st.State)
+			s.Equal(backends.StartedState, st.State)
 		}
 	}
 }
@@ -228,12 +229,12 @@ func (s *EagerBackendTestSuite) TestSetStateSuccess() {
 	// task4
 	{
 		t := s.st[3]
-		result := &TaskResult{"float64", float64(300.0)}
+		result := &backends.TaskResult{Type: "float64", Value: float64(300.0)}
 		s.backend.SetStateSuccess(t, result)
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(SuccessState, st.State)
+			s.Equal(backends.SuccessState, st.State)
 			s.Equal(result, st.Result)
 		}
 	}
@@ -247,7 +248,7 @@ func (s *EagerBackendTestSuite) TestSetStateFailure() {
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(FailureState, st.State)
+			s.Equal(backends.FailureState, st.State)
 			s.Equal("error", st.Error)
 		}
 	}

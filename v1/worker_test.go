@@ -1,10 +1,13 @@
-package machinery
+package machinery_test
 
 import (
-	. "github.com/RichardKnop/machinery/v1/signatures"
 	"math"
 	"reflect"
 	"testing"
+
+	machinery "github.com/RichardKnop/machinery/v1"
+	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInvalidArgRobustness(t *testing.T) {
@@ -12,36 +15,23 @@ func TestInvalidArgRobustness(t *testing.T) {
 	fValue := reflect.ValueOf(func(x int) {})
 
 	// Construct an invalid argument list and reflect it
-	args := []TaskArg{
+	args := []signatures.TaskArg{
 		{"bool", true},
 	}
 
-	argValues, err := reflectArgs(args)
-	if err != nil {
-		t.Errorf("reflectArgs error = %v, want nil", err)
-	}
-
-	// Invoke tryCall and validate error handling
-	results, err := tryCall(fValue, argValues)
-
-	expectedMessage := "reflect: Call using bool as type int"
-	if err.Error() != expectedMessage {
-		t.Errorf("tryCall error = %v, want %v", err, expectedMessage)
-	}
-
-	if results != nil {
-		t.Errorf("results = %v, want nil", results)
+	argValues, err := machinery.ReflectArgs(args)
+	if assert.NoError(t, err) {
+		// Invoke TryCall and validate error handling
+		results, err := machinery.TryCall(fValue, argValues)
+		assert.Equal(t, "reflect: Call using bool as type int", err.Error())
+		assert.Nil(t, results)
 	}
 }
 
 func TestInterfaceValuedResult(t *testing.T) {
 	f := func() interface{} { return math.Pi }
 	value := reflect.ValueOf(f())
-	taskResult := createTaskResult(value)
-	if taskResult.Type != "float64" {
-		t.Errorf("taskResult.Type = %v, want \"float64\"", taskResult.Type)
-	}
-	if taskResult.Value != math.Pi {
-		t.Errorf("taskResult.Value = %v, want %v", taskResult.Value, math.Pi)
-	}
+	taskResult := machinery.CreateTaskResult(value)
+	assert.Equal(t, "float64", taskResult.Type)
+	assert.Equal(t, math.Pi, taskResult.Value)
 }

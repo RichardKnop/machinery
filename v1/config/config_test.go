@@ -1,10 +1,12 @@
-package config
+package config_test
 
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"testing"
+
+	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/stretchr/testify/assert"
 )
 
 var configYAMLData = `---
@@ -18,7 +20,7 @@ binding_key: machinery_task
 `
 
 func TestReadFromFile(t *testing.T) {
-	data, err := ReadFromFile("testconfig.yml")
+	data, err := config.ReadFromFile("testconfig.yml")
 
 	if string(data) == configYAMLData && err == nil {
 		return
@@ -34,62 +36,14 @@ func TestReadFromFile(t *testing.T) {
 
 func TestParseYAMLConfig(t *testing.T) {
 	data := []byte(configYAMLData)
-	cfg := Config{}
-	ParseYAMLConfig(&data, &cfg)
+	cfg := new(config.Config)
+	config.ParseYAMLConfig(&data, cfg)
 
-	if cfg.Broker != "amqp://guest:guest@localhost:5672/" {
-		log.Printf("%v", cfg)
-		t.Errorf(
-			"cfg.Broker = %v, want amqp://guest:guest@localhost:5672/",
-			cfg.Broker,
-		)
-	}
-
-	if cfg.ResultBackend != "amqp" {
-		log.Printf("%v", cfg)
-		t.Errorf(
-			"cfg.ResultBackend = %v, want amqp",
-			cfg.ResultBackend,
-		)
-	}
-
-	if cfg.ResultsExpireIn != 3600000 {
-		log.Printf("%v", cfg)
-		t.Errorf(
-			"cfg.ResultsExpireIn = %v, want 3600000",
-			cfg.ResultsExpireIn,
-		)
-	}
-
-	if cfg.Exchange != "machinery_exchange" {
-		log.Printf("%v", cfg)
-		t.Errorf(
-			"cfg.Exchange = %v, want machinery_exchange",
-			cfg.Exchange,
-		)
-	}
-
-	if cfg.ExchangeType != "direct" {
-		log.Printf("%v", cfg)
-		t.Errorf(
-			"cfg.ExchangeType = %v, want direct",
-			cfg.ExchangeType,
-		)
-	}
-
-	if cfg.DefaultQueue != "machinery_tasks" {
-		log.Printf("%v", cfg)
-		t.Errorf(
-			"cfg.DefaultQueue = %v, want machinery_tasks",
-			cfg.DefaultQueue,
-		)
-	}
-
-	if cfg.BindingKey != "machinery_task" {
-		log.Printf("%v", cfg)
-		t.Errorf(
-			"cfg.BindingKey = %v, want machinery_task",
-			cfg.BindingKey,
-		)
-	}
+	assert.Equal(t, "amqp://guest:guest@localhost:5672/", cfg.Broker)
+	assert.Equal(t, "amqp", cfg.ResultBackend)
+	assert.Equal(t, 3600000, cfg.ResultsExpireIn)
+	assert.Equal(t, "machinery_exchange", cfg.Exchange)
+	assert.Equal(t, "direct", cfg.ExchangeType)
+	assert.Equal(t, "machinery_tasks", cfg.DefaultQueue)
+	assert.Equal(t, "machinery_task", cfg.BindingKey)
 }

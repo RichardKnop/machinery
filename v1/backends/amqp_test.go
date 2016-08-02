@@ -1,13 +1,14 @@
-package backends
+package backends_test
 
 import (
-	"log"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -49,7 +50,7 @@ func TestGroupCompletedAMQP(t *testing.T) {
 		GroupTaskCount: groupTaskCount,
 	}
 
-	backend := NewAMQPBackend(amqpConfig)
+	backend := backends.NewAMQPBackend(amqpConfig)
 
 	// Cleanup before the test
 	backend.PurgeState(task1.UUID)
@@ -57,32 +58,29 @@ func TestGroupCompletedAMQP(t *testing.T) {
 	backend.PurgeGroupMeta(groupUUID)
 
 	groupCompleted, err := backend.GroupCompleted(groupUUID, groupTaskCount)
-	if groupCompleted {
-		t.Error("groupCompleted = true, should be false")
-	}
-	if err != nil {
-		t.Errorf("err = %v, should be nil", err)
+	if assert.NoError(t, err) {
+		assert.False(t, groupCompleted)
 	}
 
 	backend.InitGroup(groupUUID, []string{task1.UUID, task2.UUID})
 
-	groupCompleted, _ = backend.GroupCompleted(groupUUID, groupTaskCount)
-	if groupCompleted {
-		t.Error("groupCompleted = true, should be false")
+	groupCompleted, err = backend.GroupCompleted(groupUUID, groupTaskCount)
+	if assert.NoError(t, err) {
+		assert.False(t, groupCompleted)
 	}
 
 	backend.SetStatePending(task1)
 	backend.SetStateStarted(task2)
-	groupCompleted, _ = backend.GroupCompleted(groupUUID, groupTaskCount)
-	if groupCompleted {
-		t.Error("groupCompleted = true, should be false")
+	groupCompleted, err = backend.GroupCompleted(groupUUID, groupTaskCount)
+	if assert.NoError(t, err) {
+		assert.False(t, groupCompleted)
 	}
 
-	backend.SetStateSuccess(task1, &TaskResult{})
-	backend.SetStateSuccess(task2, &TaskResult{})
-	groupCompleted, _ = backend.GroupCompleted(groupUUID, groupTaskCount)
-	if !groupCompleted {
-		t.Error("groupCompleted = false, should be true")
+	backend.SetStateSuccess(task1, new(backends.TaskResult))
+	backend.SetStateSuccess(task2, new(backends.TaskResult))
+	groupCompleted, err = backend.GroupCompleted(groupUUID, groupTaskCount)
+	if assert.NoError(t, err) {
+		assert.True(t, groupCompleted)
 	}
 }
 
@@ -98,37 +96,34 @@ func TestGetStateAMQP(t *testing.T) {
 	}
 
 	go func() {
-		backend := NewAMQPBackend(amqpConfig)
-
+		backend := backends.NewAMQPBackend(amqpConfig)
 		backend.SetStatePending(signature)
-
-		time.Sleep(2 * time.Millisecond)
-
+		<-time.After(2 * time.Millisecond)
 		backend.SetStateReceived(signature)
-
-		time.Sleep(2 * time.Millisecond)
-
+		<-time.After(2 * time.Millisecond)
 		backend.SetStateStarted(signature)
-
-		time.Sleep(2 * time.Millisecond)
-
-		taskResult := TaskResult{
+		<-time.After(2 * time.Millisecond)
+		taskResult := &backends.TaskResult{
 			Type:  "float64",
 			Value: 2,
 		}
-		backend.SetStateSuccess(signature, &taskResult)
+		backend.SetStateSuccess(signature, taskResult)
 	}()
 
-	backend := NewAMQPBackend(amqpConfig)
+	backend := backends.NewAMQPBackend(amqpConfig)
 
+	var (
+		taskState *backends.TaskState
+		err       error
+	)
 	for {
-		taskState, err := backend.GetState(signature.UUID)
-
-		if err != nil {
-			log.Print(err)
+		taskState, err = backend.GetState(signature.UUID)
+		if taskState == nil {
+			assert.Equal(t, "No state ready", err.Error())
 			continue
 		}
 
+		assert.NoError(t, err)
 		if taskState.IsCompleted() {
 			break
 		}
@@ -146,21 +141,16 @@ func TestPurgeStateAMQP(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-	backend := NewAMQPBackend(amqpConfig)
+	backend := backends.NewAMQPBackend(amqpConfig)
 
 	backend.SetStatePending(signature)
 	backend.SetStateReceived(signature)
 	taskState, err := backend.GetState(signature.UUID)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NotNil(t, taskState)
+	assert.NoError(t, err)
 
 	backend.PurgeState(taskState.TaskUUID)
 	taskState, err = backend.GetState(signature.UUID)
-	if taskState != nil {
-		t.Errorf("taskState = %v, want nil", taskState)
-	}
-	if err == nil {
-		t.Error("Should have gotten error back")
-	}
+	assert.Nil(t, taskState)
+	assert.Error(t, err)
 }

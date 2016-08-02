@@ -1,43 +1,33 @@
-package signatures
+package signatures_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestAdjustRoutingKey(t *testing.T) {
-	var signature TaskSignature
+	var signature signatures.TaskSignature
 
-	signature = TaskSignature{
+	signature = signatures.TaskSignature{
 		RoutingKey: "routing_key",
 	}
 	signature.AdjustRoutingKey("direct", "binding_key", "queue")
 
-	if signature.RoutingKey != "routing_key" {
-		t.Errorf(
-			"signature.RoutingKey = %v, want routing_key",
-			signature.RoutingKey,
-		)
-	}
+	assert.Equal(t, "routing_key", signature.RoutingKey)
 
-	signature = TaskSignature{
+	signature = signatures.TaskSignature{
 		RoutingKey: "",
 	}
 	signature.AdjustRoutingKey("direct", "binding_key", "queue")
 
-	if signature.RoutingKey != "binding_key" {
-		t.Errorf(
-			"signature.RoutingKey = %v, want binding_key",
-			signature.RoutingKey,
-		)
-	}
+	assert.Equal(t, "binding_key", signature.RoutingKey)
 
-	signature = TaskSignature{
+	signature = signatures.TaskSignature{
 		RoutingKey: "",
 	}
 	signature.AdjustRoutingKey("topic", "binding_key", "queue")
 
-	if signature.RoutingKey != "queue" {
-		t.Errorf(
-			"signature.RoutingKey = %v, want queue",
-			signature.RoutingKey,
-		)
-	}
+	assert.Equal(t, "queue", signature.RoutingKey)
 }

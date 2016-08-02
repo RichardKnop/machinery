@@ -37,10 +37,10 @@ func NewMongodbBackend(conf *config.Config) (Backend, error) {
 		return nil, err
 	}
 
-	return &MongodbBackend{
+	return Backend(&MongodbBackend{
 		config:          conf,
 		mongoCollection: mongoCollection,
-	}, nil
+	}), nil
 }
 
 // Group related functions

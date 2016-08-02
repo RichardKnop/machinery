@@ -1,39 +1,29 @@
-package backends
+package backends_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestTaskStateIsCompleted(t *testing.T) {
-	taskState := &TaskState{
+	taskState := &backends.TaskState{
 		TaskUUID: "taskUUID",
-		State:    PendingState,
+		State:    backends.PendingState,
 	}
 
-	if taskState.IsCompleted() {
-		t.Errorf("taskState.IsCompleted() = true, should be false. %v",
-			taskState)
-	}
+	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = ReceivedState
-	if taskState.IsCompleted() {
-		t.Errorf("taskState.IsCompleted() = true, should be false. %v",
-			taskState)
-	}
+	taskState.State = backends.ReceivedState
+	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = StartedState
-	if taskState.IsCompleted() {
-		t.Errorf("taskState.IsCompleted() = true, should be false. %v",
-			taskState)
-	}
+	taskState.State = backends.StartedState
+	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = SuccessState
-	if !taskState.IsCompleted() {
-		t.Errorf("taskState.IsCompleted() = false, should be true. %v",
-			taskState)
-	}
+	taskState.State = backends.SuccessState
+	assert.True(t, taskState.IsCompleted())
 
-	taskState.State = FailureState
-	if !taskState.IsCompleted() {
-		t.Errorf("taskState.IsCompleted() = false, should be true. %v",
-			taskState)
-	}
+	taskState.State = backends.FailureState
+	assert.True(t, taskState.IsCompleted())
 }
