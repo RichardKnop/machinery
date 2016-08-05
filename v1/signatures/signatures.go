@@ -14,6 +14,7 @@ type TaskSignature struct {
 	GroupUUID      string
 	GroupTaskCount int
 	Args           []TaskArg
+	Headers        map[string]interface{}
 	Immutable      bool
 	OnSuccess      []*TaskSignature
 	OnError        []*TaskSignature
