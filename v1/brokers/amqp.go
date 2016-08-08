@@ -125,7 +125,7 @@ func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error
 		false,                      // mandatory
 		false,                      // immediate
 		amqp.Publishing{
-			Headers:      signature.Headers,
+			Headers:      amqp.Table(signature.Headers),
 			ContentType:  "application/json",
 			Body:         message,
 			DeliveryMode: amqp.Persistent,
@@ -254,7 +254,7 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 		amqpBroker.config.BindingKey, // binding key
 		amqpBroker.config.Exchange,   // source exchange
 		false, // noWait
-		amqpBroker.config.QueueArguments, // arguments
+		amqp.Table(amqpBroker.config.QueueBindingArguments), // arguments
 	); err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
 	}

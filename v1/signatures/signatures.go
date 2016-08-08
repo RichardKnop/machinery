@@ -6,6 +6,9 @@ type TaskArg struct {
 	Value interface{}
 }
 
+// TaskHeaders represents the headers which should be used to direct the task
+type TaskHeaders map[string]interface{}
+
 // TaskSignature represents a single task invocation
 type TaskSignature struct {
 	UUID           string
@@ -14,7 +17,7 @@ type TaskSignature struct {
 	GroupUUID      string
 	GroupTaskCount int
 	Args           []TaskArg
-	Headers        map[string]interface{}
+	Headers        TaskHeaders
 	Immutable      bool
 	OnSuccess      []*TaskSignature
 	OnError        []*TaskSignature

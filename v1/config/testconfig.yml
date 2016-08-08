@@ -5,4 +5,7 @@ results_expire_in: 3600000
 exchange: machinery_exchange
 exchange_type: direct
 default_queue: machinery_tasks
+queue_binding_arguments:
+  image-type: png
+  x-match: any
 binding_key: machinery_task
