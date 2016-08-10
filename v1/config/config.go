@@ -8,16 +8,20 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// QueueBindingArguments arguments which are used when binding to the exchange
+type QueueBindingArguments map[string]interface{}
+
 // Config holds all configuration for our program
 type Config struct {
-	Broker          string `yaml:"broker"`
-	ResultBackend   string `yaml:"result_backend"`
-	ResultsExpireIn int    `yaml:"results_expire_in"`
-	Exchange        string `yaml:"exchange"`
-	ExchangeType    string `yaml:"exchange_type"`
-	DefaultQueue    string `yaml:"default_queue"`
-	BindingKey      string `yaml:"binding_key"`
-	TLSConfig       *tls.Config
+	Broker                string                `yaml:"broker"`
+	ResultBackend         string                `yaml:"result_backend"`
+	ResultsExpireIn       int                   `yaml:"results_expire_in"`
+	Exchange              string                `yaml:"exchange"`
+	ExchangeType          string                `yaml:"exchange_type"`
+	DefaultQueue          string                `yaml:"default_queue"`
+	QueueBindingArguments QueueBindingArguments `yaml:"queue_binding_arguments"`
+	BindingKey            string                `yaml:"binding_key"`
+	TLSConfig             *tls.Config
 }
 
 // ReadFromFile reads data from a file

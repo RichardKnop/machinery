@@ -16,6 +16,9 @@ results_expire_in: 3600000
 exchange: machinery_exchange
 exchange_type: direct
 default_queue: machinery_tasks
+queue_binding_arguments:
+  image-type: png
+  x-match: any
 binding_key: machinery_task
 `
 
@@ -46,4 +49,6 @@ func TestParseYAMLConfig(t *testing.T) {
 	assert.Equal(t, "direct", cfg.ExchangeType)
 	assert.Equal(t, "machinery_tasks", cfg.DefaultQueue)
 	assert.Equal(t, "machinery_task", cfg.BindingKey)
+	assert.Equal(t, "any", cfg.QueueBindingArguments["x-match"])
+	assert.Equal(t, "png", cfg.QueueBindingArguments["image-type"])
 }
