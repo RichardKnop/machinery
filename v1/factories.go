@@ -32,7 +32,16 @@ func BrokerFactory(cnf *config.Config) (brokers.Broker, error) {
 		if err != nil {
 			return nil, err
 		}
-		return brokers.NewRedisBroker(cnf, redisHost, redisPassword, redisDB), nil
+		return brokers.NewRedisBroker(cnf, redisHost, redisPassword, "", redisDB), nil
+	}
+
+	if strings.HasPrefix(cnf.Broker, "redis+socket://") {
+		redisSocket, redisPassword, redisDB, err := ParseRedisSocketURL(cnf.Broker)
+		if err != nil {
+			return nil, err
+		}
+
+		return brokers.NewRedisBroker(cnf, "", redisPassword, redisSocket, redisDB), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "eager") {
@@ -67,7 +76,16 @@ func BackendFactory(cnf *config.Config) (backends.Backend, error) {
 			return nil, err
 		}
 
-		return backends.NewRedisBackend(cnf, redisHost, redisPassword, redisDB), nil
+		return backends.NewRedisBackend(cnf, redisHost, redisPassword, "", redisDB), nil
+	}
+
+	if strings.HasPrefix(cnf.ResultBackend, "redis+socket://") {
+		redisSocket, redisPassword, redisDB, err := ParseRedisSocketURL(cnf.ResultBackend)
+		if err != nil {
+			return nil, err
+		}
+
+		return backends.NewRedisBackend(cnf, "", redisPassword, redisSocket, redisDB), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "mongodb://") {
@@ -115,5 +133,54 @@ func ParseRedisURL(url string) (host, password string, db int, err error) {
 			db, err = 0, nil //ignore err here
 		}
 	}
+	return
+}
+
+// ParseRedisSocketURL extracts Redis connection options from a URL with the
+// redis+socket:// scheme. This scheme is not standard (or even de facto) and
+// is used as a transitional mechanism until the the config package gains the
+// proper facilities to support socket-based connections.
+func ParseRedisSocketURL(url string) (path, password string, db int, err error) {
+	parts := strings.Split(url, "redis+socket://")
+	if parts[0] != "" {
+		err = errors.New("No redis scheme found")
+		return
+	}
+
+	// redis+socket://password@/path/to/file.soc:/db
+
+	if len(parts) != 2 {
+		err = fmt.Errorf("Redis socket connection string should be in format redis+socket://password@/path/to/file.sock:/db, instead got %s", url)
+		return
+	}
+
+	remainder := parts[1]
+
+	// Extract password if any
+	parts = strings.SplitN(remainder, "@", 2)
+	if len(parts) == 2 {
+		password = parts[0]
+		remainder = parts[1]
+	} else {
+		remainder = parts[0]
+	}
+
+	// Extract path
+	parts = strings.SplitN(remainder, ":", 2)
+	path = parts[0]
+	if path == "" {
+		err = fmt.Errorf("Redis socket connection string should be in format redis+socket://password@/path/to/file.sock:/db, instead got %s", url)
+		return
+	}
+	if len(parts) == 2 {
+		remainder = parts[1]
+	}
+
+	// Extract DB if any
+	parts = strings.SplitN(remainder, "/", 2)
+	if len(parts) == 2 {
+		db, _ = strconv.Atoi(parts[1])
+	}
+
 	return
 }
