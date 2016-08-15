@@ -168,7 +168,11 @@ Each worker will only consume registered tasks.
 
 ## Tasks
 
-Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message. Let's say we want to define tasks for adding and multiplying numbers:
+Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message. 
+
+Currently each task needs to return two values, second one being `error`.
+
+Let's say we want to define tasks for adding and multiplying numbers:
 
 ```go
 func Add(args ...int64) (int64, error) {
