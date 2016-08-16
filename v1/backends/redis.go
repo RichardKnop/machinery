@@ -18,15 +18,18 @@ type RedisBackend struct {
 	password string
 	db       int
 	pool     *redis.Pool
+	// If set, path to a socket file overrides hostname
+	socketPath string
 }
 
 // NewRedisBackend creates RedisBackend instance
-func NewRedisBackend(cnf *config.Config, host, password string, db int) Backend {
+func NewRedisBackend(cnf *config.Config, host, password, socketPath string, db int) Backend {
 	return Backend(&RedisBackend{
-		config:   cnf,
-		host:     host,
-		db:       db,
-		password: password,
+		config:     cnf,
+		host:       host,
+		db:         db,
+		password:   password,
+		socketPath: socketPath,
 	})
 }
 
@@ -271,16 +274,21 @@ func (redisBackend *RedisBackend) newPool() *redis.Pool {
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			var (
-				c   redis.Conn
-				err error
+				c    redis.Conn
+				err  error
+				opts = make([]redis.DialOption, 0)
 			)
 
 			if redisBackend.password != "" {
-				c, err = redis.Dial("tcp", redisBackend.host,
-					redis.DialPassword(redisBackend.password))
-			} else {
-				c, err = redis.Dial("tcp", redisBackend.host)
+				opts = append(opts, redis.DialPassword(redisBackend.password))
 			}
+
+			if redisBackend.socketPath != "" {
+				c, err = redis.Dial("unix", redisBackend.socketPath, opts...)
+			} else {
+				c, err = redis.Dial("tcp", redisBackend.host, opts...)
+			}
+
 			if redisBackend.db != 0 {
 				_, err = c.Do("SELECT", redisBackend.db)
 			}

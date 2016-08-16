@@ -27,16 +27,18 @@ type RedisBroker struct {
 	stopReceivingChan   chan int
 	errorsChan          chan error
 	wg                  sync.WaitGroup
+	// If set, path to a socket file overrides hostname
+	socketPath string
 }
 
 // NewRedisBroker creates new RedisBroker instance
-func NewRedisBroker(cnf *config.Config, host, password string, db int) Broker {
+func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db int) Broker {
 	return Broker(&RedisBroker{
-		config:   cnf,
-		host:     host,
-		password: password,
-		db:       db,
-		retry:    true,
+		config:     cnf,
+		host:       host,
+		db:         db,
+		password:   password,
+		socketPath: socketPath,
 	})
 }
 
@@ -246,6 +248,10 @@ func (redisBroker *RedisBroker) stopReceiving() {
 
 // Returns / creates instance of Redis connection
 func (redisBroker *RedisBroker) open() (redis.Conn, error) {
+	if redisBroker.socketPath != "" {
+		return redis.Dial("unix", redisBroker.socketPath, redis.DialPassword(redisBroker.password), redis.DialDatabase(redisBroker.db))
+	}
+
 	// package redis takes care of pwd or db
 	return redis.Dial("tcp", redisBroker.host, redis.DialPassword(redisBroker.password), redis.DialDatabase(redisBroker.db))
 }
@@ -257,16 +263,21 @@ func (redisBroker *RedisBroker) newPool() *redis.Pool {
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			var (
-				c   redis.Conn
-				err error
+				c    redis.Conn
+				err  error
+				opts = make([]redis.DialOption, 0)
 			)
 
 			if redisBroker.password != "" {
-				c, err = redis.Dial("tcp", redisBroker.host,
-					redis.DialPassword(redisBroker.password))
-			} else {
-				c, err = redis.Dial("tcp", redisBroker.host)
+				opts = append(opts, redis.DialPassword(redisBroker.password))
 			}
+
+			if redisBroker.socketPath != "" {
+				c, err = redis.Dial("unix", redisBroker.socketPath, opts...)
+			} else {
+				c, err = redis.Dial("tcp", redisBroker.host, opts...)
+			}
+
 			if redisBroker.db != 0 {
 				_, err = c.Do("SELECT", redisBroker.db)
 			}

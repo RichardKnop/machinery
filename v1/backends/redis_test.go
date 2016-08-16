@@ -28,7 +28,7 @@ func TestGroupCompletedRedis(t *testing.T) {
 		GroupUUID: groupUUID,
 	}
 
-	backend := backends.NewRedisBackend(&config.Config{}, redisURL, redisPassword, 0)
+	backend := backends.NewRedisBackend(&config.Config{}, redisURL, redisPassword, "", 0)
 
 	// Cleanup before the test
 	backend.PurgeState(task1.UUID)
@@ -82,7 +82,7 @@ func TestGetStateRedis(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-	backend := backends.NewRedisBackend(new(config.Config), redisURL, redisPassword, 0)
+	backend := backends.NewRedisBackend(new(config.Config), redisURL, redisPassword, "", 0)
 
 	go func() {
 		backend.SetStatePending(signature)
@@ -128,7 +128,7 @@ func TestPurgeStateRedis(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-	backend := backends.NewRedisBackend(new(config.Config), redisURL, redisPassword, 0)
+	backend := backends.NewRedisBackend(new(config.Config), redisURL, redisPassword, "", 0)
 
 	backend.SetStatePending(signature)
 	taskState, err := backend.GetState(signature.UUID)
