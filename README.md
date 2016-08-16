@@ -158,6 +158,8 @@ For example:
 
 1. `amqp://guest:guest@localhost:5672`
 
+> Keep in mind AMQP is not recommended as a result backend. See [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
+
 #### MongoDB 
 
 Use Mongodb URL in the format: 
@@ -171,8 +173,6 @@ For example:
 1. `mongodb://127.0.0.1:27017/taskresults`
 
 See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/) for more information.
-
-> Keep in mind AMQP is not recommended as a result backend. See [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 
 ### ResultsExpireIn
 
