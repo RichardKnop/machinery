@@ -96,10 +96,32 @@ Result backend to use for keeping task states and results.
 
 Currently supported backends are:
 
-* Redis (use Redis URL such as `redis://127.0.0.1:6379`, or to use password `redis://password@127.0.0.1:6379`)
-* Memcache (use Memcache URL such as `memcache://10.0.0.1:11211,10.0.0.2:11211`)
-* AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
-* Mongodb (use Mongodb URL such as `mongodb://{host}:{port}/{database}` [docs](https://docs.mongodb.org/manual/reference/connection-string/))
+#### Redis 
+
+Use Redis URL in one of these formats:
+
+- `redis://[password@]host[port][/db_num]`, e.g. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
+- `redis+socket://[password@]/path/to/file.sock[:/db_num]`, e.g. `redis+socket://password@/path/to/file.sock:/db`
+
+#### Memcache 
+
+Use Memcache URL in format:
+
+- `memcache://host1[:port1][,host2[:port2],...[,hostN[:portN]]]`, e.g. `memcache://127.0.0.1:11211` for a single instance, or `memcache://10.0.0.1:11211,10.0.0.2:11211` for a cluster
+
+#### AMQP 
+
+Use AMQP URL in format:
+
+- `amqp://[username:password@]@host[:port]`, e.g. `amqp://guest:guest@localhost:5672`
+
+#### MongoDB 
+
+Use Mongodb URL in format:
+
+- `mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]`, e.g. `mongodb://127.0.0.1:27017}/taskresults`
+
+See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/) for more information.
 
 > Keep in mind AMQP is not recommended as a result backend. See [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 
