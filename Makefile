@@ -1,7 +1,5 @@
 DEPS=go list -f '{{range .TestImports}}{{.}} {{end}}' ./...
 
-export GO15VENDOREXPERIMENT=1
-
 update-deps:
 	rm -rf Godeps
 	rm -rf vendor
