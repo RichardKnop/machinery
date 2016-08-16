@@ -89,13 +89,26 @@ A message broker. Currently supported brokers are:
 
 #### AMQP 
 
-Use AMQP URL in format `amqp://[username:password@]@host[:port]`. For example:
+Use AMQP URL in the format: 
+
+````
+amqp://[username:password@]@host[:port]
+``` 
+
+For example:
 
 1. `amqp://guest:guest@localhost:5672`
 
 #### Redis 
 
-Use Redis URL in one of these formats: `redis://[password@]host[port][/db_num]`, `redis+socket://[password@]/path/to/file.sock[:/db_num]`. For example:
+Use Redis URL in one of these formats: 
+
+```
+redis://[password@]host[port][/db_num]
+redis+socket://[password@]/path/to/file.sock[:/db_num]
+``` 
+
+For example:
 
 1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
@@ -108,27 +121,52 @@ Currently supported backends are:
 
 #### Redis 
 
-Use Redis URL in one of these formats: `redis://[password@]host[port][/db_num]`, `redis+socket://[password@]/path/to/file.sock[:/db_num]`. For example:
+Use Redis URL in one of these formats: 
+
+```
+redis://[password@]host[port][/db_num]
+redis+socket://[password@]/path/to/file.sock[:/db_num]
+``` 
+
+For example:
 
 1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
 
 #### Memcache 
 
-Use Memcache URL in format `memcache://host1[:port1][,host2[:port2],...[,hostN[:portN]]]`. For example:
+Use Memcache URL in the format:
+
+```
+memcache://host1[:port1][,host2[:port2],...[,hostN[:portN]]]
+``` 
+
+For example:
 
 1. `memcache://127.0.0.1:11211` for a single instance, or 
 2. `memcache://10.0.0.1:11211,10.0.0.2:11211` for a cluster
 
 #### AMQP 
 
-Use AMQP URL in format `amqp://[username:password@]@host[:port]`. For example:
+Use AMQP URL in the format: 
+
+````
+amqp://[username:password@]@host[:port]
+``` 
+
+For example:
 
 1. `amqp://guest:guest@localhost:5672`
 
 #### MongoDB 
 
-Use Mongodb URL in format `mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]`. For example:
+Use Mongodb URL in the format: 
+
+```
+mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
+``` 
+
+For example:
 
 1. `mongodb://127.0.0.1:27017/taskresults`
 
