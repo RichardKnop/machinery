@@ -87,8 +87,18 @@ type Config struct {
 
 A message broker. Currently supported brokers are:
 
-* AMQP (use AMQP URL such as `amqp://guest:guest@localhost:5672/`)
-* Redis (use Redis URL such as `redis://127.0.0.1:6379`, or to use password `redis://password@127.0.0.1:6379`)
+#### AMQP 
+
+Use AMQP URL in format `amqp://[username:password@]@host[:port]`. For example:
+
+1. `amqp://guest:guest@localhost:5672`
+
+#### Redis 
+
+Use Redis URL in one of these formats: `redis://[password@]host[port][/db_num]`, `redis+socket://[password@]/path/to/file.sock[:/db_num]`. For example:
+
+1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
+2. `redis+socket://password@/path/to/file.sock:/0`
 
 ### ResultBackend
 
@@ -98,28 +108,29 @@ Currently supported backends are:
 
 #### Redis 
 
-Use Redis URL in one of these formats:
+Use Redis URL in one of these formats: `redis://[password@]host[port][/db_num]`, `redis+socket://[password@]/path/to/file.sock[:/db_num]`. For example:
 
-- `redis://[password@]host[port][/db_num]`, e.g. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
-- `redis+socket://[password@]/path/to/file.sock[:/db_num]`, e.g. `redis+socket://password@/path/to/file.sock:/db`
+1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
+2. `redis+socket://password@/path/to/file.sock:/0`
 
 #### Memcache 
 
-Use Memcache URL in format:
+Use Memcache URL in format `memcache://host1[:port1][,host2[:port2],...[,hostN[:portN]]]`. For example:
 
-- `memcache://host1[:port1][,host2[:port2],...[,hostN[:portN]]]`, e.g. `memcache://127.0.0.1:11211` for a single instance, or `memcache://10.0.0.1:11211,10.0.0.2:11211` for a cluster
+1. `memcache://127.0.0.1:11211` for a single instance, or 
+2. `memcache://10.0.0.1:11211,10.0.0.2:11211` for a cluster
 
 #### AMQP 
 
-Use AMQP URL in format:
+Use AMQP URL in format `amqp://[username:password@]@host[:port]`. For example:
 
-- `amqp://[username:password@]@host[:port]`, e.g. `amqp://guest:guest@localhost:5672`
+1. `amqp://guest:guest@localhost:5672`
 
 #### MongoDB 
 
-Use Mongodb URL in format:
+Use Mongodb URL in format `mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]`. For example:
 
-- `mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]`, e.g. `mongodb://127.0.0.1:27017}/taskresults`
+1. `mongodb://127.0.0.1:27017/taskresults`
 
 See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/) for more information.
 
