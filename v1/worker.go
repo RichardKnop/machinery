@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"runtime/debug"
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/signatures"
@@ -234,11 +235,14 @@ func TryCall(f reflect.Value, args []reflect.Value) (results []reflect.Value, er
 			switch e := e.(type) {
 			default:
 				err = errors.New("Invoking task caused a panic")
+
 			case error:
 				err = e
 			case string:
 				err = errors.New(e)
 			}
+			// Print stack trace
+			log.Printf("%s", debug.Stack())
 		}
 	}()
 

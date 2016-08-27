@@ -1,5 +1,7 @@
 package exampletasks
 
+import "errors"
+
 // Add ...
 func Add(args ...int64) (int64, error) {
 	sum := int64(0)
@@ -16,4 +18,9 @@ func Multiply(args ...int64) (int64, error) {
 		sum *= arg
 	}
 	return sum, nil
+}
+
+// PanicTask ...
+func PanicTask() (string, error) {
+	panic(errors.New("oops"))
 }

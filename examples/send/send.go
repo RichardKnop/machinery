@@ -106,6 +106,10 @@ func initTasks() {
 	task4 = signatures.TaskSignature{
 		Name: "multiply",
 	}
+
+	task5 = signatures.TaskSignature{
+		Name: "panic_task",
+	}
 }
 
 func main() {
@@ -169,4 +173,9 @@ func main() {
 	result, err = chainAsyncResult.Get()
 	errors.Fail(err, "Getting chain result failed with error")
 	fmt.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", result.Interface())
+
+	// Let's try a task which throws panic to make sure stack trace is not lost
+	initTasks()
+	asyncResult, err = server.SendTask(&task5)
+	errors.Fail(err, "Could not send task")
 }
