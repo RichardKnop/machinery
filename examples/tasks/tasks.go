@@ -1,6 +1,8 @@
 package exampletasks
 
-import "errors"
+import (
+	"errors"
+)
 
 // Add ...
 func Add(args ...int64) (int64, error) {
