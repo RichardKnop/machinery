@@ -50,8 +50,9 @@ func init() {
 
 	// Register tasks
 	tasks := map[string]interface{}{
-		"add":      exampletasks.Add,
-		"multiply": exampletasks.Multiply,
+		"add":        exampletasks.Add,
+		"multiply":   exampletasks.Multiply,
+		"panic_task": exampletasks.PanicTask,
 	}
 	server.RegisterTasks(tasks)
 
