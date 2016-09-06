@@ -3,11 +3,11 @@ package brokers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/logger"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/garyburd/redigo/redis"
@@ -83,7 +83,7 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 	go func() {
 		defer redisBroker.wg.Done()
 
-		log.Print("[*] Waiting for messages. To exit press CTRL+C")
+		logger.Get().Print("[*] Waiting for messages. To exit press CTRL+C")
 
 		conn := redisBroker.pool.Get()
 
@@ -110,7 +110,7 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 				}
 
 				if len(items) != 2 {
-					log.Println("Got unexpected amount of byte arrays, ignoring")
+					logger.Get().Println("Got unexpected amount of byte arrays, ignoring")
 					continue
 				}
 				// items[0] - queue name (key), items[1] - value
@@ -208,7 +208,7 @@ func (redisBroker *RedisBroker) GetPendingTasks(queue string) ([]*signatures.Tas
 
 // Consume a single message
 func (redisBroker *RedisBroker) consumeOne(item []byte, taskProcessor TaskProcessor) {
-	log.Printf("Received new message: %s", item)
+	logger.Get().Printf("Received new message: %s", item)
 
 	signature := new(signatures.TaskSignature)
 	if err := json.Unmarshal(item, signature); err != nil {

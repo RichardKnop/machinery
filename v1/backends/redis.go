@@ -3,10 +3,10 @@ package backends
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/logger"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/garyburd/redigo/redis"
 )
@@ -186,8 +186,8 @@ func (redisBackend *RedisBackend) getGroupMeta(groupUUID string) (*GroupMeta, er
 func (redisBackend *RedisBackend) getStates(taskUUIDs ...string) ([]*TaskState, error) {
 	taskStates := make([]*TaskState, len(taskUUIDs))
 
-	log.Print("Getting states")
-	log.Print(taskUUIDs)
+	logger.Get().Print("Getting states")
+	logger.Get().Print(taskUUIDs)
 
 	conn := redisBackend.open()
 	defer conn.Close()
@@ -211,7 +211,7 @@ func (redisBackend *RedisBackend) getStates(taskUUIDs ...string) ([]*TaskState, 
 
 		taskState := new(TaskState)
 		if err := json.Unmarshal(bytes, taskState); err != nil {
-			log.Print(err)
+			logger.Get().Print(err)
 			return taskStates, err
 		}
 

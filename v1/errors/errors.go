@@ -1,14 +1,14 @@
 package errors
 
 import (
-	"log"
+	"github.com/RichardKnop/machinery/v1/logger"
 )
 
 // Fail logs the error and exits the program
 // Only use this to handle critical errors
 func Fail(err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s", msg, err)
+		logger.Get().Panicf("%s: %s", msg, err)
 	}
 }
 
@@ -16,6 +16,6 @@ func Fail(err error, msg string) {
 // Use this to log errors that should not exit the program
 func Log(err error, msg string) {
 	if err != nil {
-		log.Printf("[ERROR] %s: %s", msg, err)
+		logger.Get().Printf("[ERROR] %s: %s", msg, err)
 	}
 }
