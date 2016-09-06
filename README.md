@@ -14,7 +14,7 @@ So called tasks (or jobs if you like) are executed concurrently either by many w
 
 * [First Steps](#first-steps)
 * [Configuration](#configuration)
-* [Custom Logger](custom-logger)
+* [Custom Logger](#custom-logger)
 * [Server](#server)
 * [Workers](#workers)
 * [Tasks](#tasks)
