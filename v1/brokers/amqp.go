@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/logger"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/streadway/amqp"
@@ -62,7 +62,7 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 
 	amqpBroker.stopChan = make(chan int)
 
-	if err := channel.Qos(
+	if err = channel.Qos(
 		3,     // prefetch count
 		0,     // prefetch size
 		false, // global
@@ -83,7 +83,7 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 		return amqpBroker.retry, fmt.Errorf("Queue Consume: %s", err)
 	}
 
-	log.Print("[*] Waiting for messages. To exit press CTRL+C")
+	logger.Get().Print("[*] Waiting for messages. To exit press CTRL+C")
 
 	if err := amqpBroker.consume(deliveries, taskProcessor); err != nil {
 		return amqpBroker.retry, err // retry true
@@ -156,7 +156,7 @@ func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProc
 		return
 	}
 
-	log.Printf("Received new message: %s", d.Body)
+	logger.Get().Printf("Received new message: %s", d.Body)
 
 	signature := signatures.TaskSignature{}
 	if err := json.Unmarshal(d.Body, &signature); err != nil {
@@ -223,7 +223,7 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 	}
 
 	// Declare an exchange
-	if err := channel.ExchangeDeclare(
+	if err = channel.ExchangeDeclare(
 		amqpBroker.config.Exchange,     // name of the exchange
 		amqpBroker.config.ExchangeType, // type
 		true,  // durable

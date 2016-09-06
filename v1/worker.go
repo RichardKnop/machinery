@@ -3,11 +3,11 @@ package machinery
 import (
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"runtime/debug"
 
 	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/logger"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 )
@@ -24,13 +24,13 @@ func (worker *Worker) Launch() error {
 	cnf := worker.server.GetConfig()
 	broker := worker.server.GetBroker()
 
-	log.Printf("Launching a worker with the following settings:")
-	log.Printf("- Broker: %s", cnf.Broker)
-	log.Printf("- ResultBackend: %s", cnf.ResultBackend)
-	log.Printf("- Exchange: %s", cnf.Exchange)
-	log.Printf("- ExchangeType: %s", cnf.ExchangeType)
-	log.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
-	log.Printf("- BindingKey: %s", cnf.BindingKey)
+	logger.Get().Printf("Launching a worker with the following settings:")
+	logger.Get().Printf("- Broker: %s", cnf.Broker)
+	logger.Get().Printf("- ResultBackend: %s", cnf.ResultBackend)
+	logger.Get().Printf("- Exchange: %s", cnf.Exchange)
+	logger.Get().Printf("- ExchangeType: %s", cnf.ExchangeType)
+	logger.Get().Printf("- DefaultQueue: %s", cnf.DefaultQueue)
+	logger.Get().Printf("- BindingKey: %s", cnf.BindingKey)
 
 	errorsChan := make(chan error)
 
@@ -39,7 +39,7 @@ func (worker *Worker) Launch() error {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
 
 			if retry {
-				log.Printf("Going to retry launching the worker. Error: %v", err)
+				logger.Get().Printf("Going to retry launching the worker. Error: %v", err)
 			} else {
 				errorsChan <- err // stop the goroutine
 				return
@@ -70,7 +70,7 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 
 	backend := worker.server.GetBackend()
 	// Update task state to RECEIVED
-	if err := backend.SetStateReceived(signature); err != nil {
+	if err = backend.SetStateReceived(signature); err != nil {
 		return fmt.Errorf("Set State Received: %v", err)
 	}
 
@@ -83,7 +83,7 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 	}
 
 	// Update task state to STARTED
-	if err := backend.SetStateStarted(signature); err != nil {
+	if err = backend.SetStateStarted(signature); err != nil {
 		return fmt.Errorf("Set State Started: %v", err)
 	}
 
@@ -107,7 +107,7 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 		return fmt.Errorf("Set State Success: %v", err)
 	}
 
-	log.Printf("Processed %s. Result = %v", signature.UUID, taskResult.Value)
+	logger.Get().Printf("Processed %s. Result = %v", signature.UUID, taskResult.Value)
 
 	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
@@ -181,11 +181,11 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) error {
 	// Update task state to FAILURE
 	backend := worker.server.GetBackend()
-	if err := backend.SetStateFailure(signature, err.Error()); err != nil {
+	if err = backend.SetStateFailure(signature, err.Error()); err != nil {
 		return fmt.Errorf("Set State Failure: %v", err)
 	}
 
-	log.Printf("Failed processing %s. Error = %v", signature.UUID, err)
+	logger.Get().Printf("Failed processing %s. Error = %v", signature.UUID, err)
 
 	// Trigger error callbacks
 	for _, errorTask := range signature.OnError {
@@ -242,7 +242,7 @@ func TryCall(f reflect.Value, args []reflect.Value) (results []reflect.Value, er
 				err = errors.New(e)
 			}
 			// Print stack trace
-			log.Printf("%s", debug.Stack())
+			logger.Get().Printf("%s", debug.Stack())
 		}
 	}()
 
