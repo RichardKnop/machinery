@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/brokers"
-	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/vamsu/machinery/v1/backends"
+	"github.com/vamsu/machinery/v1/brokers"
+	"github.com/vamsu/machinery/v1/config"
 )
 
 // BrokerFactory creates a new object with brokers.Broker interface

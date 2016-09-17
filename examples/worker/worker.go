@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 
-	"github.com/RichardKnop/machinery/examples/tasks"
-	machinery "github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/errors"
+	"github.com/vamsu/machinery/examples/tasks"
+	machinery "github.com/vamsu/machinery/v1"
+	"github.com/vamsu/machinery/v1/config"
+	"github.com/vamsu/machinery/v1/errors"
 )
 
 // Define flags

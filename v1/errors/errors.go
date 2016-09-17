@@ -1,7 +1,7 @@
 package errors
 
 import (
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/vamsu/machinery/v1/logger"
 )
 
 // Fail logs the error and exits the program

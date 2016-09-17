@@ -3,7 +3,7 @@ package backends_test
 import (
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/vamsu/machinery/v1/backends"
 	"github.com/stretchr/testify/assert"
 )
 

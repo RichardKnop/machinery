@@ -3,7 +3,7 @@ package logger_test
 import (
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/vamsu/machinery/v1/logger"
 )
 
 func TestDefaultLogger(t *testing.T) {
