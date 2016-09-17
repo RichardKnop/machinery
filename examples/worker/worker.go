@@ -7,6 +7,9 @@ import (
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/errors"
+	"reflect"
+	"encoding/json"
+	"github.com/RichardKnop/machinery/v1/utils"
 )
 
 // Define flags
@@ -53,8 +56,19 @@ func init() {
 		"add":        exampletasks.Add,
 		"multiply":   exampletasks.Multiply,
 		"panic_task": exampletasks.PanicTask,
+		"line_slope": exampletasks.LineSlope,
 	}
 	server.RegisterTasks(tasks)
+
+	// Register custom struct type
+	utils.RegisterCustomType(exampletasks.Line{}, func(payload []byte) (res reflect.Value, err error) {
+		obj := &exampletasks.Line{}
+		if err = json.Unmarshal(payload, obj); err != nil {
+			return
+		}
+		res = reflect.ValueOf(*obj)
+		return
+	})
 
 	// The second argument is a consumer tag
 	// Ideally, each worker should have a unique tag (worker1, worker2 etc)

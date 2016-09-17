@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"encoding/base64"
 )
 
 var (
@@ -110,8 +109,7 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 			return reflectedValue, typeConversionError(value, theType)
 		}
 
-		buf, _ := base64.StdEncoding.DecodeString(stringValue)
-		result, err := customMarshalFunc(buf)
+		result, err := customMarshalFunc([]byte(stringValue))
 		if err != nil {
 			return reflectedValue, typeConversionError(value, theType)
 		}
