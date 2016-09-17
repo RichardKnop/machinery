@@ -29,7 +29,7 @@ var (
 	}
 )
 
-type UnMarshalJson func([]byte) (reflect.Value, error)
+type UnMarshalJson func(string) (reflect.Value, error)
 
 var customMarshalFunctions = map[string]UnMarshalJson{}
 
@@ -109,7 +109,7 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 			return reflectedValue, typeConversionError(value, theType)
 		}
 
-		result, err := customMarshalFunc([]byte(stringValue))
+		result, err := customMarshalFunc(stringValue)
 		if err != nil {
 			return reflectedValue, typeConversionError(value, theType)
 		}

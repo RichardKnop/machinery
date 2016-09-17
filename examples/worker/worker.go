@@ -61,9 +61,9 @@ func init() {
 	server.RegisterTasks(tasks)
 
 	// Register custom struct type
-	utils.RegisterCustomType(exampletasks.Line{}, func(payload []byte) (res reflect.Value, err error) {
+	utils.RegisterCustomType(exampletasks.Line{}, func(payload string) (res reflect.Value, err error) {
 		obj := &exampletasks.Line{}
-		if err = json.Unmarshal(payload, obj); err != nil {
+		if err = json.Unmarshal([]byte(payload), obj); err != nil {
 			return
 		}
 		res = reflect.ValueOf(*obj)
