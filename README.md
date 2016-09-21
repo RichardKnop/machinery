@@ -384,7 +384,7 @@ type TaskSignature struct {
 
 `OnSuccess` defines tasks which will be called after the task has executed successfully. It is a slice of task signature structs.
 
-`OnError` defines tasks which will be called after the task execution fails. The first argument passed to error callbacks will be the error returned from the failed task.
+`OnError` defines tasks which will be called after the task execution fails. The first argument passed to error callbacks will be the error string returned from the failed task.
 
 `ChordCallback` is used to create a callback to a group of tasks.
 
