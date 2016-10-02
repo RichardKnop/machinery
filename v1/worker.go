@@ -181,8 +181,8 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) error {
 	// Update task state to FAILURE
 	backend := worker.server.GetBackend()
-	if err = backend.SetStateFailure(signature, err.Error()); err != nil {
-		return fmt.Errorf("Set State Failure: %v", err)
+	if err1 := backend.SetStateFailure(signature, err.Error()); err1 != nil {
+		return fmt.Errorf("Set State Failure: %v", err1)
 	}
 
 	logger.Get().Printf("Failed processing %s. Error = %v", signature.UUID, err)
@@ -191,8 +191,8 @@ func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err err
 	for _, errorTask := range signature.OnError {
 		// Pass error as a first argument to error callbacks
 		args := append([]signatures.TaskArg{{
-			Type:  reflect.TypeOf(err).String(),
-			Value: reflect.ValueOf(err).Interface(),
+			Type:  "string",
+			Value: err.Error(),
 		}}, errorTask.Args...)
 		errorTask.Args = args
 		worker.server.SendTask(errorTask)
