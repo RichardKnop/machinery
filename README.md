@@ -38,7 +38,7 @@ So called tasks (or jobs if you like) are executed concurrently either by many w
 Add the Machinery library to your $GOPATH/src:
 
 ```
-go get github.com/RichardKnop/machinery
+go get github.com/RichardKnop/machinery/v1
 ```
 
 First, you will need to define some tasks. Look at sample tasks in `examples/tasks/tasks.go` to see a few examples.
