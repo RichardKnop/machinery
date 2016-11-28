@@ -277,6 +277,9 @@ func (redisBroker *RedisBroker) newPool() *redis.Pool {
 			} else {
 				c, err = redis.Dial("tcp", redisBroker.host, opts...)
 			}
+			if err != nil {
+				return nil, err
+			}
 
 			if redisBroker.db != 0 {
 				_, err = c.Do("SELECT", redisBroker.db)
