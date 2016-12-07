@@ -20,6 +20,7 @@ queue_binding_arguments:
   image-type: png
   x-match: any
 binding_key: machinery_task
+max_worker_instances: 10
 `
 
 func TestReadFromFile(t *testing.T) {
@@ -51,4 +52,6 @@ func TestParseYAMLConfig(t *testing.T) {
 	assert.Equal(t, "machinery_task", cfg.BindingKey)
 	assert.Equal(t, "any", cfg.QueueBindingArguments["x-match"])
 	assert.Equal(t, "png", cfg.QueueBindingArguments["image-type"])
+	assert.Equal(t, 10, cfg.MaxWorkerInstances)
+
 }

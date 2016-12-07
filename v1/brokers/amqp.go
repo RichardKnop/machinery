@@ -181,16 +181,34 @@ func (amqpBroker *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProc
 
 // Consumes messages...
 func (amqpBroker *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) error {
+	maxWorkers := amqpBroker.config.MaxWorkerInstances
+	pool := make(chan struct{}, maxWorkers)
+
+	// initialize worker pool with maxWorkers workers
+	go func() {
+		for i := 0; i < maxWorkers; i++ {
+			pool <- struct{}{}
+		}
+	}()
+
 	errorsChan := make(chan error)
 	for {
 		select {
 		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
+			if maxWorkers != 0 {
+				// get worker from pool (blocks until one is available)
+				<-pool
+			}
 			// Consume the task inside a gotourine so multiple tasks
 			// can be processed concurrently
 			go func() {
 				amqpBroker.consumeOne(d, taskProcessor, errorsChan)
+				if maxWorkers != 0 {
+					// give worker back to pool
+					pool <- struct{}{}
+				}
 			}()
 		case <-amqpBroker.stopChan:
 			return nil
