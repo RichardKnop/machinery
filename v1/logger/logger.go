@@ -7,7 +7,7 @@ import (
 
 var logger Interface
 
-// Set sets a custom loger which satisfies the interface
+// Set sets a custom logger which satisfies the interface
 func Set(l Interface) {
 	logger = l
 }
