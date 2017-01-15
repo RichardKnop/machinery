@@ -9,3 +9,4 @@ queue_binding_arguments:
   image-type: png
   x-match: any
 binding_key: machinery_task
+max_worker_instances: 10

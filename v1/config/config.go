@@ -21,6 +21,7 @@ type Config struct {
 	DefaultQueue          string                `yaml:"default_queue"`
 	QueueBindingArguments QueueBindingArguments `yaml:"queue_binding_arguments"`
 	BindingKey            string                `yaml:"binding_key"`
+	MaxWorkerInstances    int                   `yaml:"max_worker_instances"`
 	TLSConfig             *tls.Config
 }
 

@@ -79,6 +79,7 @@ type Config struct {
 	DefaultQueue          string                `yaml:"default_queue"`
 	QueueBindingArguments QueueBindingArguments `yaml:"queue_binding_arguments"`
 	BindingKey            string                `yaml:"binding_key"`
+	MaxWorkerInstances    int                   `yaml:"max_worker_instances"`
 	TLSConfig             *tls.Config
 }
 
@@ -236,12 +237,13 @@ import (
 )
 
 var cnf = config.Config{
-  Broker:        "amqp://guest:guest@localhost:5672/",
-  ResultBackend: "amqp://guest:guest@localhost:5672/",
-  Exchange:      "machinery_exchange",
-  ExchangeType:  "direct",
-  DefaultQueue:  "machinery_tasks",
-  BindingKey:    "machinery_task",
+  Broker:             "amqp://guest:guest@localhost:5672/",
+  ResultBackend:      "amqp://guest:guest@localhost:5672/",
+  Exchange:           "machinery_exchange",
+  ExchangeType:       "direct",
+  DefaultQueue:       "machinery_tasks",
+  BindingKey:         "machinery_task",
+  MaxWorkerInstances: 0,
 }
 
 server, err := machinery.NewServer(&cnf)
@@ -262,7 +264,10 @@ if err != nil {
 }
 ```
 
-Each worker will only consume registered tasks.
+Each worker will only consume registered tasks. For each task on the queue the Worker.Process() method will will be run
+in a goroutine. Use the `MaxWorkerInstances` config option to limit the number of concurrently running Worker.Process()
+calls (per worker). `MaxWorkerInstances = 1` will serialize task execution. `MaxWorkerInstances = 0` makes the number of
+concurrently executed tasks unlimited (default).
 
 ## Tasks
 

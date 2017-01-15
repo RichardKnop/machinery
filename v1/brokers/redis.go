@@ -223,15 +223,33 @@ func (redisBroker *RedisBroker) consumeOne(item []byte, taskProcessor TaskProces
 
 // Consumes messages...
 func (redisBroker *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProcessor) error {
+	maxWorkers := redisBroker.config.MaxWorkerInstances
+	pool := make(chan struct{}, maxWorkers)
+
+	// fill worker pool with maxWorkers workers
+	go func() {
+		for i := 0; i < maxWorkers; i++ {
+			pool <- struct{}{}
+		}
+	}()
+
 	for {
 		select {
 		case err := <-redisBroker.errorsChan:
 			return err
 		case d := <-deliveries:
+			if maxWorkers != 0 {
+				// Get worker from pool (blocks until one is available).
+				<-pool
+			}
 			// Consume the task inside a gotourine so multiple tasks
 			// can be processed concurrently
 			go func() {
 				redisBroker.consumeOne(d, taskProcessor)
+				if maxWorkers != 0 {
+					// give worker back to pool
+					pool <- struct{}{}
+				}
 			}()
 		case <-redisBroker.stopChan:
 			return nil
