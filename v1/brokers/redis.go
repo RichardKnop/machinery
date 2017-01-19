@@ -38,6 +38,7 @@ func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db in
 		host:       host,
 		db:         db,
 		password:   password,
+		retry:      true,
 		socketPath: socketPath,
 	})
 }
@@ -140,6 +141,7 @@ func (redisBroker *RedisBroker) StartConsuming(consumerTag string, taskProcessor
 	}()
 
 	if err := redisBroker.consume(deliveries, taskProcessor); err != nil {
+		redisBroker.retryFunc()
 		return redisBroker.retry, err // retry true
 	}
 
