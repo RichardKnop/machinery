@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/vamsu/machinery/v1/signatures"
 )
 
 // EagerBackend represents an "eager" in-memory result backend

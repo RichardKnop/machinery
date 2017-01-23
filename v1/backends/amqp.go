@@ -19,9 +19,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/logger"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/vamsu/machinery/v1/config"
+	"github.com/vamsu/machinery/v1/logger"
+	"github.com/vamsu/machinery/v1/signatures"
 	"github.com/streadway/amqp"
 )
 

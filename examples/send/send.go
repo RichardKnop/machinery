@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 
-	machinery "github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/errors"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	machinery "github.com/vamsu/machinery/v1"
+	"github.com/vamsu/machinery/v1/config"
+	"github.com/vamsu/machinery/v1/errors"
+	"github.com/vamsu/machinery/v1/signatures"
 )
 
 // Define flagss
