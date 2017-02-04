@@ -73,7 +73,7 @@ func (a *allocator) next() (int, bool) {
 		}
 	}
 
-	// Find preceeding free'd pool
+	// Find preceding free'd pool
 	a.last = a.low
 
 	for ; a.last < wrapped; a.last++ {
@@ -86,7 +86,7 @@ func (a *allocator) next() (int, bool) {
 }
 
 // reserve claims the bit if it is not already claimed, returning true if
-// succesfully claimed.
+// successfully claimed.
 func (a *allocator) reserve(n int) bool {
 	if a.reserved(n) {
 		return false

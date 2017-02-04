@@ -33,7 +33,7 @@ type Delivery struct {
 	// Properties
 	ContentType     string    // MIME content type
 	ContentEncoding string    // MIME content encoding
-	DeliveryMode    uint8     // queue implemention use - non-persistent (1) or persistent (2)
+	DeliveryMode    uint8     // queue implementation use - non-persistent (1) or persistent (2)
 	Priority        uint8     // queue implementation use - 0 to 9
 	CorrelationId   string    // application use - correlation identifier
 	ReplyTo         string    // application use - address to to reply to (ex: RPC)
@@ -120,11 +120,11 @@ channel it was sent from.
 Either Delivery.Ack, Delivery.Reject or Delivery.Nack must be called for every
 delivery that is not automatically acknowledged.
 */
-func (me Delivery) Ack(multiple bool) error {
-	if me.Acknowledger == nil {
+func (d Delivery) Ack(multiple bool) error {
+	if d.Acknowledger == nil {
 		return errDeliveryNotInitialized
 	}
-	return me.Acknowledger.Ack(me.DeliveryTag, multiple)
+	return d.Acknowledger.Ack(d.DeliveryTag, multiple)
 }
 
 /*
@@ -140,11 +140,11 @@ Delivery.Nack.
 Either Delivery.Ack, Delivery.Reject or Delivery.Nack must be called for every
 delivery that is not automatically acknowledged.
 */
-func (me Delivery) Reject(requeue bool) error {
-	if me.Acknowledger == nil {
+func (d Delivery) Reject(requeue bool) error {
+	if d.Acknowledger == nil {
 		return errDeliveryNotInitialized
 	}
-	return me.Acknowledger.Reject(me.DeliveryTag, requeue)
+	return d.Acknowledger.Reject(d.DeliveryTag, requeue)
 }
 
 /*
@@ -165,9 +165,9 @@ of handling this message at this time.
 Either Delivery.Ack, Delivery.Reject or Delivery.Nack must be called for every
 delivery that is not automatically acknowledged.
 */
-func (me Delivery) Nack(multiple, requeue bool) error {
-	if me.Acknowledger == nil {
+func (d Delivery) Nack(multiple, requeue bool) error {
+	if d.Acknowledger == nil {
 		return errDeliveryNotInitialized
 	}
-	return me.Acknowledger.Nack(me.DeliveryTag, multiple, requeue)
+	return d.Acknowledger.Nack(d.DeliveryTag, multiple, requeue)
 }

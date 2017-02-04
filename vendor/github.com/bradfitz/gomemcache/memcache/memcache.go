@@ -56,7 +56,7 @@ var (
 	ErrNoStats = errors.New("memcache: no statistics available")
 
 	// ErrMalformedKey is returned when an invalid key is used.
-	// Keys must be at maximum 250 bytes long, ASCII, and not
+	// Keys must be at maximum 250 bytes long and not
 	// contain whitespace or control characters.
 	ErrMalformedKey = errors.New("malformed: key is too long or contains invalid characters")
 
@@ -89,7 +89,7 @@ func legalKey(key string) bool {
 		return false
 	}
 	for i := 0; i < len(key); i++ {
-		if key[i] <= ' ' || key[i] > 0x7e {
+		if key[i] <= ' ' || key[i] == 0x7f {
 			return false
 		}
 	}

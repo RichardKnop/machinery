@@ -15,26 +15,26 @@ import (
 	"time"
 )
 
-func (me *writer) WriteFrame(frame frame) (err error) {
-	if err = frame.write(me.w); err != nil {
+func (w *writer) WriteFrame(frame frame) (err error) {
+	if err = frame.write(w.w); err != nil {
 		return
 	}
 
-	if buf, ok := me.w.(*bufio.Writer); ok {
+	if buf, ok := w.w.(*bufio.Writer); ok {
 		err = buf.Flush()
 	}
 
 	return
 }
 
-func (me *methodFrame) write(w io.Writer) (err error) {
+func (f *methodFrame) write(w io.Writer) (err error) {
 	var payload bytes.Buffer
 
-	if me.Method == nil {
+	if f.Method == nil {
 		return errors.New("malformed frame: missing method")
 	}
 
-	class, method := me.Method.id()
+	class, method := f.Method.id()
 
 	if err = binary.Write(&payload, binary.BigEndian, class); err != nil {
 		return
@@ -44,18 +44,18 @@ func (me *methodFrame) write(w io.Writer) (err error) {
 		return
 	}
 
-	if err = me.Method.write(&payload); err != nil {
+	if err = f.Method.write(&payload); err != nil {
 		return
 	}
 
-	return writeFrame(w, frameMethod, me.ChannelId, payload.Bytes())
+	return writeFrame(w, frameMethod, f.ChannelId, payload.Bytes())
 }
 
 // Heartbeat
 //
 // Payload is empty
-func (me *heartbeatFrame) write(w io.Writer) (err error) {
-	return writeFrame(w, frameHeartbeat, me.ChannelId, []byte{})
+func (f *heartbeatFrame) write(w io.Writer) (err error) {
+	return writeFrame(w, frameHeartbeat, f.ChannelId, []byte{})
 }
 
 // CONTENT HEADER
@@ -65,19 +65,19 @@ func (me *heartbeatFrame) write(w io.Writer) (err error) {
 // +----------+--------+-----------+----------------+------------- - -
 //    short     short    long long       short        remainder...
 //
-func (me *headerFrame) write(w io.Writer) (err error) {
+func (f *headerFrame) write(w io.Writer) (err error) {
 	var payload bytes.Buffer
 	var zeroTime time.Time
 
-	if err = binary.Write(&payload, binary.BigEndian, me.ClassId); err != nil {
+	if err = binary.Write(&payload, binary.BigEndian, f.ClassId); err != nil {
 		return
 	}
 
-	if err = binary.Write(&payload, binary.BigEndian, me.weight); err != nil {
+	if err = binary.Write(&payload, binary.BigEndian, f.weight); err != nil {
 		return
 	}
 
-	if err = binary.Write(&payload, binary.BigEndian, me.Size); err != nil {
+	if err = binary.Write(&payload, binary.BigEndian, f.Size); err != nil {
 		return
 	}
 
@@ -86,43 +86,43 @@ func (me *headerFrame) write(w io.Writer) (err error) {
 
 	var mask uint16
 
-	if len(me.Properties.ContentType) > 0 {
+	if len(f.Properties.ContentType) > 0 {
 		mask = mask | flagContentType
 	}
-	if len(me.Properties.ContentEncoding) > 0 {
+	if len(f.Properties.ContentEncoding) > 0 {
 		mask = mask | flagContentEncoding
 	}
-	if me.Properties.Headers != nil && len(me.Properties.Headers) > 0 {
+	if f.Properties.Headers != nil && len(f.Properties.Headers) > 0 {
 		mask = mask | flagHeaders
 	}
-	if me.Properties.DeliveryMode > 0 {
+	if f.Properties.DeliveryMode > 0 {
 		mask = mask | flagDeliveryMode
 	}
-	if me.Properties.Priority > 0 {
+	if f.Properties.Priority > 0 {
 		mask = mask | flagPriority
 	}
-	if len(me.Properties.CorrelationId) > 0 {
+	if len(f.Properties.CorrelationId) > 0 {
 		mask = mask | flagCorrelationId
 	}
-	if len(me.Properties.ReplyTo) > 0 {
+	if len(f.Properties.ReplyTo) > 0 {
 		mask = mask | flagReplyTo
 	}
-	if len(me.Properties.Expiration) > 0 {
+	if len(f.Properties.Expiration) > 0 {
 		mask = mask | flagExpiration
 	}
-	if len(me.Properties.MessageId) > 0 {
+	if len(f.Properties.MessageId) > 0 {
 		mask = mask | flagMessageId
 	}
-	if me.Properties.Timestamp != zeroTime {
+	if f.Properties.Timestamp != zeroTime {
 		mask = mask | flagTimestamp
 	}
-	if len(me.Properties.Type) > 0 {
+	if len(f.Properties.Type) > 0 {
 		mask = mask | flagType
 	}
-	if len(me.Properties.UserId) > 0 {
+	if len(f.Properties.UserId) > 0 {
 		mask = mask | flagUserId
 	}
-	if len(me.Properties.AppId) > 0 {
+	if len(f.Properties.AppId) > 0 {
 		mask = mask | flagAppId
 	}
 
@@ -131,80 +131,80 @@ func (me *headerFrame) write(w io.Writer) (err error) {
 	}
 
 	if hasProperty(mask, flagContentType) {
-		if err = writeShortstr(&payload, me.Properties.ContentType); err != nil {
+		if err = writeShortstr(&payload, f.Properties.ContentType); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagContentEncoding) {
-		if err = writeShortstr(&payload, me.Properties.ContentEncoding); err != nil {
+		if err = writeShortstr(&payload, f.Properties.ContentEncoding); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagHeaders) {
-		if err = writeTable(&payload, me.Properties.Headers); err != nil {
+		if err = writeTable(&payload, f.Properties.Headers); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagDeliveryMode) {
-		if err = binary.Write(&payload, binary.BigEndian, me.Properties.DeliveryMode); err != nil {
+		if err = binary.Write(&payload, binary.BigEndian, f.Properties.DeliveryMode); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagPriority) {
-		if err = binary.Write(&payload, binary.BigEndian, me.Properties.Priority); err != nil {
+		if err = binary.Write(&payload, binary.BigEndian, f.Properties.Priority); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagCorrelationId) {
-		if err = writeShortstr(&payload, me.Properties.CorrelationId); err != nil {
+		if err = writeShortstr(&payload, f.Properties.CorrelationId); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagReplyTo) {
-		if err = writeShortstr(&payload, me.Properties.ReplyTo); err != nil {
+		if err = writeShortstr(&payload, f.Properties.ReplyTo); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagExpiration) {
-		if err = writeShortstr(&payload, me.Properties.Expiration); err != nil {
+		if err = writeShortstr(&payload, f.Properties.Expiration); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagMessageId) {
-		if err = writeShortstr(&payload, me.Properties.MessageId); err != nil {
+		if err = writeShortstr(&payload, f.Properties.MessageId); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagTimestamp) {
-		if err = binary.Write(&payload, binary.BigEndian, uint64(me.Properties.Timestamp.Unix())); err != nil {
+		if err = binary.Write(&payload, binary.BigEndian, uint64(f.Properties.Timestamp.Unix())); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagType) {
-		if err = writeShortstr(&payload, me.Properties.Type); err != nil {
+		if err = writeShortstr(&payload, f.Properties.Type); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagUserId) {
-		if err = writeShortstr(&payload, me.Properties.UserId); err != nil {
+		if err = writeShortstr(&payload, f.Properties.UserId); err != nil {
 			return
 		}
 	}
 	if hasProperty(mask, flagAppId) {
-		if err = writeShortstr(&payload, me.Properties.AppId); err != nil {
+		if err = writeShortstr(&payload, f.Properties.AppId); err != nil {
 			return
 		}
 	}
 
-	return writeFrame(w, frameHeader, me.ChannelId, payload.Bytes())
+	return writeFrame(w, frameHeader, f.ChannelId, payload.Bytes())
 }
 
 // Body
 //
 // Payload is one byterange from the full body who's size is declared in the
 // Header frame
-func (me *bodyFrame) write(w io.Writer) (err error) {
-	return writeFrame(w, frameBody, me.ChannelId, me.Body)
+func (f *bodyFrame) write(w io.Writer) (err error) {
+	return writeFrame(w, frameBody, f.ChannelId, f.Body)
 }
 
 func writeFrame(w io.Writer, typ uint8, channel uint16, payload []byte) (err error) {
@@ -239,7 +239,7 @@ func writeFrame(w io.Writer, typ uint8, channel uint16, payload []byte) (err err
 func writeShortstr(w io.Writer, s string) (err error) {
 	b := []byte(s)
 
-	var length uint8 = uint8(len(b))
+	var length = uint8(len(b))
 
 	if err = binary.Write(w, binary.BigEndian, length); err != nil {
 		return
@@ -255,7 +255,7 @@ func writeShortstr(w io.Writer, s string) (err error) {
 func writeLongstr(w io.Writer, s string) (err error) {
 	b := []byte(s)
 
-	var length uint32 = uint32(len(b))
+	var length = uint32(len(b))
 
 	if err = binary.Write(w, binary.BigEndian, length); err != nil {
 		return

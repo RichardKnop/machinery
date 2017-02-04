@@ -460,6 +460,8 @@ func (d *decoder) readElemTo(out reflect.Value, kind byte) (good bool) {
 				out.Set(d.readDocElems(outt))
 			case typeRawDocElem:
 				out.Set(d.readRawDocElems(outt))
+			default:
+				d.readDocTo(blackHole)
 			}
 			return true
 		}
@@ -537,6 +539,11 @@ func (d *decoder) readElemTo(out reflect.Value, kind byte) (good bool) {
 		in = MongoTimestamp(d.readInt64())
 	case 0x12: // Int64
 		in = d.readInt64()
+	case 0x13: // Decimal128
+		in = Decimal128{
+			l: uint64(d.readInt64()),
+			h: uint64(d.readInt64()),
+		}
 	case 0x7F: // Max key
 		in = MaxKey
 	case 0xFF: // Min key

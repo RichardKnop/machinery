@@ -2,6 +2,7 @@ package mgo
 
 import (
 	"bytes"
+	"sort"
 
 	"gopkg.in/mgo.v2/bson"
 )
@@ -9,14 +10,22 @@ import (
 // Bulk represents an operation that can be prepared with several
 // orthogonal changes before being delivered to the server.
 //
+// MongoDB servers older than version 2.6 do not have proper support for bulk
+// operations, so the driver attempts to map its API as much as possible into
+// the functionality that works. In particular, in those releases updates and
+// removals are sent individually, and inserts are sent in bulk but have
+// suboptimal error reporting compared to more recent versions of the server.
+// See the documentation of BulkErrorCase for details on that.
+//
 // Relevant documentation:
 //
 //   http://blog.mongodb.org/post/84922794768/mongodbs-new-bulk-api
 //
 type Bulk struct {
 	c       *Collection
-	ordered bool
+	opcount int
 	actions []bulkAction
+	ordered bool
 }
 
 type bulkOp int
@@ -31,18 +40,11 @@ const (
 type bulkAction struct {
 	op   bulkOp
 	docs []interface{}
+	idxs []int
 }
 
 type bulkUpdateOp []interface{}
 type bulkDeleteOp []interface{}
-
-// BulkError holds an error returned from running a Bulk operation.
-//
-// TODO: This is private for the moment, until we understand exactly how
-//       to report these multi-errors in a useful and convenient way.
-type bulkError struct {
-	errs []error
-}
 
 // BulkResult holds the results for a bulk operation.
 type BulkResult struct {
@@ -55,17 +57,23 @@ type BulkResult struct {
 	private bool
 }
 
-func (e *bulkError) Error() string {
-	if len(e.errs) == 0 {
-		return "invalid bulkError instance: no errors"
+// BulkError holds an error returned from running a Bulk operation.
+// Individual errors may be obtained and inspected via the Cases method.
+type BulkError struct {
+	ecases []BulkErrorCase
+}
+
+func (e *BulkError) Error() string {
+	if len(e.ecases) == 0 {
+		return "invalid BulkError instance: no errors"
 	}
-	if len(e.errs) == 1 {
-		return e.errs[0].Error()
+	if len(e.ecases) == 1 {
+		return e.ecases[0].Err.Error()
 	}
-	msgs := make([]string, 0, len(e.errs))
+	msgs := make([]string, 0, len(e.ecases))
 	seen := make(map[string]bool)
-	for _, err := range e.errs {
-		msg := err.Error()
+	for _, ecase := range e.ecases {
+		msg := ecase.Err.Error()
 		if !seen[msg] {
 			seen[msg] = true
 			msgs = append(msgs, msg)
@@ -84,6 +92,32 @@ func (e *bulkError) Error() string {
 	return buf.String()
 }
 
+type bulkErrorCases []BulkErrorCase
+
+func (slice bulkErrorCases) Len() int           { return len(slice) }
+func (slice bulkErrorCases) Less(i, j int) bool { return slice[i].Index < slice[j].Index }
+func (slice bulkErrorCases) Swap(i, j int)      { slice[i], slice[j] = slice[j], slice[i] }
+
+// BulkErrorCase holds an individual error found while attempting a single change
+// within a bulk operation, and the position in which it was enqueued.
+//
+// MongoDB servers older than version 2.6 do not have proper support for bulk
+// operations, so the driver attempts to map its API as much as possible into
+// the functionality that works. In particular, only the last error is reported
+// for bulk inserts and without any positional information, so the Index
+// field is set to -1 in these cases.
+type BulkErrorCase struct {
+	Index int // Position of operation that failed, or -1 if unknown.
+	Err   error
+}
+
+// Cases returns all individual errors found while attempting the requested changes.
+//
+// See the documentation of BulkErrorCase for limitations in older MongoDB releases.
+func (e *BulkError) Cases() []BulkErrorCase {
+	return e.ecases
+}
+
 // Bulk returns a value to prepare the execution of a bulk operation.
 func (c *Collection) Bulk() *Bulk {
 	return &Bulk{c: c, ordered: true}
@@ -98,31 +132,39 @@ func (b *Bulk) Unordered() {
 	b.ordered = false
 }
 
-func (b *Bulk) action(op bulkOp) *bulkAction {
+func (b *Bulk) action(op bulkOp, opcount int) *bulkAction {
+	var action *bulkAction
 	if len(b.actions) > 0 && b.actions[len(b.actions)-1].op == op {
-		return &b.actions[len(b.actions)-1]
-	}
-	if !b.ordered {
+		action = &b.actions[len(b.actions)-1]
+	} else if !b.ordered {
 		for i := range b.actions {
 			if b.actions[i].op == op {
-				return &b.actions[i]
+				action = &b.actions[i]
+				break
 			}
 		}
 	}
-	b.actions = append(b.actions, bulkAction{op: op})
-	return &b.actions[len(b.actions)-1]
+	if action == nil {
+		b.actions = append(b.actions, bulkAction{op: op})
+		action = &b.actions[len(b.actions)-1]
+	}
+	for i := 0; i < opcount; i++ {
+		action.idxs = append(action.idxs, b.opcount)
+		b.opcount++
+	}
+	return action
 }
 
 // Insert queues up the provided documents for insertion.
 func (b *Bulk) Insert(docs ...interface{}) {
-	action := b.action(bulkInsert)
+	action := b.action(bulkInsert, len(docs))
 	action.docs = append(action.docs, docs...)
 }
 
 // Remove queues up the provided selectors for removing matching documents.
 // Each selector will remove only a single matching document.
 func (b *Bulk) Remove(selectors ...interface{}) {
-	action := b.action(bulkRemove)
+	action := b.action(bulkRemove, len(selectors))
 	for _, selector := range selectors {
 		if selector == nil {
 			selector = bson.D{}
@@ -139,7 +181,7 @@ func (b *Bulk) Remove(selectors ...interface{}) {
 // RemoveAll queues up the provided selectors for removing all matching documents.
 // Each selector will remove all matching documents.
 func (b *Bulk) RemoveAll(selectors ...interface{}) {
-	action := b.action(bulkRemove)
+	action := b.action(bulkRemove, len(selectors))
 	for _, selector := range selectors {
 		if selector == nil {
 			selector = bson.D{}
@@ -161,7 +203,7 @@ func (b *Bulk) Update(pairs ...interface{}) {
 	if len(pairs)%2 != 0 {
 		panic("Bulk.Update requires an even number of parameters")
 	}
-	action := b.action(bulkUpdate)
+	action := b.action(bulkUpdate, len(pairs)/2)
 	for i := 0; i < len(pairs); i += 2 {
 		selector := pairs[i]
 		if selector == nil {
@@ -183,7 +225,7 @@ func (b *Bulk) UpdateAll(pairs ...interface{}) {
 	if len(pairs)%2 != 0 {
 		panic("Bulk.UpdateAll requires an even number of parameters")
 	}
-	action := b.action(bulkUpdate)
+	action := b.action(bulkUpdate, len(pairs)/2)
 	for i := 0; i < len(pairs); i += 2 {
 		selector := pairs[i]
 		if selector == nil {
@@ -207,7 +249,7 @@ func (b *Bulk) Upsert(pairs ...interface{}) {
 	if len(pairs)%2 != 0 {
 		panic("Bulk.Update requires an even number of parameters")
 	}
-	action := b.action(bulkUpdate)
+	action := b.action(bulkUpdate, len(pairs)/2)
 	for i := 0; i < len(pairs); i += 2 {
 		selector := pairs[i]
 		if selector == nil {
@@ -231,7 +273,7 @@ func (b *Bulk) Upsert(pairs ...interface{}) {
 // error only due to a limitation in the wire protocol.
 func (b *Bulk) Run() (*BulkResult, error) {
 	var result BulkResult
-	var berr bulkError
+	var berr BulkError
 	var failed bool
 	for i := range b.actions {
 		action := &b.actions[i]
@@ -254,40 +296,55 @@ func (b *Bulk) Run() (*BulkResult, error) {
 		}
 	}
 	if failed {
+		sort.Sort(bulkErrorCases(berr.ecases))
 		return nil, &berr
 	}
 	return &result, nil
 }
 
-func (b *Bulk) runInsert(action *bulkAction, result *BulkResult, berr *bulkError) bool {
+func (b *Bulk) runInsert(action *bulkAction, result *BulkResult, berr *BulkError) bool {
 	op := &insertOp{b.c.FullName, action.docs, 0}
 	if !b.ordered {
 		op.flags = 1 // ContinueOnError
 	}
 	lerr, err := b.c.writeOp(op, b.ordered)
-	return b.checkSuccess(berr, lerr, err)
+	return b.checkSuccess(action, berr, lerr, err)
 }
 
-func (b *Bulk) runUpdate(action *bulkAction, result *BulkResult, berr *bulkError) bool {
+func (b *Bulk) runUpdate(action *bulkAction, result *BulkResult, berr *BulkError) bool {
 	lerr, err := b.c.writeOp(bulkUpdateOp(action.docs), b.ordered)
-	result.Matched += lerr.N
-	result.Modified += lerr.modified
-	return b.checkSuccess(berr, lerr, err)
+	if lerr != nil {
+		result.Matched += lerr.N
+		result.Modified += lerr.modified
+	}
+	return b.checkSuccess(action, berr, lerr, err)
 }
 
-func (b *Bulk) runRemove(action *bulkAction, result *BulkResult, berr *bulkError) bool {
+func (b *Bulk) runRemove(action *bulkAction, result *BulkResult, berr *BulkError) bool {
 	lerr, err := b.c.writeOp(bulkDeleteOp(action.docs), b.ordered)
-	result.Matched += lerr.N
-	result.Modified += lerr.modified
-	return b.checkSuccess(berr, lerr, err)
+	if lerr != nil {
+		result.Matched += lerr.N
+		result.Modified += lerr.modified
+	}
+	return b.checkSuccess(action, berr, lerr, err)
 }
 
-func (b *Bulk) checkSuccess(berr *bulkError, lerr *LastError, err error) bool {
-	if lerr != nil && len(lerr.errors) > 0 {
-		berr.errs = append(berr.errs, lerr.errors...)
+func (b *Bulk) checkSuccess(action *bulkAction, berr *BulkError, lerr *LastError, err error) bool {
+	if lerr != nil && len(lerr.ecases) > 0 {
+		for i := 0; i < len(lerr.ecases); i++ {
+			// Map back from the local error index into the visible one.
+			ecase := lerr.ecases[i]
+			idx := ecase.Index
+			if idx >= 0 {
+				idx = action.idxs[idx]
+			}
+			berr.ecases = append(berr.ecases, BulkErrorCase{idx, ecase.Err})
+		}
 		return false
 	} else if err != nil {
-		berr.errs = append(berr.errs, err)
+		for i := 0; i < len(action.idxs); i++ {
+			berr.ecases = append(berr.ecases, BulkErrorCase{action.idxs[i], err})
+		}
 		return false
 	}
 	return true

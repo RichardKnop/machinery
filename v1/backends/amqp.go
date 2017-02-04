@@ -38,20 +38,20 @@ func NewAMQPBackend(cnf *config.Config) Backend {
 }
 
 // InitGroup - saves UUIDs of all tasks in a group
-func (amqpBackend *AMQPBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
+func (b *AMQPBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
 // GroupCompleted - returns true if all tasks in a group finished
 // NOTE: Given AMQP limitation this will only return true if all finished
 // tasks were successful as we do not keep track of completed failed tasks
-func (amqpBackend *AMQPBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
-	conn, channel, _, _, err := amqpBackend.open(groupUUID)
+func (b *AMQPBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
+	conn, channel, _, _, err := b.open(groupUUID)
 	if err != nil {
 		return false, err
 	}
 
-	defer amqpBackend.close(channel, conn)
+	defer b.close(channel, conn)
 
 	queueState, err := channel.QueueInspect(groupUUID)
 	if err != nil {
@@ -62,15 +62,15 @@ func (amqpBackend *AMQPBackend) GroupCompleted(groupUUID string, groupTaskCount 
 }
 
 // GroupTaskStates - returns states of all tasks in the group
-func (amqpBackend *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
+func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
 	taskStates := make([]*TaskState, groupTaskCount)
 
-	conn, channel, queue, _, err := amqpBackend.open(groupUUID)
+	conn, channel, queue, _, err := b.open(groupUUID)
 	if err != nil {
 		return taskStates, err
 	}
 
-	defer amqpBackend.close(channel, conn)
+	defer b.close(channel, conn)
 
 	queueState, err := channel.QueueInspect(groupUUID)
 	if err != nil {
@@ -112,29 +112,37 @@ func (amqpBackend *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount
 	return taskStates, nil
 }
 
+// TriggerChord - marks chord as triggered in the backend storage to make sure
+// chord is never trigerred multiple times. Returns a boolean flag to indicate
+// whether the worker should trigger chord (true) or no if it has been triggered
+// already (false)
+func (b *AMQPBackend) TriggerChord(groupUUID string) (bool, error) {
+	return true, nil
+}
+
 // SetStatePending - sets task state to PENDING
-func (amqpBackend *AMQPBackend) SetStatePending(signature *signatures.TaskSignature) error {
+func (b *AMQPBackend) SetStatePending(signature *signatures.TaskSignature) error {
 	taskState := NewPendingTaskState(signature)
-	return amqpBackend.updateState(taskState)
+	return b.updateState(taskState)
 }
 
 // SetStateReceived - sets task state to RECEIVED
-func (amqpBackend *AMQPBackend) SetStateReceived(signature *signatures.TaskSignature) error {
+func (b *AMQPBackend) SetStateReceived(signature *signatures.TaskSignature) error {
 	taskState := NewReceivedTaskState(signature)
-	return amqpBackend.updateState(taskState)
+	return b.updateState(taskState)
 }
 
 // SetStateStarted - sets task state to STARTED
-func (amqpBackend *AMQPBackend) SetStateStarted(signature *signatures.TaskSignature) error {
+func (b *AMQPBackend) SetStateStarted(signature *signatures.TaskSignature) error {
 	taskState := NewStartedTaskState(signature)
-	return amqpBackend.updateState(taskState)
+	return b.updateState(taskState)
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (amqpBackend *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
+func (b *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
 	taskState := NewSuccessTaskState(signature, result)
 
-	if err := amqpBackend.updateState(taskState); err != nil {
+	if err := b.updateState(taskState); err != nil {
 		return err
 	}
 
@@ -142,26 +150,26 @@ func (amqpBackend *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignat
 		return nil
 	}
 
-	return amqpBackend.markTaskSuccess(signature, taskState)
+	return b.markTaskSuccess(signature, taskState)
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (amqpBackend *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
+func (b *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
 	taskState := NewFailureTaskState(signature, err)
-	return amqpBackend.updateState(taskState)
+	return b.updateState(taskState)
 }
 
 // GetState - returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
-func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
+func (b *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := new(TaskState)
 
-	conn, channel, queue, _, err := amqpBackend.open(taskUUID)
+	conn, channel, queue, _, err := b.open(taskUUID)
 	if err != nil {
 		return nil, err
 	}
 
-	defer amqpBackend.close(channel, conn)
+	defer b.close(channel, conn)
 
 	d, ok, err := channel.Get(
 		queue.Name, // queue name
@@ -186,23 +194,23 @@ func (amqpBackend *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 }
 
 // PurgeState - deletes stored task state
-func (amqpBackend *AMQPBackend) PurgeState(taskUUID string) error {
-	return amqpBackend.deleteQueue(taskUUID)
+func (b *AMQPBackend) PurgeState(taskUUID string) error {
+	return b.deleteQueue(taskUUID)
 }
 
 // PurgeGroupMeta - deletes stored group meta data
-func (amqpBackend *AMQPBackend) PurgeGroupMeta(groupUUID string) error {
-	return amqpBackend.deleteQueue(groupUUID)
+func (b *AMQPBackend) PurgeGroupMeta(groupUUID string) error {
+	return b.deleteQueue(groupUUID)
 }
 
 // Updates a task state
-func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
-	conn, channel, _, confirmsChan, err := amqpBackend.open(taskState.TaskUUID)
+func (b *AMQPBackend) updateState(taskState *TaskState) error {
+	conn, channel, _, confirmsChan, err := b.open(taskState.TaskUUID)
 	if err != nil {
 		return err
 	}
 
-	defer amqpBackend.close(channel, conn)
+	defer b.close(channel, conn)
 
 	message, err := json.Marshal(taskState)
 	if err != nil {
@@ -210,10 +218,10 @@ func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
 	}
 
 	if err := channel.Publish(
-		amqpBackend.config.Exchange, // exchange
-		taskState.TaskUUID,          // routing key
-		false,                       // mandatory
-		false,                       // immediate
+		b.config.Exchange,  // exchange
+		taskState.TaskUUID, // routing key
+		false,              // mandatory
+		false,              // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
@@ -233,8 +241,8 @@ func (amqpBackend *AMQPBackend) updateState(taskState *TaskState) error {
 }
 
 // Returns expiration time
-func (amqpBackend *AMQPBackend) getExpiresIn() int {
-	resultsExpireIn := amqpBackend.config.ResultsExpireIn * 1000
+func (b *AMQPBackend) getExpiresIn() int {
+	resultsExpireIn := b.config.ResultsExpireIn * 1000
 	if resultsExpireIn == 0 {
 		// // expire results after 1 hour by default
 		resultsExpireIn = 3600 * 1000
@@ -243,13 +251,13 @@ func (amqpBackend *AMQPBackend) getExpiresIn() int {
 }
 
 // Deletes a queue
-func (amqpBackend *AMQPBackend) deleteQueue(queueName string) error {
-	conn, channel, queue, _, err := amqpBackend.open(queueName)
+func (b *AMQPBackend) deleteQueue(queueName string) error {
+	conn, channel, queue, _, err := b.open(queueName)
 	if err != nil {
 		return err
 	}
 
-	defer amqpBackend.close(channel, conn)
+	defer b.close(channel, conn)
 
 	// First return value is number of messages removed
 	_, err = channel.QueueDelete(
@@ -263,18 +271,18 @@ func (amqpBackend *AMQPBackend) deleteQueue(queueName string) error {
 }
 
 // Marks task as successful in a group queue
-// This is important for amqpBackend.GroupCompleted/GroupSuccessful methods
-func (amqpBackend *AMQPBackend) markTaskSuccess(signature *signatures.TaskSignature, taskState *TaskState) error {
+// This is important for b.GroupCompleted/GroupSuccessful methods
+func (b *AMQPBackend) markTaskSuccess(signature *signatures.TaskSignature, taskState *TaskState) error {
 	if signature.GroupUUID == "" || signature.GroupTaskCount == 0 {
 		return nil
 	}
 
-	conn, channel, _, confirmsChan, err := amqpBackend.open(signature.GroupUUID)
+	conn, channel, _, confirmsChan, err := b.open(signature.GroupUUID)
 	if err != nil {
 		return err
 	}
 
-	defer amqpBackend.close(channel, conn)
+	defer b.close(channel, conn)
 
 	message, err := json.Marshal(taskState)
 	if err != nil {
@@ -282,10 +290,10 @@ func (amqpBackend *AMQPBackend) markTaskSuccess(signature *signatures.TaskSignat
 	}
 
 	if err := channel.Publish(
-		amqpBackend.config.Exchange, // exchange
-		signature.GroupUUID,         // routing key
-		false,                       // mandatory
-		false,                       // immediate
+		b.config.Exchange,   // exchange
+		signature.GroupUUID, // routing key
+		false,               // mandatory
+		false,               // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
@@ -305,7 +313,7 @@ func (amqpBackend *AMQPBackend) markTaskSuccess(signature *signatures.TaskSignat
 }
 
 // Connects to the message queue, opens a channel, declares a queue
-func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
+func (b *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
 	var (
 		conn    *amqp.Connection
 		channel *amqp.Channel
@@ -316,7 +324,7 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 	// Connect
 	// From amqp docs: DialTLS will use the provided tls.Config when it encounters an amqps:// scheme
 	// and will dial a plain connection when it encounters an amqp:// scheme.
-	conn, err = amqp.DialTLS(amqpBackend.config.Broker, amqpBackend.config.TLSConfig)
+	conn, err = amqp.DialTLS(b.config.Broker, b.config.TLSConfig)
 	if err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
 	}
@@ -329,8 +337,8 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 
 	// Declare an exchange
 	err = channel.ExchangeDeclare(
-		amqpBackend.config.Exchange,     // name of the exchange
-		amqpBackend.config.ExchangeType, // type
+		b.config.Exchange,     // name of the exchange
+		b.config.ExchangeType, // type
 		true,  // durable
 		false, // delete when complete
 		false, // internal
@@ -343,7 +351,7 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 
 	// Declare a queue
 	arguments := amqp.Table{
-		"x-message-ttl": int32(amqpBackend.getExpiresIn()),
+		"x-message-ttl": int32(b.getExpiresIn()),
 	}
 	queue, err = channel.QueueDeclare(
 		taskUUID, // name
@@ -359,11 +367,11 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 
 	// Bind the queue
 	if err := channel.QueueBind(
-		queue.Name,                  // name of the queue
-		taskUUID,                    // binding key
-		amqpBackend.config.Exchange, // source exchange
-		false, // noWait
-		nil,   // arguments
+		queue.Name,        // name of the queue
+		taskUUID,          // binding key
+		b.config.Exchange, // source exchange
+		false,             // noWait
+		nil,               // arguments
 	); err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
 	}
@@ -377,7 +385,7 @@ func (amqpBackend *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.C
 }
 
 // Closes the connection
-func (amqpBackend *AMQPBackend) close(channel *amqp.Channel, conn *amqp.Connection) error {
+func (b *AMQPBackend) close(channel *amqp.Channel, conn *amqp.Connection) error {
 	if channel != nil {
 		if err := channel.Close(); err != nil {
 			return fmt.Errorf("Channel Close: %s", err)

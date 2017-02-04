@@ -123,55 +123,73 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 		worker.server.SendTask(successTask)
 	}
 
-	if signature.GroupUUID != "" {
-		groupCompleted, err := worker.server.GetBackend().GroupCompleted(
-			signature.GroupUUID,
-			signature.GroupTaskCount,
-		)
-		if err != nil {
-			return fmt.Errorf("GroupCompleted: %v", err)
-		}
-		if !groupCompleted {
+	// If the task was not part of a group, just return
+	if signature.GroupUUID == "" {
+		return nil
+	}
+
+	// Check if all task in the group has completed
+	groupCompleted, err := worker.server.GetBackend().GroupCompleted(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+	)
+	if err != nil {
+		return fmt.Errorf("GroupCompleted: %v", err)
+	}
+	// If the group has not yet completed, just return
+	if !groupCompleted {
+		return nil
+	}
+
+	// Defer purging of group meta queue if we are using AMQP backend
+	if worker.hasAMQPBackend() {
+		defer worker.server.backend.PurgeGroupMeta(signature.GroupUUID)
+	}
+
+	// There is no chord callback, just return
+	if signature.ChordCallback == nil {
+		return nil
+	}
+
+	// Trigger chord callback
+	shouldTrigger, err := worker.server.backend.TriggerChord(signature.GroupUUID)
+	if err != nil {
+		return fmt.Errorf("TriggerChord: %v", err)
+	}
+
+	// Chord has already been triggered
+	if !shouldTrigger {
+		return nil
+	}
+
+	// Get task states
+	taskStates, err := worker.server.GetBackend().GroupTaskStates(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+	)
+	if err != nil {
+		return nil
+	}
+
+	// Append group tasks' return values to chord task if it's not immutable
+	for _, taskState := range taskStates {
+		if !taskState.IsSuccess() {
 			return nil
 		}
 
-		// Optionally trigger chord callback
-		if signature.ChordCallback != nil {
-			taskStates, err := worker.server.GetBackend().GroupTaskStates(
-				signature.GroupUUID,
-				signature.GroupTaskCount,
-			)
-			if err != nil {
-				return nil
-			}
-
-			for _, taskState := range taskStates {
-				if !taskState.IsSuccess() {
-					return nil
-				}
-
-				if signature.ChordCallback.Immutable == false {
-					// Pass results of the task to the chord callback
-					signature.ChordCallback.Args = append(signature.ChordCallback.Args, signatures.TaskArg{
-						Type:  taskState.Result.Type,
-						Value: taskState.Result.Value,
-					})
-				}
-			}
-
-			_, err = worker.server.SendTask(signature.ChordCallback)
-			if err != nil {
-				return err
-			}
+		if signature.ChordCallback.Immutable == false {
+			// Pass results of the task to the chord callback
+			signature.ChordCallback.Args = append(signature.ChordCallback.Args, signatures.TaskArg{
+				Type:  taskState.Result.Type,
+				Value: taskState.Result.Value,
+			})
 		}
+	}
 
-		// Purge group state if we are using AMQP backend and all tasks finished
-		if worker.hasAMQPBackend() {
-			err = worker.server.backend.PurgeGroupMeta(signature.GroupUUID)
-			if err != nil {
-				return err
-			}
-		}
+	// Send the chord task
+	_, err = worker.server.SendTask(signature.ChordCallback)
+	if err != nil {
+		return err
 	}
 
 	return nil

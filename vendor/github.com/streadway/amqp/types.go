@@ -11,18 +11,54 @@ import (
 	"time"
 )
 
+// Constants for standard AMQP 0-9-1 exchange types.
+const (
+	ExchangeDirect  = "direct"
+	ExchangeFanout  = "fanout"
+	ExchangeTopic   = "topic"
+	ExchangeHeaders = "headers"
+)
+
 var (
-	// Errors that this library could return/emit from a channel or connection
-	ErrClosed          = &Error{Code: ChannelError, Reason: "channel/connection is not open"}
-	ErrChannelMax      = &Error{Code: ChannelError, Reason: "channel id space exhausted"}
-	ErrSASL            = &Error{Code: AccessRefused, Reason: "SASL could not negotiate a shared mechanism"}
-	ErrCredentials     = &Error{Code: AccessRefused, Reason: "username or password not allowed"}
-	ErrVhost           = &Error{Code: AccessRefused, Reason: "no access to this vhost"}
-	ErrSyntax          = &Error{Code: SyntaxError, Reason: "invalid field or value inside of a frame"}
-	ErrFrame           = &Error{Code: FrameError, Reason: "frame could not be parsed"}
-	ErrCommandInvalid  = &Error{Code: CommandInvalid, Reason: "unexpected command received"}
+	// ErrClosed is returned when the channel or connection is not open
+	ErrClosed = &Error{Code: ChannelError, Reason: "channel/connection is not open"}
+
+	// ErrChannelMax is returned when Connection.Channel has been called enough
+	// times that all channel IDs have been exhausted in the client or the
+	// server.
+	ErrChannelMax = &Error{Code: ChannelError, Reason: "channel id space exhausted"}
+
+	// ErrSASL is returned from Dial when the authentication mechanism could not
+	// be negoated.
+	ErrSASL = &Error{Code: AccessRefused, Reason: "SASL could not negotiate a shared mechanism"}
+
+	// ErrCredentials is returned when the authenticated client is not authorized
+	// to any vhost.
+	ErrCredentials = &Error{Code: AccessRefused, Reason: "username or password not allowed"}
+
+	// ErrVhost is returned when the authenticated user is not permitted to
+	// access the requested Vhost.
+	ErrVhost = &Error{Code: AccessRefused, Reason: "no access to this vhost"}
+
+	// ErrSyntax is hard protocol error, indicating an unsupported protocol,
+	// implementation or encoding.
+	ErrSyntax = &Error{Code: SyntaxError, Reason: "invalid field or value inside of a frame"}
+
+	// ErrFrame is returned when the protocol frame cannot be read from the
+	// server, indicating an unsupported protocol or unsupported frame type.
+	ErrFrame = &Error{Code: FrameError, Reason: "frame could not be parsed"}
+
+	// ErrCommandInvalid is returned when the server sends an unexpected response
+	// to this requested message type. This indicates a bug in this client.
+	ErrCommandInvalid = &Error{Code: CommandInvalid, Reason: "unexpected command received"}
+
+	// ErrUnexpectedFrame is returned when something other than a method or
+	// heartbeat frame is delivered to the Connection, indicating a bug in the
+	// client.
 	ErrUnexpectedFrame = &Error{Code: UnexpectedFrame, Reason: "unexpected frame received"}
-	ErrFieldType       = &Error{Code: SyntaxError, Reason: "unsupported table field type"}
+
+	// ErrFieldType is returned when writing a message containing a Go type unsupported by AMQP.
+	ErrFieldType = &Error{Code: SyntaxError, Reason: "unsupported table field type"}
 )
 
 // Error captures the code and reason a channel or connection has been closed
@@ -31,7 +67,7 @@ type Error struct {
 	Code    int    // constant code from the specification
 	Reason  string // description of the error
 	Server  bool   // true when initiated from the server, false when from this library
-	Recover bool   // true when this error can be recovered by retrying later or with differnet parameters
+	Recover bool   // true when this error can be recovered by retrying later or with different parameters
 }
 
 func newError(code uint16, text string) *Error {
@@ -43,8 +79,8 @@ func newError(code uint16, text string) *Error {
 	}
 }
 
-func (me Error) Error() string {
-	return fmt.Sprintf("Exception (%d) Reason: %q", me.Code, me.Reason)
+func (e Error) Error() string {
+	return fmt.Sprintf("Exception (%d) Reason: %q", e.Code, e.Reason)
 }
 
 // Used by header frames to capture routing and header information
@@ -52,7 +88,7 @@ type properties struct {
 	ContentType     string    // MIME content type
 	ContentEncoding string    // MIME content encoding
 	Headers         Table     // Application or header exchange table
-	DeliveryMode    uint8     // queue implemention use - Transient (1) or Persistent (2)
+	DeliveryMode    uint8     // queue implementation use - Transient (1) or Persistent (2)
 	Priority        uint8     // queue implementation use - 0 to 9
 	CorrelationId   string    // application use - correlation identifier
 	ReplyTo         string    // application use - address to to reply to (ex: RPC)
@@ -148,7 +184,7 @@ type Blocking struct {
 // to consume these events.
 type Confirmation struct {
 	DeliveryTag uint64 // A 1 based counter of publishings from when the channel was put in Confirm mode
-	Ack         bool   // True when the server succesfully received the publishing
+	Ack         bool   // True when the server successfully received the publishing
 }
 
 // Decimal matches the AMQP decimal type.  Scale is the number of decimal
@@ -181,7 +217,7 @@ type Decimal struct {
 // The caller must be specific in which precision of integer it wishes to
 // encode.
 //
-// Use a type assertion when reading values from a table for type converstion.
+// Use a type assertion when reading values from a table for type conversion.
 //
 // RabbitMQ expects int32 for integer values.
 //
@@ -212,6 +248,7 @@ func validateField(f interface{}) error {
 	return fmt.Errorf("value %t not supported", f)
 }
 
+// Validate returns and error if any Go types in the table are incompatible with AMQP types.
 func (t Table) Validate() error {
 	return validateField(t)
 }
@@ -219,13 +256,13 @@ func (t Table) Validate() error {
 // Heap interface for maintaining delivery tags
 type tagSet []uint64
 
-func (me tagSet) Len() int              { return len(me) }
-func (me tagSet) Less(i, j int) bool    { return (me)[i] < (me)[j] }
-func (me tagSet) Swap(i, j int)         { (me)[i], (me)[j] = (me)[j], (me)[i] }
-func (me *tagSet) Push(tag interface{}) { *me = append(*me, tag.(uint64)) }
-func (me *tagSet) Pop() interface{} {
-	val := (*me)[len(*me)-1]
-	*me = (*me)[:len(*me)-1]
+func (set tagSet) Len() int              { return len(set) }
+func (set tagSet) Less(i, j int) bool    { return (set)[i] < (set)[j] }
+func (set tagSet) Swap(i, j int)         { (set)[i], (set)[j] = (set)[j], (set)[i] }
+func (set *tagSet) Push(tag interface{}) { *set = append(*set, tag.(uint64)) }
+func (set *tagSet) Pop() interface{} {
+	val := (*set)[len(*set)-1]
+	*set = (*set)[:len(*set)-1]
 	return val
 }
 
@@ -321,7 +358,7 @@ type methodFrame struct {
 	Method    message
 }
 
-func (me *methodFrame) channel() uint16 { return me.ChannelId }
+func (f *methodFrame) channel() uint16 { return f.ChannelId }
 
 /*
 Heartbeating is a technique designed to undo one of TCP/IP's features, namely
@@ -336,7 +373,7 @@ type heartbeatFrame struct {
 	ChannelId uint16
 }
 
-func (me *heartbeatFrame) channel() uint16 { return me.ChannelId }
+func (f *heartbeatFrame) channel() uint16 { return f.ChannelId }
 
 /*
 Certain methods (such as Basic.Publish, Basic.Deliver, etc.) are formally
@@ -365,7 +402,7 @@ type headerFrame struct {
 	Properties properties
 }
 
-func (me *headerFrame) channel() uint16 { return me.ChannelId }
+func (f *headerFrame) channel() uint16 { return f.ChannelId }
 
 /*
 Content is the application data we carry from client-to-client via the AMQP
@@ -387,4 +424,4 @@ type bodyFrame struct {
 	Body      []byte
 }
 
-func (me *bodyFrame) channel() uint16 { return me.ChannelId }
+func (f *bodyFrame) channel() uint16 { return f.ChannelId }

@@ -46,7 +46,7 @@ func NewMongodbBackend(conf *config.Config) (Backend, error) {
 // Group related functions
 
 // InitGroup - saves UUIDs of all tasks in a group
-func (m *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
+func (b *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	var task *mongodbTask
 	var err error
 
@@ -56,7 +56,7 @@ func (m *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 			GroupUUID:  groupUUID,
 			CreateTime: time.Now(),
 		}
-		err = m.mongoCollection.Insert(task)
+		err = b.mongoCollection.Insert(task)
 		if err != nil {
 			return err
 		}
@@ -65,8 +65,8 @@ func (m *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 }
 
 // GroupCompleted - returns true if all tasks in a group finished
-func (m *MongodbBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
-	iter := m.mongoCollection.Find(bson.M{"group_uuid": groupUUID}).Iter()
+func (b *MongodbBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
+	iter := b.mongoCollection.Find(bson.M{"group_uuid": groupUUID}).Iter()
 
 	var task mongodbTask
 	var countSuccessTasks = 0
@@ -80,8 +80,8 @@ func (m *MongodbBackend) GroupCompleted(groupUUID string, groupTaskCount int) (b
 }
 
 // GroupTaskStates - returns states of all tasks in the group
-func (m *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
-	iter := m.mongoCollection.Find(bson.M{"group_uuid": groupUUID}).Iter()
+func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
+	iter := b.mongoCollection.Find(bson.M{"group_uuid": groupUUID}).Iter()
 
 	taskStates := make([]*TaskState, 0, groupTaskCount)
 
@@ -93,28 +93,42 @@ func (m *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) (
 	return taskStates, nil
 }
 
+// TriggerChord - marks chord as triggered in the backend storage to make sure
+// chord is never trigerred multiple times. Returns a boolean flag to indicate
+// whether the worker should trigger chord (true) or no if it has been triggered
+// already (false)
+func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
+	// if err := b.session.FsyncLock(); err != nil {
+	// 	return false, err
+	// }
+	// defer b.session.FsyncUnlock()
+	//
+	// TODO - to be implemented
+	return true, nil
+}
+
 // Setting / getting task state
 
 // SetStatePending - sets task state to PENDING
-func (m *MongodbBackend) SetStatePending(signature *signatures.TaskSignature) error {
+func (b *MongodbBackend) SetStatePending(signature *signatures.TaskSignature) error {
 	update := bson.M{"state": PendingState}
-	return m.setState(signature, update)
+	return b.setState(signature, update)
 }
 
 // SetStateReceived - sets task state to RECEIVED
-func (m *MongodbBackend) SetStateReceived(signature *signatures.TaskSignature) error {
+func (b *MongodbBackend) SetStateReceived(signature *signatures.TaskSignature) error {
 	update := bson.M{"state": ReceivedState}
-	return m.setState(signature, update)
+	return b.setState(signature, update)
 }
 
 // SetStateStarted - sets task state to STARTED
-func (m *MongodbBackend) SetStateStarted(signature *signatures.TaskSignature) error {
+func (b *MongodbBackend) SetStateStarted(signature *signatures.TaskSignature) error {
 	update := bson.M{"state": StartedState}
-	return m.setState(signature, update)
+	return b.setState(signature, update)
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (m *MongodbBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
+func (b *MongodbBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
 	update := bson.M{
 		"state": SuccessState,
 		"result": bson.M{
@@ -122,19 +136,19 @@ func (m *MongodbBackend) SetStateSuccess(signature *signatures.TaskSignature, re
 			"value": result.Value,
 		},
 	}
-	return m.setState(signature, update)
+	return b.setState(signature, update)
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (m *MongodbBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
+func (b *MongodbBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
 	update := bson.M{"state": FailureState, "error": err}
-	return m.setState(signature, update)
+	return b.setState(signature, update)
 }
 
 // GetState - returns the latest task state
-func (m *MongodbBackend) GetState(taskUUID string) (*TaskState, error) {
+func (b *MongodbBackend) GetState(taskUUID string) (*TaskState, error) {
 	var task mongodbTask
-	err := m.mongoCollection.Find(bson.M{"_id": taskUUID}).One(&task)
+	err := b.mongoCollection.Find(bson.M{"_id": taskUUID}).One(&task)
 	if err != nil {
 		return nil, err
 	}
@@ -144,25 +158,25 @@ func (m *MongodbBackend) GetState(taskUUID string) (*TaskState, error) {
 // Purging stored stored tasks states and group meta data
 
 // PurgeState - deletes stored task state
-func (m *MongodbBackend) PurgeState(taskUUID string) error {
-	return m.mongoCollection.RemoveId(taskUUID)
+func (b *MongodbBackend) PurgeState(taskUUID string) error {
+	return b.mongoCollection.RemoveId(taskUUID)
 }
 
 // PurgeGroupMeta - deletes stored group meta data
-func (m *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
-	_, err := m.mongoCollection.RemoveAll(bson.M{"group_uuid": groupUUID})
+func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
+	_, err := b.mongoCollection.RemoveAll(bson.M{"group_uuid": groupUUID})
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *MongodbBackend) setState(signature *signatures.TaskSignature, update bson.M) error {
+func (b *MongodbBackend) setState(signature *signatures.TaskSignature, update bson.M) error {
 	newTask := bson.M{
 		"group_uuid": signature.GroupUUID,
 		"createdAt":  time.Now(),
 	}
-	_, err := m.mongoCollection.Upsert(bson.M{"_id": signature.UUID}, bson.M{"$set": update, "$setOnInsert": newTask})
+	_, err := b.mongoCollection.Upsert(bson.M{"_id": signature.UUID}, bson.M{"$set": update, "$setOnInsert": newTask})
 	if err != nil {
 		return err
 	}
@@ -214,16 +228,16 @@ type mongodbTask struct {
 	Error      string            `bson:"error"`
 }
 
-func (m *mongodbTask) TaskState() *TaskState {
+func (t *mongodbTask) TaskState() *TaskState {
 	taskState := &TaskState{
-		TaskUUID: m.TaskUUID,
-		State:    m.State,
+		TaskUUID: t.TaskUUID,
+		State:    t.State,
 	}
 
 	if taskState.State == SuccessState {
-		taskState.Result = m.Result.TaskResult()
+		taskState.Result = t.Result.TaskResult()
 	} else if taskState.State == FailureState {
-		taskState.Error = m.Error
+		taskState.Error = t.Error
 	}
 	return taskState
 }
@@ -233,20 +247,20 @@ type mongodbTaskResult struct {
 	Value interface{} `bson:"value"`
 }
 
-func (m *mongodbTaskResult) TaskResult() *TaskResult {
+func (r *mongodbTaskResult) TaskResult() *TaskResult {
 	var value interface{}
-	value = m.Value
+	value = r.Value
 
-	if strings.HasPrefix(m.Type, "int") {
+	if strings.HasPrefix(r.Type, "int") {
 		value = float64(value.(int64))
-	} else if strings.HasPrefix(m.Type, "uint") {
+	} else if strings.HasPrefix(r.Type, "uint") {
 		value = float64(value.(uint64))
-	} else if strings.HasPrefix(m.Type, "float") {
+	} else if strings.HasPrefix(r.Type, "float") {
 		value = float64(value.(float64))
 	}
 
 	return &TaskResult{
-		Type:  m.Type,
+		Type:  r.Type,
 		Value: value,
 	}
 }
