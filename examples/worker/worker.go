@@ -48,7 +48,8 @@ func init() {
 		errors.Fail(err, "Could not parse config file")
 	}
 
-	server, err := machinery.NewServer(&cnf)
+	var err error
+	server, err = machinery.NewServer(&cnf)
 	errors.Fail(err, "Could not initialize server")
 
 	// Register tasks
