@@ -2,7 +2,7 @@
 language: go
 
 go:
-  - 1.7
+  - 1.8
 
 services:
   - rabbitmq
