@@ -8,6 +8,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/errors"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/examples/tasks"
 )
 
 // Define flagss
@@ -113,6 +114,20 @@ func initTasks() {
 	task5 = signatures.TaskSignature{
 		Name: "panic_task",
 	}
+
+	line := exampletasks.Line{
+		Point1:exampletasks.Coordinates{0, -2},
+		Point2:exampletasks.Coordinates{3, 4}}
+
+	task6 = signatures.TaskSignature{
+		Name: "line_slope",
+		Args: []signatures.TaskArg{
+			{
+				Type:  "exampletasks.Line",
+				Value: line.InJson(),
+			},
+		},
+	}
 }
 
 func main() {
@@ -181,4 +196,11 @@ func main() {
 	initTasks()
 	asyncResult, err = server.SendTask(&task5)
 	errors.Fail(err, "Could not send task")
+
+	// Task which takes a custom struct type
+	initTasks()
+	asyncResult, err = server.SendTask(&task6)
+	result, err = asyncResult.Get()
+	errors.Fail(err, "Could not process custom tye task")
+	fmt.Printf("Line[(0,-2),(3,4)] Slope = %v\n", result.Interface())
 }

@@ -29,6 +29,16 @@ var (
 	}
 )
 
+type UnMarshalJson func(string) (reflect.Value, error)
+
+var customMarshalFunctions = map[string]UnMarshalJson{}
+
+func RegisterCustomType(customType interface{}, unMarshalFunc UnMarshalJson) {
+	reflectType := reflect.TypeOf(customType)
+	typesMap[reflectType.String()] = reflectType
+	customMarshalFunctions[reflectType.String()] = unMarshalFunc
+}
+
 // ReflectValue converts interface{} to reflect.Value based on string type
 func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 	var reflectedValue reflect.Value
@@ -88,6 +98,22 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 		}
 
 		theValue.Elem().SetString(stringValue)
+		return theValue.Elem(), nil
+	}
+
+	customMarshalFunc, isCustomType := customMarshalFunctions[theType]
+
+	if isCustomType {
+		stringValue, ok := value.(string)
+		if !ok {
+			return reflectedValue, typeConversionError(value, theType)
+		}
+
+		result, err := customMarshalFunc(stringValue)
+		if err != nil {
+			return reflectedValue, typeConversionError(value, theType)
+		}
+		theValue.Elem().Set(result)
 		return theValue.Elem(), nil
 	}
 
