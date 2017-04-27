@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/RichardKnop/machinery",
-	"GoVersion": "go1.7",
-	"GodepVersion": "v74",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
 	],
@@ -12,23 +12,23 @@
 		},
 		{
 			"ImportPath": "github.com/bradfitz/gomemcache/memcache",
-			"Comment": "release.r60-43-g2fafb84",
-			"Rev": "2fafb84a66c4911e11a8f50955b01e74fe3ab9c5"
+			"Comment": "release.r60-46-g1952afa",
+			"Rev": "1952afaa557dc08e8e0d89eafab110fb501c1a2b"
 		},
 		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
-			"Comment": "v1.0.0-3-g6d21280",
-			"Rev": "6d212800a42e8ab5c146b8ace3490ee17e5225f9"
+			"Comment": "v1.1.0",
+			"Rev": "346938d642f2ec3594ed81d874461961cd0faa76"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Comment": "v1.0.0-17-g908534c",
-			"Rev": "908534c8b97586a4597e3fa195875d2d26502b97"
+			"Comment": "v1.0.0-23-gac91d6f",
+			"Rev": "ac91d6ff49bd0d278a90201de77a4f8ad9628e25"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Comment": "v1.0.0-17-g908534c",
-			"Rev": "908534c8b97586a4597e3fa195875d2d26502b97"
+			"Comment": "v1.0.0-23-gac91d6f",
+			"Rev": "ac91d6ff49bd0d278a90201de77a4f8ad9628e25"
 		},
 		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
@@ -37,22 +37,22 @@
 		},
 		{
 			"ImportPath": "github.com/streadway/amqp",
-			"Rev": "d75c3a341ff43309ad0cb69ac8bdbd1d8772775f"
+			"Rev": "afe8eee29a74d213b1f3fb2586058157c397da60"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Comment": "v1.1.4-4-g976c720",
-			"Rev": "976c720a22c8eb4eb6a0b4348ad85ad12491a506"
+			"Comment": "v1.1.4-27-g4d4bfba",
+			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/require",
-			"Comment": "v1.1.4-4-g976c720",
-			"Rev": "976c720a22c8eb4eb6a0b4348ad85ad12491a506"
+			"Comment": "v1.1.4-27-g4d4bfba",
+			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/suite",
-			"Comment": "v1.1.4-4-g976c720",
-			"Rev": "976c720a22c8eb4eb6a0b4348ad85ad12491a506"
+			"Comment": "v1.1.4-27-g4d4bfba",
+			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
@@ -86,7 +86,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "a5b47d31c556af34a302ce5d659e6fea44d90de0"
+			"Rev": "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b"
 		}
 	]
 }

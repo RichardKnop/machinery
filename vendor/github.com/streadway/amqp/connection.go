@@ -165,10 +165,6 @@ func DialConfig(url string, config Config) (*Connection, error) {
 		config.Vhost = uri.Vhost
 	}
 
-	if uri.Scheme == "amqps" && config.TLSClientConfig == nil {
-		config.TLSClientConfig = new(tls.Config)
-	}
-
 	addr := net.JoinHostPort(uri.Host, strconv.FormatInt(int64(uri.Port), 10))
 
 	dialer := config.Dial
@@ -181,7 +177,11 @@ func DialConfig(url string, config Config) (*Connection, error) {
 		return nil, err
 	}
 
-	if config.TLSClientConfig != nil {
+	if uri.Scheme == "amqps" {
+		if config.TLSClientConfig == nil {
+			config.TLSClientConfig = new(tls.Config)
+		}
+
 		// If ServerName has not been specified in TLSClientConfig,
 		// set it to the URI host used for this connection.
 		if config.TLSClientConfig.ServerName == "" {
@@ -605,6 +605,7 @@ func (c *Connection) openChannel() (*Channel, error) {
 	}
 
 	if err := ch.open(); err != nil {
+		c.releaseChannel(ch.id)
 		return nil, err
 	}
 	return ch, nil
