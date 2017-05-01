@@ -3,7 +3,6 @@ package machinery
 import (
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"runtime/debug"
 
@@ -67,8 +66,6 @@ func (t *Task) Call() (taskResults []*backends.TaskResult, err error) {
 	}()
 
 	// Invoke the task
-	log.Print(t.TaskFunc)
-	log.Print(t.Args)
 	results := t.TaskFunc.Call(t.Args)
 
 	// Task must return at least a single error argument
@@ -105,10 +102,7 @@ func (t *Task) Call() (taskResults []*backends.TaskResult, err error) {
 func (t *Task) ReflectArgs(args []signatures.TaskArg) error {
 	argValues := make([]reflect.Value, len(args))
 
-	log.Print("AAAAAAA")
 	for i, arg := range args {
-		log.Print(arg.Type)
-		log.Print(arg.Value)
 		argValue, err := utils.ReflectValue(arg.Type, arg.Value)
 		if err != nil {
 			return err
