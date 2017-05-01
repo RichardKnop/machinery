@@ -46,16 +46,15 @@ func (b *AMQPBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 // NOTE: Given AMQP limitation this will only return true if all finished
 // tasks were successful as we do not keep track of completed failed tasks
 func (b *AMQPBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
-	conn, channel, _, _, err := b.open(groupUUID)
+	conn, channel, err := b.open()
 	if err != nil {
 		return false, err
 	}
-
 	defer b.close(channel, conn)
 
-	queueState, err := channel.QueueInspect(groupUUID)
+	queueState, err := b.inspectQueue(channel, groupUUID)
 	if err != nil {
-		return false, fmt.Errorf("Queue Inspect: %v", err)
+		return false, nil
 	}
 
 	return queueState.Messages == groupTaskCount, nil
@@ -65,11 +64,10 @@ func (b *AMQPBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool
 func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
 	taskStates := make([]*TaskState, groupTaskCount)
 
-	conn, channel, queue, _, err := b.open(groupUUID)
+	conn, channel, queue, _, err := b.getOrCreateQueue(groupUUID)
 	if err != nil {
 		return taskStates, err
 	}
-
 	defer b.close(channel, conn)
 
 	queueState, err := channel.QueueInspect(groupUUID)
@@ -117,7 +115,18 @@ func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
 func (b *AMQPBackend) TriggerChord(groupUUID string) (bool, error) {
-	return true, nil
+	conn, channel, err := b.open()
+	if err != nil {
+		return false, err
+	}
+	defer b.close(channel, conn)
+
+	_, err = b.inspectQueue(channel, fmt.Sprintf("%s_chord_triggered", groupUUID))
+	if err != nil {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // SetStatePending - sets task state to PENDING
@@ -150,13 +159,22 @@ func (b *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, resul
 		return nil
 	}
 
-	return b.markTaskSuccess(signature, taskState)
+	return b.markTaskCompleted(signature, taskState)
 }
 
 // SetStateFailure - sets task state to FAILURE
 func (b *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
 	taskState := NewFailureTaskState(signature, err)
-	return b.updateState(taskState)
+
+	if err := b.updateState(taskState); err != nil {
+		return err
+	}
+
+	if signature.GroupUUID == "" {
+		return nil
+	}
+
+	return b.markTaskCompleted(signature, taskState)
 }
 
 // GetState - returns the latest task state. It will only return the status once
@@ -164,11 +182,10 @@ func (b *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err s
 func (b *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	taskState := new(TaskState)
 
-	conn, channel, queue, _, err := b.open(taskUUID)
+	conn, channel, queue, _, err := b.getOrCreateQueue(taskUUID)
 	if err != nil {
 		return nil, err
 	}
-
 	defer b.close(channel, conn)
 
 	d, ok, err := channel.Get(
@@ -200,16 +217,16 @@ func (b *AMQPBackend) PurgeState(taskUUID string) error {
 
 // PurgeGroupMeta - deletes stored group meta data
 func (b *AMQPBackend) PurgeGroupMeta(groupUUID string) error {
+	b.deleteQueue(fmt.Sprintf("%s_chord_triggered", groupUUID))
 	return b.deleteQueue(groupUUID)
 }
 
 // Updates a task state
 func (b *AMQPBackend) updateState(taskState *TaskState) error {
-	conn, channel, _, confirmsChan, err := b.open(taskState.TaskUUID)
+	conn, channel, _, confirmsChan, err := b.getOrCreateQueue(taskState.TaskUUID)
 	if err != nil {
 		return err
 	}
-
 	defer b.close(channel, conn)
 
 	message, err := json.Marshal(taskState)
@@ -252,11 +269,10 @@ func (b *AMQPBackend) getExpiresIn() int {
 
 // Deletes a queue
 func (b *AMQPBackend) deleteQueue(queueName string) error {
-	conn, channel, queue, _, err := b.open(queueName)
+	conn, channel, queue, _, err := b.getOrCreateQueue(queueName)
 	if err != nil {
 		return err
 	}
-
 	defer b.close(channel, conn)
 
 	// First return value is number of messages removed
@@ -270,18 +286,17 @@ func (b *AMQPBackend) deleteQueue(queueName string) error {
 	return err
 }
 
-// Marks task as successful in a group queue
-// This is important for b.GroupCompleted/GroupSuccessful methods
-func (b *AMQPBackend) markTaskSuccess(signature *signatures.TaskSignature, taskState *TaskState) error {
+// Marks task as completed in either groupdUUID_success or groupUUID_failure
+// queue. This is important for b.GroupCompleted/GroupSuccessful methods
+func (b *AMQPBackend) markTaskCompleted(signature *signatures.TaskSignature, taskState *TaskState) error {
 	if signature.GroupUUID == "" || signature.GroupTaskCount == 0 {
 		return nil
 	}
 
-	conn, channel, _, confirmsChan, err := b.open(signature.GroupUUID)
+	conn, channel, _, confirmsChan, err := b.getOrCreateQueue(signature.GroupUUID)
 	if err != nil {
 		return err
 	}
-
 	defer b.close(channel, conn)
 
 	message, err := json.Marshal(taskState)
@@ -313,7 +328,7 @@ func (b *AMQPBackend) markTaskSuccess(signature *signatures.TaskSignature, taskS
 }
 
 // Connects to the message queue, opens a channel, declares a queue
-func (b *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
+func (b *AMQPBackend) getOrCreateQueue(queueName string) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
 	var (
 		conn    *amqp.Connection
 		channel *amqp.Channel
@@ -321,18 +336,10 @@ func (b *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.Channel, am
 		err     error
 	)
 
-	// Connect
-	// From amqp docs: DialTLS will use the provided tls.Config when it encounters an amqps:// scheme
-	// and will dial a plain connection when it encounters an amqp:// scheme.
-	conn, err = amqp.DialTLS(b.config.Broker, b.config.TLSConfig)
+	// Connect to server
+	conn, channel, err = b.open()
 	if err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Dial: %s", err)
-	}
-
-	// Open a channel
-	channel, err = conn.Channel()
-	if err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Channel: %s", err)
+		return conn, channel, queue, nil, err
 	}
 
 	// Declare an exchange
@@ -354,11 +361,11 @@ func (b *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.Channel, am
 		"x-message-ttl": int32(b.getExpiresIn()),
 	}
 	queue, err = channel.QueueDeclare(
-		taskUUID, // name
-		false,    // durable
-		true,     // delete when unused
-		false,    // exclusive
-		false,    // no-wait
+		queueName, // name
+		false,     // durable
+		true,      // delete when unused
+		false,     // exclusive
+		false,     // no-wait
 		arguments,
 	)
 	if err != nil {
@@ -368,7 +375,7 @@ func (b *AMQPBackend) open(taskUUID string) (*amqp.Connection, *amqp.Channel, am
 	// Bind the queue
 	if err := channel.QueueBind(
 		queue.Name,        // name of the queue
-		taskUUID,          // binding key
+		queueName,         // binding key
 		b.config.Exchange, // source exchange
 		false,             // noWait
 		nil,               // arguments
@@ -399,4 +406,43 @@ func (b *AMQPBackend) close(channel *amqp.Channel, conn *amqp.Connection) error 
 	}
 
 	return nil
+}
+
+// Opens a connection
+func (b *AMQPBackend) open() (*amqp.Connection, *amqp.Channel, error) {
+	var (
+		conn    *amqp.Connection
+		channel *amqp.Channel
+		err     error
+	)
+
+	// Connect
+	// From amqp docs: DialTLS will use the provided tls.Config when it encounters an amqps:// scheme
+	// and will dial a plain connection when it encounters an amqp:// scheme.
+	conn, err = amqp.DialTLS(b.config.Broker, b.config.TLSConfig)
+	if err != nil {
+		return conn, channel, fmt.Errorf("Dial: %s", err)
+	}
+
+	// Open a channel
+	channel, err = conn.Channel()
+	if err != nil {
+		return conn, channel, fmt.Errorf("Channel: %s", err)
+	}
+
+	return conn, channel, nil
+}
+
+func (b *AMQPBackend) inspectQueue(channel *amqp.Channel, queueName string) (*amqp.Queue, error) {
+	var (
+		queueState amqp.Queue
+		err        error
+	)
+
+	queueState, err = channel.QueueInspect(queueName)
+	if err != nil {
+		return nil, fmt.Errorf("Queue Inspect: %v", err)
+	}
+
+	return &queueState, nil
 }

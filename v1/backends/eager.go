@@ -40,18 +40,19 @@ func (b *EagerBackend) GroupCompleted(groupUUID string, groupTaskCount int) (boo
 		return false, fmt.Errorf("Group not found: %v", groupUUID)
 	}
 
+	var countSuccessTasks = 0
 	for _, v := range tasks {
 		t, err := b.GetState(v)
 		if err != nil {
 			return false, err
 		}
 
-		if !t.IsCompleted() {
-			return false, nil
+		if t.IsCompleted() {
+			countSuccessTasks++
 		}
 	}
 
-	return true, nil
+	return countSuccessTasks == groupTaskCount, nil
 }
 
 // GroupTaskStates - returns states of all tasks in the group
