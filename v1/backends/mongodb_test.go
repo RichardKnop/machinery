@@ -11,15 +11,13 @@ import (
 )
 
 var (
-	MongoDBConnectionString = os.Getenv("MONGODB_URL")
-
 	groupUUID = "123456"
 	taskUUIDs = []string{"1", "2", "3"}
 )
 
 func initTestMongodbBackend() (backends.Backend, error) {
 	conf := &config.Config{
-		ResultBackend:   MongoDBConnectionString,
+		ResultBackend:   os.Getenv("MONGODB_URL"),
 		ResultsExpireIn: 30,
 	}
 	backend, err := backends.NewMongodbBackend(conf)
@@ -40,6 +38,10 @@ func initTestMongodbBackend() (backends.Backend, error) {
 }
 
 func TestNewMongodbBackend(t *testing.T) {
+	if os.Getenv("MONGODB_URL") == "" {
+		return
+	}
+
 	backend, err := initTestMongodbBackend()
 	if assert.NoError(t, err) {
 		assert.NotNil(t, backend)
@@ -47,6 +49,10 @@ func TestNewMongodbBackend(t *testing.T) {
 }
 
 func TestSetStatePending(t *testing.T) {
+	if os.Getenv("MONGODB_URL") == "" {
+		return
+	}
+
 	backend, err := initTestMongodbBackend()
 	if err != nil {
 		t.Fatal(err)
@@ -64,6 +70,10 @@ func TestSetStatePending(t *testing.T) {
 }
 
 func TestSetStateReceived(t *testing.T) {
+	if os.Getenv("MONGODB_URL") == "" {
+		return
+	}
+
 	backend, err := initTestMongodbBackend()
 	if err != nil {
 		t.Fatal(err)
@@ -81,6 +91,10 @@ func TestSetStateReceived(t *testing.T) {
 }
 
 func TestSetStateStarted(t *testing.T) {
+	if os.Getenv("MONGODB_URL") == "" {
+		return
+	}
+
 	backend, err := initTestMongodbBackend()
 	if err != nil {
 		t.Fatal(err)
@@ -98,6 +112,10 @@ func TestSetStateStarted(t *testing.T) {
 }
 
 func TestSetStateSuccess(t *testing.T) {
+	if os.Getenv("MONGODB_URL") == "" {
+		return
+	}
+
 	resultType := "int64"
 	resultValue := int64(88)
 
@@ -123,6 +141,10 @@ func TestSetStateSuccess(t *testing.T) {
 }
 
 func TestSetStateFailure(t *testing.T) {
+	if os.Getenv("MONGODB_URL") == "" {
+		return
+	}
+
 	failStrig := "Fail is ok"
 
 	backend, err := initTestMongodbBackend()
@@ -143,6 +165,10 @@ func TestSetStateFailure(t *testing.T) {
 }
 
 func TestGroupCompleted(t *testing.T) {
+	if os.Getenv("MONGODB_URL") == "" {
+		return
+	}
+
 	backend, err := initTestMongodbBackend()
 	if err != nil {
 		t.Fatal(err)
@@ -198,8 +224,13 @@ func TestGroupCompleted(t *testing.T) {
 }
 
 func TestMongodbDropIndexes(t *testing.T) {
+	mongoDBURL := os.Getenv("MONGODB_URL")
+	if mongoDBURL == "" {
+		return
+	}
+
 	conf := &config.Config{
-		ResultBackend:   MongoDBConnectionString,
+		ResultBackend:   mongoDBURL,
 		ResultsExpireIn: 5,
 	}
 

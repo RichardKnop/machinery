@@ -44,11 +44,14 @@ func TestGetRegisteredTaskNames(t *testing.T) {
 func getTestServer(t *testing.T) *machinery.Server {
 	server, err := machinery.NewServer(&config.Config{
 		Broker:        "amqp://guest:guest@localhost:5672/",
-		ResultBackend: "redis://127.0.0.1:6379",
-		Exchange:      "machinery_exchange",
-		ExchangeType:  "direct",
 		DefaultQueue:  "machinery_tasks",
-		BindingKey:    "machinery_task",
+		ResultBackend: "redis://127.0.0.1:6379",
+		AMQP: &config.AMQPConfig{
+			Exchange:      "machinery_exchange",
+			ExchangeType:  "direct",
+			BindingKey:    "machinery_task",
+			PrefetchCount: 1,
+		},
 	})
 	if err != nil {
 		t.Error(err)

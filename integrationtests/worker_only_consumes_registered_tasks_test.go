@@ -15,208 +15,210 @@ import (
 
 func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 	amqpURL := os.Getenv("AMQP_URL")
+	if amqpURL == "" {
+		return
+	}
 
-	if amqpURL != "" {
-		cnf := config.Config{
-			Broker:        amqpURL,
-			ResultBackend: amqpURL,
+	cnf := config.Config{
+		Broker:        amqpURL,
+		DefaultQueue:  "test_queue",
+		ResultBackend: amqpURL,
+		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",
-			DefaultQueue:  "test_queue",
 			BindingKey:    "test_task",
+			PrefetchCount: 3,
+		},
+	}
+
+	server1, err := machinery.NewServer(&cnf)
+	errors.Fail(err, "Could not initialize server")
+
+	server1.RegisterTask("add", func(args ...int64) (int64, error) {
+		sum := int64(0)
+		for _, arg := range args {
+			sum += arg
 		}
+		return sum, nil
+	})
 
-		server1, err := machinery.NewServer(&cnf)
-		errors.Fail(err, "Could not initialize server")
+	server2, err := machinery.NewServer(&cnf)
+	errors.Fail(err, "Could not initialize server")
 
-		server1.RegisterTask("add", func(args ...int64) (int64, error) {
-			sum := int64(0)
-			for _, arg := range args {
-				sum += arg
-			}
-			return sum, nil
-		})
+	server2.RegisterTask("multiply", func(args ...int64) (int64, error) {
+		sum := int64(1)
+		for _, arg := range args {
+			sum *= arg
+		}
+		return sum, nil
+	})
 
-		server2, err := machinery.NewServer(&cnf)
-		errors.Fail(err, "Could not initialize server")
-
-		server2.RegisterTask("multiply", func(args ...int64) (int64, error) {
-			sum := int64(1)
-			for _, arg := range args {
-				sum *= arg
-			}
-			return sum, nil
-		})
-
-		task1 := signatures.TaskSignature{
-			Name: "add",
-			Args: []signatures.TaskArg{
-				{
-					Type:  "int64",
-					Value: 2,
-				},
-				{
-					Type:  "int64",
-					Value: 3,
-				},
+	task1 := signatures.TaskSignature{
+		Name: "add",
+		Args: []signatures.TaskArg{
+			{
+				Type:  "int64",
+				Value: 2,
 			},
-		}
-
-		task2 := signatures.TaskSignature{
-			Name: "multiply",
-			Args: []signatures.TaskArg{
-				{
-					Type:  "int64",
-					Value: 4,
-				},
-				{
-					Type:  "int64",
-					Value: 5,
-				},
+			{
+				Type:  "int64",
+				Value: 3,
 			},
-		}
+		},
+	}
 
-		worker1 := server1.NewWorker("test_worker")
-		worker2 := server2.NewWorker("test_worker2")
-		go worker1.Launch()
-		go worker2.Launch()
+	task2 := signatures.TaskSignature{
+		Name: "multiply",
+		Args: []signatures.TaskArg{
+			{
+				Type:  "int64",
+				Value: 4,
+			},
+			{
+				Type:  "int64",
+				Value: 5,
+			},
+		},
+	}
 
-		group := machinery.NewGroup(&task2, &task1)
-		asyncResults, err := server1.SendGroup(group)
+	worker1 := server1.NewWorker("test_worker")
+	worker2 := server2.NewWorker("test_worker2")
+	go worker1.Launch()
+	go worker2.Launch()
+
+	group := machinery.NewGroup(&task2, &task1)
+	asyncResults, err := server1.SendGroup(group)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedResults := []int64{5, 20}
+	actualResults := make([]int64, 2)
+
+	for i, asyncResult := range asyncResults {
+		result, err := asyncResult.Get()
 		if err != nil {
 			t.Error(err)
 		}
-
-		expectedResults := []int64{5, 20}
-		actualResults := make([]int64, 2)
-
-		for i, asyncResult := range asyncResults {
-			result, err := asyncResult.Get()
-			if err != nil {
-				t.Error(err)
-			}
-			intResult, ok := result.Interface().(int64)
-			if !ok {
-				t.Errorf("Could not convert %v to int64", result.Interface())
-			}
-			actualResults[i] = intResult
+		intResult, ok := result.Interface().(int64)
+		if !ok {
+			t.Errorf("Could not convert %v to int64", result.Interface())
 		}
+		actualResults[i] = intResult
+	}
 
-		worker1.Quit()
-		worker2.Quit()
+	worker1.Quit()
+	worker2.Quit()
 
-		sort.Sort(ascendingInt64s(actualResults))
+	sort.Sort(ascendingInt64s(actualResults))
 
-		if !reflect.DeepEqual(expectedResults, actualResults) {
-			t.Errorf(
-				"expected results = %v, actual results = %v",
-				expectedResults,
-				actualResults,
-			)
-		}
+	if !reflect.DeepEqual(expectedResults, actualResults) {
+		t.Errorf(
+			"expected results = %v, actual results = %v",
+			expectedResults,
+			actualResults,
+		)
 	}
 }
 
 func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		return
+	}
 
-	if redisURL != "" {
-		cnf := config.Config{
-			Broker:        fmt.Sprintf("redis://%v", redisURL),
-			ResultBackend: fmt.Sprintf("redis://%v", redisURL),
-			Exchange:      "test_exchange",
-			ExchangeType:  "direct",
-			DefaultQueue:  "test_queue",
-			BindingKey:    "test_task",
+	cnf := config.Config{
+		Broker:        fmt.Sprintf("redis://%v", redisURL),
+		DefaultQueue:  "test_queue",
+		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+	}
+
+	server1, err := machinery.NewServer(&cnf)
+	errors.Fail(err, "Could not initialize server")
+
+	server1.RegisterTask("add", func(args ...int64) (int64, error) {
+		sum := int64(0)
+		for _, arg := range args {
+			sum += arg
 		}
+		return sum, nil
+	})
 
-		server1, err := machinery.NewServer(&cnf)
-		errors.Fail(err, "Could not initialize server")
+	server2, err := machinery.NewServer(&cnf)
+	errors.Fail(err, "Could not initialize server")
 
-		server1.RegisterTask("add", func(args ...int64) (int64, error) {
-			sum := int64(0)
-			for _, arg := range args {
-				sum += arg
-			}
-			return sum, nil
-		})
+	server2.RegisterTask("multiply", func(args ...int64) (int64, error) {
+		sum := int64(1)
+		for _, arg := range args {
+			sum *= arg
+		}
+		return sum, nil
+	})
 
-		server2, err := machinery.NewServer(&cnf)
-		errors.Fail(err, "Could not initialize server")
-
-		server2.RegisterTask("multiply", func(args ...int64) (int64, error) {
-			sum := int64(1)
-			for _, arg := range args {
-				sum *= arg
-			}
-			return sum, nil
-		})
-
-		task1 := signatures.TaskSignature{
-			Name: "add",
-			Args: []signatures.TaskArg{
-				{
-					Type:  "int64",
-					Value: 2,
-				},
-				{
-					Type:  "int64",
-					Value: 3,
-				},
+	task1 := signatures.TaskSignature{
+		Name: "add",
+		Args: []signatures.TaskArg{
+			{
+				Type:  "int64",
+				Value: 2,
 			},
-		}
-
-		task2 := signatures.TaskSignature{
-			Name: "multiply",
-			Args: []signatures.TaskArg{
-				{
-					Type:  "int64",
-					Value: 4,
-				},
-				{
-					Type:  "int64",
-					Value: 5,
-				},
+			{
+				Type:  "int64",
+				Value: 3,
 			},
-		}
+		},
+	}
 
-		worker1 := server1.NewWorker("test_worker")
-		worker2 := server2.NewWorker("test_worker2")
-		go worker1.Launch()
-		go worker2.Launch()
+	task2 := signatures.TaskSignature{
+		Name: "multiply",
+		Args: []signatures.TaskArg{
+			{
+				Type:  "int64",
+				Value: 4,
+			},
+			{
+				Type:  "int64",
+				Value: 5,
+			},
+		},
+	}
 
-		group := machinery.NewGroup(&task2, &task1)
-		asyncResults, err := server1.SendGroup(group)
+	worker1 := server1.NewWorker("test_worker")
+	worker2 := server2.NewWorker("test_worker2")
+	go worker1.Launch()
+	go worker2.Launch()
+
+	group := machinery.NewGroup(&task2, &task1)
+	asyncResults, err := server1.SendGroup(group)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedResults := []int64{5, 20}
+	actualResults := make([]int64, 2)
+
+	for i, asyncResult := range asyncResults {
+		result, err := asyncResult.Get()
 		if err != nil {
 			t.Error(err)
 		}
-
-		expectedResults := []int64{5, 20}
-		actualResults := make([]int64, 2)
-
-		for i, asyncResult := range asyncResults {
-			result, err := asyncResult.Get()
-			if err != nil {
-				t.Error(err)
-			}
-			intResult, ok := result.Interface().(int64)
-			if !ok {
-				t.Errorf("Could not convert %v to int64", result.Interface())
-			}
-			actualResults[i] = intResult
+		intResult, ok := result.Interface().(int64)
+		if !ok {
+			t.Errorf("Could not convert %v to int64", result.Interface())
 		}
+		actualResults[i] = intResult
+	}
 
-		worker1.Quit()
-		worker2.Quit()
+	worker1.Quit()
+	worker2.Quit()
 
-		sort.Sort(ascendingInt64s(actualResults))
+	sort.Sort(ascendingInt64s(actualResults))
 
-		if !reflect.DeepEqual(expectedResults, actualResults) {
-			t.Errorf(
-				"expected results = %v, actual results = %v",
-				expectedResults,
-				actualResults,
-			)
-		}
+	if !reflect.DeepEqual(expectedResults, actualResults) {
+		t.Errorf(
+			"expected results = %v, actual results = %v",
+			expectedResults,
+			actualResults,
+		)
 	}
 }

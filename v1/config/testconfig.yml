@@ -1,12 +1,14 @@
 ---
-broker: amqp://guest:guest@localhost:5672/
+broker: "amqp://guest:guest@localhost:5672/"
+default_queue: machinery_tasks
+max_worker_instances: 10
 result_backend: amqp
 results_expire_in: 3600000
-exchange: machinery_exchange
-exchange_type: direct
-default_queue: machinery_tasks
-queue_binding_arguments:
-  image-type: png
-  x-match: any
-binding_key: machinery_task
-max_worker_instances: 10
+amqp:
+  binding_key: machinery_task
+  exchange: machinery_exchange
+  exchange_type: direct
+  prefetch_count: 3
+  queue_binding_arguments:
+    image-type: png
+    x-match: any

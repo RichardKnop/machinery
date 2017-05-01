@@ -11,16 +11,19 @@ import (
 
 // Define flags
 var (
-	configPath    = flag.String("c", "config.yml", "Path to a configuration file")
-	broker        = flag.String("b", "amqp://guest:guest@localhost:5672/", "Broker URL")
+	configPath   = flag.String("c", "config.yml", "Path to a configuration file")
+	broker       = flag.String("b", "amqp://guest:guest@localhost:5672/", "Broker URL")
+	defaultQueue = flag.String("q", "machinery_tasks", "Ephemeral AMQP/Redis queue name")
+
 	resultBackend = flag.String("r", "amqp://guest:guest@localhost:5672/", "Result backend")
 	// resultBackend = flag.String("r", "redis://127.0.0.1:6379", "Result backend")
 	// resultBackend = flag.String("r", "memcache://127.0.0.1:11211", "Result backend")
 	// resultBackend = flag.String("r", "mongodb://127.0.0.1:27017", "Result backend")
-	exchange     = flag.String("e", "machinery_exchange", "Durable, non-auto-deleted AMQP exchange name")
-	exchangeType = flag.String("t", "direct", "Exchange type - direct|fanout|topic|x-custom")
-	defaultQueue = flag.String("q", "machinery_tasks", "Ephemeral AMQP queue name")
-	bindingKey   = flag.String("k", "machinery_task", "AMQP binding key")
+
+	exchange      = flag.String("e", "machinery_exchange", "Durable, non-auto-deleted AMQP exchange name")
+	exchangeType  = flag.String("t", "direct", "Exchange type - direct|fanout|topic|x-custom")
+	bindingKey    = flag.String("k", "machinery_task", "AMQP binding key")
+	prefetchCount = flag.Int("p", 3, "AMQP prefetch count")
 
 	cnf    config.Config
 	server *machinery.Server
@@ -33,11 +36,14 @@ func init() {
 
 	cnf = config.Config{
 		Broker:        *broker,
-		ResultBackend: *resultBackend,
-		Exchange:      *exchange,
-		ExchangeType:  *exchangeType,
 		DefaultQueue:  *defaultQueue,
-		BindingKey:    *bindingKey,
+		ResultBackend: *resultBackend,
+		AMQP: &config.AMQPConfig{
+			Exchange:      *exchange,
+			ExchangeType:  *exchangeType,
+			BindingKey:    *bindingKey,
+			PrefetchCount: *prefetchCount,
+		},
 	}
 
 	// Parse the config

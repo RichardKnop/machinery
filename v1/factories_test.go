@@ -19,10 +19,13 @@ func TestBrokerFactory(t *testing.T) {
 
 	cnf = config.Config{
 		Broker:       "amqp://guest:guest@localhost:5672/",
-		Exchange:     "machinery_exchange",
-		ExchangeType: "direct",
 		DefaultQueue: "machinery_tasks",
-		BindingKey:   "machinery_task",
+		AMQP: &config.AMQPConfig{
+			Exchange:      "machinery_exchange",
+			ExchangeType:  "direct",
+			BindingKey:    "machinery_task",
+			PrefetchCount: 1,
+		},
 	}
 
 	actual, err := machinery.BrokerFactory(&cnf)

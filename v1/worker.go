@@ -26,11 +26,15 @@ func (worker *Worker) Launch() error {
 
 	logger.Get().Printf("Launching a worker with the following settings:")
 	logger.Get().Printf("- Broker: %s", cnf.Broker)
-	logger.Get().Printf("- ResultBackend: %s", cnf.ResultBackend)
-	logger.Get().Printf("- Exchange: %s", cnf.Exchange)
-	logger.Get().Printf("- ExchangeType: %s", cnf.ExchangeType)
 	logger.Get().Printf("- DefaultQueue: %s", cnf.DefaultQueue)
-	logger.Get().Printf("- BindingKey: %s", cnf.BindingKey)
+	logger.Get().Printf("- ResultBackend: %s", cnf.ResultBackend)
+	if cnf.AMQP != nil {
+		logger.Get().Printf("- AMQP: %s", cnf.AMQP.Exchange)
+		logger.Get().Printf("  - Exchange: %s", cnf.AMQP.Exchange)
+		logger.Get().Printf("  - ExchangeType: %s", cnf.AMQP.ExchangeType)
+		logger.Get().Printf("  - BindingKey: %s", cnf.AMQP.BindingKey)
+		logger.Get().Printf("  - PrefetchCount: %d", cnf.AMQP.PrefetchCount)
+	}
 
 	errorsChan := make(chan error)
 

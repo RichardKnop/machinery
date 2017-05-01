@@ -187,11 +187,14 @@ func _testSendChain(server *machinery.Server, t *testing.T) {
 func _setup(brokerURL, backend string) *machinery.Server {
 	cnf := config.Config{
 		Broker:        brokerURL,
-		ResultBackend: backend,
-		Exchange:      "test_exchange",
-		ExchangeType:  "direct",
 		DefaultQueue:  "test_queue",
-		BindingKey:    "test_task",
+		ResultBackend: backend,
+		AMQP: &config.AMQPConfig{
+			Exchange:      "test_exchange",
+			ExchangeType:  "direct",
+			BindingKey:    "test_task",
+			PrefetchCount: 1,
+		},
 	}
 
 	server, err := machinery.NewServer(&cnf)
