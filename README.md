@@ -238,11 +238,13 @@ import (
 var cnf = config.Config{
   Broker:             "amqp://guest:guest@localhost:5672/",
   ResultBackend:      "amqp://guest:guest@localhost:5672/",
-  Exchange:           "machinery_exchange",
-  ExchangeType:       "direct",
-  DefaultQueue:       "machinery_tasks",
-  BindingKey:         "machinery_task",
   MaxWorkerInstances: 0,
+  AMQP:               config.AMQPConfig{
+    Exchange:     "machinery_exchange",
+    ExchangeType: "direct",
+    DefaultQueue: "machinery_tasks",
+    BindingKey:   "machinery_task",
+  },
 }
 
 server, err := machinery.NewServer(&cnf)
@@ -277,14 +279,6 @@ Each task needs to return an error as a last return value. In addition to error 
 Examples of valid tasks:
 
 ```go
-func DummyTask(arg string) error {
-  return errors.New(arg)
-}
-
-func DummyTask2(arg1, arg2 string) (string, string error) {
-  return arg1, arg2, nil
-}
-
 func Add(args ...int64) (int64, error) {
   sum := int64(0)
   for _, arg := range args {
@@ -299,6 +293,16 @@ func Multiply(args ...int64) (int64, error) {
     sum *= arg
   }
   return sum, nil
+}
+
+// Tasks need to return at least error as a minimal requirement
+func DummyTask(arg string) error {
+  return errors.New(arg)
+}
+
+// You can also return multiple results from the task
+func DummyTask2(arg1, arg2 string) (string, string error) {
+  return arg1, arg2, nil
 }
 ```
 
@@ -357,8 +361,8 @@ A signature wraps calling arguments, execution options (such as immutability) an
 ```go
 // TaskArg represents a single argument passed to invocation fo a task
 type TaskArg struct {
-	Type  string
-	Value interface{}
+  Type  string
+  Value interface{}
 }
 
 // TaskHeaders represents the headers which should be used to direct the task
@@ -366,17 +370,17 @@ type TaskHeaders map[string]interface{}
 
 // TaskSignature represents a single task invocation
 type TaskSignature struct {
-	UUID           string
-	Name           string
-	RoutingKey     string
-	GroupUUID      string
-	GroupTaskCount int
-	Args           []TaskArg
-	Headers        TaskHeaders
-	Immutable      bool
-	OnSuccess      []*TaskSignature
-	OnError        []*TaskSignature
-	ChordCallback  *TaskSignature
+  UUID           string
+  Name           string
+  RoutingKey     string
+  GroupUUID      string
+  GroupTaskCount int
+  Args           []TaskArg
+  Headers        TaskHeaders
+  Immutable      bool
+  OnSuccess      []*TaskSignature
+  OnError        []*TaskSignature
+  ChordCallback  *TaskSignature
 }
 ```
 
@@ -479,31 +483,31 @@ const (
 ```go
 // TaskResult represents an actual return value of a processed task
 type TaskResult struct {
-	Type  string
-	Value interface{}
+  Type  string
+  Value interface{}
 }
 
 // TaskState represents a state of a task
 type TaskState struct {
-	TaskUUID string
-	State    string
-	Result   *TaskResult
-	Error    string
+  TaskUUID string
+  State    string
+  Results  []*TaskResult
+  Error    string
 }
 
 // GroupMeta stores useful metadata about tasks within the same group
 // E.g. UUIDs of all tasks which are used in order to check if all tasks
 // completed successfully or not and thus whether to trigger chord callback
 type GroupMeta struct {
-	GroupUUID string
-	TaskUUIDs []string
+  GroupUUID      string
+  TaskUUIDs      []string
+  ChordTriggered bool
 }
-
 ```
 
-`TaskResult` represents a return value of a processed task.
+`TaskResult` represents a slice of return values of a processed task.
 
-`TaskState` struct will be serialised and stored every time a task state changes.
+`TaskState` struct will be serialized and stored every time a task state changes.
 
 `GroupMeta` stores useful metadata about tasks within the same group. E.g. UUIDs of all tasks which are used in order to check if all tasks completed successfully or not and thus whether to trigger chord callback.
 
@@ -526,12 +530,14 @@ asyncResult.GetState().IsFailure()
 You can also do a synchronous blocking call to wait for a task result:
 
 ```go
-result, err := asyncResult.Get()
+results, err := asyncResult.Get()
 if err != nil {
   // getting result of a task failed
   // do something with the error
 }
-fmt.Println(result.Interface())
+for _, result := range results {
+  fmt.Println(result.Interface())
+}
 ```
 
 ## Workflows
@@ -588,12 +594,14 @@ if err != nil {
 
 ```go
 for _, asyncResult := range asyncResults {
-  result, err := asyncResult.Get()
+  results, err := asyncResult.Get()
   if err != nil {
     // getting result of a task failed
     // do something with the error
   }
-  fmt.Println(result.Interface())
+  for _, result := range results {
+    fmt.Println(result.Interface())
+  }
 }
 ```
 
@@ -663,12 +671,14 @@ More explicitly:
 `SendChord` returns `ChordAsyncResult` which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the callback:
 
 ```go
-result, err := chordAsyncResult.Get()
+results, err := chordAsyncResult.Get()
 if err != nil {
   // getting result of a chord failed
   // do something with the error
 }
-fmt.Println(result.Interface())
+for _, result := range results {
+  fmt.Println(result.Interface())
+}
 ```
 
 ### Chains
@@ -742,12 +752,14 @@ More explicitly:
 `SendChain` returns `ChainAsyncResult` which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:
 
 ```go
-result, err := chainAsyncResult.Get()
+results, err := chainAsyncResult.Get()
 if err != nil {
   // getting result of a chain failed
   // do something with the error
 }
-fmt.Println(result.Interface())
+for _, result := range results {
+  fmt.Println(result.Interface())
+}
 ```
 
 ## Development
