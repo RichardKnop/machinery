@@ -33,7 +33,7 @@ type ChainAsyncResult struct {
 func NewAsyncResult(signature *signatures.TaskSignature, backend Backend) *AsyncResult {
 	return &AsyncResult{
 		Signature: signature,
-		taskState: &TaskState{},
+		taskState: new(TaskState),
 		backend:   backend,
 	}
 }
@@ -91,7 +91,7 @@ func (asyncResult *AsyncResult) Get() (reflect.Value, error) {
 	}
 }
 
-// GetWithTimeout returns task result limited in time(synchronous blocking call)
+// GetWithTimeout returns task result limited in time (synchronous blocking call)
 func (asyncResult *AsyncResult) GetWithTimeout(timeoutD, sleepD time.Duration) (reflect.Value, error) {
 	if asyncResult.backend == nil {
 		return reflect.Value{}, errors.New("Result backend not configured")

@@ -50,18 +50,19 @@ func (b *MemcacheBackend) GroupCompleted(groupUUID string, groupTaskCount int) (
 		return false, err
 	}
 
-	for _, taskUUID := range groupMeta.TaskUUIDs {
-		taskState, err := b.GetState(taskUUID)
-		if err != nil {
-			return false, err
-		}
+	taskStates, err := b.getStates(groupMeta.TaskUUIDs...)
+	if err != nil {
+		return false, err
+	}
 
-		if !taskState.IsCompleted() {
-			return false, nil
+	var countSuccessTasks = 0
+	for _, taskState := range taskStates {
+		if taskState.IsCompleted() {
+			countSuccessTasks++
 		}
 	}
 
-	return true, nil
+	return countSuccessTasks == groupTaskCount, nil
 }
 
 // GroupTaskStates - returns states of all tasks in the group
@@ -73,16 +74,7 @@ func (b *MemcacheBackend) GroupTaskStates(groupUUID string, groupTaskCount int) 
 		return taskStates, err
 	}
 
-	for i, taskUUID := range groupMeta.TaskUUIDs {
-		taskState, err := b.GetState(taskUUID)
-		if err != nil {
-			return taskStates, err
-		}
-
-		taskStates[i] = taskState
-	}
-
-	return taskStates, nil
+	return b.getStates(groupMeta.TaskUUIDs...)
 }
 
 // TriggerChord - marks chord as triggered in the backend storage to make sure
@@ -178,6 +170,28 @@ func (b *MemcacheBackend) getGroupMeta(groupUUID string) (*GroupMeta, error) {
 	}
 
 	return groupMeta, nil
+}
+
+// getStates Returns multiple task states with MGET
+func (b *MemcacheBackend) getStates(taskUUIDs ...string) ([]*TaskState, error) {
+	taskStates := make([]*TaskState, len(taskUUIDs))
+
+	for i, taskUUID := range taskUUIDs {
+		taskState := new(TaskState)
+
+		item, err := b.getClient().Get(taskUUID)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := json.Unmarshal(item.Value, taskState); err != nil {
+			return nil, err
+		}
+
+		taskStates[i] = taskState
+	}
+
+	return taskStates, nil
 }
 
 // Returns expiration timestamp

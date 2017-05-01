@@ -70,13 +70,14 @@ func (b *RedisBackend) GroupCompleted(groupUUID string, groupTaskCount int) (boo
 		return false, err
 	}
 
+	var countSuccessTasks = 0
 	for _, taskState := range taskStates {
-		if !taskState.IsCompleted() {
-			return false, nil
+		if taskState.IsCompleted() {
+			countSuccessTasks++
 		}
 	}
 
-	return true, nil
+	return countSuccessTasks == groupTaskCount, nil
 }
 
 // GroupTaskStates - returns states of all tasks in the group
@@ -110,13 +111,15 @@ func (b *RedisBackend) TriggerChord(groupUUID string) (bool, error) {
 		return false, err
 	}
 
-	// If the chord has been triggered already, return false and vice-versa
-	shouldTrigger := !groupMeta.ChordTriggered
-	if !groupMeta.ChordTriggered {
-		// Set flag to true
-		groupMeta.ChordTriggered = true
+	// Chord has already been triggered, return false (should not trigger again)
+	if groupMeta.ChordTriggered {
+		return false, nil
 	}
 
+	// Set flag to true
+	groupMeta.ChordTriggered = true
+
+	// Update the group meta
 	encoded, err := json.Marshal(&groupMeta)
 	if err != nil {
 		return false, err
@@ -127,7 +130,7 @@ func (b *RedisBackend) TriggerChord(groupUUID string) (bool, error) {
 		return false, err
 	}
 
-	return shouldTrigger, nil
+	return true, nil
 }
 
 // SetStatePending - sets task state to PENDING

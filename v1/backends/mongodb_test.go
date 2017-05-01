@@ -27,10 +27,11 @@ func initTestMongodbBackend() (backends.Backend, error) {
 		return nil, err
 	}
 
-	err = backend.PurgeGroupMeta(groupUUID)
-	if err != nil {
-		return nil, err
+	backend.PurgeGroupMeta(groupUUID)
+	for _, taskUUID := range taskUUIDs {
+		backend.PurgeState(taskUUID)
 	}
+
 	err = backend.InitGroup(groupUUID, taskUUIDs)
 	if err != nil {
 		return nil, err
@@ -45,19 +46,13 @@ func TestNewMongodbBackend(t *testing.T) {
 	}
 }
 
-func TestEmptyState(t *testing.T) {
-	backend, _ := initTestMongodbBackend()
-
-	taskState, err := backend.GetState(taskUUIDs[0])
-	if assert.NoError(t, err) {
-		assert.Equal(t, "", taskState.State, "Not empty state")
-	}
-}
-
 func TestSetStatePending(t *testing.T) {
-	backend, _ := initTestMongodbBackend()
+	backend, err := initTestMongodbBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := backend.SetStatePending(&signatures.TaskSignature{
+	err = backend.SetStatePending(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	})
 	if assert.NoError(t, err) {
@@ -69,9 +64,12 @@ func TestSetStatePending(t *testing.T) {
 }
 
 func TestSetStateReceived(t *testing.T) {
-	backend, _ := initTestMongodbBackend()
+	backend, err := initTestMongodbBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := backend.SetStateReceived(&signatures.TaskSignature{
+	err = backend.SetStateReceived(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	})
 	if assert.NoError(t, err) {
@@ -83,9 +81,12 @@ func TestSetStateReceived(t *testing.T) {
 }
 
 func TestSetStateStarted(t *testing.T) {
-	backend, _ := initTestMongodbBackend()
+	backend, err := initTestMongodbBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := backend.SetStateStarted(&signatures.TaskSignature{
+	err = backend.SetStateStarted(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	})
 	if assert.NoError(t, err) {
@@ -100,9 +101,12 @@ func TestSetStateSuccess(t *testing.T) {
 	resultType := "int64"
 	resultValue := int64(88)
 
-	backend, _ := initTestMongodbBackend()
+	backend, err := initTestMongodbBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := backend.SetStateSuccess(&signatures.TaskSignature{
+	err = backend.SetStateSuccess(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	}, &backends.TaskResult{
 		Type:  resultType,
@@ -121,9 +125,12 @@ func TestSetStateSuccess(t *testing.T) {
 func TestSetStateFailure(t *testing.T) {
 	failStrig := "Fail is ok"
 
-	backend, _ := initTestMongodbBackend()
+	backend, err := initTestMongodbBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := backend.SetStateFailure(&signatures.TaskSignature{
+	err = backend.SetStateFailure(&signatures.TaskSignature{
 		UUID: taskUUIDs[0],
 	}, failStrig)
 	if assert.NoError(t, err) {
@@ -136,7 +143,10 @@ func TestSetStateFailure(t *testing.T) {
 }
 
 func TestGroupCompleted(t *testing.T) {
-	backend, _ := initTestMongodbBackend()
+	backend, err := initTestMongodbBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 	taskResultsState := make(map[string]string)
 
 	isCompleted, err := backend.GroupCompleted(groupUUID, len(taskUUIDs))
