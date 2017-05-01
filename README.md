@@ -66,23 +66,28 @@ You will be able to see the tasks being processed asynchronously by the worker:
 Machinery has several configuration options. Configuration is encapsulated by a `Config` struct and injected as a dependency to objects that need it.
 
 ```go
+// Config holds all configuration for our program
+type Config struct {
+  Broker             string     `yaml:"broker"`
+  DefaultQueue       string     `yaml:"default_queue"`
+  ResultBackend      string     `yaml:"result_backend"`
+  ResultsExpireIn    int        `yaml:"results_expire_in"`
+  MaxWorkerInstances int        `yaml:"max_worker_instances"`
+  AMQP               AMQPConfig `yaml:"amqp"`
+  TLSConfig          *tls.Config
+}
+
 // QueueBindingArguments arguments which are used when binding to the exchange
 type QueueBindingArguments map[string]interface{}
 
-// Config holds all configuration for our program
-type Config struct {
-  Broker                string                `yaml:"broker"`
-  ResultBackend         string                `yaml:"result_backend"`
-  ResultsExpireIn       int                   `yaml:"results_expire_in"`
+// AMQPConfig wraps RabbitMQ related configuration
+type AMQPConfig struct {
   Exchange              string                `yaml:"exchange"`
   ExchangeType          string                `yaml:"exchange_type"`
-  DefaultQueue          string                `yaml:"default_queue"`
   QueueBindingArguments QueueBindingArguments `yaml:"queue_binding_arguments"`
   BindingKey            string                `yaml:"binding_key"`
-  MaxWorkerInstances    int                   `yaml:"max_worker_instances"`
-  TLSConfig             *tls.Config
+  PrefetchCount         int                   `yaml:"prefetch_count"`
 }
-
 ```
 
 ### Broker
@@ -114,6 +119,10 @@ For example:
 
 1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
+
+### DefaultQueue
+
+Default queue name, e.g. `machinery_tasks`.
 
 ### ResultBackend
 
@@ -180,25 +189,15 @@ See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/)
 
 How long to store task results for in seconds. Defaults to `3600` (1 hour).
 
-### Exchange
+### AMQP
 
-Exchange name, e.g. `machinery_exchange`. Only required for AMQP.
+RabbitMQ related configuration. Not neccessarry if you are using other broker/backend.
 
-### ExchangeType
-
-Exchange type, e.g. `direct`. Only required for AMQP.
-
-### DefaultQueue
-
-Default queue name, e.g. `machinery_tasks`.
-
-### QueueBindingArguments
-
-An optional map of additional arguments used when binding to an AMQP queue.
-
-### BindingKey
-
-The queue is bind to the exchange with this key, e.g. `machinery_task`. Only required for AMQP.
+* `Exchange`: exchange name, e.g. `machinery_exchange`
+* `ExchangeType`: exchange type, e.g. `direct`
+* `QueueBindingArguments`: an optional map of additional arguments used when binding to an AMQP queue
+* `BindingKey`: The queue is bind to the exchange with this key, e.g. `machinery_task`
+* `PrefetchCount`: How many tasks to prefetch (set to `1` if you have long running tasks)
 
 ## Custom Logger
 

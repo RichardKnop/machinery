@@ -8,21 +8,27 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Config holds all configuration for our program
+type Config struct {
+	Broker             string      `yaml:"broker"`
+	DefaultQueue       string      `yaml:"default_queue"`
+	ResultBackend      string      `yaml:"result_backend"`
+	ResultsExpireIn    int         `yaml:"results_expire_in"`
+	MaxWorkerInstances int         `yaml:"max_worker_instances"`
+	AMQP               *AMQPConfig `yaml:"amqp"`
+	TLSConfig          *tls.Config
+}
+
 // QueueBindingArguments arguments which are used when binding to the exchange
 type QueueBindingArguments map[string]interface{}
 
-// Config holds all configuration for our program
-type Config struct {
-	Broker                string                `yaml:"broker"`
-	ResultBackend         string                `yaml:"result_backend"`
-	ResultsExpireIn       int                   `yaml:"results_expire_in"`
+// AMQPConfig wraps RabbbitMQ related configuration
+type AMQPConfig struct {
 	Exchange              string                `yaml:"exchange"`
 	ExchangeType          string                `yaml:"exchange_type"`
-	DefaultQueue          string                `yaml:"default_queue"`
 	QueueBindingArguments QueueBindingArguments `yaml:"queue_binding_arguments"`
 	BindingKey            string                `yaml:"binding_key"`
-	MaxWorkerInstances    int                   `yaml:"max_worker_instances"`
-	TLSConfig             *tls.Config
+	PrefetchCount         int                   `yaml:"prefetch_count"`
 }
 
 // ReadFromFile reads data from a file

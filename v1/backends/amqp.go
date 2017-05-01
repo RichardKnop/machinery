@@ -235,10 +235,10 @@ func (b *AMQPBackend) updateState(taskState *TaskState) error {
 	}
 
 	if err := channel.Publish(
-		b.config.Exchange,  // exchange
-		taskState.TaskUUID, // routing key
-		false,              // mandatory
-		false,              // immediate
+		b.config.AMQP.Exchange, // exchange
+		taskState.TaskUUID,     // routing key
+		false,                  // mandatory
+		false,                  // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
@@ -305,10 +305,10 @@ func (b *AMQPBackend) markTaskCompleted(signature *signatures.TaskSignature, tas
 	}
 
 	if err := channel.Publish(
-		b.config.Exchange,   // exchange
-		signature.GroupUUID, // routing key
-		false,               // mandatory
-		false,               // immediate
+		b.config.AMQP.Exchange, // exchange
+		signature.GroupUUID,    // routing key
+		false,                  // mandatory
+		false,                  // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         message,
@@ -344,8 +344,8 @@ func (b *AMQPBackend) getOrCreateQueue(queueName string) (*amqp.Connection, *amq
 
 	// Declare an exchange
 	err = channel.ExchangeDeclare(
-		b.config.Exchange,     // name of the exchange
-		b.config.ExchangeType, // type
+		b.config.AMQP.Exchange,     // name of the exchange
+		b.config.AMQP.ExchangeType, // type
 		true,  // durable
 		false, // delete when complete
 		false, // internal
@@ -374,11 +374,11 @@ func (b *AMQPBackend) getOrCreateQueue(queueName string) (*amqp.Connection, *amq
 
 	// Bind the queue
 	if err := channel.QueueBind(
-		queue.Name,        // name of the queue
-		queueName,         // binding key
-		b.config.Exchange, // source exchange
-		false,             // noWait
-		nil,               // arguments
+		queue.Name,             // name of the queue
+		queueName,              // binding key
+		b.config.AMQP.Exchange, // source exchange
+		false, // noWait
+		nil,   // arguments
 	); err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
 	}

@@ -63,7 +63,7 @@ func (amqpBroker *AMQPBroker) StartConsuming(consumerTag string, taskProcessor T
 	amqpBroker.stopChan = make(chan int)
 
 	if err = channel.Qos(
-		3,     // prefetch count
+		amqpBroker.config.AMQP.PrefetchCount,
 		0,     // prefetch size
 		false, // global
 	); err != nil {
@@ -115,15 +115,15 @@ func (amqpBroker *AMQPBroker) Publish(signature *signatures.TaskSignature) error
 	}
 
 	signature.AdjustRoutingKey(
-		amqpBroker.config.ExchangeType,
-		amqpBroker.config.BindingKey,
+		amqpBroker.config.AMQP.ExchangeType,
+		amqpBroker.config.AMQP.BindingKey,
 		amqpBroker.config.DefaultQueue,
 	)
 	if err := channel.Publish(
-		amqpBroker.config.Exchange, // exchange
-		signature.RoutingKey,       // routing key
-		false,                      // mandatory
-		false,                      // immediate
+		amqpBroker.config.AMQP.Exchange, // exchange
+		signature.RoutingKey,            // routing key
+		false,                           // mandatory
+		false,                           // immediate
 		amqp.Publishing{
 			Headers:      amqp.Table(signature.Headers),
 			ContentType:  "application/json",
@@ -242,8 +242,8 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 
 	// Declare an exchange
 	if err = channel.ExchangeDeclare(
-		amqpBroker.config.Exchange,     // name of the exchange
-		amqpBroker.config.ExchangeType, // type
+		amqpBroker.config.AMQP.Exchange,     // name of the exchange
+		amqpBroker.config.AMQP.ExchangeType, // type
 		true,  // durable
 		false, // delete when complete
 		false, // internal
@@ -268,11 +268,11 @@ func (amqpBroker *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, amqp.Queu
 
 	// Bind the queue
 	if err := channel.QueueBind(
-		queue.Name,                   // name of the queue
-		amqpBroker.config.BindingKey, // binding key
-		amqpBroker.config.Exchange,   // source exchange
+		queue.Name,                        // name of the queue
+		amqpBroker.config.AMQP.BindingKey, // binding key
+		amqpBroker.config.AMQP.Exchange,   // source exchange
 		false, // noWait
-		amqp.Table(amqpBroker.config.QueueBindingArguments), // arguments
+		amqp.Table(amqpBroker.config.AMQP.QueueBindingArguments), // arguments
 	); err != nil {
 		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
 	}

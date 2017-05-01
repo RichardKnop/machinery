@@ -23,17 +23,19 @@ func init() {
 
 	amqpConfig = &config.Config{
 		Broker:        amqpURL,
-		ResultBackend: amqpURL,
-		Exchange:      "test_exchange",
-		ExchangeType:  "direct",
 		DefaultQueue:  "test_queue",
-		BindingKey:    "test_task",
+		ResultBackend: amqpURL,
+		AMQP: &config.AMQPConfig{
+			Exchange:      "test_exchange",
+			ExchangeType:  "direct",
+			BindingKey:    "test_task",
+			PrefetchCount: 1,
+		},
 	}
 }
 
 func TestGroupCompletedAMQP(t *testing.T) {
-	amqpURL := os.Getenv("AMQP_URL")
-	if amqpURL == "" {
+	if os.Getenv("AMQP_URL") == "" {
 		return
 	}
 
@@ -85,8 +87,7 @@ func TestGroupCompletedAMQP(t *testing.T) {
 }
 
 func TestGetStateAMQP(t *testing.T) {
-	amqpURL := os.Getenv("AMQP_URL")
-	if amqpURL == "" {
+	if os.Getenv("AMQP_URL") == "" {
 		return
 	}
 
@@ -131,8 +132,7 @@ func TestGetStateAMQP(t *testing.T) {
 }
 
 func TestPurgeStateAMQP(t *testing.T) {
-	amqpURL := os.Getenv("AMQP_URL")
-	if amqpURL == "" {
+	if os.Getenv("AMQP_URL") == "" {
 		return
 	}
 
