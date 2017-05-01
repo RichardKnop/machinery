@@ -272,11 +272,19 @@ concurrently executed tasks unlimited (default).
 
 Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message.
 
-Currently each task needs to return two values, second one being `error`.
+Each task needs to return an error as a last return value. In addition to error tasks can now return any number of arguments.
 
-Let's say we want to define tasks for adding and multiplying numbers:
+Examples of valid tasks:
 
 ```go
+func DummyTask(arg string) error {
+  return errors.New(arg)
+}
+
+func DummyTask2(arg1, arg2 string) (string, string error) {
+  return arg1, arg2, nil
+}
+
 func Add(args ...int64) (int64, error) {
   sum := int64(0)
   for _, arg := range args {
