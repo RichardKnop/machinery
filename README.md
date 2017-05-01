@@ -463,7 +463,8 @@ You can delay a task by setting the `ETA` timestamp field on the task signature.
 
 ```go
 // Delay the task by 5 seconds
-task.ETA = time.Now().UTC().Add(time.Second * 5)
+eta := time.Now().UTC().Add(time.Second * 5)
+task.ETA = &eta
 
 asyncResult, err := server.SendTask(task)
 if err != nil {
