@@ -22,6 +22,7 @@ So called tasks (or jobs if you like) are executed concurrently either by many w
   * [Signatures](#signatures)
   * [Supported Types](#supported-types)
   * [Sending Tasks](#sending-tasks)
+  * [Delayed Tasks](#delayed-tasks)
   * [Get Pending Tasks](#get-pending-tasks)
   * [Keeping Results](#keeping-results)
 * [Workflows](#workflows)
@@ -373,6 +374,7 @@ type TaskSignature struct {
   UUID           string
   Name           string
   RoutingKey     string
+  ETA            *time.Time
   GroupUUID      string
   GroupTaskCount int
   Args           []TaskArg
@@ -389,6 +391,8 @@ type TaskSignature struct {
 `Name` is the unique task name by which it is registered against a Server instance.
 
 `RoutingKey` is used for routing a task to correct queue. If you leave it empty, the default behaviour will be to set it to the default queue's binding key for direct exchange type and to the default queue name for other exchange types.
+
+`ETA` is  a timestamp used for delaying a task. if it's nil, the task will be published for workers to consume immediately. If it is set, the task will be delayed until the ETA timestamp.
 
 `GroupUUID`, GroupTaskCount are useful for creating groups of tasks.
 
@@ -432,7 +436,7 @@ import (
   "github.com/RichardKnop/machinery/v1/signatures"
 )
 
-task := signatures.TaskSignature{
+task := &signatures.TaskSignature{
   Name: "add",
   Args: []signatures.TaskArg{
     signatures.TaskArg{
@@ -446,13 +450,29 @@ task := signatures.TaskSignature{
   },
 }
 
-asyncResult, err := server.SendTask(&task1)
+asyncResult, err := server.SendTask(task)
 if err != nil {
   // failed to send the task
   // do something with the error
 }
-
 ```
+
+### Delayed Tasks
+
+You can delay a task by setting the `ETA` timestamp field on the task signature.
+
+```go
+// Delay the task by 5 seconds
+task.ETA = time.Now().UTC().Add(time.Second * 5)
+
+asyncResult, err := server.SendTask(task)
+if err != nil {
+  // failed to send the task
+  // do something with the error
+}
+```
+
+Delayed tasks currently only work with `AMQP` backend.
 
 ### Get Pending Tasks
 
@@ -483,25 +503,25 @@ const (
 ```go
 // TaskResult represents an actual return value of a processed task
 type TaskResult struct {
-  Type  string
-  Value interface{}
+  Type  string      `bson:"type"`
+  Value interface{} `bson:"value"`
 }
 
 // TaskState represents a state of a task
 type TaskState struct {
-  TaskUUID string
-  State    string
-  Results  []*TaskResult
-  Error    string
+  TaskUUID  string        `bson:"_id"`
+  State     string        `bson:"state"`
+  Results   []*TaskResult `bson:"results"`
+  Error     string        `bson:"error"`
 }
 
 // GroupMeta stores useful metadata about tasks within the same group
 // E.g. UUIDs of all tasks which are used in order to check if all tasks
 // completed successfully or not and thus whether to trigger chord callback
 type GroupMeta struct {
-  GroupUUID      string
-  TaskUUIDs      []string
-  ChordTriggered bool
+  GroupUUID      string   `bson:"_id"`
+  TaskUUIDs      []string `bson:"task_uuids"`
+  ChordTriggered bool     `bson:"chord_trigerred"`
 }
 ```
 

@@ -1,5 +1,7 @@
 package signatures
 
+import "time"
+
 // TaskArg represents a single argument passed to invocation fo a task
 type TaskArg struct {
 	Type  string
@@ -14,6 +16,7 @@ type TaskSignature struct {
 	UUID           string
 	Name           string
 	RoutingKey     string
+	ETA            *time.Time
 	GroupUUID      string
 	GroupTaskCount int
 	Args           []TaskArg

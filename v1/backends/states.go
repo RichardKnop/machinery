@@ -17,16 +17,16 @@ const (
 
 // TaskResult represents an actual return value of a processed task
 type TaskResult struct {
-	Type  string
-	Value interface{}
+	Type  string      `bson:"type"`
+	Value interface{} `bson:"value"`
 }
 
 // TaskState represents a state of a task
 type TaskState struct {
-	TaskUUID string
-	State    string
-	Results  []*TaskResult
-	Error    string
+	TaskUUID string        `bson:"_id"`
+	State    string        `bson:"state"`
+	Results  []*TaskResult `bson:"results"`
+	Error    string        `bson:"error"`
 }
 
 // GroupMeta stores useful metadata about tasks within the same group
