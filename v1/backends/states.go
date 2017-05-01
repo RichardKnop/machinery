@@ -25,7 +25,7 @@ type TaskResult struct {
 type TaskState struct {
 	TaskUUID string
 	State    string
-	Result   *TaskResult
+	Results  []*TaskResult
 	Error    string
 }
 
@@ -63,11 +63,11 @@ func NewStartedTaskState(signature *signatures.TaskSignature) *TaskState {
 }
 
 // NewSuccessTaskState ...
-func NewSuccessTaskState(signature *signatures.TaskSignature, result *TaskResult) *TaskState {
+func NewSuccessTaskState(signature *signatures.TaskSignature, results []*TaskResult) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
 		State:    SuccessState,
-		Result:   result,
+		Results:  results,
 	}
 }
 

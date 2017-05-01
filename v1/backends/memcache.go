@@ -105,8 +105,8 @@ func (b *MemcacheBackend) SetStateStarted(signature *signatures.TaskSignature) e
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *MemcacheBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
-	taskState := NewSuccessTaskState(signature, result)
+func (b *MemcacheBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
+	taskState := NewSuccessTaskState(signature, results)
 	return b.updateState(taskState)
 }
 

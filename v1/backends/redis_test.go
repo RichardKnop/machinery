@@ -56,8 +56,9 @@ func TestGroupCompletedRedis(t *testing.T) {
 		assert.False(t, groupCompleted)
 	}
 
+	taskResults := []*backends.TaskResult{new(backends.TaskResult)}
 	backend.SetStateStarted(task1)
-	backend.SetStateSuccess(task2, new(backends.TaskResult))
+	backend.SetStateSuccess(task2, taskResults)
 	groupCompleted, err = backend.GroupCompleted(groupUUID, 2)
 	if assert.NoError(t, err) {
 		assert.False(t, groupCompleted)
@@ -91,11 +92,13 @@ func TestGetStateRedis(t *testing.T) {
 		<-time.After(2 * time.Millisecond)
 		backend.SetStateStarted(signature)
 		<-time.After(2 * time.Millisecond)
-		taskResult := &backends.TaskResult{
-			Type:  "float64",
-			Value: 2,
+		taskResults := []*backends.TaskResult{
+			&backends.TaskResult{
+				Type:  "float64",
+				Value: 2,
+			},
 		}
-		backend.SetStateSuccess(signature, taskResult)
+		backend.SetStateSuccess(signature, taskResults)
 	}()
 
 	var (

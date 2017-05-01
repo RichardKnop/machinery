@@ -131,9 +131,9 @@ func main() {
 	asyncResult, err := server.SendTask(&task0)
 	errors.Fail(err, "Could not send task")
 
-	result, err := asyncResult.Get()
+	results, err := asyncResult.Get()
 	errors.Fail(err, "Getting task state failed with error")
-	fmt.Printf("1 + 1 = %v\n", result.Interface())
+	fmt.Printf("1 + 1 = %v\n", results[0].Interface())
 
 	/*
 	 * Now let's explore ways of sending multiple tasks
@@ -148,13 +148,13 @@ func main() {
 	errors.Fail(err, "Could not send group")
 
 	for _, asyncResult := range asyncResults {
-		result, err = asyncResult.Get()
+		results, err = asyncResult.Get()
 		errors.Fail(err, "Getting task state failed with error")
 		fmt.Printf(
 			"%v + %v = %v\n",
 			asyncResult.Signature.Args[0].Value,
 			asyncResult.Signature.Args[1].Value,
-			result.Interface(),
+			results[0].Interface(),
 		)
 	}
 
@@ -167,9 +167,9 @@ func main() {
 	chordAsyncResult, err := server.SendChord(chord)
 	errors.Fail(err, "Could not send chord")
 
-	result, err = chordAsyncResult.Get()
+	results, err = chordAsyncResult.Get()
 	errors.Fail(err, "Getting task state failed with error")
-	fmt.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", result.Interface())
+	fmt.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", results[0].Interface())
 
 	// Now let's try chaining task results
 	initTasks()
@@ -179,9 +179,9 @@ func main() {
 	chainAsyncResult, err := server.SendChain(chain)
 	errors.Fail(err, "Could not send chain")
 
-	result, err = chainAsyncResult.Get()
+	results, err = chainAsyncResult.Get()
 	errors.Fail(err, "Getting chain result failed with error")
-	fmt.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", result.Interface())
+	fmt.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", results[0].Interface())
 
 	// Let's try a task which throws panic to make sure stack trace is not lost
 	initTasks()

@@ -15,7 +15,7 @@ type Backend interface {
 	SetStatePending(signature *signatures.TaskSignature) error
 	SetStateReceived(signature *signatures.TaskSignature) error
 	SetStateStarted(signature *signatures.TaskSignature) error
-	SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error
+	SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error
 	SetStateFailure(signature *signatures.TaskSignature, err string) error
 	GetState(taskUUID string) (*TaskState, error)
 	// Purging stored stored tasks states and group meta data

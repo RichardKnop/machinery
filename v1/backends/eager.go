@@ -102,8 +102,8 @@ func (b *EagerBackend) SetStateStarted(signature *signatures.TaskSignature) erro
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *EagerBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
-	state := NewSuccessTaskState(signature, result)
+func (b *EagerBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
+	state := NewSuccessTaskState(signature, results)
 	return b.updateState(state)
 }
 

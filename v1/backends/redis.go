@@ -152,8 +152,8 @@ func (b *RedisBackend) SetStateStarted(signature *signatures.TaskSignature) erro
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *RedisBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
-	taskState := NewSuccessTaskState(signature, result)
+func (b *RedisBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
+	taskState := NewSuccessTaskState(signature, results)
 	return b.updateState(taskState)
 }
 

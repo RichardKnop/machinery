@@ -67,7 +67,7 @@ func (s *EagerIntegrationTestSuite) TestCalled() {
 func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 	// float64
 	{
-		result, err := s.srv.SendTask(&signatures.TaskSignature{
+		asyncResult, err := s.srv.SendTask(&signatures.TaskSignature{
 			Name: "float_result",
 			Args: []signatures.TaskArg{
 				{
@@ -77,24 +77,28 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 			},
 		})
 
-		s.NotNil(result)
+		s.NotNil(asyncResult)
 		s.Nil(err)
-		if result != nil {
-			s.True(result.GetState().IsCompleted())
-			s.True(result.GetState().IsSuccess())
 
-			ret, err := result.Get()
-			s.Nil(err)
-			s.Equal(reflect.Float64, ret.Kind())
-			if ret.Kind() == reflect.Float64 {
-				s.Equal(200.0, ret.Float())
-			}
+		s.True(asyncResult.GetState().IsCompleted())
+		s.True(asyncResult.GetState().IsSuccess())
+
+		results, err := asyncResult.Get()
+		s.Nil(err)
+
+		if len(results) != 1 {
+			s.T().Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+		}
+
+		s.Equal(reflect.Float64, results[0].Kind())
+		if results[0].Kind() == reflect.Float64 {
+			s.Equal(200.0, results[0].Float())
 		}
 	}
 
 	// int
 	{
-		result, err := s.srv.SendTask(&signatures.TaskSignature{
+		asyncResult, err := s.srv.SendTask(&signatures.TaskSignature{
 			Name: "int_result",
 			Args: []signatures.TaskArg{
 				{
@@ -104,18 +108,22 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 			},
 		})
 
-		s.NotNil(result)
+		s.NotNil(asyncResult)
 		s.Nil(err)
-		if result != nil {
-			s.True(result.GetState().IsCompleted())
-			s.True(result.GetState().IsSuccess())
 
-			ret, err := result.Get()
-			s.Nil(err)
-			s.Equal(reflect.Int64, ret.Kind())
-			if ret.Kind() == reflect.Int64 {
-				s.Equal(int64(200), ret.Int())
-			}
+		s.True(asyncResult.GetState().IsCompleted())
+		s.True(asyncResult.GetState().IsSuccess())
+
+		results, err := asyncResult.Get()
+		s.Nil(err)
+
+		if len(results) != 1 {
+			s.T().Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+		}
+
+		s.Equal(reflect.Int64, results[0].Kind())
+		if results[0].Kind() == reflect.Int64 {
+			s.Equal(int64(200), results[0].Int())
 		}
 
 	}

@@ -148,8 +148,8 @@ func (b *AMQPBackend) SetStateStarted(signature *signatures.TaskSignature) error
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
-	taskState := NewSuccessTaskState(signature, result)
+func (b *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
+	taskState := NewSuccessTaskState(signature, results)
 
 	if err := b.updateState(taskState); err != nil {
 		return err
