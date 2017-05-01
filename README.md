@@ -73,14 +73,14 @@ type QueueBindingArguments map[string]interface{}
 type Config struct {
   Broker                string                `yaml:"broker"`
   ResultBackend         string                `yaml:"result_backend"`
-	ResultsExpireIn       int                   `yaml:"results_expire_in"`
-	Exchange              string                `yaml:"exchange"`
-	ExchangeType          string                `yaml:"exchange_type"`
-	DefaultQueue          string                `yaml:"default_queue"`
-	QueueBindingArguments QueueBindingArguments `yaml:"queue_binding_arguments"`
-	BindingKey            string                `yaml:"binding_key"`
-	MaxWorkerInstances    int                   `yaml:"max_worker_instances"`
-	TLSConfig             *tls.Config
+  ResultsExpireIn       int                   `yaml:"results_expire_in"`
+  Exchange              string                `yaml:"exchange"`
+  ExchangeType          string                `yaml:"exchange_type"`
+  DefaultQueue          string                `yaml:"default_queue"`
+  QueueBindingArguments QueueBindingArguments `yaml:"queue_binding_arguments"`
+  BindingKey            string                `yaml:"binding_key"`
+  MaxWorkerInstances    int                   `yaml:"max_worker_instances"`
+  TLSConfig             *tls.Config
 }
 
 ```
