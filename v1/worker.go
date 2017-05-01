@@ -2,6 +2,7 @@ package machinery
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/logger"
@@ -105,7 +106,11 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, taskR
 		return fmt.Errorf("Set State Success: %v", err)
 	}
 
-	logger.Get().Printf("Processed %s. Results = %v", signature.UUID, taskResults)
+	debugResults := make([]string, len(taskResults))
+	for i, taskResult := range taskResults {
+		debugResults[i] = fmt.Sprintf("%v", taskResult.Value)
+	}
+	logger.Get().Printf("Processed %s. Results = [%v]", signature.UUID, strings.Join(debugResults, ", "))
 
 	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
