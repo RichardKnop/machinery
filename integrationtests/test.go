@@ -1,14 +1,16 @@
 package integrationtests
 
 import (
+	"errors"
+	"log"
 	"reflect"
 	"sort"
 	"testing"
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/errors"
 	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/stretchr/testify/assert"
 )
 
 type ascendingInt64s []int64
@@ -17,8 +19,8 @@ func (a ascendingInt64s) Len() int           { return len(a) }
 func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
-func _getTasks() []signatures.TaskSignature {
-	task0 := signatures.TaskSignature{
+func _getTasks() []*signatures.TaskSignature {
+	task0 := &signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			{
@@ -32,7 +34,7 @@ func _getTasks() []signatures.TaskSignature {
 		},
 	}
 
-	task1 := signatures.TaskSignature{
+	task1 := &signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			{
@@ -46,7 +48,7 @@ func _getTasks() []signatures.TaskSignature {
 		},
 	}
 
-	task2 := signatures.TaskSignature{
+	task2 := &signatures.TaskSignature{
 		Name: "add",
 		Args: []signatures.TaskArg{
 			{
@@ -60,7 +62,7 @@ func _getTasks() []signatures.TaskSignature {
 		},
 	}
 
-	task3 := signatures.TaskSignature{
+	task3 := &signatures.TaskSignature{
 		Name: "multiply",
 		Args: []signatures.TaskArg{
 			{
@@ -70,33 +72,61 @@ func _getTasks() []signatures.TaskSignature {
 		},
 	}
 
-	task4 := signatures.TaskSignature{
+	task4 := &signatures.TaskSignature{
 		Name: "multiply",
 	}
 
-	return []signatures.TaskSignature{
-		task0, task1, task2, task3, task4,
+	task5 := &signatures.TaskSignature{
+		Name: "return_just_error",
+		Args: []signatures.TaskArg{
+			{
+				Type:  "string",
+				Value: "Test error",
+			},
+		},
+	}
+
+	task6 := &signatures.TaskSignature{
+		Name: "return_multiple_values",
+		Args: []signatures.TaskArg{
+			{
+				Type:  "string",
+				Value: "foo",
+			},
+			{
+				Type:  "string",
+				Value: "bar",
+			},
+		},
+	}
+
+	return []*signatures.TaskSignature{
+		task0, task1, task2, task3, task4, task5, task6,
 	}
 }
 
 func _testSendTask(server *machinery.Server, t *testing.T) {
 	tasks := _getTasks()
 
-	asyncResult, err := server.SendTask(&tasks[0])
+	asyncResult, err := server.SendTask(tasks[0])
 	if err != nil {
 		t.Error(err)
 	}
 
-	result, err := asyncResult.Get()
+	results, err := asyncResult.Get()
 	if err != nil {
 		t.Error(err)
 	}
 
-	if result.Interface() != int64(2) {
+	if len(results) != 1 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+	}
+
+	if results[0].Interface() != int64(2) {
 		t.Errorf(
 			"result = %v(%v), want int64(2)",
-			result.Type().String(),
-			result.Interface(),
+			results[0].Type().String(),
+			results[0].Interface(),
 		)
 	}
 }
@@ -104,7 +134,7 @@ func _testSendTask(server *machinery.Server, t *testing.T) {
 func _testSendGroup(server *machinery.Server, t *testing.T) {
 	tasks := _getTasks()
 
-	group := machinery.NewGroup(&tasks[0], &tasks[1], &tasks[2])
+	group := machinery.NewGroup(tasks[0], tasks[1], tasks[2])
 	asyncResults, err := server.SendGroup(group)
 	if err != nil {
 		t.Error(err)
@@ -115,13 +145,18 @@ func _testSendGroup(server *machinery.Server, t *testing.T) {
 	actualResults := make([]int64, 3)
 
 	for i, asyncResult := range asyncResults {
-		result, err := asyncResult.Get()
+		results, err := asyncResult.Get()
 		if err != nil {
 			t.Error(err)
 		}
-		intResult, ok := result.Interface().(int64)
+
+		if len(results) != 1 {
+			t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+		}
+
+		intResult, ok := results[0].Interface().(int64)
 		if !ok {
-			t.Errorf("Could not convert %v to int64", result.Interface())
+			t.Errorf("Could not convert %v to int64", results[0].Interface())
 		}
 		actualResults[i] = intResult
 	}
@@ -140,23 +175,27 @@ func _testSendGroup(server *machinery.Server, t *testing.T) {
 func _testSendChord(server *machinery.Server, t *testing.T) {
 	tasks := _getTasks()
 
-	group := machinery.NewGroup(&tasks[0], &tasks[1], &tasks[2])
-	chord := machinery.NewChord(group, &tasks[4])
+	group := machinery.NewGroup(tasks[0], tasks[1], tasks[2])
+	chord := machinery.NewChord(group, tasks[4])
 	chordAsyncResult, err := server.SendChord(chord)
 	if err != nil {
 		t.Error(err)
 	}
 
-	result, err := chordAsyncResult.Get()
+	results, err := chordAsyncResult.Get()
 	if err != nil {
 		t.Error(err)
 	}
 
-	if result.Interface() != int64(88) {
+	if len(results) != 1 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+	}
+
+	if results[0].Interface() != int64(88) {
 		t.Errorf(
 			"result = %v(%v), want int64(88)",
-			result.Type().String(),
-			result.Interface(),
+			results[0].Type().String(),
+			results[0].Interface(),
 		)
 	}
 }
@@ -164,22 +203,77 @@ func _testSendChord(server *machinery.Server, t *testing.T) {
 func _testSendChain(server *machinery.Server, t *testing.T) {
 	tasks := _getTasks()
 
-	chain := machinery.NewChain(&tasks[1], &tasks[2], &tasks[3])
+	chain := machinery.NewChain(tasks[1], tasks[2], tasks[3])
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		t.Error(err)
 	}
 
-	result, err := chainAsyncResult.Get()
+	results, err := chainAsyncResult.Get()
 	if err != nil {
 		t.Error(err)
 	}
 
-	if result.Interface() != int64(60) {
+	if len(results) != 1 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+	}
+
+	if results[0].Interface() != int64(60) {
 		t.Errorf(
 			"result = %v(%v), want int64(60)",
-			result.Type().String(),
-			result.Interface(),
+			results[0].Type().String(),
+			results[0].Interface(),
+		)
+	}
+}
+
+func _testReturnJustError(server *machinery.Server, t *testing.T) {
+	tasks := _getTasks()
+
+	asyncResult, err := server.SendTask(tasks[5])
+	if err != nil {
+		t.Error(err)
+	}
+
+	results, err := asyncResult.Get()
+
+	if len(results) != 0 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 0)
+	}
+
+	assert.Equal(t, "Test error", err.Error())
+}
+
+func _testReturnMultipleValues(server *machinery.Server, t *testing.T) {
+	tasks := _getTasks()
+
+	asyncResult, err := server.SendTask(tasks[6])
+	if err != nil {
+		t.Error(err)
+	}
+
+	results, err := asyncResult.Get()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(results) != 2 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 2)
+	}
+
+	if results[0].Interface() != "foo" {
+		t.Errorf(
+			"result = %v(%v), want string(\"foo\":)",
+			results[0].Type().String(),
+			results[0].Interface(),
+		)
+	}
+
+	if results[1].Interface() != "bar" {
+		t.Errorf(
+			"result = %v(%v), want string(\"bar\":)",
+			results[1].Type().String(),
+			results[1].Interface(),
 		)
 	}
 }
@@ -198,7 +292,9 @@ func _setup(brokerURL, backend string) *machinery.Server {
 	}
 
 	server, err := machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not initialize server")
+	if err != nil {
+		log.Fatal(err, "Could not initialize server")
+	}
 
 	tasks := map[string]interface{}{
 		"add": func(args ...int64) (int64, error) {
@@ -214,6 +310,12 @@ func _setup(brokerURL, backend string) *machinery.Server {
 				sum *= arg
 			}
 			return sum, nil
+		},
+		"return_just_error": func(arg string) error {
+			return errors.New(arg)
+		},
+		"return_multiple_values": func(arg1, arg2 string) (string, string, error) {
+			return arg1, arg2, nil
 		},
 	}
 	server.RegisterTasks(tasks)

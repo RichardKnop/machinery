@@ -29,18 +29,34 @@ var (
 	}
 )
 
-// ReflectValue converts interface{} to reflect.Value based on string type
-func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
-	var reflectedValue reflect.Value
+// ErrUnsupportedType ...
+type ErrUnsupportedType struct {
+	valueType string
+}
 
-	theType = typesMap[theType].String()
-	theValue := reflect.New(typesMap[theType])
+// NewErrUnsupportedType returns new ErrUnsupportedType
+func NewErrUnsupportedType(valueType string) ErrUnsupportedType {
+	return ErrUnsupportedType{valueType}
+}
+
+// Error method so we implement the error interface
+func (e ErrUnsupportedType) Error() string {
+	return fmt.Sprintf("%v is not one of supported types", e.valueType)
+}
+
+// ReflectValue converts interface{} to reflect.Value based on string type
+func ReflectValue(valueType string, value interface{}) (reflect.Value, error) {
+	theType, ok := typesMap[valueType]
+	if !ok {
+		return reflect.Value{}, NewErrUnsupportedType(valueType)
+	}
+	theValue := reflect.New(theType)
 
 	// Booleans
-	if theType == "bool" {
+	if theType.String() == "bool" {
 		boolValue, ok := value.(bool)
 		if !ok {
-			return reflectedValue, typeConversionError(value, theType)
+			return reflect.Value{}, typeConversionError(value, theType.String())
 		}
 
 		theValue.Elem().SetBool(boolValue)
@@ -48,10 +64,10 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 	}
 
 	// Integers
-	if strings.HasPrefix(theType, "int") {
-		intValue, err := getIntValue(theType, value)
+	if strings.HasPrefix(theType.String(), "int") {
+		intValue, err := getIntValue(theType.String(), value)
 		if err != nil {
-			return reflectedValue, err
+			return reflect.Value{}, err
 		}
 
 		theValue.Elem().SetInt(intValue)
@@ -59,10 +75,10 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 	}
 
 	// Unbound integers
-	if strings.HasPrefix(theType, "uint") {
-		uintValue, err := getUintValue(theType, value)
+	if strings.HasPrefix(theType.String(), "uint") {
+		uintValue, err := getUintValue(theType.String(), value)
 		if err != nil {
-			return reflectedValue, err
+			return reflect.Value{}, err
 		}
 
 		theValue.Elem().SetUint(uintValue)
@@ -70,10 +86,10 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 	}
 
 	// Floating point numbers
-	if strings.HasPrefix(theType, "float") {
-		floatValue, err := getFloatValue(theType, value)
+	if strings.HasPrefix(theType.String(), "float") {
+		floatValue, err := getFloatValue(theType.String(), value)
 		if err != nil {
-			return reflectedValue, err
+			return reflect.Value{}, err
 		}
 
 		theValue.Elem().SetFloat(floatValue)
@@ -81,17 +97,17 @@ func ReflectValue(theType string, value interface{}) (reflect.Value, error) {
 	}
 
 	// Strings
-	if theType == "string" {
+	if theType.String() == "string" {
 		stringValue, ok := value.(string)
 		if !ok {
-			return reflectedValue, typeConversionError(value, theType)
+			return reflect.Value{}, typeConversionError(value, theType.String())
 		}
 
 		theValue.Elem().SetString(stringValue)
 		return theValue.Elem(), nil
 	}
 
-	return reflectedValue, fmt.Errorf("%v is not one of supported types", value)
+	return reflect.Value{}, NewErrUnsupportedType(valueType)
 }
 
 func getIntValue(theType string, value interface{}) (int64, error) {

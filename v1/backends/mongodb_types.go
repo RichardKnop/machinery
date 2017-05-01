@@ -6,11 +6,11 @@ import (
 )
 
 type mongodbTaskState struct {
-	TaskUUID   string            `bson:"_id"`
-	CreateTime time.Time         `bson:"createdAt"`
-	State      string            `bson:"state"`
-	Result     mongodbTaskResult `bson:"result"`
-	Error      string            `bson:"error"`
+	TaskUUID   string               `bson:"_id"`
+	CreateTime time.Time            `bson:"createdAt"`
+	State      string               `bson:"state"`
+	Results    []*mongodbTaskResult `bson:"results"`
+	Error      string               `bson:"error"`
 }
 
 func (t *mongodbTaskState) TaskState() *TaskState {
@@ -20,7 +20,10 @@ func (t *mongodbTaskState) TaskState() *TaskState {
 	}
 
 	if taskState.State == SuccessState {
-		taskState.Result = t.Result.TaskResult()
+		taskState.Results = make([]*TaskResult, len(t.Results))
+		for i, result := range t.Results {
+			taskState.Results[i] = result.TaskResult()
+		}
 	} else if taskState.State == FailureState {
 		taskState.Error = t.Error
 	}

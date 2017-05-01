@@ -78,8 +78,9 @@ func TestGroupCompletedAMQP(t *testing.T) {
 		assert.False(t, groupCompleted)
 	}
 
-	backend.SetStateSuccess(task1, new(backends.TaskResult))
-	backend.SetStateSuccess(task2, new(backends.TaskResult))
+	taskResults := []*backends.TaskResult{new(backends.TaskResult)}
+	backend.SetStateSuccess(task1, taskResults)
+	backend.SetStateSuccess(task2, taskResults)
 	groupCompleted, err = backend.GroupCompleted(groupUUID, groupTaskCount)
 	if assert.NoError(t, err) {
 		assert.True(t, groupCompleted)
@@ -104,11 +105,14 @@ func TestGetStateAMQP(t *testing.T) {
 		<-time.After(2 * time.Millisecond)
 		backend.SetStateStarted(signature)
 		<-time.After(2 * time.Millisecond)
-		taskResult := &backends.TaskResult{
-			Type:  "float64",
-			Value: 2,
+
+		taskResults := []*backends.TaskResult{
+			&backends.TaskResult{
+				Type:  "float64",
+				Value: 2,
+			},
 		}
-		backend.SetStateSuccess(signature, taskResult)
+		backend.SetStateSuccess(signature, taskResults)
 	}()
 
 	backend := backends.NewAMQPBackend(amqpConfig)

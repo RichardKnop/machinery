@@ -1,15 +1,11 @@
 package machinery
 
 import (
-	"errors"
 	"fmt"
-	"reflect"
-	"runtime/debug"
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/logger"
 	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/RichardKnop/machinery/v1/utils"
 )
 
 // Worker represents a single worker process
@@ -67,23 +63,23 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 		return nil
 	}
 
-	task, err := worker.server.GetRegisteredTask(signature.Name)
+	taskFunc, err := worker.server.GetRegisteredTask(signature.Name)
 	if err != nil {
 		return nil
 	}
 
 	backend := worker.server.GetBackend()
+
 	// Update task state to RECEIVED
 	if err = backend.SetStateReceived(signature); err != nil {
 		return fmt.Errorf("Set State Received: %v", err)
 	}
 
-	// Get task args and reflect them to proper types
-	reflectedTask := reflect.ValueOf(task)
-	reflectedArgs, err := ReflectArgs(signature.Args)
+	// Prepare task for processing
+	task, err := NewTask(taskFunc, signature.Args)
 	if err != nil {
 		worker.finalizeError(signature, err)
-		return fmt.Errorf("Reflect task args: %v", err)
+		return err
 	}
 
 	// Update task state to STARTED
@@ -91,36 +87,37 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 		return fmt.Errorf("Set State Started: %v", err)
 	}
 
-	// Call the task passing in the correct arguments
-	results, err := TryCall(reflectedTask, reflectedArgs)
-
+	// Call the task
+	results, err := task.Call()
 	if err != nil {
 		return worker.finalizeError(signature, err)
 	}
 
-	return worker.finalizeSuccess(signature, results[0])
+	return worker.finalizeSuccess(signature, results)
 }
 
 // Task succeeded, update state and trigger success callbacks
-func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, result reflect.Value) error {
+func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, taskResults []*backends.TaskResult) error {
 	// Update task state to SUCCESS
 	backend := worker.server.GetBackend()
 
-	taskResult := CreateTaskResult(result)
-	if err := backend.SetStateSuccess(signature, taskResult); err != nil {
+	if err := backend.SetStateSuccess(signature, taskResults); err != nil {
 		return fmt.Errorf("Set State Success: %v", err)
 	}
 
-	logger.Get().Printf("Processed %s. Result = %v", signature.UUID, taskResult.Value)
+	logger.Get().Printf("Processed %s. Results = %v", signature.UUID, taskResults)
 
 	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {
 			// Pass results of the task to success callbacks
-			args := append([]signatures.TaskArg{{
-				Type:  taskResult.Type,
-				Value: taskResult.Value,
-			}}, successTask.Args...)
+			args := make([]signatures.TaskArg, 0)
+			for _, taskResult := range taskResults {
+				args = append([]signatures.TaskArg{{
+					Type:  taskResult.Type,
+					Value: taskResult.Value,
+				}}, successTask.Args...)
+			}
 			successTask.Args = args
 		}
 
@@ -183,10 +180,12 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, resul
 
 		if signature.ChordCallback.Immutable == false {
 			// Pass results of the task to the chord callback
-			signature.ChordCallback.Args = append(signature.ChordCallback.Args, signatures.TaskArg{
-				Type:  taskState.Result.Type,
-				Value: taskState.Result.Value,
-			})
+			for _, taskResult := range taskState.Results {
+				signature.ChordCallback.Args = append(signature.ChordCallback.Args, signatures.TaskArg{
+					Type:  taskResult.Type,
+					Value: taskResult.Value,
+				})
+			}
 		}
 	}
 
@@ -227,62 +226,4 @@ func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err err
 func (worker *Worker) hasAMQPBackend() bool {
 	_, ok := worker.server.backend.(*backends.AMQPBackend)
 	return ok
-}
-
-// ReflectArgs converts []TaskArg to []reflect.Value
-func ReflectArgs(args []signatures.TaskArg) ([]reflect.Value, error) {
-	argValues := make([]reflect.Value, len(args))
-
-	for i, arg := range args {
-		argValue, err := utils.ReflectValue(arg.Type, arg.Value)
-		if err != nil {
-			return nil, err
-		}
-		argValues[i] = argValue
-	}
-
-	return argValues, nil
-}
-
-// TryCall attempts to call the task with the supplied arguments.
-//
-// `err` is set in the return value in two cases:
-// 1. The reflected function invocation panics (e.g. due to a mismatched
-//    argument list).
-// 2. The task func itself returns a non-nil error.
-func TryCall(f reflect.Value, args []reflect.Value) (results []reflect.Value, err error) {
-	defer func() {
-		// Recover from panic and set err.
-		if e := recover(); e != nil {
-			switch e := e.(type) {
-			default:
-				err = errors.New("Invoking task caused a panic")
-
-			case error:
-				err = e
-			case string:
-				err = errors.New(e)
-			}
-			// Print stack trace
-			logger.Get().Printf("%s", debug.Stack())
-		}
-	}()
-
-	results = f.Call(args)
-
-	// If an error was returned by the task func, propagate it
-	// to the caller via err.
-	if !results[1].IsNil() {
-		return nil, results[1].Interface().(error)
-	}
-
-	return results, err
-}
-
-// CreateTaskResult ...
-func CreateTaskResult(value reflect.Value) *backends.TaskResult {
-	return &backends.TaskResult{
-		Type:  reflect.TypeOf(value.Interface()).String(),
-		Value: value.Interface(),
-	}
 }

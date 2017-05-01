@@ -124,20 +124,23 @@ func TestSetStateSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = backend.SetStateSuccess(&signatures.TaskSignature{
+	signature := &signatures.TaskSignature{
 		UUID: taskUUIDs[0],
-	}, &backends.TaskResult{
-		Type:  resultType,
-		Value: resultValue,
-	})
-	if assert.NoError(t, err) {
-		taskState, err := backend.GetState(taskUUIDs[0])
-		if assert.NoError(t, err) {
-			assert.Equal(t, backends.SuccessState, taskState.State, "Not SuccessState")
-			assert.Equal(t, resultType, taskState.Result.Type, "Wrong result type")
-			assert.Equal(t, float64(resultValue), taskState.Result.Value.(float64), "Wrong result value")
-		}
 	}
+	taskResults := []*backends.TaskResult{
+		&backends.TaskResult{
+			Type:  resultType,
+			Value: resultValue,
+		},
+	}
+	err = backend.SetStateSuccess(signature, taskResults)
+	assert.NoError(t, err)
+
+	taskState, err := backend.GetState(taskUUIDs[0])
+	assert.NoError(t, err)
+	assert.Equal(t, backends.SuccessState, taskState.State, "Not SuccessState")
+	assert.Equal(t, resultType, taskState.Results[0].Type, "Wrong result type")
+	assert.Equal(t, float64(resultValue), taskState.Results[0].Value.(float64), "Wrong result value")
 }
 
 func TestSetStateFailure(t *testing.T) {
@@ -152,16 +155,16 @@ func TestSetStateFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = backend.SetStateFailure(&signatures.TaskSignature{
+	signature := &signatures.TaskSignature{
 		UUID: taskUUIDs[0],
-	}, failStrig)
-	if assert.NoError(t, err) {
-		taskState, err := backend.GetState(taskUUIDs[0])
-		if assert.NoError(t, err) {
-			assert.Equal(t, backends.FailureState, taskState.State, "Not SuccessState")
-			assert.Equal(t, failStrig, taskState.Error, "Wrong fail error")
-		}
 	}
+	err = backend.SetStateFailure(signature, failStrig)
+	assert.NoError(t, err)
+
+	taskState, err := backend.GetState(taskUUIDs[0])
+	assert.NoError(t, err)
+	assert.Equal(t, backends.FailureState, taskState.State, "Not SuccessState")
+	assert.Equal(t, failStrig, taskState.Error, "Wrong fail error")
 }
 
 func TestGroupCompleted(t *testing.T) {
@@ -180,27 +183,30 @@ func TestGroupCompleted(t *testing.T) {
 		assert.False(t, isCompleted, "Actualy group is not completed")
 	}
 
-	err = backend.SetStateFailure(&signatures.TaskSignature{
+	signature := &signatures.TaskSignature{
 		UUID: taskUUIDs[0],
-	}, "Fail is ok")
+	}
+	err = backend.SetStateFailure(signature, "Fail is ok")
 	assert.NoError(t, err)
 	taskResultsState[taskUUIDs[0]] = backends.FailureState
 
-	err = backend.SetStateSuccess(&signatures.TaskSignature{
+	signature = &signatures.TaskSignature{
 		UUID: taskUUIDs[1],
-	}, &backends.TaskResult{
-		Type:  "string",
-		Value: "Result ok",
-	})
+	}
+	taskResults := []*backends.TaskResult{
+		&backends.TaskResult{
+			Type:  "string",
+			Value: "Result ok",
+		},
+	}
+	err = backend.SetStateSuccess(signature, taskResults)
 	assert.NoError(t, err)
 	taskResultsState[taskUUIDs[1]] = backends.SuccessState
 
-	err = backend.SetStateSuccess(&signatures.TaskSignature{
+	signature = &signatures.TaskSignature{
 		UUID: taskUUIDs[2],
-	}, &backends.TaskResult{
-		Type:  "string",
-		Value: "Result ok",
-	})
+	}
+	err = backend.SetStateSuccess(signature, taskResults)
 	assert.NoError(t, err)
 	taskResultsState[taskUUIDs[2]] = backends.SuccessState
 
@@ -210,16 +216,16 @@ func TestGroupCompleted(t *testing.T) {
 	}
 
 	groupTasksStates, err := backend.GroupTaskStates(groupUUID, len(taskUUIDs))
-	if assert.NoError(t, err) {
-		assert.Equal(t, len(groupTasksStates), len(taskUUIDs), "Wrong len tasksStates")
-		for i := range groupTasksStates {
-			assert.Equal(
-				t,
-				taskResultsState[groupTasksStates[i].TaskUUID],
-				groupTasksStates[i].State,
-				"Wrong state on", groupTasksStates[i].TaskUUID,
-			)
-		}
+	assert.NoError(t, err)
+
+	assert.Equal(t, len(groupTasksStates), len(taskUUIDs), "Wrong len tasksStates")
+	for i := range groupTasksStates {
+		assert.Equal(
+			t,
+			taskResultsState[groupTasksStates[i].TaskUUID],
+			groupTasksStates[i].State,
+			"Wrong state on", groupTasksStates[i].TaskUUID,
+		)
 	}
 }
 

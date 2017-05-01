@@ -21,5 +21,7 @@ func TestAmqpRedis(t *testing.T) {
 	_testSendGroup(server, t)
 	_testSendChord(server, t)
 	_testSendChain(server, t)
+	_testReturnJustError(server, t)
+	_testReturnMultipleValues(server, t)
 	worker.Quit()
 }

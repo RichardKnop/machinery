@@ -146,13 +146,17 @@ func (b *MongodbBackend) SetStateStarted(signature *signatures.TaskSignature) er
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *MongodbBackend) SetStateSuccess(signature *signatures.TaskSignature, result *TaskResult) error {
-	update := bson.M{
-		"state": SuccessState,
-		"result": bson.M{
+func (b *MongodbBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
+	bsonResults := make([]bson.M, len(results))
+	for i, result := range results {
+		bsonResults[i] = bson.M{
 			"type":  result.Type,
 			"value": result.Value,
-		},
+		}
+	}
+	update := bson.M{
+		"state":   SuccessState,
+		"results": bsonResults,
 	}
 	return b.setState(signature, update)
 }

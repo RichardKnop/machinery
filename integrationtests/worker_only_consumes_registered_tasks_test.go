@@ -96,13 +96,18 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 	actualResults := make([]int64, 2)
 
 	for i, asyncResult := range asyncResults {
-		result, err := asyncResult.Get()
+		results, err := asyncResult.Get()
 		if err != nil {
 			t.Error(err)
 		}
-		intResult, ok := result.Interface().(int64)
+
+		if len(results) != 1 {
+			t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+		}
+
+		intResult, ok := results[0].Interface().(int64)
 		if !ok {
-			t.Errorf("Could not convert %v to int64", result.Interface())
+			t.Errorf("Could not convert %v to int64", results[0].Interface())
 		}
 		actualResults[i] = intResult
 	}
@@ -198,13 +203,18 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 	actualResults := make([]int64, 2)
 
 	for i, asyncResult := range asyncResults {
-		result, err := asyncResult.Get()
+		results, err := asyncResult.Get()
 		if err != nil {
 			t.Error(err)
 		}
-		intResult, ok := result.Interface().(int64)
+
+		if len(results) != 1 {
+			t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+		}
+
+		intResult, ok := results[0].Interface().(int64)
 		if !ok {
-			t.Errorf("Could not convert %v to int64", result.Interface())
+			t.Errorf("Could not convert %v to int64", results[0].Interface())
 		}
 		actualResults[i] = intResult
 	}

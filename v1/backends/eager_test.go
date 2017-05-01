@@ -225,18 +225,22 @@ func (s *EagerBackendTestSuite) TestSetStateStarted() {
 }
 
 func (s *EagerBackendTestSuite) TestSetStateSuccess() {
-
 	// task4
 	{
 		t := s.st[3]
-		result := &backends.TaskResult{Type: "float64", Value: float64(300.0)}
-		s.backend.SetStateSuccess(t, result)
+		taskResults := []*backends.TaskResult{
+			&backends.TaskResult{
+				Type:  "float64",
+				Value: float64(300.0),
+			},
+		}
+		s.backend.SetStateSuccess(t, taskResults)
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
-		if st != nil {
-			s.Equal(backends.SuccessState, st.State)
-			s.Equal(result, st.Result)
-		}
+		s.NotNil(st)
+
+		s.Equal(backends.SuccessState, st.State)
+		s.Equal(taskResults, st.Results)
 	}
 }
 
