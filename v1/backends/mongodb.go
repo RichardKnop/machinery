@@ -13,21 +13,21 @@ import (
 
 // MongodbBackend represents a MongoDB result backend
 type MongodbBackend struct {
-	config               *config.Config
+	cnf                  *config.Config
 	session              *mgo.Session
 	tasksCollection      *mgo.Collection
 	groupMetasCollection *mgo.Collection
 }
 
 // NewMongodbBackend creates MongodbBackend instance
-func NewMongodbBackend(conf *config.Config) (Backend, error) {
-	session, err := mgo.Dial(conf.ResultBackend)
+func NewMongodbBackend(cnf *config.Config) (Backend, error) {
+	session, err := mgo.Dial(cnf.ResultBackend)
 	if err != nil {
 		return nil, err
 	}
 
 	dbName := "tasks"
-	splitConnection := strings.Split(conf.ResultBackend, "/")
+	splitConnection := strings.Split(cnf.ResultBackend, "/")
 	if len(splitConnection) == 4 {
 		dbName = splitConnection[3]
 	}
@@ -35,13 +35,13 @@ func NewMongodbBackend(conf *config.Config) (Backend, error) {
 	tasksCollection := session.DB(dbName).C("tasks")
 	groupMetasCollection := session.DB(dbName).C("group_metas")
 
-	err = createMongoIndexes(tasksCollection, conf)
+	err = createMongoIndexes(tasksCollection, cnf)
 	if err != nil {
 		return nil, err
 	}
 
 	return Backend(&MongodbBackend{
-		config:               conf,
+		cnf:                  cnf,
 		session:              session,
 		tasksCollection:      tasksCollection,
 		groupMetasCollection: groupMetasCollection,
@@ -50,7 +50,7 @@ func NewMongodbBackend(conf *config.Config) (Backend, error) {
 
 // InitGroup - saves UUIDs of all tasks in a group
 func (b *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
-	groupMeta := &mongodbGroupMeta{
+	groupMeta := &GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
 	}
@@ -130,19 +130,19 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 // SetStatePending - sets task state to PENDING
 func (b *MongodbBackend) SetStatePending(signature *signatures.TaskSignature) error {
 	update := bson.M{"state": PendingState}
-	return b.setState(signature, update)
+	return b.updateState(signature, update)
 }
 
 // SetStateReceived - sets task state to RECEIVED
 func (b *MongodbBackend) SetStateReceived(signature *signatures.TaskSignature) error {
 	update := bson.M{"state": ReceivedState}
-	return b.setState(signature, update)
+	return b.updateState(signature, update)
 }
 
 // SetStateStarted - sets task state to STARTED
 func (b *MongodbBackend) SetStateStarted(signature *signatures.TaskSignature) error {
 	update := bson.M{"state": StartedState}
-	return b.setState(signature, update)
+	return b.updateState(signature, update)
 }
 
 // SetStateSuccess - sets task state to SUCCESS
@@ -158,22 +158,22 @@ func (b *MongodbBackend) SetStateSuccess(signature *signatures.TaskSignature, re
 		"state":   SuccessState,
 		"results": bsonResults,
 	}
-	return b.setState(signature, update)
+	return b.updateState(signature, update)
 }
 
 // SetStateFailure - sets task state to FAILURE
 func (b *MongodbBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
 	update := bson.M{"state": FailureState, "error": err}
-	return b.setState(signature, update)
+	return b.updateState(signature, update)
 }
 
 // GetState - returns the latest task state
 func (b *MongodbBackend) GetState(taskUUID string) (*TaskState, error) {
-	task := new(mongodbTaskState)
-	if err := b.tasksCollection.FindId(taskUUID).One(&task); err != nil {
+	taskState := new(TaskState)
+	if err := b.tasksCollection.FindId(taskUUID).One(taskState); err != nil {
 		return nil, err
 	}
-	return task.TaskState(), nil
+	return taskState, nil
 }
 
 // PurgeState - deletes stored task state
@@ -188,11 +188,11 @@ func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
 
 // Fetches GroupMeta from the backend, convenience function to avoid repetition
 func (b *MongodbBackend) getGroupMeta(groupUUID string) (*GroupMeta, error) {
-	groupMeta := new(mongodbGroupMeta)
+	groupMeta := new(GroupMeta)
 	if err := b.groupMetasCollection.FindId(groupUUID).One(groupMeta); err != nil {
 		return nil, err
 	}
-	return groupMeta.GroupMeta(), nil
+	return groupMeta, nil
 }
 
 // getStates Returns multiple task states with MGET
@@ -201,36 +201,33 @@ func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*TaskState, error) {
 
 	iter := b.tasksCollection.Find(bson.M{"_id": bson.M{"$in": taskUUIDs}}).Iter()
 
-	task := new(mongodbTaskState)
-	for iter.Next(task) {
-		taskStates = append(taskStates, task.TaskState())
+	taskState := new(TaskState)
+	for iter.Next(taskState) {
+		taskStates = append(taskStates, taskState)
 	}
 
 	return taskStates, nil
 }
 
-func (b *MongodbBackend) setState(signature *signatures.TaskSignature, update bson.M) error {
-	newTask := bson.M{
-		"createdAt": time.Now(),
-	}
-	_, err := b.tasksCollection.UpsertId(signature.UUID, bson.M{"$set": update, "$setOnInsert": newTask})
+func (b *MongodbBackend) updateState(signature *signatures.TaskSignature, update bson.M) error {
+	_, err := b.tasksCollection.UpsertId(signature.UUID, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func createMongoIndexes(tasksCollection *mgo.Collection, conf *config.Config) error {
-	indexCreatedAt := mgo.Index{
-		Key:         []string{"createdAt"},
-		ExpireAfter: time.Duration(conf.ResultsExpireIn) * time.Second,
+func createMongoIndexes(tasksCollection *mgo.Collection, cnf *config.Config) error {
+	indexState := mgo.Index{
+		Key:         []string{"state"},
+		ExpireAfter: time.Duration(cnf.ResultsExpireIn) * time.Second,
 	}
 
-	if err := tasksCollection.EnsureIndex(indexCreatedAt); err != nil {
-		if err = tasksCollection.DropIndex(indexCreatedAt.Key[0]); err != nil {
+	if err := tasksCollection.EnsureIndex(indexState); err != nil {
+		if err = tasksCollection.DropIndex(indexState.Key[0]); err != nil {
 			return err
 		}
-		if err = tasksCollection.EnsureIndex(indexCreatedAt); err != nil {
+		if err = tasksCollection.EnsureIndex(indexState); err != nil {
 			return err
 		}
 	}

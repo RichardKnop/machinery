@@ -14,7 +14,7 @@ import (
 
 // RedisBackend represents a Memcache result backend
 type RedisBackend struct {
-	config   *config.Config
+	cnf      *config.Config
 	host     string
 	password string
 	db       int
@@ -27,7 +27,7 @@ type RedisBackend struct {
 // NewRedisBackend creates RedisBackend instance
 func NewRedisBackend(cnf *config.Config, host, password, socketPath string, db int) Backend {
 	return Backend(&RedisBackend{
-		config:     cnf,
+		cnf:        cnf,
 		host:       host,
 		db:         db,
 		password:   password,
@@ -282,7 +282,7 @@ func (b *RedisBackend) updateState(taskState *TaskState) error {
 
 // Sets expiration timestamp on a stored state
 func (b *RedisBackend) setExpirationTime(key string) error {
-	expiresIn := b.config.ResultsExpireIn
+	expiresIn := b.cnf.ResultsExpireIn
 	if expiresIn == 0 {
 		// // expire results after 1 hour by default
 		expiresIn = 3600

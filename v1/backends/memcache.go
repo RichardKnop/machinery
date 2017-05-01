@@ -11,7 +11,7 @@ import (
 
 // MemcacheBackend represents a Memcache result backend
 type MemcacheBackend struct {
-	config  *config.Config
+	cnf     *config.Config
 	servers []string
 	client  *memcache.Client
 }
@@ -19,7 +19,7 @@ type MemcacheBackend struct {
 // NewMemcacheBackend creates MemcacheBackend instance
 func NewMemcacheBackend(cnf *config.Config, servers []string) Backend {
 	return Backend(&MemcacheBackend{
-		config:  cnf,
+		cnf:     cnf,
 		servers: servers,
 	})
 }
@@ -144,7 +144,7 @@ func (b *MemcacheBackend) PurgeGroupMeta(groupUUID string) error {
 
 // Updates a task state
 func (b *MemcacheBackend) updateState(taskState *TaskState) error {
-	encoded, err := json.Marshal(&taskState)
+	encoded, err := json.Marshal(taskState)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func (b *MemcacheBackend) getStates(taskUUIDs ...string) ([]*TaskState, error) {
 
 // Returns expiration timestamp
 func (b *MemcacheBackend) getExpirationTimestamp() int32 {
-	expiresIn := b.config.ResultsExpireIn
+	expiresIn := b.cnf.ResultsExpireIn
 	if expiresIn == 0 {
 		// // expire results after 1 hour by default
 		expiresIn = 3600
