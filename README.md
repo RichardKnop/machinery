@@ -42,6 +42,21 @@ Add the Machinery library to your $GOPATH/src:
 go get github.com/RichardKnop/machinery/v1
 ```
 
+You will need to install dependencies required by machinery before you can begin to use it. Install `godep` if you don't have it already:
+
+```
+go get github.com/tools/godep
+```
+
+Go to the root of the machinery directory and run `godep restore`
+
+````
+cd $GOPATH/src/github.com/RichardKnop/machinery
+$GOPATH/bin/godep restore
+```
+
+This will pull down all dependencies needed by machinery (e.g. UUID).
+
 First, you will need to define some tasks. Look at sample tasks in `examples/tasks/tasks.go` to see a few examples.
 
 Second, you will need to launch a worker process:
