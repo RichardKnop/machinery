@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -23,6 +24,8 @@ var (
 		"float64": reflect.TypeOf(float64(0.5)),
 		"string":  reflect.TypeOf(string("")),
 	}
+
+	ctxType = reflect.TypeOf((*context.Context)(nil)).Elem()
 
 	typeConversionError = func(argValue interface{}, argTypeStr string) error {
 		return fmt.Errorf("%v is not %v", argValue, argTypeStr)
@@ -144,4 +147,9 @@ func getFloatValue(theType string, value interface{}) (float64, error) {
 
 	// Now we can return float64
 	return number, nil
+}
+
+// IsContextType checks to see if the type is a context.Context
+func IsContextType(t reflect.Type) bool {
+	return t == ctxType
 }
