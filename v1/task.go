@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"runtime/debug"
 
+	"context"
+
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/logger"
 	"github.com/RichardKnop/machinery/v1/signatures"
@@ -24,15 +26,25 @@ var (
 // Task wraps a signature and methods used to reflect task arguments and
 // return values after invoking the task
 type Task struct {
-	TaskFunc reflect.Value
-	Args     []reflect.Value
+	TaskFunc   reflect.Value
+	UseContext bool
+	Args       []reflect.Value
 }
 
 // NewTask tries to use reflection to convert the function and arguments
 // into a reflect.Value and prepare it for invocation
 func NewTask(taskFunc interface{}, args []signatures.TaskArg) (*Task, error) {
+
 	task := &Task{
 		TaskFunc: reflect.ValueOf(taskFunc),
+	}
+
+	taskFuncType := reflect.TypeOf(taskFunc)
+	if taskFuncType.NumIn() > 0 {
+		arg0Type := taskFuncType.In(0)
+		if utils.IsContextType(arg0Type) {
+			task.UseContext = true
+		}
 	}
 
 	if err := task.ReflectArgs(args); err != nil {
@@ -65,8 +77,16 @@ func (t *Task) Call() (taskResults []*backends.TaskResult, err error) {
 		}
 	}()
 
+	args := t.Args
+
+	if t.UseContext {
+		ctx := context.Background()
+		ctxValue := reflect.ValueOf(ctx)
+		args = append([]reflect.Value{ctxValue}, args...)
+	}
+
 	// Invoke the task
-	results := t.TaskFunc.Call(t.Args)
+	results := t.TaskFunc.Call(args)
 
 	// Task must return at least a single error argument
 	if len(results) == 0 {

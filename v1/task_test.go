@@ -1,6 +1,7 @@
 package machinery_test
 
 import (
+	"context"
 	"math"
 	"testing"
 
@@ -34,6 +35,19 @@ func TestInterfaceValuedResult(t *testing.T) {
 	task, err := machinery.NewTask(f, []signatures.TaskArg{})
 	assert.NoError(t, err)
 
+	taskResults, err := task.Call()
+	assert.NoError(t, err)
+	assert.Equal(t, "float64", taskResults[0].Type)
+	assert.Equal(t, math.Pi, taskResults[0].Value)
+}
+
+func TestTaskHasContext(t *testing.T) {
+	f := func(c context.Context) (interface{}, error) {
+		assert.NotNil(t, c)
+		return math.Pi, nil
+	}
+	task, err := machinery.NewTask(f, []signatures.TaskArg{})
+	assert.NoError(t, err)
 	taskResults, err := task.Call()
 	assert.NoError(t, err)
 	assert.Equal(t, "float64", taskResults[0].Type)
