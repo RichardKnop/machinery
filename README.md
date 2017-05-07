@@ -473,8 +473,6 @@ if err != nil {
 }
 ```
 
-Delayed tasks currently only work with `AMQP` backend.
-
 ### Get Pending Tasks
 
 Tasks currently waiting in the queue to be consumed by workers can be inspected, e.g.:
