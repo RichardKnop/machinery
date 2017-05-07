@@ -296,6 +296,12 @@ func Multiply(args ...int64) (int64, error) {
   return sum, nil
 }
 
+// You can use context.Context as first argument to tasks, useful for open tracing
+func TaskWithContext(ctx context.Context, arg Arg) error {
+  // ... use ctx ...
+  return nil
+}
+
 // Tasks need to return at least error as a minimal requirement
 func DummyTask(arg string) error {
   return errors.New(arg)
