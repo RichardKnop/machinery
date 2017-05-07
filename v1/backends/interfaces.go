@@ -4,8 +4,8 @@ import (
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
-// Backend - a common interface for all result backends
-type Backend interface {
+// Interface - a common interface for all result backends
+type Interface interface {
 	// Group related functions
 	InitGroup(groupUUID string, taskUUIDs []string) error
 	GroupCompleted(groupUUID string, groupTaskCount int) (bool, error)

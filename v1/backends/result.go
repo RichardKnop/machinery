@@ -13,24 +13,24 @@ import (
 type AsyncResult struct {
 	Signature *signatures.TaskSignature
 	taskState *TaskState
-	backend   Backend
+	backend   Interface
 }
 
 // ChordAsyncResult represents a result of a chord
 type ChordAsyncResult struct {
 	groupAsyncResults []*AsyncResult
 	chordAsyncResult  *AsyncResult
-	backend           Backend
+	backend           Interface
 }
 
 // ChainAsyncResult represents a result of a chain of tasks
 type ChainAsyncResult struct {
 	asyncResults []*AsyncResult
-	backend      Backend
+	backend      Interface
 }
 
 // NewAsyncResult creates AsyncResult instance
-func NewAsyncResult(signature *signatures.TaskSignature, backend Backend) *AsyncResult {
+func NewAsyncResult(signature *signatures.TaskSignature, backend Interface) *AsyncResult {
 	return &AsyncResult{
 		Signature: signature,
 		taskState: new(TaskState),
@@ -39,7 +39,7 @@ func NewAsyncResult(signature *signatures.TaskSignature, backend Backend) *Async
 }
 
 // NewChordAsyncResult creates ChordAsyncResult instance
-func NewChordAsyncResult(groupTasks []*signatures.TaskSignature, chordCallback *signatures.TaskSignature, backend Backend) *ChordAsyncResult {
+func NewChordAsyncResult(groupTasks []*signatures.TaskSignature, chordCallback *signatures.TaskSignature, backend Interface) *ChordAsyncResult {
 	asyncResults := make([]*AsyncResult, len(groupTasks))
 	for i, task := range groupTasks {
 		asyncResults[i] = NewAsyncResult(task, backend)
@@ -52,7 +52,7 @@ func NewChordAsyncResult(groupTasks []*signatures.TaskSignature, chordCallback *
 }
 
 // NewChainAsyncResult creates ChainAsyncResult instance
-func NewChainAsyncResult(tasks []*signatures.TaskSignature, backend Backend) *ChainAsyncResult {
+func NewChainAsyncResult(tasks []*signatures.TaskSignature, backend Interface) *ChainAsyncResult {
 	asyncResults := make([]*AsyncResult, len(tasks))
 	for i, task := range tasks {
 		asyncResults[i] = NewAsyncResult(task, backend)

@@ -31,8 +31,8 @@ type AMQPBackend struct {
 }
 
 // NewAMQPBackend creates AMQPBackend instance
-func NewAMQPBackend(cnf *config.Config) Backend {
-	return Backend(&AMQPBackend{cnf: cnf})
+func NewAMQPBackend(cnf *config.Config) Interface {
+	return &AMQPBackend{cnf: cnf}
 }
 
 // InitGroup - saves UUIDs of all tasks in a group

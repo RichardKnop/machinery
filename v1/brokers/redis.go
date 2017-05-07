@@ -2,7 +2,6 @@ package brokers
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -16,53 +15,31 @@ import (
 
 // RedisBroker represents a Redis broker
 type RedisBroker struct {
-	cnf                 *config.Config
-	registeredTaskNames []string
-	host                string
-	password            string
-	db                  int
-	pool                *redis.Pool
-	retry               bool
-	retryFunc           func()
-	stopChan            chan int
-	stopReceivingChan   chan int
-	wg                  sync.WaitGroup
+	host              string
+	password          string
+	db                int
+	pool              *redis.Pool
+	stopReceivingChan chan int
+	wg                sync.WaitGroup
 	// If set, path to a socket file overrides hostname
 	socketPath string
+	Broker
 }
 
 // NewRedisBroker creates new RedisBroker instance
-func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db int) Broker {
-	return Broker(&RedisBroker{
-		cnf:        cnf,
-		host:       host,
-		db:         db,
-		password:   password,
-		retry:      true,
-		socketPath: socketPath,
-	})
-}
+func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db int) Interface {
+	b := &RedisBroker{Broker: Broker{cnf: cnf, retry: true}}
+	b.host = host
+	b.db = db
+	b.password = password
+	b.socketPath = socketPath
 
-// SetRegisteredTaskNames sets registered task names
-func (b *RedisBroker) SetRegisteredTaskNames(names []string) {
-	b.registeredTaskNames = names
-}
-
-// IsTaskRegistered returns true if the task is registered with this broker
-func (b *RedisBroker) IsTaskRegistered(name string) bool {
-	for _, registeredTaskName := range b.registeredTaskNames {
-		if registeredTaskName == name {
-			return true
-		}
-	}
-	return false
+	return b
 }
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
-	if b.retryFunc == nil {
-		b.retryFunc = utils.RetryClosure()
-	}
+	b.startConsuming(consumerTag, taskProcessor)
 
 	b.pool = b.newPool()
 	defer b.pool.Close()
@@ -70,15 +47,14 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 	_, err := b.pool.Get().Do("PING")
 	if err != nil {
 		b.retryFunc()
-		return b.retry, err // retry true
+		return b.retry, err
 	}
 
 	b.retryFunc = utils.RetryClosure()
-	b.stopChan = make(chan int)
-	deliveries := make(chan []byte)
 
 	b.stopReceivingChan = make(chan int)
 	b.wg.Add(1)
+	deliveries := make(chan []byte)
 
 	// A receivig goroutine keeps popping messages from the queue by BLPOP
 	// If the message is valid and can be unmarshaled into a proper structure
@@ -135,12 +111,10 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 
 // StopConsuming quits the loop
 func (b *RedisBroker) StopConsuming() {
-	// Do not retry from now on
-	b.retry = false
 	// Stop the receiving goroutine
 	b.stopReceiving()
-	// Notifying the stop channel stops consuming of messages
-	b.stopChan <- 1
+
+	b.stopConsuming()
 }
 
 // Publish places a new message on the default queue
@@ -235,7 +209,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProces
 					pool <- struct{}{}
 				}
 			}()
-		case <-b.stopChan:
+		case <-b.Broker.stopChan:
 			return nil
 		}
 	}
@@ -254,7 +228,7 @@ func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) e
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(signature.Name) {
 		b.pool.Get().Do("RPUSH", b.cnf.DefaultQueue, delivery)
-		return errors.New("Task not registered, requeuing for delivery")
+		return nil
 	}
 
 	return taskProcessor.Process(signature)

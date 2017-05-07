@@ -17,8 +17,8 @@ import (
 type Server struct {
 	config          *config.Config
 	registeredTasks map[string]interface{}
-	broker          brokers.Broker
-	backend         backends.Backend
+	broker          brokers.Interface
+	backend         backends.Interface
 }
 
 // NewServer creates Server instance
@@ -58,22 +58,22 @@ func (server *Server) NewWorker(consumerTag string) *Worker {
 }
 
 // GetBroker returns broker
-func (server *Server) GetBroker() brokers.Broker {
+func (server *Server) GetBroker() brokers.Interface {
 	return server.broker
 }
 
 // SetBroker sets broker
-func (server *Server) SetBroker(broker brokers.Broker) {
+func (server *Server) SetBroker(broker brokers.Interface) {
 	server.broker = broker
 }
 
 // GetBackend returns backend
-func (server *Server) GetBackend() backends.Backend {
+func (server *Server) GetBackend() backends.Interface {
 	return server.backend
 }
 
 // SetBackend sets backend
-func (server *Server) SetBackend(backend backends.Backend) {
+func (server *Server) SetBackend(backend backends.Interface) {
 	server.backend = backend
 }
 

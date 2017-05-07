@@ -15,7 +15,7 @@ var (
 	taskUUIDs = []string{"1", "2", "3"}
 )
 
-func initTestMongodbBackend() (backends.Backend, error) {
+func initTestMongodbBackend() (backends.Interface, error) {
 	conf := &config.Config{
 		ResultBackend:   os.Getenv("MONGODB_URL"),
 		ResultsExpireIn: 30,

@@ -11,7 +11,7 @@ import (
 type EagerBackendTestSuite struct {
 	suite.Suite
 
-	backend backends.Backend
+	backend backends.Interface
 	st      []*signatures.TaskSignature
 	groups  []struct {
 		id    string

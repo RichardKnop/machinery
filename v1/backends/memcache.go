@@ -17,11 +17,11 @@ type MemcacheBackend struct {
 }
 
 // NewMemcacheBackend creates MemcacheBackend instance
-func NewMemcacheBackend(cnf *config.Config, servers []string) Backend {
-	return Backend(&MemcacheBackend{
+func NewMemcacheBackend(cnf *config.Config, servers []string) Interface {
+	return &MemcacheBackend{
 		cnf:     cnf,
 		servers: servers,
-	})
+	}
 }
 
 // InitGroup - saves UUIDs of all tasks in a group

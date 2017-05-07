@@ -14,11 +14,11 @@ type EagerBackend struct {
 }
 
 // NewEagerBackend creates EagerBackend instance
-func NewEagerBackend() Backend {
-	return Backend(&EagerBackend{
+func NewEagerBackend() Interface {
+	return &EagerBackend{
 		groups: make(map[string][]string),
 		tasks:  make(map[string][]byte),
-	})
+	}
 }
 
 // InitGroup - saves UUIDs of all tasks in a group

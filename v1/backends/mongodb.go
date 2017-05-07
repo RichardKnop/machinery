@@ -20,7 +20,7 @@ type MongodbBackend struct {
 }
 
 // NewMongodbBackend creates MongodbBackend instance
-func NewMongodbBackend(cnf *config.Config) (Backend, error) {
+func NewMongodbBackend(cnf *config.Config) (Interface, error) {
 	session, err := mgo.Dial(cnf.ResultBackend)
 	if err != nil {
 		return nil, err
@@ -40,12 +40,12 @@ func NewMongodbBackend(cnf *config.Config) (Backend, error) {
 		return nil, err
 	}
 
-	return Backend(&MongodbBackend{
+	return &MongodbBackend{
 		cnf:                  cnf,
 		session:              session,
 		tasksCollection:      tasksCollection,
 		groupMetasCollection: groupMetasCollection,
-	}), nil
+	}, nil
 }
 
 // InitGroup - saves UUIDs of all tasks in a group

@@ -16,48 +16,26 @@ import (
 
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
-	cnf                 *config.Config
-	registeredTaskNames []string
-	retry               bool
-	retryFunc           func()
-	stopChan            chan int
+	Broker
 }
 
 // NewAMQPBroker creates new AMQPBroker instance
-func NewAMQPBroker(cnf *config.Config) Broker {
-	return Broker(&AMQPBroker{cnf: cnf, retry: true})
-}
-
-// SetRegisteredTaskNames sets registered task names
-func (b *AMQPBroker) SetRegisteredTaskNames(names []string) {
-	b.registeredTaskNames = names
-}
-
-// IsTaskRegistered returns true if the task is registered with this broker
-func (b *AMQPBroker) IsTaskRegistered(name string) bool {
-	for _, registeredTaskName := range b.registeredTaskNames {
-		if registeredTaskName == name {
-			return true
-		}
-	}
-	return false
+func NewAMQPBroker(cnf *config.Config) Interface {
+	return &AMQPBroker{Broker{cnf: cnf, retry: true}}
 }
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
-	if b.retryFunc == nil {
-		b.retryFunc = utils.RetryClosure()
-	}
+	b.startConsuming(consumerTag, taskProcessor)
 
 	conn, channel, queue, _, err := b.connect()
 	if err != nil {
 		b.retryFunc()
-		return b.retry, err // retry true
+		return b.retry, err
 	}
 	defer b.close(channel, conn)
 
 	b.retryFunc = utils.RetryClosure()
-	b.stopChan = make(chan int)
 
 	if err = channel.Qos(
 		b.cnf.AMQP.PrefetchCount,
@@ -91,10 +69,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 
 // StopConsuming quits the loop
 func (b *AMQPBroker) StopConsuming() {
-	// Do not retry from now on
-	b.retry = false
-	// Notifying the stop channel stops consuming of messages
-	b.stopChan <- 1
+	b.stopConsuming()
 }
 
 // Publish places a new message on the default queue
@@ -150,11 +125,6 @@ func (b *AMQPBroker) Publish(signature *signatures.TaskSignature) error {
 	}
 
 	return fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
-}
-
-// GetPendingTasks returns a slice of task.Signatures waiting in the queue
-func (b *AMQPBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature, error) {
-	return nil, errors.New("Not implemented")
 }
 
 // Consumes messages...

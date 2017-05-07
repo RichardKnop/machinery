@@ -25,14 +25,14 @@ type RedisBackend struct {
 }
 
 // NewRedisBackend creates RedisBackend instance
-func NewRedisBackend(cnf *config.Config, host, password, socketPath string, db int) Backend {
-	return Backend(&RedisBackend{
+func NewRedisBackend(cnf *config.Config, host, password, socketPath string, db int) Interface {
+	return &RedisBackend{
 		cnf:        cnf,
 		host:       host,
 		db:         db,
 		password:   password,
 		socketPath: socketPath,
-	})
+	}
 }
 
 // InitGroup - saves UUIDs of all tasks in a group

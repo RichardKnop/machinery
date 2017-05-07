@@ -11,26 +11,17 @@ import (
 // EagerBroker represents an "eager" in-memory broker
 type EagerBroker struct {
 	worker TaskProcessor
+	Broker
 }
 
 // NewEagerBroker creates new EagerBroker instance
-func NewEagerBroker() Broker {
+func NewEagerBroker() Interface {
 	return new(EagerBroker)
 }
 
 // EagerMode interface with methods specific for this broker
 type EagerMode interface {
 	AssignWorker(p TaskProcessor)
-}
-
-// SetRegisteredTaskNames sets registered task names
-func (eagerBroker *EagerBroker) SetRegisteredTaskNames(names []string) {
-	// do nothing
-}
-
-// IsTaskRegistered returns true if the task is registered with this broker
-func (eagerBroker *EagerBroker) IsTaskRegistered(name string) bool {
-	return true
 }
 
 // StartConsuming enters a loop and waits for incoming messages
