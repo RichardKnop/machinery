@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -81,7 +80,6 @@ func (b *AMQPBroker) Publish(signature *signatures.TaskSignature) error {
 
 		if signature.ETA.After(now) {
 			delayMs := int64(signature.ETA.Sub(now) / time.Millisecond)
-			log.Printf("Delaying for %d miliseconds", delayMs)
 
 			return b.delay(signature, delayMs)
 		}
