@@ -83,7 +83,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 	logger.Get().Print("[*] Waiting for messages. To exit press CTRL+C")
 
 	if err := b.consume(deliveries, taskProcessor); err != nil {
-		return b.retry, err // retry true
+		return b.retry, err
 	}
 
 	return b.retry, nil
@@ -157,33 +157,6 @@ func (b *AMQPBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature,
 	return nil, errors.New("Not implemented")
 }
 
-// Consume a single message
-func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) error {
-	if len(d.Body) == 0 {
-		d.Nack(false, false)                            // multiple, requeue
-		return errors.New("Received an empty message.") // RabbitMQ down?
-	}
-
-	logger.Get().Printf("Received new message: %s", d.Body)
-
-	// Unmarshal message body into signature struct
-	signature := new(signatures.TaskSignature)
-	if err := json.Unmarshal(d.Body, signature); err != nil {
-		d.Nack(false, false) // multiple, requeue
-		return err
-	}
-
-	// If the task is not registered, we nack it and requeue,
-	// there might be different workers for processing specific tasks
-	if !b.IsTaskRegistered(signature.Name) {
-		d.Nack(false, true) // multiple, requeue
-		return nil
-	}
-
-	d.Ack(false) // multiple
-	return taskProcessor.Process(signature)
-}
-
 // Consumes messages...
 func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) error {
 	maxWorkers := b.cnf.MaxWorkerInstances
@@ -221,6 +194,33 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor Task
 			return nil
 		}
 	}
+}
+
+// Consume a single message
+func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) error {
+	if len(d.Body) == 0 {
+		d.Nack(false, false)                            // multiple, requeue
+		return errors.New("Received an empty message.") // RabbitMQ down?
+	}
+
+	logger.Get().Printf("Received new message: %s", d.Body)
+
+	// Unmarshal message body into signature struct
+	signature := new(signatures.TaskSignature)
+	if err := json.Unmarshal(d.Body, signature); err != nil {
+		d.Nack(false, false) // multiple, requeue
+		return err
+	}
+
+	// If the task is not registered, we nack it and requeue,
+	// there might be different workers for processing specific tasks
+	if !b.IsTaskRegistered(signature.Name) {
+		d.Nack(false, true) // multiple, requeue
+		return nil
+	}
+
+	d.Ack(false) // multiple
+	return taskProcessor.Process(signature)
 }
 
 // Delays a task by delayDuration miliseconds, the way it works is a new queue

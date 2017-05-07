@@ -2,6 +2,7 @@ package brokers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -15,7 +16,7 @@ import (
 
 // RedisBroker represents a Redis broker
 type RedisBroker struct {
-	config              *config.Config
+	cnf                 *config.Config
 	registeredTaskNames []string
 	host                string
 	password            string
@@ -25,7 +26,6 @@ type RedisBroker struct {
 	retryFunc           func()
 	stopChan            chan int
 	stopReceivingChan   chan int
-	errorsChan          chan error
 	wg                  sync.WaitGroup
 	// If set, path to a socket file overrides hostname
 	socketPath string
@@ -34,7 +34,7 @@ type RedisBroker struct {
 // NewRedisBroker creates new RedisBroker instance
 func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db int) Broker {
 	return Broker(&RedisBroker{
-		config:     cnf,
+		cnf:        cnf,
 		host:       host,
 		db:         db,
 		password:   password,
@@ -75,12 +75,14 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 
 	b.retryFunc = utils.RetryClosure()
 	b.stopChan = make(chan int)
-	b.stopReceivingChan = make(chan int)
-	b.errorsChan = make(chan error)
 	deliveries := make(chan []byte)
 
+	b.stopReceivingChan = make(chan int)
 	b.wg.Add(1)
 
+	// A receivig goroutine keeps popping messages from the queue by BLPOP
+	// If the message is valid and can be unmarshaled into a proper structure
+	// we send it to the deliveries channel
 	go func() {
 		defer b.wg.Done()
 
@@ -94,55 +96,38 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 			case <-b.stopReceivingChan:
 				return
 			default:
-				itemBytes, err := conn.Do("BLPOP", b.config.DefaultQueue, "1")
+				// Log error if BLPOP fails
+				itemBytes, err := conn.Do("BLPOP", b.cnf.DefaultQueue, "1")
 				if err != nil {
-					b.errorsChan <- err
-					return
+					logger.Get().Print(err)
+					continue
 				}
-				// Unline BLPOP, LPOP is non blocking so nil means we can keep iterating
+
+				// Ignore empty bytes
 				if itemBytes == nil {
 					continue
 				}
 
+				// Log error if we can't convert the message to byte slices
 				items, err := redis.ByteSlices(itemBytes, nil)
 				if err != nil {
-					b.errorsChan <- err
-					return
-				}
-
-				if len(items) != 2 {
-					logger.Get().Println("Got unexpected amount of byte arrays, ignoring")
+					logger.Get().Print(err)
 					continue
 				}
+
 				// items[0] - queue name (key), items[1] - value
-				item := items[1]
-				signature := new(signatures.TaskSignature)
-				if err := json.Unmarshal(item, signature); err != nil {
-					b.errorsChan <- err
-					return
-				}
-
-				// If the task is not registered, we requeue it,
-				// there might be different workers for processing specific tasks
-				if !b.IsTaskRegistered(signature.Name) {
-					_, err := conn.Do("RPUSH", b.config.DefaultQueue, item)
-
-					if err != nil {
-						b.errorsChan <- err
-						return
-					}
-
+				if len(items) != 2 {
+					logger.Get().Println("Got unexpected amount of byte slices, ignoring")
 					continue
 				}
 
-				deliveries <- item
+				deliveries <- items[1]
 			}
 		}
 	}()
 
 	if err := b.consume(deliveries, taskProcessor); err != nil {
-		b.retryFunc()
-		return b.retry, err // retry true
+		return b.retry, err
 	}
 
 	return b.retry, nil
@@ -182,7 +167,7 @@ func (b *RedisBroker) Publish(signature *signatures.TaskSignature) error {
 		}
 	}
 
-	_, err = conn.Do("RPUSH", b.config.DefaultQueue, message)
+	_, err = conn.Do("RPUSH", b.cnf.DefaultQueue, message)
 	return err
 }
 
@@ -195,16 +180,14 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature
 	defer conn.Close()
 
 	if queue == "" {
-		queue = b.config.DefaultQueue
+		queue = b.cnf.DefaultQueue
 	}
 	bytes, err := conn.Do("LRANGE", queue, 0, 10)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
 		return nil, err
 	}
 	results, err := redis.ByteSlices(bytes, err)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
 		return nil, err
 	}
 
@@ -219,46 +202,34 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature
 	return taskSignatures, nil
 }
 
-// Consume a single message
-func (b *RedisBroker) consumeOne(item []byte, taskProcessor TaskProcessor) {
-	logger.Get().Printf("Received new message: %s", item)
-
-	signature := new(signatures.TaskSignature)
-	if err := json.Unmarshal(item, signature); err != nil {
-		b.errorsChan <- err
-		return
-	}
-
-	if err := taskProcessor.Process(signature); err != nil {
-		b.errorsChan <- err
-	}
-}
-
 // Consumes messages...
 func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProcessor) error {
-	maxWorkers := b.config.MaxWorkerInstances
+	maxWorkers := b.cnf.MaxWorkerInstances
 	pool := make(chan struct{}, maxWorkers)
 
-	// fill worker pool with maxWorkers workers
+	// initialize worker pool with maxWorkers workers
 	go func() {
 		for i := 0; i < maxWorkers; i++ {
 			pool <- struct{}{}
 		}
 	}()
 
+	errorsChan := make(chan error)
 	for {
 		select {
-		case err := <-b.errorsChan:
+		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
 			if maxWorkers != 0 {
-				// Get worker from pool (blocks until one is available).
+				// get worker from pool (blocks until one is available)
 				<-pool
 			}
 			// Consume the task inside a gotourine so multiple tasks
 			// can be processed concurrently
 			go func() {
-				b.consumeOne(d, taskProcessor)
+				if err := b.consumeOne(d, taskProcessor); err != nil {
+					errorsChan <- err
+				}
 				if maxWorkers != 0 {
 					// give worker back to pool
 					pool <- struct{}{}
@@ -268,6 +239,25 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProces
 			return nil
 		}
 	}
+}
+
+// Consume a single message
+func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) error {
+	logger.Get().Printf("Received new message: %s", delivery)
+
+	signature := new(signatures.TaskSignature)
+	if err := json.Unmarshal(delivery, signature); err != nil {
+		return err
+	}
+
+	// If the task is not registered, we requeue it,
+	// there might be different workers for processing specific tasks
+	if !b.IsTaskRegistered(signature.Name) {
+		b.pool.Get().Do("RPUSH", b.cnf.DefaultQueue, delivery)
+		return errors.New("Task not registered, requeuing for delivery")
+	}
+
+	return taskProcessor.Process(signature)
 }
 
 // Stops the receiving goroutine

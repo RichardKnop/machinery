@@ -11,8 +11,9 @@ import (
 
 // Define flags
 var (
-	configPath   = flag.String("c", "config.yml", "Path to a configuration file")
-	broker       = flag.String("b", "amqp://guest:guest@localhost:5672/", "Broker URL")
+	configPath = flag.String("c", "config.yml", "Path to a configuration file")
+	broker     = flag.String("b", "amqp://guest:guest@localhost:5672/", "Broker URL")
+	// broker       = flag.String("b", "redis://127.0.0.1:6379", "Broker URL")
 	defaultQueue = flag.String("q", "machinery_tasks", "Ephemeral AMQP/Redis queue name")
 
 	resultBackend = flag.String("r", "amqp://guest:guest@localhost:5672/", "Result backend")
