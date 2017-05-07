@@ -48,14 +48,14 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 	b.pool = b.newPool()
 	defer b.pool.Close()
 
-	// Ping the server to make sure it's up and running
+	// Ping the server to make sure connection is live
 	conn := b.pool.Get()
 	_, err := conn.Do("PING")
-	conn.Close()
 	if err != nil {
 		b.retryFunc()
 		return b.retry, err
 	}
+	conn.Close()
 
 	b.retryFunc = utils.RetryClosure()
 
@@ -76,16 +76,13 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 
 		logger.Get().Print("[*] Waiting for messages. To exit press CTRL+C")
 
-		conn := b.pool.Get()
-		defer conn.Close()
-
 		for {
 			select {
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.stopReceivingChan:
 				return
 			default:
-				task, err := b.nextTask(conn, b.cnf.DefaultQueue)
+				task, err := b.nextTask(b.cnf.DefaultQueue)
 				if err != nil {
 					continue
 				}
@@ -100,16 +97,13 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 	go func() {
 		defer b.delayedWG.Done()
 
-		conn := b.pool.Get()
-		defer conn.Close()
-
 		for {
 			select {
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.stopDelayedChan:
 				return
 			default:
-				delayedTask, err := b.nextDelayedTask(conn, redisDelayedTasksKey)
+				delayedTask, err := b.nextDelayedTask(redisDelayedTasksKey)
 				if err != nil {
 					continue
 				}
@@ -259,7 +253,10 @@ func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) e
 }
 
 // nextTask pops next available task from the default queue
-func (b *RedisBroker) nextTask(conn redis.Conn, queue string) (result []byte, err error) {
+func (b *RedisBroker) nextTask(queue string) (result []byte, err error) {
+	conn := b.pool.Get()
+	defer conn.Close()
+
 	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, 1))
 	if err != nil {
 		return []byte{}, err
@@ -278,7 +275,10 @@ func (b *RedisBroker) nextTask(conn redis.Conn, queue string) (result []byte, er
 
 // nextDelayedTask pops a value from the ZSET key using WATCH/MULTI/EXEC commands.
 // https://github.com/garyburd/redigo/blob/master/redis/zpop_example_test.go
-func (b *RedisBroker) nextDelayedTask(conn redis.Conn, key string) (result []byte, err error) {
+func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
+	conn := b.pool.Get()
+	defer conn.Close()
+
 	defer func() {
 		// Return connection to normal state on error.
 		if err != nil {
@@ -384,7 +384,11 @@ func (b *RedisBroker) newPool() *redis.Pool {
 			}
 			return c, err
 		},
+		// PINGs connections that have been idle more than 15 seconds
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			// if time.Since(t) < time.Duration(15 * time.Second) {
+			//   return nil
+			// }
 			_, err := c.Do("PING")
 			return err
 		},
