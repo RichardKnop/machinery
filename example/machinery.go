@@ -36,7 +36,7 @@ func init() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "c",
-			Value:       "example/config.yml",
+			Value:       "config.yml",
 			Destination: &configPath,
 			Usage:       "Path to a configuration file",
 		},
@@ -126,7 +126,7 @@ func startServer() (*machinery.Server, error) {
 	// If present, the config file takes priority over cli flags
 	data, err := config.ReadFromFile(configPath)
 	if err != nil {
-		log.ERROR.Printf("Could not load config from file: %s", err.Error())
+		log.WARNING.Printf("Could not load config from file: %s", err.Error())
 	} else {
 		if err = config.ParseYAMLConfig(&data, &cnf); err != nil {
 			return nil, fmt.Errorf("Could not parse config file: %s", err.Error())
