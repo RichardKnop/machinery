@@ -1,8 +1,8 @@
 ---
-broker: "amqp://guest:guest@localhost:5672/"
+broker: 'amqp://guest:guest@localhost:5672/'
 default_queue: machinery_tasks
 max_worker_instances: 10
-result_backend: amqp
+result_backend: 'redis://127.0.0.1:6379'
 results_expire_in: 3600000
 amqp:
   binding_key: machinery_task

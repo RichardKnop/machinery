@@ -59,6 +59,11 @@
 			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
 		},
 		{
+			"ImportPath": "github.com/urfave/cli",
+			"Comment": "v1.19.1-34-gab403a5",
+			"Rev": "ab403a54a148f2d857920810291539e1f817ee7b"
+		},
+		{
 			"ImportPath": "gopkg.in/mgo.v2",
 			"Comment": "r2016.08.01-5-g3f83fa5",
 			"Rev": "3f83fa5005286a7fe593b055f0d7771a7dce4655"
