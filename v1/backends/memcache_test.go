@@ -7,7 +7,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,11 +18,11 @@ func TestGroupCompletedMemcache(t *testing.T) {
 	}
 
 	groupUUID := "testGroupUUID"
-	task1 := &signatures.TaskSignature{
+	task1 := &tasks.Signature{
 		UUID:      "testTaskUUID1",
 		GroupUUID: groupUUID,
 	}
-	task2 := &signatures.TaskSignature{
+	task2 := &tasks.Signature{
 		UUID:      "testTaskUUID2",
 		GroupUUID: groupUUID,
 	}
@@ -55,7 +55,7 @@ func TestGroupCompletedMemcache(t *testing.T) {
 		assert.False(t, groupCompleted)
 	}
 
-	taskResults := []*backends.TaskResult{new(backends.TaskResult)}
+	taskResults := []*tasks.TaskResult{new(tasks.TaskResult)}
 	backend.SetStateStarted(task1)
 	backend.SetStateSuccess(task2, taskResults)
 	groupCompleted, err = backend.GroupCompleted(groupUUID, 2)
@@ -76,7 +76,7 @@ func TestGetStateMemcache(t *testing.T) {
 		return
 	}
 
-	signature := &signatures.TaskSignature{
+	signature := &tasks.Signature{
 		UUID:      "testTaskUUID",
 		GroupUUID: "testGroupUUID",
 	}
@@ -90,8 +90,8 @@ func TestGetStateMemcache(t *testing.T) {
 		<-time.After(2 * time.Millisecond)
 		backend.SetStateStarted(signature)
 		<-time.After(2 * time.Millisecond)
-		taskResults := []*backends.TaskResult{
-			&backends.TaskResult{
+		taskResults := []*tasks.TaskResult{
+			&tasks.TaskResult{
 				Type:  "float64",
 				Value: 2,
 			},
@@ -100,7 +100,7 @@ func TestGetStateMemcache(t *testing.T) {
 	}()
 
 	var (
-		taskState *backends.TaskState
+		taskState *tasks.TaskState
 		err       error
 	)
 	for {
@@ -123,7 +123,7 @@ func TestPurgeStateMemcache(t *testing.T) {
 		return
 	}
 
-	signature := &signatures.TaskSignature{
+	signature := &tasks.Signature{
 		UUID:      "testTaskUUID",
 		GroupUUID: "testGroupUUID",
 	}

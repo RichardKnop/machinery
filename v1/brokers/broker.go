@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/RichardKnop/machinery/v1/utils"
+	"github.com/RichardKnop/machinery/v1/retry"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // Broker represents a base broker structure
@@ -33,14 +33,14 @@ func (b *Broker) IsTaskRegistered(name string) bool {
 }
 
 // GetPendingTasks returns a slice of task.Signatures waiting in the queue
-func (b *Broker) GetPendingTasks(queue string) ([]*signatures.TaskSignature, error) {
+func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return nil, errors.New("Not implemented")
 }
 
 // startConsuming is a common part of StartConsuming method
 func (b *Broker) startConsuming(consumerTag string, taskProcessor TaskProcessor) {
 	if b.retryFunc == nil {
-		b.retryFunc = utils.RetryClosure()
+		b.retryFunc = retry.Closure()
 	}
 
 	b.stopChan = make(chan int)

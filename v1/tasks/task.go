@@ -1,4 +1,4 @@
-package machinery
+package tasks
 
 import (
 	"errors"
@@ -8,10 +8,7 @@ import (
 
 	"context"
 
-	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/RichardKnop/machinery/v1/utils"
 )
 
 var (
@@ -31,9 +28,9 @@ type Task struct {
 	Args       []reflect.Value
 }
 
-// NewTask tries to use reflection to convert the function and arguments
+// New tries to use reflection to convert the function and arguments
 // into a reflect.Value and prepare it for invocation
-func NewTask(taskFunc interface{}, args []signatures.TaskArg) (*Task, error) {
+func New(taskFunc interface{}, args []Arg) (*Task, error) {
 
 	task := &Task{
 		TaskFunc: reflect.ValueOf(taskFunc),
@@ -42,7 +39,7 @@ func NewTask(taskFunc interface{}, args []signatures.TaskArg) (*Task, error) {
 	taskFuncType := reflect.TypeOf(taskFunc)
 	if taskFuncType.NumIn() > 0 {
 		arg0Type := taskFuncType.In(0)
-		if utils.IsContextType(arg0Type) {
+		if IsContextType(arg0Type) {
 			task.UseContext = true
 		}
 	}
@@ -60,7 +57,7 @@ func NewTask(taskFunc interface{}, args []signatures.TaskArg) (*Task, error) {
 // 1. The reflected function invocation panics (e.g. due to a mismatched
 //    argument list).
 // 2. The task func itself returns a non-nil error.
-func (t *Task) Call() (taskResults []*backends.TaskResult, err error) {
+func (t *Task) Call() (taskResults []*TaskResult, err error) {
 	defer func() {
 		// Recover from panic and set err.
 		if e := recover(); e != nil {
@@ -107,9 +104,9 @@ func (t *Task) Call() (taskResults []*backends.TaskResult, err error) {
 	}
 
 	// Convert reflect values to task results
-	taskResults = make([]*backends.TaskResult, len(results)-1)
+	taskResults = make([]*TaskResult, len(results)-1)
 	for i := 0; i < len(results)-1; i++ {
-		taskResults[i] = &backends.TaskResult{
+		taskResults[i] = &TaskResult{
 			Type:  reflect.TypeOf(results[i].Interface()).String(),
 			Value: results[i].Interface(),
 		}
@@ -119,11 +116,11 @@ func (t *Task) Call() (taskResults []*backends.TaskResult, err error) {
 }
 
 // ReflectArgs converts []TaskArg to []reflect.Value
-func (t *Task) ReflectArgs(args []signatures.TaskArg) error {
+func (t *Task) ReflectArgs(args []Arg) error {
 	argValues := make([]reflect.Value, len(args))
 
 	for i, arg := range args {
-		argValue, err := utils.ReflectValue(arg.Type, arg.Value)
+		argValue, err := ReflectValue(arg.Type, arg.Value)
 		if err != nil {
 			return err
 		}

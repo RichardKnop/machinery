@@ -6,7 +6,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,13 +58,13 @@ func TestSetStatePending(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = backend.SetStatePending(&signatures.TaskSignature{
+	err = backend.SetStatePending(&tasks.Signature{
 		UUID: taskUUIDs[0],
 	})
 	if assert.NoError(t, err) {
 		taskState, err := backend.GetState(taskUUIDs[0])
 		if assert.NoError(t, err) {
-			assert.Equal(t, backends.PendingState, taskState.State, "Not PendingState")
+			assert.Equal(t, tasks.PendingState, taskState.State, "Not PendingState")
 		}
 	}
 }
@@ -79,13 +79,13 @@ func TestSetStateReceived(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = backend.SetStateReceived(&signatures.TaskSignature{
+	err = backend.SetStateReceived(&tasks.Signature{
 		UUID: taskUUIDs[0],
 	})
 	if assert.NoError(t, err) {
 		taskState, err := backend.GetState(taskUUIDs[0])
 		if assert.NoError(t, err) {
-			assert.Equal(t, backends.ReceivedState, taskState.State, "Not ReceivedState")
+			assert.Equal(t, tasks.ReceivedState, taskState.State, "Not ReceivedState")
 		}
 	}
 }
@@ -100,13 +100,13 @@ func TestSetStateStarted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = backend.SetStateStarted(&signatures.TaskSignature{
+	err = backend.SetStateStarted(&tasks.Signature{
 		UUID: taskUUIDs[0],
 	})
 	if assert.NoError(t, err) {
 		taskState, err := backend.GetState(taskUUIDs[0])
 		if assert.NoError(t, err) {
-			assert.Equal(t, backends.StartedState, taskState.State, "Not StartedState")
+			assert.Equal(t, tasks.StartedState, taskState.State, "Not StartedState")
 		}
 	}
 }
@@ -124,11 +124,11 @@ func TestSetStateSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signature := &signatures.TaskSignature{
+	signature := &tasks.Signature{
 		UUID: taskUUIDs[0],
 	}
-	taskResults := []*backends.TaskResult{
-		&backends.TaskResult{
+	taskResults := []*tasks.TaskResult{
+		&tasks.TaskResult{
 			Type:  resultType,
 			Value: resultValue,
 		},
@@ -138,7 +138,7 @@ func TestSetStateSuccess(t *testing.T) {
 
 	taskState, err := backend.GetState(taskUUIDs[0])
 	assert.NoError(t, err)
-	assert.Equal(t, backends.SuccessState, taskState.State, "Not SuccessState")
+	assert.Equal(t, tasks.SuccessState, taskState.State, "Not SuccessState")
 	assert.Equal(t, resultType, taskState.Results[0].Type, "Wrong result type")
 	assert.Equal(t, float64(resultValue), taskState.Results[0].Value.(float64), "Wrong result value")
 }
@@ -155,7 +155,7 @@ func TestSetStateFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signature := &signatures.TaskSignature{
+	signature := &tasks.Signature{
 		UUID: taskUUIDs[0],
 	}
 	err = backend.SetStateFailure(signature, failStrig)
@@ -163,7 +163,7 @@ func TestSetStateFailure(t *testing.T) {
 
 	taskState, err := backend.GetState(taskUUIDs[0])
 	assert.NoError(t, err)
-	assert.Equal(t, backends.FailureState, taskState.State, "Not SuccessState")
+	assert.Equal(t, tasks.FailureState, taskState.State, "Not SuccessState")
 	assert.Equal(t, failStrig, taskState.Error, "Wrong fail error")
 }
 
@@ -183,32 +183,32 @@ func TestGroupCompleted(t *testing.T) {
 		assert.False(t, isCompleted, "Actualy group is not completed")
 	}
 
-	signature := &signatures.TaskSignature{
+	signature := &tasks.Signature{
 		UUID: taskUUIDs[0],
 	}
 	err = backend.SetStateFailure(signature, "Fail is ok")
 	assert.NoError(t, err)
-	taskResultsState[taskUUIDs[0]] = backends.FailureState
+	taskResultsState[taskUUIDs[0]] = tasks.FailureState
 
-	signature = &signatures.TaskSignature{
+	signature = &tasks.Signature{
 		UUID: taskUUIDs[1],
 	}
-	taskResults := []*backends.TaskResult{
-		&backends.TaskResult{
+	taskResults := []*tasks.TaskResult{
+		&tasks.TaskResult{
 			Type:  "string",
 			Value: "Result ok",
 		},
 	}
 	err = backend.SetStateSuccess(signature, taskResults)
 	assert.NoError(t, err)
-	taskResultsState[taskUUIDs[1]] = backends.SuccessState
+	taskResultsState[taskUUIDs[1]] = tasks.SuccessState
 
-	signature = &signatures.TaskSignature{
+	signature = &tasks.Signature{
 		UUID: taskUUIDs[2],
 	}
 	err = backend.SetStateSuccess(signature, taskResults)
 	assert.NoError(t, err)
-	taskResultsState[taskUUIDs[2]] = backends.SuccessState
+	taskResultsState[taskUUIDs[2]] = tasks.SuccessState
 
 	isCompleted, err = backend.GroupCompleted(groupUUID, len(taskUUIDs))
 	if assert.NoError(t, err) {

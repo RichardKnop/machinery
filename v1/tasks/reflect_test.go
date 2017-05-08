@@ -1,9 +1,13 @@
-package utils
+package tasks_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/RichardKnop/machinery/v1/tasks"
+)
 
 func TestReflectValue(t *testing.T) {
-	value, err := ReflectValue("bool", interface{}(false))
+	value, err := tasks.ReflectValue("bool", interface{}(false))
 	if err != nil {
 		t.Error(err)
 	}
@@ -11,7 +15,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want bool", value.Type().String())
 	}
 
-	value, err = ReflectValue("int", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("int", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -19,7 +23,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int", value.Type().String())
 	}
 
-	value, err = ReflectValue("int8", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("int8", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -27,7 +31,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int8", value.Type().String())
 	}
 
-	value, err = ReflectValue("int16", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("int16", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -35,7 +39,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int16", value.Type().String())
 	}
 
-	value, err = ReflectValue("int32", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("int32", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -43,7 +47,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int32", value.Type().String())
 	}
 
-	value, err = ReflectValue("int64", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("int64", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -51,7 +55,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want int64", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("uint", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -59,7 +63,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint8", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("uint8", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -67,7 +71,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint8", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint16", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("uint16", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -75,7 +79,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint16", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint32", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("uint32", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -83,7 +87,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint32", value.Type().String())
 	}
 
-	value, err = ReflectValue("uint64", interface{}(float64(1)))
+	value, err = tasks.ReflectValue("uint64", interface{}(float64(1)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -91,7 +95,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want uint64", value.Type().String())
 	}
 
-	value, err = ReflectValue("float32", interface{}(float64(0.5)))
+	value, err = tasks.ReflectValue("float32", interface{}(float64(0.5)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -99,7 +103,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want float32", value.Type().String())
 	}
 
-	value, err = ReflectValue("float64", interface{}(float64(0.5)))
+	value, err = tasks.ReflectValue("float64", interface{}(float64(0.5)))
 	if err != nil {
 		t.Error(err)
 	}
@@ -107,7 +111,7 @@ func TestReflectValue(t *testing.T) {
 		t.Errorf("type is %v, want float64", value.Type().String())
 	}
 
-	value, err = ReflectValue("string", interface{}("123"))
+	value, err = tasks.ReflectValue("string", interface{}("123"))
 	if err != nil {
 		t.Error(err)
 	}

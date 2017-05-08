@@ -8,8 +8,8 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/RichardKnop/machinery/v1/utils"
+	"github.com/RichardKnop/machinery/v1/retry"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -57,7 +57,7 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 	}
 	conn.Close()
 
-	b.retryFunc = utils.RetryClosure()
+	b.retryFunc = retry.Closure()
 
 	// Channels and wait groups used to properly close down goroutines
 	b.stopReceivingChan = make(chan int)
@@ -132,7 +132,7 @@ func (b *RedisBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *RedisBroker) Publish(signature *signatures.TaskSignature) error {
+func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 	msg, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
@@ -161,7 +161,7 @@ func (b *RedisBroker) Publish(signature *signatures.TaskSignature) error {
 }
 
 // GetPendingTasks returns a slice of task.Signatures waiting in the queue
-func (b *RedisBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature, error) {
+func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	conn, err := b.open()
 	if err != nil {
 		return nil, fmt.Errorf("Dial: %s", err)
@@ -180,9 +180,9 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature
 		return nil, err
 	}
 
-	taskSignatures := make([]*signatures.TaskSignature, len(results))
+	taskSignatures := make([]*tasks.Signature, len(results))
 	for i, result := range results {
-		sig := new(signatures.TaskSignature)
+		sig := new(tasks.Signature)
 		if err := json.Unmarshal(result, sig); err != nil {
 			return nil, err
 		}
@@ -234,7 +234,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProces
 func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) error {
 	log.INFO.Printf("Received new message: %s", delivery)
 
-	sig := new(signatures.TaskSignature)
+	sig := new(tasks.Signature)
 	if err := json.Unmarshal(delivery, sig); err != nil {
 		return err
 	}

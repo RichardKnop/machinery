@@ -1,6 +1,4 @@
-package backends
-
-import "github.com/RichardKnop/machinery/v1/signatures"
+package tasks
 
 const (
 	// PendingState - initial state of a task
@@ -14,12 +12,6 @@ const (
 	// FailureState - when processing of the task fails
 	FailureState = "FAILURE"
 )
-
-// TaskResult represents an actual return value of a processed task
-type TaskResult struct {
-	Type  string      `bson:"type"`
-	Value interface{} `bson:"value"`
-}
 
 // TaskState represents a state of a task
 type TaskState struct {
@@ -39,7 +31,7 @@ type GroupMeta struct {
 }
 
 // NewPendingTaskState ...
-func NewPendingTaskState(signature *signatures.TaskSignature) *TaskState {
+func NewPendingTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
 		State:    PendingState,
@@ -47,7 +39,7 @@ func NewPendingTaskState(signature *signatures.TaskSignature) *TaskState {
 }
 
 // NewReceivedTaskState ...
-func NewReceivedTaskState(signature *signatures.TaskSignature) *TaskState {
+func NewReceivedTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
 		State:    ReceivedState,
@@ -55,7 +47,7 @@ func NewReceivedTaskState(signature *signatures.TaskSignature) *TaskState {
 }
 
 // NewStartedTaskState ...
-func NewStartedTaskState(signature *signatures.TaskSignature) *TaskState {
+func NewStartedTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
 		State:    StartedState,
@@ -63,7 +55,7 @@ func NewStartedTaskState(signature *signatures.TaskSignature) *TaskState {
 }
 
 // NewSuccessTaskState ...
-func NewSuccessTaskState(signature *signatures.TaskSignature, results []*TaskResult) *TaskState {
+func NewSuccessTaskState(signature *Signature, results []*TaskResult) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
 		State:    SuccessState,
@@ -72,7 +64,7 @@ func NewSuccessTaskState(signature *signatures.TaskSignature, results []*TaskRes
 }
 
 // NewFailureTaskState ...
-func NewFailureTaskState(signature *signatures.TaskSignature, err string) *TaskState {
+func NewFailureTaskState(signature *Signature, err string) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
 		State:    FailureState,

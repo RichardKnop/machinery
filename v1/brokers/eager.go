@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // EagerBroker represents an "eager" in-memory broker
@@ -35,7 +35,7 @@ func (eagerBroker *EagerBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (eagerBroker *EagerBroker) Publish(task *signatures.TaskSignature) error {
+func (eagerBroker *EagerBroker) Publish(task *tasks.Signature) error {
 	if eagerBroker.worker == nil {
 		return errors.New("worker is not assigned in eager-mode")
 	}
@@ -47,7 +47,7 @@ func (eagerBroker *EagerBroker) Publish(task *signatures.TaskSignature) error {
 		return fmt.Errorf("json marshaling failed: %v", err)
 	}
 
-	signature := new(signatures.TaskSignature)
+	signature := new(tasks.Signature)
 	err = json.Unmarshal(message, &signature)
 	if err != nil {
 		return fmt.Errorf("json unmarshaling failed: %v", err)
@@ -58,8 +58,8 @@ func (eagerBroker *EagerBroker) Publish(task *signatures.TaskSignature) error {
 }
 
 // GetPendingTasks returns a slice of task.Signatures waiting in the queue
-func (eagerBroker *EagerBroker) GetPendingTasks(queue string) ([]*signatures.TaskSignature, error) {
-	return []*signatures.TaskSignature{}, errors.New("Not implemented")
+func (eagerBroker *EagerBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
+	return []*tasks.Signature{}, errors.New("Not implemented")
 }
 
 // AssignWorker assigns a worker to the eager broker

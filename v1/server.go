@@ -8,7 +8,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/uuid"
 )
 
@@ -115,7 +115,7 @@ func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
 }
 
 // SendTask publishes a task to the default queue
-func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.AsyncResult, error) {
+func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResult, error) {
 	// Make sure result backend is defined
 	if server.backend == nil {
 		return nil, errors.New("Result backend required")
@@ -139,7 +139,7 @@ func (server *Server) SendTask(signature *signatures.TaskSignature) (*backends.A
 }
 
 // SendChain triggers a chain of tasks
-func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error) {
+func (server *Server) SendChain(chain *tasks.Chain) (*backends.ChainAsyncResult, error) {
 	_, err := server.SendTask(chain.Tasks[0])
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (server *Server) SendChain(chain *Chain) (*backends.ChainAsyncResult, error
 }
 
 // SendGroup triggers a group of parallel tasks
-func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
+func (server *Server) SendGroup(group *tasks.Group) ([]*backends.AsyncResult, error) {
 	// Make sure result backend is defined
 	if server.backend == nil {
 		return nil, errors.New("Result backend required")
@@ -165,7 +165,7 @@ func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 	server.backend.InitGroup(group.GroupUUID, group.GetUUIDs())
 
 	for i, signature := range group.Tasks {
-		go func(s *signatures.TaskSignature, index int) {
+		go func(s *tasks.Signature, index int) {
 			defer wg.Done()
 
 			// Set initial task states to PENDING
@@ -199,7 +199,7 @@ func (server *Server) SendGroup(group *Group) ([]*backends.AsyncResult, error) {
 }
 
 // SendChord triggers a group of parallel tasks with a callback
-func (server *Server) SendChord(chord *Chord) (*backends.ChordAsyncResult, error) {
+func (server *Server) SendChord(chord *tasks.Chord) (*backends.ChordAsyncResult, error) {
 	_, err := server.SendGroup(chord.Group)
 	if err != nil {
 		return nil, err

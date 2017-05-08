@@ -6,7 +6,7 @@ import (
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -50,9 +50,9 @@ func (s *EagerIntegrationTestSuite) SetupSuite() {
 }
 
 func (s *EagerIntegrationTestSuite) TestCalled() {
-	_, err := s.srv.SendTask(&signatures.TaskSignature{
+	_, err := s.srv.SendTask(&tasks.Signature{
 		Name: "float_called",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "float64",
 				Value: 100.0,
@@ -67,9 +67,9 @@ func (s *EagerIntegrationTestSuite) TestCalled() {
 func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 	// float64
 	{
-		asyncResult, err := s.srv.SendTask(&signatures.TaskSignature{
+		asyncResult, err := s.srv.SendTask(&tasks.Signature{
 			Name: "float_result",
-			Args: []signatures.TaskArg{
+			Args: []tasks.Arg{
 				{
 					Type:  "float64",
 					Value: 100.0,
@@ -98,9 +98,9 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 
 	// int
 	{
-		asyncResult, err := s.srv.SendTask(&signatures.TaskSignature{
+		asyncResult, err := s.srv.SendTask(&tasks.Signature{
 			Name: "int_result",
-			Args: []signatures.TaskArg{
+			Args: []tasks.Arg{
 				{
 					Type:  "int64",
 					Value: 100,

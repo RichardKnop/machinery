@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -12,7 +12,7 @@ type EagerBackendTestSuite struct {
 	suite.Suite
 
 	backend backends.Interface
-	st      []*signatures.TaskSignature
+	st      []*tasks.Signature
 	groups  []struct {
 		id    string
 		tasks []string
@@ -24,7 +24,7 @@ func (s *EagerBackendTestSuite) SetupSuite() {
 	s.backend = backends.NewEagerBackend()
 
 	// 2 non-group state
-	s.st = []*signatures.TaskSignature{
+	s.st = []*tasks.Signature{
 		{UUID: "1"},
 		{UUID: "2"},
 		{UUID: "3"},
@@ -51,7 +51,7 @@ func (s *EagerBackendTestSuite) SetupSuite() {
 
 	for _, g := range s.groups {
 		for _, t := range g.tasks {
-			sig := &signatures.TaskSignature{
+			sig := &tasks.Signature{
 				UUID:           t,
 				GroupUUID:      g.id,
 				GroupTaskCount: len(g.tasks),
@@ -193,7 +193,7 @@ func (s *EagerBackendTestSuite) TestSetStatePending() {
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(backends.PendingState, st.State)
+			s.Equal(tasks.PendingState, st.State)
 		}
 	}
 }
@@ -206,7 +206,7 @@ func (s *EagerBackendTestSuite) TestSetStateReceived() {
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(backends.ReceivedState, st.State)
+			s.Equal(tasks.ReceivedState, st.State)
 		}
 	}
 }
@@ -219,7 +219,7 @@ func (s *EagerBackendTestSuite) TestSetStateStarted() {
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(backends.StartedState, st.State)
+			s.Equal(tasks.StartedState, st.State)
 		}
 	}
 }
@@ -228,8 +228,8 @@ func (s *EagerBackendTestSuite) TestSetStateSuccess() {
 	// task4
 	{
 		t := s.st[3]
-		taskResults := []*backends.TaskResult{
-			&backends.TaskResult{
+		taskResults := []*tasks.TaskResult{
+			&tasks.TaskResult{
 				Type:  "float64",
 				Value: float64(300.0),
 			},
@@ -239,7 +239,7 @@ func (s *EagerBackendTestSuite) TestSetStateSuccess() {
 		s.Nil(err)
 		s.NotNil(st)
 
-		s.Equal(backends.SuccessState, st.State)
+		s.Equal(tasks.SuccessState, st.State)
 		s.Equal(taskResults, st.Results)
 	}
 }
@@ -252,7 +252,7 @@ func (s *EagerBackendTestSuite) TestSetStateFailure() {
 		st, err := s.backend.GetState(t.UUID)
 		s.Nil(err)
 		if st != nil {
-			s.Equal(backends.FailureState, st.State)
+			s.Equal(tasks.FailureState, st.State)
 			s.Equal("error", st.Error)
 		}
 	}
@@ -314,7 +314,7 @@ func (s *EagerBackendTestSuite) TestPurgeGroupMeta() {
 //
 // internal method
 //
-func (s *EagerBackendTestSuite) getTaskSignature(taskUUID string) *signatures.TaskSignature {
+func (s *EagerBackendTestSuite) getTaskSignature(taskUUID string) *tasks.Signature {
 	for _, v := range s.st {
 		if v.UUID == taskUUID {
 			return v

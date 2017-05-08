@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // EagerBackend represents an "eager" in-memory result backend
@@ -56,15 +56,15 @@ func (b *EagerBackend) GroupCompleted(groupUUID string, groupTaskCount int) (boo
 }
 
 // GroupTaskStates - returns states of all tasks in the group
-func (b *EagerBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
-	tasks, ok := b.groups[groupUUID]
+func (b *EagerBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
+	taskUUIDs, ok := b.groups[groupUUID]
 	if !ok {
 		return nil, fmt.Errorf("Group not found: %v", groupUUID)
 	}
 
-	ret := make([]*TaskState, 0, groupTaskCount)
-	for _, v := range tasks {
-		t, err := b.GetState(v)
+	ret := make([]*tasks.TaskState, 0, groupTaskCount)
+	for _, taskUUID := range taskUUIDs {
+		t, err := b.GetState(taskUUID)
 		if err != nil {
 			return nil, err
 		}
@@ -84,49 +84,49 @@ func (b *EagerBackend) TriggerChord(groupUUID string) (bool, error) {
 }
 
 // SetStatePending - sets task state to PENDING
-func (b *EagerBackend) SetStatePending(signature *signatures.TaskSignature) error {
-	state := NewPendingTaskState(signature)
+func (b *EagerBackend) SetStatePending(signature *tasks.Signature) error {
+	state := tasks.NewPendingTaskState(signature)
 	return b.updateState(state)
 }
 
 // SetStateReceived - sets task state to RECEIVED
-func (b *EagerBackend) SetStateReceived(signature *signatures.TaskSignature) error {
-	state := NewReceivedTaskState(signature)
+func (b *EagerBackend) SetStateReceived(signature *tasks.Signature) error {
+	state := tasks.NewReceivedTaskState(signature)
 	return b.updateState(state)
 }
 
 // SetStateStarted - sets task state to STARTED
-func (b *EagerBackend) SetStateStarted(signature *signatures.TaskSignature) error {
-	state := NewStartedTaskState(signature)
+func (b *EagerBackend) SetStateStarted(signature *tasks.Signature) error {
+	state := tasks.NewStartedTaskState(signature)
 	return b.updateState(state)
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *EagerBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
-	state := NewSuccessTaskState(signature, results)
+func (b *EagerBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
+	state := tasks.NewSuccessTaskState(signature, results)
 	return b.updateState(state)
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (b *EagerBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
-	state := NewFailureTaskState(signature, err)
+func (b *EagerBackend) SetStateFailure(signature *tasks.Signature, err string) error {
+	state := tasks.NewFailureTaskState(signature, err)
 	return b.updateState(state)
 }
 
 // GetState - returns the latest task state
-func (b *EagerBackend) GetState(taskUUID string) (*TaskState, error) {
+func (b *EagerBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	tasktStateBytes, ok := b.tasks[taskUUID]
 	if !ok {
 		return nil, fmt.Errorf("Task not found: %v", taskUUID)
 	}
 
-	taskState := new(TaskState)
-	err := json.Unmarshal(tasktStateBytes, taskState)
+	state := new(tasks.TaskState)
+	err := json.Unmarshal(tasktStateBytes, state)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal task state %v", b)
 	}
 
-	return taskState, nil
+	return state, nil
 }
 
 // PurgeState - deletes stored task state
@@ -151,7 +151,7 @@ func (b *EagerBackend) PurgeGroupMeta(groupUUID string) error {
 	return nil
 }
 
-func (b *EagerBackend) updateState(s *TaskState) error {
+func (b *EagerBackend) updateState(s *tasks.TaskState) error {
 	// simulate the behavior of json marshal/unmarshal
 	msg, err := json.Marshal(s)
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // Define flagss
@@ -29,7 +29,7 @@ var (
 
 	cnf                                             config.Config
 	server                                          *machinery.Server
-	task0, task1, task2, task3, task4, task5, task6 signatures.TaskSignature
+	task0, task1, task2, task3, task4, task5, task6 tasks.Signature
 )
 
 func init() {
@@ -64,9 +64,9 @@ func init() {
 }
 
 func initTasks() {
-	task0 = signatures.TaskSignature{
+	task0 = tasks.Signature{
 		Name: "add",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 1,
@@ -78,9 +78,9 @@ func initTasks() {
 		},
 	}
 
-	task1 = signatures.TaskSignature{
+	task1 = tasks.Signature{
 		Name: "add",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 2,
@@ -92,9 +92,9 @@ func initTasks() {
 		},
 	}
 
-	task2 = signatures.TaskSignature{
+	task2 = tasks.Signature{
 		Name: "add",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 5,
@@ -106,9 +106,9 @@ func initTasks() {
 		},
 	}
 
-	task3 = signatures.TaskSignature{
+	task3 = tasks.Signature{
 		Name: "multiply",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 4,
@@ -116,11 +116,11 @@ func initTasks() {
 		},
 	}
 
-	task4 = signatures.TaskSignature{
+	task4 = tasks.Signature{
 		Name: "multiply",
 	}
 
-	task5 = signatures.TaskSignature{
+	task5 = tasks.Signature{
 		Name: "panic_task",
 	}
 }
@@ -151,7 +151,7 @@ func main() {
 	initTasks()
 	fmt.Println("Group of tasks (parallel execution):")
 
-	group := machinery.NewGroup(&task0, &task1, &task2)
+	group := tasks.NewGroup(&task0, &task1, &task2)
 	asyncResults, err := server.SendGroup(group)
 	if err != nil {
 		log.FATAL.Fatal(err, "Could not send group")
@@ -174,8 +174,8 @@ func main() {
 	initTasks()
 	fmt.Println("Group of tasks with a callback (chord):")
 
-	group = machinery.NewGroup(&task0, &task1, &task2)
-	chord := machinery.NewChord(group, &task4)
+	group = tasks.NewGroup(&task0, &task1, &task2)
+	chord := tasks.NewChord(group, &task4)
 	chordAsyncResult, err := server.SendChord(chord)
 	if err != nil {
 		log.FATAL.Fatal(err, "Could not send chord")
@@ -191,7 +191,7 @@ func main() {
 	initTasks()
 	fmt.Println("Chain of tasks:")
 
-	chain := machinery.NewChain(&task0, &task1, &task2, &task3)
+	chain := tasks.NewChain(&task0, &task1, &task2, &task3)
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		log.FATAL.Fatal(err, "Could not send chain")

@@ -8,8 +8,8 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/RichardKnop/machinery/v1/utils"
+	"github.com/RichardKnop/machinery/v1/retry"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/streadway/amqp"
 )
 
@@ -34,7 +34,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 	}
 	defer b.close(channel, conn)
 
-	b.retryFunc = utils.RetryClosure()
+	b.retryFunc = retry.Closure()
 
 	if err = channel.Qos(
 		b.cnf.AMQP.PrefetchCount,
@@ -72,7 +72,7 @@ func (b *AMQPBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *AMQPBroker) Publish(signature *signatures.TaskSignature) error {
+func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 	// Check the ETA signature field, if it is set and it is in the future,
 	// delay the task
 	if signature.ETA != nil {
@@ -174,7 +174,7 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 	log.INFO.Printf("Received new message: %s", d.Body)
 
 	// Unmarshal message body into signature struct
-	signature := new(signatures.TaskSignature)
+	signature := new(tasks.Signature)
 	if err := json.Unmarshal(d.Body, signature); err != nil {
 		d.Nack(false, false) // multiple, requeue
 		return err
@@ -195,7 +195,7 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 // is created without any consumers, the message is then published to this queue
 // with appropriate ttl expiration headers, after the expiration, it is sent to
 // the proper queue with consumers
-func (b *AMQPBroker) delay(signature *signatures.TaskSignature, delayMs int64) error {
+func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 	var (
 		conn    *amqp.Connection
 		channel *amqp.Channel

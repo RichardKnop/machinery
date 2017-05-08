@@ -1,12 +1,14 @@
-package utils
+package retry_test
 
 import (
 	"reflect"
 	"testing"
+
+	"github.com/RichardKnop/machinery/v1/retry"
 )
 
 func TestFibonacci(t *testing.T) {
-	fibonacci := Fibonacci()
+	fibonacci := retry.Fibonacci()
 
 	sequence := []int{
 		fibonacci(),

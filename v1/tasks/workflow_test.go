@@ -1,17 +1,16 @@
-package machinery_test
+package tasks_test
 
 import (
 	"testing"
 
-	machinery "github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewChain(t *testing.T) {
-	task1 := signatures.TaskSignature{
+	task1 := tasks.Signature{
 		Name: "foo",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "float64",
 				Value: interface{}(1),
@@ -23,9 +22,9 @@ func TestNewChain(t *testing.T) {
 		},
 	}
 
-	task2 := signatures.TaskSignature{
+	task2 := tasks.Signature{
 		Name: "bar",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "float64",
 				Value: interface{}(5),
@@ -37,9 +36,9 @@ func TestNewChain(t *testing.T) {
 		},
 	}
 
-	task3 := signatures.TaskSignature{
+	task3 := tasks.Signature{
 		Name: "qux",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "float64",
 				Value: interface{}(4),
@@ -47,7 +46,7 @@ func TestNewChain(t *testing.T) {
 		},
 	}
 
-	chain := machinery.NewChain(&task1, &task2, &task3)
+	chain := tasks.NewChain(&task1, &task2, &task3)
 
 	firstTask := chain.Tasks[0]
 

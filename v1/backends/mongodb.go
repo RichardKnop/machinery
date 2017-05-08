@@ -8,7 +8,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // MongodbBackend represents a MongoDB result backend
@@ -50,7 +50,7 @@ func NewMongodbBackend(cnf *config.Config) (Interface, error) {
 
 // InitGroup - saves UUIDs of all tasks in a group
 func (b *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
-	groupMeta := &GroupMeta{
+	groupMeta := &tasks.GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
 	}
@@ -81,12 +81,10 @@ func (b *MongodbBackend) GroupCompleted(groupUUID string, groupTaskCount int) (b
 }
 
 // GroupTaskStates - returns states of all tasks in the group
-func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
-	taskStates := make([]*TaskState, groupTaskCount)
-
+func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
-		return taskStates, err
+		return []*tasks.TaskState{}, err
 	}
 
 	return b.getStates(groupMeta.TaskUUIDs...)
@@ -128,25 +126,25 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 }
 
 // SetStatePending - sets task state to PENDING
-func (b *MongodbBackend) SetStatePending(signature *signatures.TaskSignature) error {
-	update := bson.M{"state": PendingState}
+func (b *MongodbBackend) SetStatePending(signature *tasks.Signature) error {
+	update := bson.M{"state": tasks.PendingState}
 	return b.updateState(signature, update)
 }
 
 // SetStateReceived - sets task state to RECEIVED
-func (b *MongodbBackend) SetStateReceived(signature *signatures.TaskSignature) error {
-	update := bson.M{"state": ReceivedState}
+func (b *MongodbBackend) SetStateReceived(signature *tasks.Signature) error {
+	update := bson.M{"state": tasks.ReceivedState}
 	return b.updateState(signature, update)
 }
 
 // SetStateStarted - sets task state to STARTED
-func (b *MongodbBackend) SetStateStarted(signature *signatures.TaskSignature) error {
-	update := bson.M{"state": StartedState}
+func (b *MongodbBackend) SetStateStarted(signature *tasks.Signature) error {
+	update := bson.M{"state": tasks.StartedState}
 	return b.updateState(signature, update)
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *MongodbBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
+func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	bsonResults := make([]bson.M, len(results))
 	for i, result := range results {
 		bsonResults[i] = bson.M{
@@ -155,25 +153,25 @@ func (b *MongodbBackend) SetStateSuccess(signature *signatures.TaskSignature, re
 		}
 	}
 	update := bson.M{
-		"state":   SuccessState,
+		"state":   tasks.SuccessState,
 		"results": bsonResults,
 	}
 	return b.updateState(signature, update)
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (b *MongodbBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
-	update := bson.M{"state": FailureState, "error": err}
+func (b *MongodbBackend) SetStateFailure(signature *tasks.Signature, err string) error {
+	update := bson.M{"state": tasks.FailureState, "error": err}
 	return b.updateState(signature, update)
 }
 
 // GetState - returns the latest task state
-func (b *MongodbBackend) GetState(taskUUID string) (*TaskState, error) {
-	taskState := new(TaskState)
-	if err := b.tasksCollection.FindId(taskUUID).One(taskState); err != nil {
+func (b *MongodbBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
+	state := new(tasks.TaskState)
+	if err := b.tasksCollection.FindId(taskUUID).One(state); err != nil {
 		return nil, err
 	}
-	return taskState, nil
+	return state, nil
 }
 
 // PurgeState - deletes stored task state
@@ -187,8 +185,8 @@ func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
 }
 
 // Fetches GroupMeta from the backend, convenience function to avoid repetition
-func (b *MongodbBackend) getGroupMeta(groupUUID string) (*GroupMeta, error) {
-	groupMeta := new(GroupMeta)
+func (b *MongodbBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
+	groupMeta := new(tasks.GroupMeta)
 	if err := b.groupMetasCollection.FindId(groupUUID).One(groupMeta); err != nil {
 		return nil, err
 	}
@@ -196,20 +194,20 @@ func (b *MongodbBackend) getGroupMeta(groupUUID string) (*GroupMeta, error) {
 }
 
 // getStates Returns multiple task states with MGET
-func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*TaskState, error) {
-	taskStates := make([]*TaskState, 0, len(taskUUIDs))
+func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
+	states := make([]*tasks.TaskState, 0, len(taskUUIDs))
 
 	iter := b.tasksCollection.Find(bson.M{"_id": bson.M{"$in": taskUUIDs}}).Iter()
 
-	taskState := new(TaskState)
-	for iter.Next(taskState) {
-		taskStates = append(taskStates, taskState)
+	state := new(tasks.TaskState)
+	for iter.Next(state) {
+		states = append(states, state)
 	}
 
-	return taskStates, nil
+	return states, nil
 }
 
-func (b *MongodbBackend) updateState(signature *signatures.TaskSignature, update bson.M) error {
+func (b *MongodbBackend) updateState(signature *tasks.Signature, update bson.M) error {
 	_, err := b.tasksCollection.UpsertId(signature.UUID, bson.M{"$set": update})
 	if err != nil {
 		return err

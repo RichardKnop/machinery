@@ -9,7 +9,7 @@ import (
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
@@ -56,9 +56,9 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 		return sum, nil
 	})
 
-	task1 := signatures.TaskSignature{
+	task1 := tasks.Signature{
 		Name: "add",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 2,
@@ -70,9 +70,9 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 		},
 	}
 
-	task2 := signatures.TaskSignature{
+	task2 := tasks.Signature{
 		Name: "multiply",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 4,
@@ -89,7 +89,7 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 	go worker1.Launch()
 	go worker2.Launch()
 
-	group := machinery.NewGroup(&task2, &task1)
+	group := tasks.NewGroup(&task2, &task1)
 	asyncResults, err := server1.SendGroup(group)
 	if err != nil {
 		t.Error(err)
@@ -167,9 +167,9 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 		return sum, nil
 	})
 
-	task1 := signatures.TaskSignature{
+	task1 := tasks.Signature{
 		Name: "add",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 2,
@@ -181,9 +181,9 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 		},
 	}
 
-	task2 := signatures.TaskSignature{
+	task2 := tasks.Signature{
 		Name: "multiply",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 4,
@@ -200,7 +200,7 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 	go worker1.Launch()
 	go worker2.Launch()
 
-	group := machinery.NewGroup(&task2, &task1)
+	group := tasks.NewGroup(&task2, &task1)
 	asyncResults, err := server1.SendGroup(group)
 	if err != nil {
 		t.Error(err)

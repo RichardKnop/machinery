@@ -21,7 +21,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/streadway/amqp"
 )
 
@@ -59,7 +59,7 @@ func (b *AMQPBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool
 }
 
 // GroupTaskStates - returns states of all tasks in the group
-func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
+func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	conn, channel, queue, _, err := b.connect(groupUUID)
 	if err != nil {
 		return nil, err
@@ -88,23 +88,23 @@ func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*
 		return nil, fmt.Errorf("Queue Consume: %s", err)
 	}
 
-	taskStates := make([]*TaskState, groupTaskCount)
+	states := make([]*tasks.TaskState, groupTaskCount)
 	for i := 0; i < groupTaskCount; i++ {
 		d := <-deliveries
 
-		taskState := new(TaskState)
+		state := new(tasks.TaskState)
 
-		if err := json.Unmarshal([]byte(d.Body), taskState); err != nil {
+		if err := json.Unmarshal([]byte(d.Body), state); err != nil {
 			d.Nack(false, false) // multiple, requeue
 			return nil, err
 		}
 
 		d.Ack(false) // multiple
 
-		taskStates[i] = taskState
+		states[i] = state
 	}
 
-	return taskStates, nil
+	return states, nil
 }
 
 // TriggerChord - marks chord as triggered in the backend storage to make sure
@@ -127,26 +127,26 @@ func (b *AMQPBackend) TriggerChord(groupUUID string) (bool, error) {
 }
 
 // SetStatePending - sets task state to PENDING
-func (b *AMQPBackend) SetStatePending(signature *signatures.TaskSignature) error {
-	taskState := NewPendingTaskState(signature)
+func (b *AMQPBackend) SetStatePending(signature *tasks.Signature) error {
+	taskState := tasks.NewPendingTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateReceived - sets task state to RECEIVED
-func (b *AMQPBackend) SetStateReceived(signature *signatures.TaskSignature) error {
-	taskState := NewReceivedTaskState(signature)
+func (b *AMQPBackend) SetStateReceived(signature *tasks.Signature) error {
+	taskState := tasks.NewReceivedTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateStarted - sets task state to STARTED
-func (b *AMQPBackend) SetStateStarted(signature *signatures.TaskSignature) error {
-	taskState := NewStartedTaskState(signature)
+func (b *AMQPBackend) SetStateStarted(signature *tasks.Signature) error {
+	taskState := tasks.NewStartedTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
-	taskState := NewSuccessTaskState(signature, results)
+func (b *AMQPBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
+	taskState := tasks.NewSuccessTaskState(signature, results)
 
 	if err := b.updateState(taskState); err != nil {
 		return err
@@ -160,8 +160,8 @@ func (b *AMQPBackend) SetStateSuccess(signature *signatures.TaskSignature, resul
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (b *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
-	taskState := NewFailureTaskState(signature, err)
+func (b *AMQPBackend) SetStateFailure(signature *tasks.Signature, err string) error {
+	taskState := tasks.NewFailureTaskState(signature, err)
 
 	if err := b.updateState(taskState); err != nil {
 		return err
@@ -176,9 +176,7 @@ func (b *AMQPBackend) SetStateFailure(signature *signatures.TaskSignature, err s
 
 // GetState - returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
-func (b *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
-	taskState := new(TaskState)
-
+func (b *AMQPBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	conn, channel, queue, _, err := b.connect(taskUUID)
 	if err != nil {
 		return nil, err
@@ -198,13 +196,14 @@ func (b *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 
 	d.Ack(false)
 
-	if err := json.Unmarshal([]byte(d.Body), taskState); err != nil {
+	state := new(tasks.TaskState)
+	if err := json.Unmarshal([]byte(d.Body), state); err != nil {
 		log.ERROR.Printf("Failed to unmarshal task state: %v", string(d.Body))
 		log.ERROR.Print(err)
 		return nil, err
 	}
 
-	return taskState, nil
+	return state, nil
 }
 
 // PurgeState - deletes stored task state
@@ -219,7 +218,7 @@ func (b *AMQPBackend) PurgeGroupMeta(groupUUID string) error {
 }
 
 // Updates a task state
-func (b *AMQPBackend) updateState(taskState *TaskState) error {
+func (b *AMQPBackend) updateState(taskState *tasks.TaskState) error {
 	message, err := json.Marshal(taskState)
 	if err != nil {
 		return fmt.Errorf("JSON Encode Message: %v", err)
@@ -285,7 +284,7 @@ func (b *AMQPBackend) deleteQueue(queueName string) error {
 
 // Marks task as completed in either groupdUUID_success or groupUUID_failure
 // queue. This is important for b.GroupCompleted/GroupSuccessful methods
-func (b *AMQPBackend) markTaskCompleted(signature *signatures.TaskSignature, taskState *TaskState) error {
+func (b *AMQPBackend) markTaskCompleted(signature *tasks.Signature, taskState *tasks.TaskState) error {
 	if signature.GroupUUID == "" || signature.GroupTaskCount == 0 {
 		return nil
 	}

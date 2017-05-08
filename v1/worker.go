@@ -6,7 +6,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // Worker represents a single worker process
@@ -57,7 +57,7 @@ func (worker *Worker) Quit() {
 }
 
 // Process handles received tasks and triggers success/error callbacks
-func (worker *Worker) Process(signature *signatures.TaskSignature) error {
+func (worker *Worker) Process(signature *tasks.Signature) error {
 	// If the task is not registered with this worker, do not continue
 	// but only return nil as we do not want to restart the worker process
 	if !worker.server.IsTaskRegistered(signature.Name) {
@@ -77,7 +77,7 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 	}
 
 	// Prepare task for processing
-	task, err := NewTask(taskFunc, signature.Args)
+	task, err := tasks.New(taskFunc, signature.Args)
 	if err != nil {
 		worker.finalizeError(signature, err)
 		return err
@@ -98,7 +98,7 @@ func (worker *Worker) Process(signature *signatures.TaskSignature) error {
 }
 
 // Task succeeded, update state and trigger success callbacks
-func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, taskResults []*backends.TaskResult) error {
+func (worker *Worker) finalizeSuccess(signature *tasks.Signature, taskResults []*tasks.TaskResult) error {
 	// Update task state to SUCCESS
 	backend := worker.server.GetBackend()
 
@@ -116,9 +116,9 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, taskR
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {
 			// Pass results of the task to success callbacks
-			args := make([]signatures.TaskArg, 0)
+			args := make([]tasks.Arg, 0)
 			for _, taskResult := range taskResults {
-				args = append([]signatures.TaskArg{{
+				args = append([]tasks.Arg{{
 					Type:  taskResult.Type,
 					Value: taskResult.Value,
 				}}, successTask.Args...)
@@ -186,7 +186,7 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, taskR
 		if signature.ChordCallback.Immutable == false {
 			// Pass results of the task to the chord callback
 			for _, taskResult := range taskState.Results {
-				signature.ChordCallback.Args = append(signature.ChordCallback.Args, signatures.TaskArg{
+				signature.ChordCallback.Args = append(signature.ChordCallback.Args, tasks.Arg{
 					Type:  taskResult.Type,
 					Value: taskResult.Value,
 				})
@@ -204,7 +204,7 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, taskR
 }
 
 // Task failed, update state and trigger error callbacks
-func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err error) error {
+func (worker *Worker) finalizeError(signature *tasks.Signature, err error) error {
 	// Update task state to FAILURE
 	backend := worker.server.GetBackend()
 	if err1 := backend.SetStateFailure(signature, err.Error()); err1 != nil {
@@ -216,7 +216,7 @@ func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err err
 	// Trigger error callbacks
 	for _, errorTask := range signature.OnError {
 		// Pass error as a first argument to error callbacks
-		args := append([]signatures.TaskArg{{
+		args := append([]tasks.Arg{{
 			Type:  "string",
 			Value: err.Error(),
 		}}, errorTask.Args...)

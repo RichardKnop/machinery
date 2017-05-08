@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/bradfitz/gomemcache/memcache"
 )
 
@@ -26,7 +26,7 @@ func NewMemcacheBackend(cnf *config.Config, servers []string) Interface {
 
 // InitGroup - saves UUIDs of all tasks in a group
 func (b *MemcacheBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
-	groupMeta := &GroupMeta{
+	groupMeta := &tasks.GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
 	}
@@ -66,12 +66,10 @@ func (b *MemcacheBackend) GroupCompleted(groupUUID string, groupTaskCount int) (
 }
 
 // GroupTaskStates - returns states of all tasks in the group
-func (b *MemcacheBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*TaskState, error) {
-	taskStates := make([]*TaskState, groupTaskCount)
-
+func (b *MemcacheBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
-		return taskStates, err
+		return []*tasks.TaskState{}, err
 	}
 
 	return b.getStates(groupMeta.TaskUUIDs...)
@@ -87,49 +85,48 @@ func (b *MemcacheBackend) TriggerChord(groupUUID string) (bool, error) {
 }
 
 // SetStatePending - sets task state to PENDING
-func (b *MemcacheBackend) SetStatePending(signature *signatures.TaskSignature) error {
-	taskState := NewPendingTaskState(signature)
+func (b *MemcacheBackend) SetStatePending(signature *tasks.Signature) error {
+	taskState := tasks.NewPendingTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateReceived - sets task state to RECEIVED
-func (b *MemcacheBackend) SetStateReceived(signature *signatures.TaskSignature) error {
-	taskState := NewReceivedTaskState(signature)
+func (b *MemcacheBackend) SetStateReceived(signature *tasks.Signature) error {
+	taskState := tasks.NewReceivedTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateStarted - sets task state to STARTED
-func (b *MemcacheBackend) SetStateStarted(signature *signatures.TaskSignature) error {
-	taskState := NewStartedTaskState(signature)
+func (b *MemcacheBackend) SetStateStarted(signature *tasks.Signature) error {
+	taskState := tasks.NewStartedTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateSuccess - sets task state to SUCCESS
-func (b *MemcacheBackend) SetStateSuccess(signature *signatures.TaskSignature, results []*TaskResult) error {
-	taskState := NewSuccessTaskState(signature, results)
+func (b *MemcacheBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
+	taskState := tasks.NewSuccessTaskState(signature, results)
 	return b.updateState(taskState)
 }
 
 // SetStateFailure - sets task state to FAILURE
-func (b *MemcacheBackend) SetStateFailure(signature *signatures.TaskSignature, err string) error {
-	taskState := NewFailureTaskState(signature, err)
+func (b *MemcacheBackend) SetStateFailure(signature *tasks.Signature, err string) error {
+	taskState := tasks.NewFailureTaskState(signature, err)
 	return b.updateState(taskState)
 }
 
 // GetState - returns the latest task state
-func (b *MemcacheBackend) GetState(taskUUID string) (*TaskState, error) {
-	taskState := new(TaskState)
-
+func (b *MemcacheBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	item, err := b.getClient().Get(taskUUID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := json.Unmarshal(item.Value, taskState); err != nil {
+	state := new(tasks.TaskState)
+	if err := json.Unmarshal(item.Value, state); err != nil {
 		return nil, err
 	}
 
-	return taskState, nil
+	return state, nil
 }
 
 // PurgeState - deletes stored task state
@@ -143,7 +140,7 @@ func (b *MemcacheBackend) PurgeGroupMeta(groupUUID string) error {
 }
 
 // Updates a task state
-func (b *MemcacheBackend) updateState(taskState *TaskState) error {
+func (b *MemcacheBackend) updateState(taskState *tasks.TaskState) error {
 	encoded, err := json.Marshal(taskState)
 	if err != nil {
 		return err
@@ -157,14 +154,13 @@ func (b *MemcacheBackend) updateState(taskState *TaskState) error {
 }
 
 // Fetches GroupMeta from the backend, convenience function to avoid repetition
-func (b *MemcacheBackend) getGroupMeta(groupUUID string) (*GroupMeta, error) {
-	groupMeta := new(GroupMeta)
-
+func (b *MemcacheBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 	item, err := b.getClient().Get(groupUUID)
 	if err != nil {
 		return nil, err
 	}
 
+	groupMeta := new(tasks.GroupMeta)
 	if err := json.Unmarshal(item.Value, groupMeta); err != nil {
 		return nil, err
 	}
@@ -173,25 +169,24 @@ func (b *MemcacheBackend) getGroupMeta(groupUUID string) (*GroupMeta, error) {
 }
 
 // getStates Returns multiple task states with MGET
-func (b *MemcacheBackend) getStates(taskUUIDs ...string) ([]*TaskState, error) {
-	taskStates := make([]*TaskState, len(taskUUIDs))
+func (b *MemcacheBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
+	states := make([]*tasks.TaskState, len(taskUUIDs))
 
 	for i, taskUUID := range taskUUIDs {
-		taskState := new(TaskState)
-
 		item, err := b.getClient().Get(taskUUID)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := json.Unmarshal(item.Value, taskState); err != nil {
+		state := new(tasks.TaskState)
+		if err := json.Unmarshal(item.Value, state); err != nil {
 			return nil, err
 		}
 
-		taskStates[i] = taskState
+		states[i] = state
 	}
 
-	return taskStates, nil
+	return states, nil
 }
 
 // Returns expiration timestamp

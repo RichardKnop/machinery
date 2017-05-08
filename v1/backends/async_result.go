@@ -5,14 +5,13 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/signatures"
-	"github.com/RichardKnop/machinery/v1/utils"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // AsyncResult represents a task result
 type AsyncResult struct {
-	Signature *signatures.TaskSignature
-	taskState *TaskState
+	Signature *tasks.Signature
+	taskState *tasks.TaskState
 	backend   Interface
 }
 
@@ -30,16 +29,16 @@ type ChainAsyncResult struct {
 }
 
 // NewAsyncResult creates AsyncResult instance
-func NewAsyncResult(signature *signatures.TaskSignature, backend Interface) *AsyncResult {
+func NewAsyncResult(signature *tasks.Signature, backend Interface) *AsyncResult {
 	return &AsyncResult{
 		Signature: signature,
-		taskState: new(TaskState),
+		taskState: new(tasks.TaskState),
 		backend:   backend,
 	}
 }
 
 // NewChordAsyncResult creates ChordAsyncResult instance
-func NewChordAsyncResult(groupTasks []*signatures.TaskSignature, chordCallback *signatures.TaskSignature, backend Interface) *ChordAsyncResult {
+func NewChordAsyncResult(groupTasks []*tasks.Signature, chordCallback *tasks.Signature, backend Interface) *ChordAsyncResult {
 	asyncResults := make([]*AsyncResult, len(groupTasks))
 	for i, task := range groupTasks {
 		asyncResults[i] = NewAsyncResult(task, backend)
@@ -52,7 +51,7 @@ func NewChordAsyncResult(groupTasks []*signatures.TaskSignature, chordCallback *
 }
 
 // NewChainAsyncResult creates ChainAsyncResult instance
-func NewChainAsyncResult(tasks []*signatures.TaskSignature, backend Interface) *ChainAsyncResult {
+func NewChainAsyncResult(tasks []*tasks.Signature, backend Interface) *ChainAsyncResult {
 	asyncResults := make([]*AsyncResult, len(tasks))
 	for i, task := range tasks {
 		asyncResults[i] = NewAsyncResult(task, backend)
@@ -81,7 +80,7 @@ func (asyncResult *AsyncResult) Get() ([]reflect.Value, error) {
 		if asyncResult.taskState.IsSuccess() {
 			resultValues := make([]reflect.Value, len(asyncResult.taskState.Results))
 			for i, result := range asyncResult.taskState.Results {
-				resultValue, err := utils.ReflectValue(result.Type, result.Value)
+				resultValue, err := tasks.ReflectValue(result.Type, result.Value)
 				if err != nil {
 					return nil, err
 				}
@@ -120,7 +119,7 @@ func (asyncResult *AsyncResult) GetWithTimeout(timeoutD, sleepD time.Duration) (
 			if asyncResult.taskState.IsSuccess() {
 				resultValues := make([]reflect.Value, len(asyncResult.taskState.Results))
 				for i, result := range asyncResult.taskState.Results {
-					resultValue, err := utils.ReflectValue(result.Type, result.Value)
+					resultValue, err := tasks.ReflectValue(result.Type, result.Value)
 					if err != nil {
 						return nil, err
 					}
@@ -138,7 +137,7 @@ func (asyncResult *AsyncResult) GetWithTimeout(timeoutD, sleepD time.Duration) (
 }
 
 // GetState returns latest task state
-func (asyncResult *AsyncResult) GetState() *TaskState {
+func (asyncResult *AsyncResult) GetState() *tasks.TaskState {
 	if asyncResult.taskState.IsCompleted() {
 		return asyncResult.taskState
 	}

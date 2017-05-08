@@ -7,7 +7,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,12 +41,12 @@ func TestGroupCompletedAMQP(t *testing.T) {
 
 	groupUUID := "testGroupUUID"
 	groupTaskCount := 2
-	task1 := &signatures.TaskSignature{
+	task1 := &tasks.Signature{
 		UUID:           "testTaskUUID1",
 		GroupUUID:      groupUUID,
 		GroupTaskCount: groupTaskCount,
 	}
-	task2 := &signatures.TaskSignature{
+	task2 := &tasks.Signature{
 		UUID:           "testTaskUUID2",
 		GroupUUID:      groupUUID,
 		GroupTaskCount: groupTaskCount,
@@ -78,7 +78,7 @@ func TestGroupCompletedAMQP(t *testing.T) {
 		assert.False(t, groupCompleted)
 	}
 
-	taskResults := []*backends.TaskResult{new(backends.TaskResult)}
+	taskResults := []*tasks.TaskResult{new(tasks.TaskResult)}
 	backend.SetStateSuccess(task1, taskResults)
 	backend.SetStateSuccess(task2, taskResults)
 	groupCompleted, err = backend.GroupCompleted(groupUUID, groupTaskCount)
@@ -92,7 +92,7 @@ func TestGetStateAMQP(t *testing.T) {
 		return
 	}
 
-	signature := &signatures.TaskSignature{
+	signature := &tasks.Signature{
 		UUID:      "testTaskUUID",
 		GroupUUID: "testGroupUUID",
 	}
@@ -106,8 +106,8 @@ func TestGetStateAMQP(t *testing.T) {
 		backend.SetStateStarted(signature)
 		<-time.After(2 * time.Millisecond)
 
-		taskResults := []*backends.TaskResult{
-			&backends.TaskResult{
+		taskResults := []*tasks.TaskResult{
+			&tasks.TaskResult{
 				Type:  "float64",
 				Value: 2,
 			},
@@ -118,7 +118,7 @@ func TestGetStateAMQP(t *testing.T) {
 	backend := backends.NewAMQPBackend(amqpConfig)
 
 	var (
-		taskState *backends.TaskState
+		taskState *tasks.TaskState
 		err       error
 	)
 	for {
@@ -140,7 +140,7 @@ func TestPurgeStateAMQP(t *testing.T) {
 		return
 	}
 
-	signature := &signatures.TaskSignature{
+	signature := &tasks.Signature{
 		UUID:      "testTaskUUID",
 		GroupUUID: "testGroupUUID",
 	}

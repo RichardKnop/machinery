@@ -1,28 +1,27 @@
-package machinery
+package tasks
 
 import (
 	"fmt"
 
-	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/uuid"
 )
 
 // Chain creates a chain of tasks to be executed one after another
 type Chain struct {
-	Tasks []*signatures.TaskSignature
+	Tasks []*Signature
 }
 
 // Group creates a set of tasks to be executed in parallel
 type Group struct {
 	GroupUUID string
-	Tasks     []*signatures.TaskSignature
+	Tasks     []*Signature
 }
 
 // Chord adds an optional callback to the group to be executed
 // after all tasks in the group finished
 type Chord struct {
 	Group    *Group
-	Callback *signatures.TaskSignature
+	Callback *Signature
 }
 
 // GetUUIDs returns slice of task UUIDS
@@ -35,52 +34,52 @@ func (group *Group) GetUUIDs() []string {
 }
 
 // NewChain creates Chain instance
-func NewChain(tasks ...*signatures.TaskSignature) *Chain {
-	for i := len(tasks) - 1; i > 0; i-- {
+func NewChain(signatures ...*Signature) *Chain {
+	for i := len(signatures) - 1; i > 0; i-- {
 		if i > 0 {
-			tasks[i-1].OnSuccess = []*signatures.TaskSignature{tasks[i]}
+			signatures[i-1].OnSuccess = []*Signature{signatures[i]}
 		}
 	}
 
-	chain := &Chain{Tasks: tasks}
+	chain := &Chain{Tasks: signatures}
 
 	// Auto generate task UUIDs
-	for _, task := range chain.Tasks {
-		task.UUID = fmt.Sprintf("task_%v", uuid.New())
+	for _, signature := range chain.Tasks {
+		signature.UUID = fmt.Sprintf("task_%v", uuid.New())
 	}
 
 	return chain
 }
 
 // NewGroup creates Group instance
-func NewGroup(tasks ...*signatures.TaskSignature) *Group {
+func NewGroup(signatures ...*Signature) *Group {
 	// Generate a group UUID
 	groupUUID := fmt.Sprintf("group_%v", uuid.New())
 
 	// Auto generate task UUIDs
 	// Group tasks by common UUID
-	for _, task := range tasks {
-		if task.UUID == "" {
-			task.UUID = fmt.Sprintf("task_%v", uuid.New())
+	for _, signature := range signatures {
+		if signature.UUID == "" {
+			signature.UUID = fmt.Sprintf("task_%v", uuid.New())
 		}
-		task.GroupUUID = groupUUID
-		task.GroupTaskCount = len(tasks)
+		signature.GroupUUID = groupUUID
+		signature.GroupTaskCount = len(signatures)
 	}
 
 	return &Group{
 		GroupUUID: groupUUID,
-		Tasks:     tasks,
+		Tasks:     signatures,
 	}
 }
 
 // NewChord creates Chord instance
-func NewChord(group *Group, callback *signatures.TaskSignature) *Chord {
+func NewChord(group *Group, callback *Signature) *Chord {
 	// Generate a UUID for the chord callback
 	callback.UUID = fmt.Sprintf("chord_%v", uuid.New())
 
 	// Add a chord callback to all tasks
-	for _, task := range group.Tasks {
-		task.ChordCallback = callback
+	for _, signature := range group.Tasks {
+		signature.ChordCallback = callback
 	}
 
 	return &Chord{Group: group, Callback: callback}

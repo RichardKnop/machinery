@@ -1,29 +1,29 @@
-package backends_test
+package tasks_test
 
 import (
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTaskStateIsCompleted(t *testing.T) {
-	taskState := &backends.TaskState{
+	taskState := &tasks.TaskState{
 		TaskUUID: "taskUUID",
-		State:    backends.PendingState,
+		State:    tasks.PendingState,
 	}
 
 	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = backends.ReceivedState
+	taskState.State = tasks.ReceivedState
 	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = backends.StartedState
+	taskState.State = tasks.StartedState
 	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = backends.SuccessState
+	taskState.State = tasks.SuccessState
 	assert.True(t, taskState.IsCompleted())
 
-	taskState.State = backends.FailureState
+	taskState.State = tasks.FailureState
 	assert.True(t, taskState.IsCompleted())
 }

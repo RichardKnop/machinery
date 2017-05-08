@@ -9,7 +9,7 @@ import (
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/signatures"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,10 +19,10 @@ func (a ascendingInt64s) Len() int           { return len(a) }
 func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
-func _getTasks() []*signatures.TaskSignature {
-	task0 := &signatures.TaskSignature{
+func _getSignatures() []*tasks.Signature {
+	task0 := &tasks.Signature{
 		Name: "add",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 1,
@@ -34,9 +34,9 @@ func _getTasks() []*signatures.TaskSignature {
 		},
 	}
 
-	task1 := &signatures.TaskSignature{
+	task1 := &tasks.Signature{
 		Name: "add",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 2,
@@ -48,9 +48,9 @@ func _getTasks() []*signatures.TaskSignature {
 		},
 	}
 
-	task2 := &signatures.TaskSignature{
+	task2 := &tasks.Signature{
 		Name: "add",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 5,
@@ -62,9 +62,9 @@ func _getTasks() []*signatures.TaskSignature {
 		},
 	}
 
-	task3 := &signatures.TaskSignature{
+	task3 := &tasks.Signature{
 		Name: "multiply",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "int64",
 				Value: 4,
@@ -72,13 +72,13 @@ func _getTasks() []*signatures.TaskSignature {
 		},
 	}
 
-	task4 := &signatures.TaskSignature{
+	task4 := &tasks.Signature{
 		Name: "multiply",
 	}
 
-	task5 := &signatures.TaskSignature{
+	task5 := &tasks.Signature{
 		Name: "return_just_error",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "string",
 				Value: "Test error",
@@ -86,9 +86,9 @@ func _getTasks() []*signatures.TaskSignature {
 		},
 	}
 
-	task6 := &signatures.TaskSignature{
+	task6 := &tasks.Signature{
 		Name: "return_multiple_values",
-		Args: []signatures.TaskArg{
+		Args: []tasks.Arg{
 			{
 				Type:  "string",
 				Value: "foo",
@@ -100,15 +100,15 @@ func _getTasks() []*signatures.TaskSignature {
 		},
 	}
 
-	return []*signatures.TaskSignature{
+	return []*tasks.Signature{
 		task0, task1, task2, task3, task4, task5, task6,
 	}
 }
 
 func _testSendTask(server *machinery.Server, t *testing.T) {
-	tasks := _getTasks()
+	signatures := _getSignatures()
 
-	asyncResult, err := server.SendTask(tasks[0])
+	asyncResult, err := server.SendTask(signatures[0])
 	if err != nil {
 		t.Error(err)
 	}
@@ -132,9 +132,9 @@ func _testSendTask(server *machinery.Server, t *testing.T) {
 }
 
 func _testSendGroup(server *machinery.Server, t *testing.T) {
-	tasks := _getTasks()
+	signatures := _getSignatures()
 
-	group := machinery.NewGroup(tasks[0], tasks[1], tasks[2])
+	group := tasks.NewGroup(signatures[0], signatures[1], signatures[2])
 	asyncResults, err := server.SendGroup(group)
 	if err != nil {
 		t.Error(err)
@@ -173,10 +173,10 @@ func _testSendGroup(server *machinery.Server, t *testing.T) {
 }
 
 func _testSendChord(server *machinery.Server, t *testing.T) {
-	tasks := _getTasks()
+	signatures := _getSignatures()
 
-	group := machinery.NewGroup(tasks[0], tasks[1], tasks[2])
-	chord := machinery.NewChord(group, tasks[4])
+	group := tasks.NewGroup(signatures[0], signatures[1], signatures[2])
+	chord := tasks.NewChord(group, signatures[4])
 	chordAsyncResult, err := server.SendChord(chord)
 	if err != nil {
 		t.Error(err)
@@ -201,9 +201,9 @@ func _testSendChord(server *machinery.Server, t *testing.T) {
 }
 
 func _testSendChain(server *machinery.Server, t *testing.T) {
-	tasks := _getTasks()
+	signatures := _getSignatures()
 
-	chain := machinery.NewChain(tasks[1], tasks[2], tasks[3])
+	chain := tasks.NewChain(signatures[1], signatures[2], signatures[3])
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		t.Error(err)
@@ -228,9 +228,9 @@ func _testSendChain(server *machinery.Server, t *testing.T) {
 }
 
 func _testReturnJustError(server *machinery.Server, t *testing.T) {
-	tasks := _getTasks()
+	signatures := _getSignatures()
 
-	asyncResult, err := server.SendTask(tasks[5])
+	asyncResult, err := server.SendTask(signatures[5])
 	if err != nil {
 		t.Error(err)
 	}
@@ -245,9 +245,9 @@ func _testReturnJustError(server *machinery.Server, t *testing.T) {
 }
 
 func _testReturnMultipleValues(server *machinery.Server, t *testing.T) {
-	tasks := _getTasks()
+	signatures := _getSignatures()
 
-	asyncResult, err := server.SendTask(tasks[6])
+	asyncResult, err := server.SendTask(signatures[6])
 	if err != nil {
 		t.Error(err)
 	}

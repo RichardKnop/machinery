@@ -1,4 +1,4 @@
-package utils
+package retry
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"github.com/RichardKnop/machinery/v1/log"
 )
 
-// RetryClosure - a useful closure we can use when there is a problem
+// Closure - a useful closure we can use when there is a problem
 // connecting to the broker. It uses Fibonacci sequence to space out retry attempts
-var RetryClosure = func() func() {
+var Closure = func() func() {
 	retryIn := 0
 	fibonacci := Fibonacci()
 	return func() {
