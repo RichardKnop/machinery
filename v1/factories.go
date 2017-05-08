@@ -12,10 +12,14 @@ import (
 )
 
 // BrokerFactory creates a new object of brokers.Interface
-// Currently only AMQP broker is supported
+// Currently only AMQP/S broker is supported
 func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 	if strings.HasPrefix(cnf.Broker, "amqp://") {
 		return brokers.NewAMQPBroker(cnf), nil
+	}
+
+	if strings.HasPrefix(cnf.ResultBackend, "amqps://") {
+		return backends.NewAMQPBackend(cnf), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "redis://") {
@@ -52,9 +56,13 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 }
 
 // BackendFactory creates a new object of backends.Interface
-// Currently supported backends are AMQP and Memcache
+// Currently supported backends are AMQP/S and Memcache
 func BackendFactory(cnf *config.Config) (backends.Interface, error) {
 	if strings.HasPrefix(cnf.ResultBackend, "amqp://") {
+		return backends.NewAMQPBackend(cnf), nil
+	}
+
+	if strings.HasPrefix(cnf.ResultBackend, "amqps://") {
 		return backends.NewAMQPBackend(cnf), nil
 	}
 
