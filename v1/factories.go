@@ -19,7 +19,7 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "amqps://") {
-		return backends.NewAMQPBackend(cnf), nil
+		return brokers.NewAMQPBroker(cnf), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "redis://") {
