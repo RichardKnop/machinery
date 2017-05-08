@@ -338,6 +338,7 @@ Simply put, when a worker receives a message like this:
   "UUID": "48760a1a-8576-4536-973b-da09048c2ac5",
   "Name": "add",
   "RoutingKey": "",
+  "ETA": null,
   "GroupUUID": "",
   "GroupTaskCount": 0,
   "Args": [
@@ -366,29 +367,29 @@ Ideally, tasks should be idempotent which means there will be no unintended cons
 A signature wraps calling arguments, execution options (such as immutability) and success/error callbacks of a task so it can be sent across the wire to workers. Task signatures implement a simple interface:
 
 ```go
-// TaskArg represents a single argument passed to invocation fo a task
-type TaskArg struct {
+// Arg represents a single argument passed to invocation fo a task
+type Arg struct {
   Type  string
   Value interface{}
 }
 
-// TaskHeaders represents the headers which should be used to direct the task
-type TaskHeaders map[string]interface{}
+// Headers represents the headers which should be used to direct the task
+type Headers map[string]interface{}
 
-// TaskSignature represents a single task invocation
-type TaskSignature struct {
+// Signature represents a single task invocation
+type Signature struct {
   UUID           string
   Name           string
   RoutingKey     string
   ETA            *time.Time
   GroupUUID      string
   GroupTaskCount int
-  Args           []TaskArg
-  Headers        TaskHeaders
+  Args           []Arg
+  Headers        Headers
   Immutable      bool
-  OnSuccess      []*TaskSignature
-  OnError        []*TaskSignature
-  ChordCallback  *TaskSignature
+  OnSuccess      []*Signature
+  OnError        []*Signature
+  ChordCallback  *Signature
 }
 ```
 
@@ -435,28 +436,28 @@ Machinery encodes tasks to JSON before sending them to the broker. Task results 
 
 ### Sending Tasks
 
-Tasks can be called by passing an instance of `TaskSignature` to an `Server` instance. E.g:
+Tasks can be called by passing an instance of `Signature` to an `Server` instance. E.g:
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/signatures"
+  "github.com/RichardKnop/machinery/v1/tasks"
 )
 
-task := &signatures.TaskSignature{
+signature := &tasks.Signature{
   Name: "add",
-  Args: []signatures.TaskArg{
-    signatures.TaskArg{
+  Args: []tasks.Arg{
+    {
       Type:  "int64",
       Value: 1,
     },
-    signatures.TaskArg{
+    {
       Type:  "int64",
       Value: 1,
     },
   },
 }
 
-asyncResult, err := server.SendTask(task)
+asyncResult, err := server.SendTask(signature)
 if err != nil {
   // failed to send the task
   // do something with the error
@@ -470,9 +471,9 @@ You can delay a task by setting the `ETA` timestamp field on the task signature.
 ```go
 // Delay the task by 5 seconds
 eta := time.Now().UTC().Add(time.Second * 5)
-task.ETA = &eta
+signature.ETA = &eta
 
-asyncResult, err := server.SendTask(task)
+asyncResult, err := server.SendTask(signature)
 if err != nil {
   // failed to send the task
   // do something with the error
@@ -575,39 +576,39 @@ Running a single asynchronous task is fine but often you will want to design a w
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/signatures"
+  "github.com/RichardKnop/machinery/v1/tasks"
   machinery "github.com/RichardKnop/machinery/v1"
 )
 
-task1 := signatures.TaskSignature{
+signature1 := tasks.Signature{
   Name: "add",
-  Args: []signatures.TaskArg{
-    signatures.TaskArg{
+  Args: []tasks.Arg{
+    {
       Type:  "int64",
       Value: 1,
     },
-    signatures.TaskArg{
+    {
       Type:  "int64",
       Value: 1,
     },
   },
 }
 
-task2 := signatures.TaskSignature{
+signature2 := tasks.Signature{
   Name: "add",
-  Args: []signatures.TaskArg{
-    signatures.TaskArg{
+  Args: []tasks.Arg{
+    {
       Type:  "int64",
       Value: 5,
     },
-    signatures.TaskArg{
+    {
       Type:  "int64",
       Value: 5,
     },
   },
 }
 
-group := machinery.NewGroup(&task1, &task2)
+group := tasks.NewGroup(&signature1, &signature2)
 asyncResults, err := server.SendGroup(group)
 if err != nil {
   // failed to send the group
@@ -636,44 +637,44 @@ for _, asyncResult := range asyncResults {
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/signatures"
+  "github.com/RichardKnop/machinery/v1/tasks"
   machinery "github.com/RichardKnop/machinery/v1"
 )
 
-task1 := signatures.TaskSignature{
+signature1 := tasks.Signature{
   Name: "add",
-  Args: []signatures.TaskArg{
-    signatures.TaskArg{
+  Args: []tasks.Arg{
+    {
       Type:  "int64",
       Value: 1,
     },
-    signatures.TaskArg{
+    {
       Type:  "int64",
       Value: 1,
     },
   },
 }
 
-task2 := signatures.TaskSignature{
+signature2 := tasks.Signature{
   Name: "add",
-  Args: []signatures.TaskArg{
-    signatures.TaskArg{
+  Args: []tasks.Arg{
+    {
       Type:  "int64",
       Value: 5,
     },
-    signatures.TaskArg{
+    {
       Type:  "int64",
       Value: 5,
     },
   },
 }
 
-task3 := signatures.TaskSignature{
+signature3 := tasks.Signature{
   Name: "multiply",
 }
 
-group := machinery.NewGroup(&task1, &task2)
-chord := machinery.NewChord(group, &task3)
+group := tasks.NewGroup(&signature1, &signature2)
+chord := tasks.NewChord(group, &signature3)
 chordAsyncResult, err := server.SendChord(chord)
 if err != nil {
   // failed to send the chord
@@ -712,49 +713,49 @@ for _, result := range results {
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/signatures"
+  "github.com/RichardKnop/machinery/v1/tasks"
   machinery "github.com/RichardKnop/machinery/v1"
 )
 
-task1 := signatures.TaskSignature{
+signature1 := tasks.Signature{
   Name: "add",
-  Args: []signatures.TaskArg{
-    signatures.TaskArg{
+  Args: []tasks.Arg{
+    {
       Type:  "int64",
       Value: 1,
     },
-    signatures.TaskArg{
+    {
       Type:  "int64",
       Value: 1,
     },
   },
 }
 
-task2 := signatures.TaskSignature{
+signature2 := tasks.Signature{
   Name: "add",
-  Args: []signatures.TaskArg{
-    signatures.TaskArg{
+  Args: []tasks.Arg{
+    {
       Type:  "int64",
       Value: 5,
     },
-    signatures.TaskArg{
+    {
       Type:  "int64",
       Value: 5,
     },
   },
 }
 
-task3 := signatures.TaskSignature{
+signature3 := tasks.Signature{
   Name: "multiply",
-  Args: []signatures.TaskArg{
-    signatures.TaskArg{
+  Args: []tasks.Arg{
+    {
       Type:  "int64",
       Value: 4,
     },
   },
 }
 
-chain := machinery.NewChain(&task1, &task2, &task3)
+chain := tasks.NewChain(&signature1, &signature2, &signature3)
 chainAsyncResult, err := server.SendChain(chain)
 if err != nil {
   // failed to send the chain
