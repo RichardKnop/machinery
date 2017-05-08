@@ -1,8 +1,8 @@
-package logger
+package logging
 
-// Interface defines an interface compatible with stdlib log module
-// as there's no standard interface, this is the closest we get, unfortunately.
-type Interface interface {
+// LoggerInterface will accept stdlib logger and a custom logger.
+// There's no standard interface, this is the closest we get, unfortunately.
+type LoggerInterface interface {
 	Print(...interface{})
 	Printf(string, ...interface{})
 	Println(...interface{})

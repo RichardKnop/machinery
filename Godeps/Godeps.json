@@ -7,6 +7,10 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/RichardKnop/logging",
+			"Rev": "5fb94889ec5c914337a95913c9b9bfc6cbfdc8b1"
+		},
+		{
 			"ImportPath": "github.com/RichardKnop/uuid",
 			"Rev": "c55201b036063326c5b1b89ccfe45a184973d073"
 		},

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/streadway/amqp"
@@ -57,7 +57,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 		return b.retry, fmt.Errorf("Queue Consume: %s", err)
 	}
 
-	logger.Get().Print("[*] Waiting for messages. To exit press CTRL+C")
+	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
 	if err := b.consume(deliveries, taskProcessor); err != nil {
 		return b.retry, err
@@ -171,7 +171,7 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 		return errors.New("Received an empty message.") // RabbitMQ down?
 	}
 
-	logger.Get().Printf("Received new message: %s", d.Body)
+	log.INFO.Printf("Received new message: %s", d.Body)
 
 	// Unmarshal message body into signature struct
 	signature := new(signatures.TaskSignature)

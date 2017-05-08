@@ -6,7 +6,7 @@ import (
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/errors"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
@@ -52,12 +52,15 @@ func init() {
 	// NOTE: If a config file is present, it has priority over flags
 	data, err := config.ReadFromFile(*configPath)
 	if err == nil {
-		err = config.ParseYAMLConfig(&data, &cnf)
-		errors.Fail(err, "Could not parse config file")
+		if err = config.ParseYAMLConfig(&data, &cnf); err != nil {
+			log.FATAL.Fatal(err, "Could not parse config file")
+		}
 	}
 
 	server, err = machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not initialize server")
+	if err != nil {
+		log.FATAL.Fatal(err, "Could not initialize server")
+	}
 }
 
 func initTasks() {
@@ -130,10 +133,14 @@ func main() {
 	fmt.Println("Single task:")
 
 	asyncResult, err := server.SendTask(&task0)
-	errors.Fail(err, "Could not send task")
+	if err != nil {
+		log.FATAL.Fatal(err, "Could not send task")
+	}
 
 	results, err := asyncResult.Get()
-	errors.Fail(err, "Getting task state failed with error")
+	if err != nil {
+		log.FATAL.Fatal(err, "Getting task state failed with error")
+	}
 	fmt.Printf("1 + 1 = %v\n", results[0].Interface())
 
 	/*
@@ -146,11 +153,15 @@ func main() {
 
 	group := machinery.NewGroup(&task0, &task1, &task2)
 	asyncResults, err := server.SendGroup(group)
-	errors.Fail(err, "Could not send group")
+	if err != nil {
+		log.FATAL.Fatal(err, "Could not send group")
+	}
 
 	for _, asyncResult := range asyncResults {
 		results, err = asyncResult.Get()
-		errors.Fail(err, "Getting task state failed with error")
+		if err != nil {
+			log.FATAL.Fatal(err, "Getting task state failed with error")
+		}
 		fmt.Printf(
 			"%v + %v = %v\n",
 			asyncResult.Signature.Args[0].Value,
@@ -166,10 +177,14 @@ func main() {
 	group = machinery.NewGroup(&task0, &task1, &task2)
 	chord := machinery.NewChord(group, &task4)
 	chordAsyncResult, err := server.SendChord(chord)
-	errors.Fail(err, "Could not send chord")
+	if err != nil {
+		log.FATAL.Fatal(err, "Could not send chord")
+	}
 
 	results, err = chordAsyncResult.Get()
-	errors.Fail(err, "Getting task state failed with error")
+	if err != nil {
+		log.FATAL.Fatal(err, "Getting task state failed with error")
+	}
 	fmt.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", results[0].Interface())
 
 	// Now let's try chaining task results
@@ -178,14 +193,20 @@ func main() {
 
 	chain := machinery.NewChain(&task0, &task1, &task2, &task3)
 	chainAsyncResult, err := server.SendChain(chain)
-	errors.Fail(err, "Could not send chain")
+	if err != nil {
+		log.FATAL.Fatal(err, "Could not send chain")
+	}
 
 	results, err = chainAsyncResult.Get()
-	errors.Fail(err, "Getting chain result failed with error")
+	if err != nil {
+		log.FATAL.Fatal(err, "Getting chain result failed with error")
+	}
 	fmt.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", results[0].Interface())
 
 	// Let's try a task which throws panic to make sure stack trace is not lost
 	initTasks()
 	asyncResult, err = server.SendTask(&task5)
-	errors.Fail(err, "Could not send task")
+	if err != nil {
+		log.FATAL.Fatal(err, "Could not send task")
+	}
 }

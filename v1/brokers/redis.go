@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/garyburd/redigo/redis"
@@ -74,7 +74,7 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 	go func() {
 		defer b.receivingWG.Done()
 
-		logger.Get().Print("[*] Waiting for messages. To exit press CTRL+C")
+		log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
 		for {
 			select {
@@ -232,7 +232,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProces
 
 // Consume a single message
 func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) error {
-	logger.Get().Printf("Received new message: %s", delivery)
+	log.INFO.Printf("Received new message: %s", delivery)
 
 	sig := new(signatures.TaskSignature)
 	if err := json.Unmarshal(delivery, sig); err != nil {

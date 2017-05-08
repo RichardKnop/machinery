@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
@@ -21,16 +21,16 @@ func (worker *Worker) Launch() error {
 	cnf := worker.server.GetConfig()
 	broker := worker.server.GetBroker()
 
-	logger.Get().Printf("Launching a worker with the following settings:")
-	logger.Get().Printf("- Broker: %s", cnf.Broker)
-	logger.Get().Printf("- DefaultQueue: %s", cnf.DefaultQueue)
-	logger.Get().Printf("- ResultBackend: %s", cnf.ResultBackend)
+	log.INFO.Printf("Launching a worker with the following settings:")
+	log.INFO.Printf("- Broker: %s", cnf.Broker)
+	log.INFO.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
+	log.INFO.Printf("- ResultBackend: %s", cnf.ResultBackend)
 	if cnf.AMQP != nil {
-		logger.Get().Printf("- AMQP: %s", cnf.AMQP.Exchange)
-		logger.Get().Printf("  - Exchange: %s", cnf.AMQP.Exchange)
-		logger.Get().Printf("  - ExchangeType: %s", cnf.AMQP.ExchangeType)
-		logger.Get().Printf("  - BindingKey: %s", cnf.AMQP.BindingKey)
-		logger.Get().Printf("  - PrefetchCount: %d", cnf.AMQP.PrefetchCount)
+		log.INFO.Printf("- AMQP: %s", cnf.AMQP.Exchange)
+		log.INFO.Printf("  - Exchange: %s", cnf.AMQP.Exchange)
+		log.INFO.Printf("  - ExchangeType: %s", cnf.AMQP.ExchangeType)
+		log.INFO.Printf("  - BindingKey: %s", cnf.AMQP.BindingKey)
+		log.INFO.Printf("  - PrefetchCount: %d", cnf.AMQP.PrefetchCount)
 	}
 
 	errorsChan := make(chan error)
@@ -40,7 +40,7 @@ func (worker *Worker) Launch() error {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
 
 			if retry {
-				logger.Get().Printf("Going to retry launching the worker. Error: %v", err)
+				log.WARNING.Printf("Going to retry launching the worker. Error: %v", err)
 			} else {
 				errorsChan <- err // stop the goroutine
 				return
@@ -110,7 +110,7 @@ func (worker *Worker) finalizeSuccess(signature *signatures.TaskSignature, taskR
 	for i, taskResult := range taskResults {
 		debugResults[i] = fmt.Sprintf("%v", taskResult.Value)
 	}
-	logger.Get().Printf("Processed %s. Results = [%v]", signature.UUID, strings.Join(debugResults, ", "))
+	log.INFO.Printf("Processed %s. Results = [%v]", signature.UUID, strings.Join(debugResults, ", "))
 
 	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
@@ -211,7 +211,7 @@ func (worker *Worker) finalizeError(signature *signatures.TaskSignature, err err
 		return fmt.Errorf("Set State Failure: %v", err1)
 	}
 
-	logger.Get().Printf("Failed processing %s. Error = %v", signature.UUID, err)
+	log.ERROR.Printf("Failed processing %s. Error = %v", signature.UUID, err)
 
 	// Trigger error callbacks
 	for _, errorTask := range signature.OnError {

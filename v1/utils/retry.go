@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/RichardKnop/machinery/v1/log"
 )
 
 // RetryClosure - a useful closure we can use when there is a problem
@@ -17,7 +17,7 @@ var RetryClosure = func() func() {
 			durationString := fmt.Sprintf("%vs", retryIn)
 			duration, _ := time.ParseDuration(durationString)
 
-			logger.Get().Printf("Retrying in %v seconds", retryIn)
+			log.WARNING.Printf("Retrying in %v seconds", retryIn)
 			time.Sleep(duration)
 		}
 		retryIn = fibonacci()

@@ -9,7 +9,6 @@ import (
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/errors"
 	"github.com/RichardKnop/machinery/v1/signatures"
 )
 
@@ -32,7 +31,9 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 	}
 
 	server1, err := machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not initialize server")
+	if err != nil {
+		t.Fatal(err, "Could not initialize server")
+	}
 
 	server1.RegisterTask("add", func(args ...int64) (int64, error) {
 		sum := int64(0)
@@ -43,7 +44,9 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 	})
 
 	server2, err := machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not initialize server")
+	if err != nil {
+		t.Fatal(err, "Could not initialize server")
+	}
 
 	server2.RegisterTask("multiply", func(args ...int64) (int64, error) {
 		sum := int64(1)
@@ -139,7 +142,9 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 	}
 
 	server1, err := machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not initialize server")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	server1.RegisterTask("add", func(args ...int64) (int64, error) {
 		sum := int64(0)
@@ -150,7 +155,9 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 	})
 
 	server2, err := machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not initialize server")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	server2.RegisterTask("multiply", func(args ...int64) (int64, error) {
 		sum := int64(1)

@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/RichardKnop/machinery/v1/utils"
 )
@@ -73,7 +73,7 @@ func (t *Task) Call() (taskResults []*backends.TaskResult, err error) {
 				err = errors.New(e)
 			}
 			// Print stack trace
-			logger.Get().Printf("%s", debug.Stack())
+			log.ERROR.Printf("%s", debug.Stack())
 		}
 	}()
 

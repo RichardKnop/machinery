@@ -6,7 +6,7 @@ import (
 	"github.com/RichardKnop/machinery/examples/tasks"
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/errors"
+	"github.com/RichardKnop/machinery/v1/log"
 )
 
 // Define flags
@@ -51,12 +51,15 @@ func init() {
 	// NOTE: If a config file is present, it has priority over flags
 	data, err := config.ReadFromFile(*configPath)
 	if err == nil {
-		err = config.ParseYAMLConfig(&data, &cnf)
-		errors.Fail(err, "Could not parse config file")
+		if err = config.ParseYAMLConfig(&data, &cnf); err != nil {
+			log.FATAL.Fatal(err, "Could not parse config file")
+		}
 	}
 
 	server, err = machinery.NewServer(&cnf)
-	errors.Fail(err, "Could not initialize server")
+	if err != nil {
+		log.FATAL.Fatal(err, "Could not initialize server")
+	}
 
 	// Register tasks
 	tasks := map[string]interface{}{
@@ -72,6 +75,7 @@ func init() {
 }
 
 func main() {
-	err := worker.Launch()
-	errors.Fail(err, "Could not launch worker")
+	if err := worker.Launch(); err != nil {
+		log.FATAL.Fatal(err, "Could not launch worker")
+	}
 }

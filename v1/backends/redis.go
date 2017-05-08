@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/garyburd/redigo/redis"
 	"gopkg.in/redsync.v1"
@@ -252,7 +252,7 @@ func (b *RedisBackend) getStates(taskUUIDs ...string) ([]*TaskState, error) {
 
 		taskState := new(TaskState)
 		if err := json.Unmarshal(bytes, taskState); err != nil {
-			logger.Get().Print(err)
+			log.ERROR.Print(err)
 			return taskStates, err
 		}
 

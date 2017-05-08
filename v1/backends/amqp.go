@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/logger"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/signatures"
 	"github.com/streadway/amqp"
 )
@@ -199,8 +199,8 @@ func (b *AMQPBackend) GetState(taskUUID string) (*TaskState, error) {
 	d.Ack(false)
 
 	if err := json.Unmarshal([]byte(d.Body), taskState); err != nil {
-		logger.Get().Printf("Failed to unmarshal task state: %v", string(d.Body))
-		logger.Get().Print(err)
+		log.ERROR.Printf("Failed to unmarshal task state: %v", string(d.Body))
+		log.ERROR.Print(err)
 		return nil, err
 	}
 
