@@ -93,7 +93,7 @@ func TestGetStateRedis(t *testing.T) {
 		backend.SetStateStarted(signature)
 		<-time.After(2 * time.Millisecond)
 		taskResults := []*tasks.TaskResult{
-			&tasks.TaskResult{
+			{
 				Type:  "float64",
 				Value: 2,
 			},

@@ -107,7 +107,7 @@ func TestGetStateAMQP(t *testing.T) {
 		<-time.After(2 * time.Millisecond)
 
 		taskResults := []*tasks.TaskResult{
-			&tasks.TaskResult{
+			{
 				Type:  "float64",
 				Value: 2,
 			},

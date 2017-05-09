@@ -15,7 +15,7 @@ func TestInvalidArgRobustness(t *testing.T) {
 
 	// Construct an invalid argument list and reflect it
 	args := []tasks.Arg{
-		tasks.Arg{Type: "bool", Value: true},
+		{Type: "bool", Value: true},
 	}
 
 	task, err := tasks.New(f, args)

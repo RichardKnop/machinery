@@ -128,7 +128,7 @@ func TestSetStateSuccess(t *testing.T) {
 		UUID: taskUUIDs[0],
 	}
 	taskResults := []*tasks.TaskResult{
-		&tasks.TaskResult{
+		{
 			Type:  resultType,
 			Value: resultValue,
 		},
@@ -194,7 +194,7 @@ func TestGroupCompleted(t *testing.T) {
 		UUID: taskUUIDs[1],
 	}
 	taskResults := []*tasks.TaskResult{
-		&tasks.TaskResult{
+		{
 			Type:  "string",
 			Value: "Result ok",
 		},

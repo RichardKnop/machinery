@@ -229,7 +229,7 @@ func (s *EagerBackendTestSuite) TestSetStateSuccess() {
 	{
 		t := s.st[3]
 		taskResults := []*tasks.TaskResult{
-			&tasks.TaskResult{
+			{
 				Type:  "float64",
 				Value: float64(300.0),
 			},
