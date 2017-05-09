@@ -15,4 +15,4 @@ fmt:
 	bash -c 'git ls-files "**.go" | grep -v ^vendor/ | xargs -n1 gofmt -e -s -w'
 
 test:
-	bash -c 'go list ./... | grep -v vendor | xargs -n1 go test -timeout=30s'
+	bash -c 'go list ./... | grep -v vendor | grep -v example | xargs -n1 go test -timeout=30s'
