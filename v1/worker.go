@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/log"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // Worker represents a single worker process
@@ -54,9 +55,10 @@ func (worker *Worker) Launch() error {
 	}()
 
 	go func() {
-		sigs := <-sig
-		logger.Get().Printf("%v signal received. Quitting the worker...", sigs)
+		err := fmt.Errorf("Signal received: %v. Quitting the worker", <-sig)
+		log.WARNING.Print(err.Error())
 		worker.Quit()
+		errorsChan <- err
 	}()
 
 	return <-errorsChan

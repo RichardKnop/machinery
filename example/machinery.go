@@ -161,7 +161,7 @@ func worker() error {
 	worker := server.NewWorker("machinery_worker")
 
 	if err := worker.Launch(); err != nil {
-		return fmt.Errorf("Could not launch worker: %s", err.Error())
+		return err
 	}
 
 	return nil

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -138,6 +139,11 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor Task
 	}()
 
 	errorsChan := make(chan error)
+
+	// Use wait group to make sure task processing completes on interrupt signal
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
 	for {
 		select {
 		case err := <-errorsChan:
@@ -147,12 +153,18 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor Task
 				// get worker from pool (blocks until one is available)
 				<-pool
 			}
+
+			wg.Add(1)
+
 			// Consume the task inside a gotourine so multiple tasks
 			// can be processed concurrently
 			go func() {
+				defer wg.Done()
+
 				if err := b.consumeOne(d, taskProcessor); err != nil {
 					errorsChan <- err
 				}
+
 				if maxWorkers != 0 {
 					// give worker back to pool
 					pool <- struct{}{}
@@ -167,8 +179,8 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor Task
 // Consume a single message
 func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) error {
 	if len(d.Body) == 0 {
-		d.Nack(false, false)                            // multiple, requeue
-		return errors.New("Received an empty message.") // RabbitMQ down?
+		d.Nack(false, false)                           // multiple, requeue
+		return errors.New("Received an empty message") // RabbitMQ down?
 	}
 
 	log.INFO.Printf("Received new message: %s", d.Body)
