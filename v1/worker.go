@@ -7,6 +7,9 @@ import (
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 // Worker represents a single worker process
@@ -34,6 +37,8 @@ func (worker *Worker) Launch() error {
 	}
 
 	errorsChan := make(chan error)
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		for {
@@ -46,6 +51,12 @@ func (worker *Worker) Launch() error {
 				return
 			}
 		}
+	}()
+
+	go func() {
+		sigs := <-sig
+		logger.Get().Printf("%v signal received. Quitting the worker...", sigs)
+		worker.Quit()
 	}()
 
 	return <-errorsChan
