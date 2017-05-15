@@ -796,6 +796,7 @@ for _, result := range results {
 * RabbitMQ
 * Redis (optional)
 * Memcached (optional)
+* MongoDB (optional)
 
 On OS X systems, you can install requirements using [Homebrew](http://brew.sh/):
 
@@ -804,6 +805,7 @@ brew install go
 brew install rabbitmq
 brew install redis
 brew install memcached
+brew install mongodb
 ```
 
 ### Dependencies
@@ -840,3 +842,5 @@ export MONGODB_URL=mongodb://{host}:{port}/{database}
 ```
 
 I recommend to run the integration tests when making changes to the code. Due to Machinery being composed of several parts (worker, client) which run independently of each other, integration tests are important to verify everything works as expected.
+
+You need to have RabbitMQ, Redis, Memcache and MongoDB running on localhost in order for integration tests to pass.
