@@ -220,10 +220,10 @@ type Interface interface {
 }
 ```
 
-Then just set the logger in your setup code by calling `Set` function exported by `github.com/RichardKnop/machinery/logger` package:
+Then just set the logger in your setup code by calling `Set` function exported by `github.com/RichardKnop/machinery/v1/log` package:
 
 ```go
-logger.Set(myCustomLogger)
+log.Set(myCustomLogger)
 ```
 
 ## Server
