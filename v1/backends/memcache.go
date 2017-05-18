@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/bradfitz/gomemcache/memcache"
 )
@@ -80,7 +81,6 @@ func (b *MemcacheBackend) GroupTaskStates(groupUUID string, groupTaskCount int) 
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
 func (b *MemcacheBackend) TriggerChord(groupUUID string) (bool, error) {
-	// TODO - to be implemented, we will need a memcache distributed lock solution
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
 		return false, err
@@ -91,14 +91,25 @@ func (b *MemcacheBackend) TriggerChord(groupUUID string) (bool, error) {
 		return false, nil
 	}
 
-	// Set flag to true
-	groupMeta.ChordTriggered = true
+	// If group meta is locked, wait until it's unlocked
+	for groupMeta.Lock {
+		groupMeta, _ = b.getGroupMeta(groupUUID)
+		log.WARNING.Print("Group meta locked, waiting")
+		<-time.After(time.Millisecond * 5)
+	}
 
+	// Acquire lock
+	if err = b.lockGroupMeta(groupMeta); err != nil {
+		return false, err
+	}
+	defer b.unlockGroupMeta(groupMeta)
+
+	// Update the group meta data
+	groupMeta.ChordTriggered = true
 	encoded, err := json.Marshal(&groupMeta)
 	if err != nil {
 		return false, err
 	}
-
 	if err = b.getClient().Replace(&memcache.Item{
 		Key:        groupUUID,
 		Value:      encoded,
@@ -174,6 +185,36 @@ func (b *MemcacheBackend) updateState(taskState *tasks.TaskState) error {
 
 	return b.getClient().Set(&memcache.Item{
 		Key:        taskState.TaskUUID,
+		Value:      encoded,
+		Expiration: b.getExpirationTimestamp(),
+	})
+}
+
+// lockGroupMeta acquires lock on group meta data
+func (b *MemcacheBackend) lockGroupMeta(groupMeta *tasks.GroupMeta) error {
+	groupMeta.Lock = true
+	encoded, err := json.Marshal(groupMeta)
+	if err != nil {
+		return err
+	}
+
+	return b.getClient().Set(&memcache.Item{
+		Key:        groupMeta.GroupUUID,
+		Value:      encoded,
+		Expiration: b.getExpirationTimestamp(),
+	})
+}
+
+// unlockGroupMeta releases lock on group meta data
+func (b *MemcacheBackend) unlockGroupMeta(groupMeta *tasks.GroupMeta) error {
+	groupMeta.Lock = false
+	encoded, err := json.Marshal(groupMeta)
+	if err != nil {
+		return err
+	}
+
+	return b.getClient().Set(&memcache.Item{
+		Key:        groupMeta.GroupUUID,
 		Value:      encoded,
 		Expiration: b.getExpirationTimestamp(),
 	})
