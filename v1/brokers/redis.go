@@ -332,6 +332,9 @@ func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
 			result = items[0]
 			break
 		}
+
+		// Wait 15ms before querying the ZSET again
+		<-time.After(15 * time.Millisecond)
 	}
 
 	return result, nil
@@ -364,7 +367,7 @@ func (b *RedisBroker) open() (redis.Conn, error) {
 // Returns a new pool of Redis connections
 func (b *RedisBroker) newPool() *redis.Pool {
 	return &redis.Pool{
-		MaxIdle:     8,
+		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			var (
@@ -397,9 +400,9 @@ func (b *RedisBroker) newPool() *redis.Pool {
 		},
 		// PINGs connections that have been idle more than 15 seconds
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			// if time.Since(t) < time.Duration(15 * time.Second) {
-			//   return nil
-			// }
+			if time.Since(t) < time.Duration(15*time.Second) {
+				return nil
+			}
 			_, err := c.Do("PING")
 			return err
 		},

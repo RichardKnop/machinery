@@ -341,6 +341,9 @@ func (b *RedisBackend) newPool() *redis.Pool {
 			return c, err
 		},
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			if time.Since(t) < time.Duration(15*time.Second) {
+				return nil
+			}
 			_, err := c.Do("PING")
 			return err
 		},
