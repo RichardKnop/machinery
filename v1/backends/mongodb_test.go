@@ -16,22 +16,18 @@ var (
 )
 
 func initTestMongodbBackend() (backends.Interface, error) {
-	conf := &config.Config{
+	cnf := &config.Config{
 		ResultBackend:   os.Getenv("MONGODB_URL"),
 		ResultsExpireIn: 30,
 	}
-	backend, err := backends.NewMongodbBackend(conf)
-	if err != nil {
-		return nil, err
-	}
+	backend := backends.NewMongodbBackend(cnf)
 
 	backend.PurgeGroupMeta(groupUUID)
 	for _, taskUUID := range taskUUIDs {
 		backend.PurgeState(taskUUID)
 	}
 
-	err = backend.InitGroup(groupUUID, taskUUIDs)
-	if err != nil {
+	if err := backend.InitGroup(groupUUID, taskUUIDs); err != nil {
 		return nil, err
 	}
 	return backend, nil
@@ -116,8 +112,8 @@ func TestSetStateSuccess(t *testing.T) {
 		return
 	}
 
-	resultType := "int64"
-	resultValue := int64(88)
+	resultType := "float64"
+	resultValue := float64(88.5)
 
 	backend, err := initTestMongodbBackend()
 	if err != nil {
@@ -227,24 +223,4 @@ func TestGroupCompleted(t *testing.T) {
 			"Wrong state on", groupTasksStates[i].TaskUUID,
 		)
 	}
-}
-
-func TestMongodbDropIndexes(t *testing.T) {
-	mongoDBURL := os.Getenv("MONGODB_URL")
-	if mongoDBURL == "" {
-		return
-	}
-
-	conf := &config.Config{
-		ResultBackend:   mongoDBURL,
-		ResultsExpireIn: 5,
-	}
-
-	_, err := backends.NewMongodbBackend(conf)
-	assert.NoError(t, err)
-
-	conf.ResultsExpireIn = 7
-
-	_, err = backends.NewMongodbBackend(conf)
-	assert.NoError(t, err)
 }

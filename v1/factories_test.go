@@ -190,7 +190,12 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		assert.NotNil(t, actual)
+		expected := backends.NewMongodbBackend(&cnf)
+		assert.True(
+			t,
+			reflect.DeepEqual(actual, expected),
+			fmt.Sprintf("conn = %v, want %v", actual, expected),
+		)
 	}
 }
 

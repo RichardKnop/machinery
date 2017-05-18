@@ -20,41 +20,20 @@ type MongodbBackend struct {
 }
 
 // NewMongodbBackend creates MongodbBackend instance
-func NewMongodbBackend(cnf *config.Config) (Interface, error) {
-	session, err := mgo.Dial(cnf.ResultBackend)
-	if err != nil {
-		return nil, err
-	}
-
-	dbName := "tasks"
-	splitConnection := strings.Split(cnf.ResultBackend, "/")
-	if len(splitConnection) == 4 {
-		dbName = splitConnection[3]
-	}
-
-	tasksCollection := session.DB(dbName).C("tasks")
-	groupMetasCollection := session.DB(dbName).C("group_metas")
-
-	err = createMongoIndexes(tasksCollection, cnf)
-	if err != nil {
-		return nil, err
-	}
-
-	return &MongodbBackend{
-		cnf:                  cnf,
-		session:              session,
-		tasksCollection:      tasksCollection,
-		groupMetasCollection: groupMetasCollection,
-	}, nil
+func NewMongodbBackend(cnf *config.Config) Interface {
+	return &MongodbBackend{cnf: cnf}
 }
 
 // InitGroup - saves UUIDs of all tasks in a group
 func (b *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
+	if err := b.connect(); err != nil {
+		return err
+	}
+
 	groupMeta := &tasks.GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
 	}
-
 	return b.groupMetasCollection.Insert(groupMeta)
 }
 
@@ -95,6 +74,10 @@ func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) (
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
 func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
+	if err := b.connect(); err != nil {
+		return false, err
+	}
+
 	if err := b.session.FsyncLock(); err != nil {
 		return false, err
 	}
@@ -167,6 +150,10 @@ func (b *MongodbBackend) SetStateFailure(signature *tasks.Signature, err string)
 
 // GetState - returns the latest task state
 func (b *MongodbBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
+	if err := b.connect(); err != nil {
+		return nil, err
+	}
+
 	state := new(tasks.TaskState)
 	if err := b.tasksCollection.FindId(taskUUID).One(state); err != nil {
 		return nil, err
@@ -176,16 +163,28 @@ func (b *MongodbBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 
 // PurgeState - deletes stored task state
 func (b *MongodbBackend) PurgeState(taskUUID string) error {
+	if err := b.connect(); err != nil {
+		return err
+	}
+
 	return b.tasksCollection.RemoveId(taskUUID)
 }
 
 // PurgeGroupMeta - deletes stored group meta data
 func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
+	if err := b.connect(); err != nil {
+		return err
+	}
+
 	return b.groupMetasCollection.RemoveId(groupUUID)
 }
 
 // Fetches GroupMeta from the backend, convenience function to avoid repetition
 func (b *MongodbBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
+	if err := b.connect(); err != nil {
+		return nil, err
+	}
+
 	groupMeta := new(tasks.GroupMeta)
 	if err := b.groupMetasCollection.FindId(groupUUID).One(groupMeta); err != nil {
 		return nil, err
@@ -195,6 +194,10 @@ func (b *MongodbBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error
 
 // getStates Returns multiple task states with MGET
 func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
+	if err := b.connect(); err != nil {
+		return nil, err
+	}
+
 	states := make([]*tasks.TaskState, 0, len(taskUUIDs))
 
 	iter := b.tasksCollection.Find(bson.M{"_id": bson.M{"$in": taskUUIDs}}).Iter()
@@ -208,11 +211,38 @@ func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, err
 }
 
 func (b *MongodbBackend) updateState(signature *tasks.Signature, update bson.M) error {
+	if err := b.connect(); err != nil {
+		return err
+	}
+
 	_, err := b.tasksCollection.UpsertId(signature.UUID, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (b *MongodbBackend) connect() error {
+	if b.session != nil {
+		return nil
+	}
+
+	session, err := mgo.Dial(b.cnf.ResultBackend)
+	if err != nil {
+		return err
+	}
+	b.session = session
+
+	dbName := "tasks"
+	splitConnection := strings.Split(b.cnf.ResultBackend, "/")
+	if len(splitConnection) == 4 {
+		dbName = splitConnection[3]
+	}
+
+	b.tasksCollection = session.DB(dbName).C("tasks")
+	b.groupMetasCollection = session.DB(dbName).C("group_metas")
+
+	return createMongoIndexes(b.tasksCollection, b.cnf)
 }
 
 func createMongoIndexes(tasksCollection *mgo.Collection, cnf *config.Config) error {
