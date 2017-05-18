@@ -114,39 +114,54 @@ func ReflectValue(valueType string, value interface{}) (reflect.Value, error) {
 }
 
 func getIntValue(theType string, value interface{}) (int64, error) {
-	// Any numbers from unmarshalled JSON will be float64 by default
-	// So we first need to do a type conversion to float64
-	number, ok := value.(float64)
+	if strings.HasPrefix(fmt.Sprintf("%T", value), "float") {
+		// Any numbers from unmarshalled JSON will be float64 by default
+		// So we first need to do a type conversion to float64
+		n, ok := value.(float64)
+		if !ok {
+			return 0, typeConversionError(value, typesMap[theType].String())
+		}
+
+		// Now we can cast the float64 to int64
+		return int64(n), nil
+	}
+
+	n, ok := value.(int64)
 	if !ok {
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
 
-	// Now we can cast the float64 to int64
-	return int64(number), nil
+	return n, nil
 }
 
 func getUintValue(theType string, value interface{}) (uint64, error) {
-	// Any numbers from unmarshalled JSON will be float64 by default
-	// So we first need to do a type conversion to float64
-	number, ok := value.(float64)
+	if strings.HasPrefix(fmt.Sprintf("%T", value), "float") {
+		// Any numbers from unmarshalled JSON will be float64 by default
+		// So we first need to do a type conversion to float64
+		n, ok := value.(float64)
+		if !ok {
+			return 0, typeConversionError(value, typesMap[theType].String())
+		}
+
+		// Now we can cast the float64 to uint64
+		return uint64(n), nil
+	}
+
+	n, ok := value.(uint64)
 	if !ok {
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
 
-	// Now we can cast the float64 to uint64
-	return uint64(number), nil
+	return n, nil
 }
 
 func getFloatValue(theType string, value interface{}) (float64, error) {
-	// Any numbers from unmarshalled JSON will be float64 by default
-	// So we first need to do a type conversion to float64
-	number, ok := value.(float64)
+	n, ok := value.(float64)
 	if !ok {
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
 
-	// Now we can return float64
-	return number, nil
+	return n, nil
 }
 
 // IsContextType checks to see if the type is a context.Context

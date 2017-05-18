@@ -21,7 +21,7 @@ func NewEagerBackend() Interface {
 	}
 }
 
-// InitGroup - saves UUIDs of all tasks in a group
+// InitGroup creates and saves a group meta data object
 func (b *EagerBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	tasks := make([]string, 0, len(taskUUIDs))
 	// copy every task
@@ -33,7 +33,7 @@ func (b *EagerBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
-// GroupCompleted - returns true if all tasks in a group finished
+// GroupCompleted returns true if all tasks in a group finished
 func (b *EagerBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	tasks, ok := b.groups[groupUUID]
 	if !ok {
@@ -55,7 +55,7 @@ func (b *EagerBackend) GroupCompleted(groupUUID string, groupTaskCount int) (boo
 	return countSuccessTasks == groupTaskCount, nil
 }
 
-// GroupTaskStates - returns states of all tasks in the group
+// GroupTaskStates returns states of all tasks in the group
 func (b *EagerBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	taskUUIDs, ok := b.groups[groupUUID]
 	if !ok {
@@ -75,7 +75,7 @@ func (b *EagerBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]
 	return ret, nil
 }
 
-// TriggerChord - marks chord as triggered in the backend storage to make sure
+// TriggerChord flags chord as triggered in the backend storage to make sure
 // chord is never trigerred multiple times. Returns a boolean flag to indicate
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
@@ -83,37 +83,37 @@ func (b *EagerBackend) TriggerChord(groupUUID string) (bool, error) {
 	return true, nil
 }
 
-// SetStatePending - sets task state to PENDING
+// SetStatePending updates task state to PENDING
 func (b *EagerBackend) SetStatePending(signature *tasks.Signature) error {
 	state := tasks.NewPendingTaskState(signature)
 	return b.updateState(state)
 }
 
-// SetStateReceived - sets task state to RECEIVED
+// SetStateReceived updates task state to RECEIVED
 func (b *EagerBackend) SetStateReceived(signature *tasks.Signature) error {
 	state := tasks.NewReceivedTaskState(signature)
 	return b.updateState(state)
 }
 
-// SetStateStarted - sets task state to STARTED
+// SetStateStarted updates task state to STARTED
 func (b *EagerBackend) SetStateStarted(signature *tasks.Signature) error {
 	state := tasks.NewStartedTaskState(signature)
 	return b.updateState(state)
 }
 
-// SetStateSuccess - sets task state to SUCCESS
+// SetStateSuccess updates task state to SUCCESS
 func (b *EagerBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	state := tasks.NewSuccessTaskState(signature, results)
 	return b.updateState(state)
 }
 
-// SetStateFailure - sets task state to FAILURE
+// SetStateFailure updates task state to FAILURE
 func (b *EagerBackend) SetStateFailure(signature *tasks.Signature, err string) error {
 	state := tasks.NewFailureTaskState(signature, err)
 	return b.updateState(state)
 }
 
-// GetState - returns the latest task state
+// GetState returns the latest task state
 func (b *EagerBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	tasktStateBytes, ok := b.tasks[taskUUID]
 	if !ok {
@@ -129,7 +129,7 @@ func (b *EagerBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	return state, nil
 }
 
-// PurgeState - deletes stored task state
+// PurgeState deletes stored task state
 func (b *EagerBackend) PurgeState(taskUUID string) error {
 	_, ok := b.tasks[taskUUID]
 	if !ok {
@@ -140,7 +140,7 @@ func (b *EagerBackend) PurgeState(taskUUID string) error {
 	return nil
 }
 
-// PurgeGroupMeta - deletes stored group meta data
+// PurgeGroupMeta deletes stored group meta data
 func (b *EagerBackend) PurgeGroupMeta(groupUUID string) error {
 	_, ok := b.groups[groupUUID]
 	if !ok {

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -99,7 +100,7 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 	actualResults := make([]int64, 2)
 
 	for i, asyncResult := range asyncResults {
-		results, err := asyncResult.Get()
+		results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 		if err != nil {
 			t.Error(err)
 		}
@@ -210,7 +211,7 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 	actualResults := make([]int64, 2)
 
 	for i, asyncResult := range asyncResults {
-		results, err := asyncResult.Get()
+		results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 		if err != nil {
 			t.Error(err)
 		}

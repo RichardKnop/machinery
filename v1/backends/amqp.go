@@ -35,12 +35,12 @@ func NewAMQPBackend(cnf *config.Config) Interface {
 	return &AMQPBackend{cnf: cnf}
 }
 
-// InitGroup - saves UUIDs of all tasks in a group
+// InitGroup creates and saves a group meta data object
 func (b *AMQPBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
-// GroupCompleted - returns true if all tasks in a group finished
+// GroupCompleted returns true if all tasks in a group finished
 // NOTE: Given AMQP limitation this will only return true if all finished
 // tasks were successful as we do not keep track of completed failed tasks
 func (b *AMQPBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
@@ -58,7 +58,7 @@ func (b *AMQPBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool
 	return queueState.Messages == groupTaskCount, nil
 }
 
-// GroupTaskStates - returns states of all tasks in the group
+// GroupTaskStates returns states of all tasks in the group
 func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	conn, channel, queue, _, err := b.connect(groupUUID)
 	if err != nil {
@@ -107,7 +107,7 @@ func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*
 	return states, nil
 }
 
-// TriggerChord - marks chord as triggered in the backend storage to make sure
+// TriggerChord flags chord as triggered in the backend storage to make sure
 // chord is never trigerred multiple times. Returns a boolean flag to indicate
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
@@ -126,25 +126,25 @@ func (b *AMQPBackend) TriggerChord(groupUUID string) (bool, error) {
 	return false, nil
 }
 
-// SetStatePending - sets task state to PENDING
+// SetStatePending updates task state to PENDING
 func (b *AMQPBackend) SetStatePending(signature *tasks.Signature) error {
 	taskState := tasks.NewPendingTaskState(signature)
 	return b.updateState(taskState)
 }
 
-// SetStateReceived - sets task state to RECEIVED
+// SetStateReceived updates task state to RECEIVED
 func (b *AMQPBackend) SetStateReceived(signature *tasks.Signature) error {
 	taskState := tasks.NewReceivedTaskState(signature)
 	return b.updateState(taskState)
 }
 
-// SetStateStarted - sets task state to STARTED
+// SetStateStarted updates task state to STARTED
 func (b *AMQPBackend) SetStateStarted(signature *tasks.Signature) error {
 	taskState := tasks.NewStartedTaskState(signature)
 	return b.updateState(taskState)
 }
 
-// SetStateSuccess - sets task state to SUCCESS
+// SetStateSuccess updates task state to SUCCESS
 func (b *AMQPBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	taskState := tasks.NewSuccessTaskState(signature, results)
 
@@ -159,7 +159,7 @@ func (b *AMQPBackend) SetStateSuccess(signature *tasks.Signature, results []*tas
 	return b.markTaskCompleted(signature, taskState)
 }
 
-// SetStateFailure - sets task state to FAILURE
+// SetStateFailure updates task state to FAILURE
 func (b *AMQPBackend) SetStateFailure(signature *tasks.Signature, err string) error {
 	taskState := tasks.NewFailureTaskState(signature, err)
 
@@ -174,7 +174,7 @@ func (b *AMQPBackend) SetStateFailure(signature *tasks.Signature, err string) er
 	return b.markTaskCompleted(signature, taskState)
 }
 
-// GetState - returns the latest task state. It will only return the status once
+// GetState returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
 func (b *AMQPBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	conn, channel, queue, _, err := b.connect(taskUUID)
@@ -206,18 +206,18 @@ func (b *AMQPBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	return state, nil
 }
 
-// PurgeState - deletes stored task state
+// PurgeState deletes stored task state
 func (b *AMQPBackend) PurgeState(taskUUID string) error {
 	return b.deleteQueue(taskUUID)
 }
 
-// PurgeGroupMeta - deletes stored group meta data
+// PurgeGroupMeta deletes stored group meta data
 func (b *AMQPBackend) PurgeGroupMeta(groupUUID string) error {
 	b.deleteQueue(fmt.Sprintf("%s_chord_triggered", groupUUID))
 	return b.deleteQueue(groupUUID)
 }
 
-// Updates a task state
+// updateState saves current task state
 func (b *AMQPBackend) updateState(taskState *tasks.TaskState) error {
 	message, err := json.Marshal(taskState)
 	if err != nil {
@@ -253,7 +253,7 @@ func (b *AMQPBackend) updateState(taskState *tasks.TaskState) error {
 	return fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
 }
 
-// Returns expiration time
+// getExpiresIn returns expiration time
 func (b *AMQPBackend) getExpiresIn() int {
 	resultsExpireIn := b.cnf.ResultsExpireIn * 1000
 	if resultsExpireIn == 0 {
@@ -263,7 +263,7 @@ func (b *AMQPBackend) getExpiresIn() int {
 	return resultsExpireIn
 }
 
-// Deletes a queue
+// deleteQueue removes a queue with a name
 func (b *AMQPBackend) deleteQueue(queueName string) error {
 	conn, channel, queue, _, err := b.connect(queueName)
 	if err != nil {
@@ -282,8 +282,9 @@ func (b *AMQPBackend) deleteQueue(queueName string) error {
 	return err
 }
 
-// Marks task as completed in either groupdUUID_success or groupUUID_failure
-// queue. This is important for b.GroupCompleted/GroupSuccessful methods
+// markTaskCompleted marks task as completed in either groupdUUID_success
+// or groupUUID_failure queue. This is important for GroupCompleted and
+// GroupSuccessful methods
 func (b *AMQPBackend) markTaskCompleted(signature *tasks.Signature, taskState *tasks.TaskState) error {
 	if signature.GroupUUID == "" || signature.GroupTaskCount == 0 {
 		return nil
@@ -323,7 +324,8 @@ func (b *AMQPBackend) markTaskCompleted(signature *tasks.Signature, taskState *t
 	return nil
 }
 
-// Connects to the message queue, opens a channel, declares a queue
+// connect opens a connection to RabbitMQ, declares an exchange, opens a channel,
+// declares and binds the queue and enables publish notifications
 func (b *AMQPBackend) connect(queueName string) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
 	var (
 		conn    *amqp.Connection
@@ -387,7 +389,7 @@ func (b *AMQPBackend) connect(queueName string) (*amqp.Connection, *amqp.Channel
 	return conn, channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), nil
 }
 
-// Opens a connection
+// open new RabbitMQ connection
 func (b *AMQPBackend) open() (*amqp.Connection, *amqp.Channel, error) {
 	var (
 		conn    *amqp.Connection
@@ -412,6 +414,7 @@ func (b *AMQPBackend) open() (*amqp.Connection, *amqp.Channel, error) {
 	return conn, channel, nil
 }
 
+// inspect a specific queue
 func (b *AMQPBackend) inspectQueue(channel *amqp.Channel, queueName string) (*amqp.Queue, error) {
 	var (
 		queueState amqp.Queue
@@ -426,7 +429,7 @@ func (b *AMQPBackend) inspectQueue(channel *amqp.Channel, queueName string) (*am
 	return &queueState, nil
 }
 
-// Closes the connection
+// close connection
 func (b *AMQPBackend) close(channel *amqp.Channel, conn *amqp.Connection) error {
 	if channel != nil {
 		if err := channel.Close(); err != nil {

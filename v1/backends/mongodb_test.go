@@ -211,16 +211,33 @@ func TestGroupCompleted(t *testing.T) {
 		assert.True(t, isCompleted, "Actualy group is completed")
 	}
 
-	groupTasksStates, err := backend.GroupTaskStates(groupUUID, len(taskUUIDs))
+	taskStates, err := backend.GroupTaskStates(groupUUID, len(taskUUIDs))
 	assert.NoError(t, err)
 
-	assert.Equal(t, len(groupTasksStates), len(taskUUIDs), "Wrong len tasksStates")
-	for i := range groupTasksStates {
+	assert.Equal(t, len(taskStates), len(taskUUIDs), "Wrong len tasksStates")
+	for _, taskState := range taskStates {
 		assert.Equal(
 			t,
-			taskResultsState[groupTasksStates[i].TaskUUID],
-			groupTasksStates[i].State,
-			"Wrong state on", groupTasksStates[i].TaskUUID,
+			taskResultsState[taskState.TaskUUID],
+			taskState.State,
+			"Wrong state on", taskState.TaskUUID,
 		)
+	}
+}
+
+func TestGroupStates(t *testing.T) {
+	if os.Getenv("MONGODB_URL") == "" {
+		return
+	}
+
+	backend, err := initTestMongodbBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskStates, err := backend.GroupTaskStates(groupUUID, len(taskUUIDs))
+	assert.NoError(t, err)
+	for i, taskState := range taskStates {
+		assert.Equal(t, taskUUIDs[i], taskState.TaskUUID)
 	}
 }

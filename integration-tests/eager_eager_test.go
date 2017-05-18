@@ -3,6 +3,7 @@ package integrationtests
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -83,7 +84,7 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 		s.True(asyncResult.GetState().IsCompleted())
 		s.True(asyncResult.GetState().IsSuccess())
 
-		results, err := asyncResult.Get()
+		results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 		s.Nil(err)
 
 		if len(results) != 1 {
@@ -114,7 +115,7 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 		s.True(asyncResult.GetState().IsCompleted())
 		s.True(asyncResult.GetState().IsSuccess())
 
-		results, err := asyncResult.Get()
+		results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 		s.Nil(err)
 
 		if len(results) != 1 {

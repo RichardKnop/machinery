@@ -160,7 +160,7 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 	return err
 }
 
-// GetPendingTasks returns a slice of task.Signatures waiting in the queue
+// GetPendingTasks returns a slice of task signatures waiting in the queue
 func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	conn, err := b.open()
 	if err != nil {
@@ -191,7 +191,8 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) 
 	return taskSignatures, nil
 }
 
-// Consumes messages...
+// consume takes delivered messages from the channel and manages a worker pool
+// to process tasks concurrently
 func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProcessor) error {
 	maxWorkers := b.cnf.MaxWorkerInstances
 	pool := make(chan struct{}, maxWorkers)
@@ -241,7 +242,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProces
 	}
 }
 
-// Consume a single message
+// consumeOne processes a single message using TaskProcessor
 func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) error {
 	log.INFO.Printf("Received new message: %s", delivery)
 

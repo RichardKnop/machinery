@@ -126,7 +126,8 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 	return fmt.Errorf("Failed delivery of delivery tag: %v", confirmed.DeliveryTag)
 }
 
-// Consumes messages...
+// consume takes delivered messages from the channel and manages a worker pool
+// to process tasks concurrently
 func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) error {
 	maxWorkers := b.cnf.MaxWorkerInstances
 	pool := make(chan struct{}, maxWorkers)
@@ -176,7 +177,7 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor Task
 	}
 }
 
-// Consume a single message
+// consumeOne processes a single message using TaskProcessor
 func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) error {
 	if len(d.Body) == 0 {
 		d.Nack(false, false)                           // multiple, requeue
@@ -203,7 +204,7 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 	return taskProcessor.Process(signature)
 }
 
-// Delays a task by delayDuration miliseconds, the way it works is a new queue
+// delay a task by delayDuration miliseconds, the way it works is a new queue
 // is created without any consumers, the message is then published to this queue
 // with appropriate ttl expiration headers, after the expiration, it is sent to
 // the proper queue with consumers
@@ -299,7 +300,8 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 	return nil
 }
 
-// Connects to the message queue, opens a channel, declares a queue
+// connect opens a connection to RabbitMQ, declares an exchange, opens a channel,
+// declares and binds the queue and enables publish notifications
 func (b *AMQPBroker) connect() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
 	var (
 		conn    *amqp.Connection
@@ -359,7 +361,7 @@ func (b *AMQPBroker) connect() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-c
 	return conn, channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), nil
 }
 
-// Opens a connection
+// open new RabbitMQ connection
 func (b *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, error) {
 	var (
 		conn    *amqp.Connection
@@ -384,7 +386,7 @@ func (b *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, error) {
 	return conn, channel, nil
 }
 
-// Closes the connection
+// close connection
 func (b *AMQPBroker) close(channel *amqp.Channel, conn *amqp.Connection) error {
 	if channel != nil {
 		if err := channel.Close(); err != nil {

@@ -63,7 +63,7 @@ func NewChainAsyncResult(tasks []*tasks.Signature, backend Interface) *ChainAsyn
 }
 
 // Get returns task results (synchronous blocking call)
-func (asyncResult *AsyncResult) Get() ([]reflect.Value, error) {
+func (asyncResult *AsyncResult) Get(sleepDuration time.Duration) ([]reflect.Value, error) {
 	if asyncResult.backend == nil {
 		return nil, errors.New("Result backend not configured")
 	}
@@ -92,16 +92,18 @@ func (asyncResult *AsyncResult) Get() ([]reflect.Value, error) {
 		if asyncResult.taskState.IsFailure() {
 			return nil, errors.New(asyncResult.taskState.Error)
 		}
+
+		<-time.After(sleepDuration)
 	}
 }
 
 // GetWithTimeout returns task results limited in time (synchronous blocking call)
-func (asyncResult *AsyncResult) GetWithTimeout(timeoutD, sleepD time.Duration) ([]reflect.Value, error) {
+func (asyncResult *AsyncResult) GetWithTimeout(timeoutDuration, sleepDuration time.Duration) ([]reflect.Value, error) {
 	if asyncResult.backend == nil {
 		return nil, errors.New("Result backend not configured")
 	}
 
-	timeout := time.NewTimer(timeoutD)
+	timeout := time.NewTimer(timeoutDuration)
 
 	for {
 		select {
@@ -131,7 +133,8 @@ func (asyncResult *AsyncResult) GetWithTimeout(timeoutD, sleepD time.Duration) (
 			if asyncResult.taskState.IsFailure() {
 				return nil, errors.New(asyncResult.taskState.Error)
 			}
-			time.Sleep(sleepD)
+
+			<-time.After(sleepDuration)
 		}
 	}
 }
@@ -151,7 +154,7 @@ func (asyncResult *AsyncResult) GetState() *tasks.TaskState {
 }
 
 // Get returns results of a chain of tasks (synchronous blocking call)
-func (chainAsyncResult *ChainAsyncResult) Get() ([]reflect.Value, error) {
+func (chainAsyncResult *ChainAsyncResult) Get(sleepDuration time.Duration) ([]reflect.Value, error) {
 	if chainAsyncResult.backend == nil {
 		return nil, errors.New("Result backend not configured")
 	}
@@ -162,7 +165,7 @@ func (chainAsyncResult *ChainAsyncResult) Get() ([]reflect.Value, error) {
 	)
 
 	for _, asyncResult := range chainAsyncResult.asyncResults {
-		results, err = asyncResult.Get()
+		results, err = asyncResult.Get(sleepDuration)
 		if err != nil {
 			return nil, err
 		}
@@ -172,18 +175,18 @@ func (chainAsyncResult *ChainAsyncResult) Get() ([]reflect.Value, error) {
 }
 
 // Get returns result of a chord (synchronous blocking call)
-func (chordAsyncResult *ChordAsyncResult) Get() ([]reflect.Value, error) {
+func (chordAsyncResult *ChordAsyncResult) Get(sleepDuration time.Duration) ([]reflect.Value, error) {
 	if chordAsyncResult.backend == nil {
 		return nil, errors.New("Result backend not configured")
 	}
 
 	var err error
 	for _, asyncResult := range chordAsyncResult.groupAsyncResults {
-		_, err = asyncResult.Get()
+		_, err = asyncResult.Get(sleepDuration)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return chordAsyncResult.chordAsyncResult.Get()
+	return chordAsyncResult.chordAsyncResult.Get(sleepDuration)
 }

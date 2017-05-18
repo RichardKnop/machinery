@@ -1,13 +1,13 @@
 package backends
 
 import (
-	"strings"
 	"time"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
@@ -24,7 +24,7 @@ func NewMongodbBackend(cnf *config.Config) Interface {
 	return &MongodbBackend{cnf: cnf}
 }
 
-// InitGroup - saves UUIDs of all tasks in a group
+// InitGroup creates and saves a group meta data object
 func (b *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	if err := b.connect(); err != nil {
 		return err
@@ -37,7 +37,7 @@ func (b *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return b.groupMetasCollection.Insert(groupMeta)
 }
 
-// GroupCompleted - returns true if all tasks in a group finished
+// GroupCompleted returns true if all tasks in a group finished
 func (b *MongodbBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
@@ -59,7 +59,7 @@ func (b *MongodbBackend) GroupCompleted(groupUUID string, groupTaskCount int) (b
 	return countSuccessTasks == groupTaskCount, nil
 }
 
-// GroupTaskStates - returns states of all tasks in the group
+// GroupTaskStates returns states of all tasks in the group
 func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
@@ -69,7 +69,7 @@ func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) (
 	return b.getStates(groupMeta.TaskUUIDs...)
 }
 
-// TriggerChord - marks chord as triggered in the backend storage to make sure
+// TriggerChord flags chord as triggered in the backend storage to make sure
 // chord is never trigerred multiple times. Returns a boolean flag to indicate
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
@@ -78,11 +78,7 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 		return false, err
 	}
 
-	if err := b.session.FsyncLock(); err != nil {
-		return false, err
-	}
-	defer b.session.FsyncUnlock()
-
+	// Get the group meta data
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
 		return false, err
@@ -93,14 +89,22 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 		return false, nil
 	}
 
-	// Set flag to true
-	groupMeta.ChordTriggered = true
-
-	// Update the group meta
-	update := bson.M{
-		"chord_triggered": true,
+	// If group meta is locked, wait until it's unlocked
+	for groupMeta.Lock {
+		groupMeta, _ = b.getGroupMeta(groupUUID)
+		log.WARNING.Print("Group meta locked, waiting")
+		<-time.After(time.Millisecond * 5)
 	}
-	_, err = b.tasksCollection.UpsertId(groupUUID, bson.M{"$set": update})
+
+	// Acquire lock
+	if err = b.lockGroupMeta(groupUUID); err != nil {
+		return false, err
+	}
+	defer b.unlockGroupMeta(groupUUID)
+
+	// Update the group meta data
+	update := bson.M{"$set": bson.M{"chord_triggered": true}}
+	_, err = b.groupMetasCollection.UpsertId(groupUUID, update)
 	if err != nil {
 		return false, err
 	}
@@ -108,25 +112,25 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 	return true, nil
 }
 
-// SetStatePending - sets task state to PENDING
+// SetStatePending updates task state to PENDING
 func (b *MongodbBackend) SetStatePending(signature *tasks.Signature) error {
 	update := bson.M{"state": tasks.PendingState}
 	return b.updateState(signature, update)
 }
 
-// SetStateReceived - sets task state to RECEIVED
+// SetStateReceived updates task state to RECEIVED
 func (b *MongodbBackend) SetStateReceived(signature *tasks.Signature) error {
 	update := bson.M{"state": tasks.ReceivedState}
 	return b.updateState(signature, update)
 }
 
-// SetStateStarted - sets task state to STARTED
+// SetStateStarted updates task state to STARTED
 func (b *MongodbBackend) SetStateStarted(signature *tasks.Signature) error {
 	update := bson.M{"state": tasks.StartedState}
 	return b.updateState(signature, update)
 }
 
-// SetStateSuccess - sets task state to SUCCESS
+// SetStateSuccess updates task state to SUCCESS
 func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	bsonResults := make([]bson.M, len(results))
 	for i, result := range results {
@@ -142,13 +146,13 @@ func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*
 	return b.updateState(signature, update)
 }
 
-// SetStateFailure - sets task state to FAILURE
+// SetStateFailure updates task state to FAILURE
 func (b *MongodbBackend) SetStateFailure(signature *tasks.Signature, err string) error {
 	update := bson.M{"state": tasks.FailureState, "error": err}
 	return b.updateState(signature, update)
 }
 
-// GetState - returns the latest task state
+// GetState returns the latest task state
 func (b *MongodbBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	if err := b.connect(); err != nil {
 		return nil, err
@@ -161,7 +165,7 @@ func (b *MongodbBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	return state, nil
 }
 
-// PurgeState - deletes stored task state
+// PurgeState deletes stored task state
 func (b *MongodbBackend) PurgeState(taskUUID string) error {
 	if err := b.connect(); err != nil {
 		return err
@@ -170,7 +174,7 @@ func (b *MongodbBackend) PurgeState(taskUUID string) error {
 	return b.tasksCollection.RemoveId(taskUUID)
 }
 
-// PurgeGroupMeta - deletes stored group meta data
+// PurgeGroupMeta deletes stored group meta data
 func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
 	if err := b.connect(); err != nil {
 		return err
@@ -179,20 +183,36 @@ func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
 	return b.groupMetasCollection.RemoveId(groupUUID)
 }
 
-// Fetches GroupMeta from the backend, convenience function to avoid repetition
+// lockGroupMeta acquires lock on groupUUID document
+func (b *MongodbBackend) lockGroupMeta(groupUUID string) error {
+	update := bson.M{"$set": bson.M{"lock": true}}
+	_, err := b.groupMetasCollection.UpsertId(groupUUID, update)
+	return err
+}
+
+// unlockGroupMeta releases lock on groupUUID document
+func (b *MongodbBackend) unlockGroupMeta(groupUUID string) error {
+	update := bson.M{"$set": bson.M{"lock": false}}
+	_, err := b.groupMetasCollection.UpsertId(groupUUID, update)
+	return err
+}
+
+// getGroupMeta retrieves group meta data, convenience function to avoid repetition
 func (b *MongodbBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 	if err := b.connect(); err != nil {
 		return nil, err
 	}
 
+	query := bson.M{"_id": groupUUID}
+
 	groupMeta := new(tasks.GroupMeta)
-	if err := b.groupMetasCollection.FindId(groupUUID).One(groupMeta); err != nil {
+	if err := b.groupMetasCollection.Find(query).One(groupMeta); err != nil {
 		return nil, err
 	}
 	return groupMeta, nil
 }
 
-// getStates Returns multiple task states with MGET
+// getStates returns multiple task states
 func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	if err := b.connect(); err != nil {
 		return nil, err
@@ -205,23 +225,31 @@ func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, err
 	state := new(tasks.TaskState)
 	for iter.Next(state) {
 		states = append(states, state)
+
+		// otherwise we would end up with the last task being every element of the slice
+		state = new(tasks.TaskState)
 	}
 
 	return states, nil
 }
 
+// updateState saves current task state
 func (b *MongodbBackend) updateState(signature *tasks.Signature, update bson.M) error {
 	if err := b.connect(); err != nil {
 		return err
 	}
 
-	_, err := b.tasksCollection.UpsertId(signature.UUID, bson.M{"$set": update})
+	update = bson.M{"$set": update}
+	_, err := b.tasksCollection.UpsertId(signature.UUID, update)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+// connect returns a session if we are already connected to mongo, otherwise
+// (when called for the first time) it will open a new session and ensure
+// all required indexes for our collections exist
 func (b *MongodbBackend) connect() error {
 	if b.session != nil {
 		return nil
@@ -233,29 +261,40 @@ func (b *MongodbBackend) connect() error {
 	}
 	b.session = session
 
-	dbName := "tasks"
-	splitConnection := strings.Split(b.cnf.ResultBackend, "/")
-	if len(splitConnection) == 4 {
-		dbName = splitConnection[3]
-	}
+	b.tasksCollection = b.session.DB("").C("tasks")
+	b.groupMetasCollection = b.session.DB("").C("group_metas")
 
-	b.tasksCollection = session.DB(dbName).C("tasks")
-	b.groupMetasCollection = session.DB(dbName).C("group_metas")
-
-	return createMongoIndexes(b.tasksCollection, b.cnf)
+	return b.createMongoIndexes()
 }
 
-func createMongoIndexes(tasksCollection *mgo.Collection, cnf *config.Config) error {
-	indexState := mgo.Index{
-		Key:         []string{"state"},
-		ExpireAfter: time.Duration(cnf.ResultsExpireIn) * time.Second,
+// createMongoIndexes ensures all indexes are in place
+func (b *MongodbBackend) createMongoIndexes() error {
+	indexes := []mgo.Index{
+		mgo.Index{
+			Key:         []string{"state"},
+			Background:  true, // can be used while index is being built
+			ExpireAfter: time.Duration(b.cnf.ResultsExpireIn) * time.Second,
+		},
+		mgo.Index{
+			Key:         []string{"lock"},
+			Background:  true, // can be used while index is being built
+			ExpireAfter: time.Duration(b.cnf.ResultsExpireIn) * time.Second,
+		},
 	}
 
-	if err := tasksCollection.EnsureIndex(indexState); err != nil {
-		if err = tasksCollection.DropIndex(indexState.Key[0]); err != nil {
+	for _, index := range indexes {
+		// Check if index already exists, if it does, skip
+		if err := b.tasksCollection.EnsureIndex(index); err == nil {
+			log.INFO.Printf("%s index already exist, skipping create step", index.Key[0])
+			continue
+		}
+
+		// Create index (keep in mind EnsureIndex is blocking operation)
+		log.INFO.Printf("Creating %s index", index.Key[0])
+		if err := b.tasksCollection.DropIndex(index.Key[0]); err != nil {
 			return err
 		}
-		if err = tasksCollection.EnsureIndex(indexState); err != nil {
+		if err := b.tasksCollection.EnsureIndex(index); err != nil {
 			return err
 		}
 	}

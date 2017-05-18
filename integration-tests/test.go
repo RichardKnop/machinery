@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	machinery "github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -113,7 +114,7 @@ func _testSendTask(server *machinery.Server, t *testing.T) {
 		t.Error(err)
 	}
 
-	results, err := asyncResult.Get()
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 	if err != nil {
 		t.Error(err)
 	}
@@ -145,7 +146,7 @@ func _testSendGroup(server *machinery.Server, t *testing.T) {
 	actualResults := make([]int64, 3)
 
 	for i, asyncResult := range asyncResults {
-		results, err := asyncResult.Get()
+		results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 		if err != nil {
 			t.Error(err)
 		}
@@ -182,7 +183,7 @@ func _testSendChord(server *machinery.Server, t *testing.T) {
 		t.Error(err)
 	}
 
-	results, err := chordAsyncResult.Get()
+	results, err := chordAsyncResult.Get(time.Duration(time.Millisecond * 5))
 	if err != nil {
 		t.Error(err)
 	}
@@ -209,7 +210,7 @@ func _testSendChain(server *machinery.Server, t *testing.T) {
 		t.Error(err)
 	}
 
-	results, err := chainAsyncResult.Get()
+	results, err := chainAsyncResult.Get(time.Duration(time.Millisecond * 5))
 	if err != nil {
 		t.Error(err)
 	}
@@ -235,7 +236,7 @@ func _testReturnJustError(server *machinery.Server, t *testing.T) {
 		t.Error(err)
 	}
 
-	results, err := asyncResult.Get()
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 
 	if len(results) != 0 {
 		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 0)
@@ -252,7 +253,7 @@ func _testReturnMultipleValues(server *machinery.Server, t *testing.T) {
 		t.Error(err)
 	}
 
-	results, err := asyncResult.Get()
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 	if err != nil {
 		t.Error(err)
 	}

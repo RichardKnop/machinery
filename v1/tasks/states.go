@@ -28,6 +28,7 @@ type GroupMeta struct {
 	GroupUUID      string   `bson:"_id"`
 	TaskUUIDs      []string `bson:"task_uuids"`
 	ChordTriggered bool     `bson:"chord_trigerred"`
+	Lock           bool     `bson:"lock"`
 }
 
 // NewPendingTaskState ...
