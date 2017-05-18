@@ -1,24 +1,12 @@
 ---
 language: go
 
-go:
-  - 1.8
-
 services:
-  - rabbitmq
-  - memcached
-  - redis-server
-  - mongodb
+  - docker
 
 branches:
   only:
     - master
 
-env:
-- AMQP_URL=amqp://guest:guest@rabbitmq:5672/
-- REDIS_URL=redis:6379
-- MEMCACHE_URL=memcached:11211
-- MONGODB_URL=mongo:27017
-
 script:
-  - make test
+  - make ci

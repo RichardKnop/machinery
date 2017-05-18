@@ -1,0 +1,39 @@
+version: "3"
+
+services:
+  sut:
+    container_name: sut
+    image: sut:latest
+    depends_on:
+      - rabbitmq
+      - redis
+      - memcached
+      - mongo
+    links:
+      - rabbitmq
+      - redis
+      - memcached
+      - mongo
+    build:
+      context: .
+      dockerfile: ./Dockerfile.test
+    environment:
+      AMQP_URL: 'amqp://guest:guest@rabbitmq:5672/'
+      REDIS_URL: 'redis:6379'
+      MEMCACHE_URL: 'memcached:11211'
+      MONGODB_URL: 'mongo:27017'
+
+  rabbitmq:
+    image: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+  redis:
+    image: redis
+
+  memcached:
+    image: memcached
+
+  mongo:
+    image: mongo

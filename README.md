@@ -800,7 +800,7 @@ for _, result := range results {
 
 On OS X systems, you can install requirements using [Homebrew](http://brew.sh/):
 
-```
+```sh
 brew install go
 brew install rabbitmq
 brew install redis
@@ -814,33 +814,45 @@ According to [Go 1.5 Vendor experiment](https://docs.google.com/document/d/1Bz5-
 
 To update dependencies during development:
 
-```
+```sh
 make update-deps
 ```
 
 To install dependencies:
 
-```
+```sh
 make install-deps
 ```
 
 ### Testing
 
-To run tests:
+Easiest (and platform agnostic) way to run tests is via `docker-compose`:
 
-```
-$ make test
+```sh
+make ci
 ```
 
-In order to enable integration tests, you will need to export few environment variables:
+This will basically run docker-compose command:
 
+```sh
+docker-compose -f docker-compose.test.yml -p ci up --build -d && docker wait sut
 ```
+
+Alternative approach is to setup a development environment on your machine.
+
+In order to enable integration tests, you will need to install all required services (RabbitMQ, Redis, Memcache, MongoDB) and export these environment variables:
+
+```sh
 export AMQP_URL=amqp://guest:guest@localhost:5672/
 export REDIS_URL=127.0.0.1:6379
 export MEMCACHE_URL=127.0.0.1:11211
-export MONGODB_URL=mongodb://{host}:{port}/{database}
+export MONGODB_URL=127.0.0.1:27017
 ```
 
-I recommend to run the integration tests when making changes to the code. Due to Machinery being composed of several parts (worker, client) which run independently of each other, integration tests are important to verify everything works as expected.
+Then just run:
 
-You need to have RabbitMQ, Redis, Memcache and MongoDB running on localhost in order for integration tests to pass.
+```sh
+make test
+```
+
+If the environment variables are not exported, `make test` will only run unit tests.
