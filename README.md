@@ -38,7 +38,7 @@ So called tasks (or jobs if you like) are executed concurrently either by many w
 
 Add the Machinery library to your $GOPATH/src:
 
-```
+```sh
 go get github.com/RichardKnop/machinery/v1
 ```
 
@@ -46,7 +46,7 @@ First, you will need to define some tasks. Look at sample tasks in `example/task
 
 Second, you will need to launch a worker process:
 
-```
+```sh
 go run example/machinery.go worker
 ```
 
@@ -54,7 +54,7 @@ go run example/machinery.go worker
 
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
-```
+```sh
 go run example/machinery.go send
 ```
 
@@ -528,6 +528,7 @@ type GroupMeta struct {
   GroupUUID      string   `bson:"_id"`
   TaskUUIDs      []string `bson:"task_uuids"`
   ChordTriggered bool     `bson:"chord_trigerred"`
+  Lock           bool     `bson:"lock"`
 }
 ```
 
@@ -556,7 +557,7 @@ asyncResult.GetState().IsFailure()
 You can also do a synchronous blocking call to wait for a task result:
 
 ```go
-results, err := asyncResult.Get()
+results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
 if err != nil {
   // getting result of a task failed
   // do something with the error
@@ -620,7 +621,7 @@ if err != nil {
 
 ```go
 for _, asyncResult := range asyncResults {
-  results, err := asyncResult.Get()
+  results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
   if err != nil {
     // getting result of a task failed
     // do something with the error
@@ -697,7 +698,7 @@ More explicitly:
 `SendChord` returns `ChordAsyncResult` which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the callback:
 
 ```go
-results, err := chordAsyncResult.Get()
+results, err := chordAsyncResult.Get(time.Duration(time.Millisecond * 5))
 if err != nil {
   // getting result of a chord failed
   // do something with the error
@@ -778,7 +779,7 @@ More explicitly:
 `SendChain` returns `ChainAsyncResult` which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:
 
 ```go
-results, err := chainAsyncResult.Get()
+results, err := chainAsyncResult.Get(time.Duration(time.Millisecond * 5))
 if err != nil {
   // getting result of a chain failed
   // do something with the error
