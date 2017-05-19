@@ -8,7 +8,7 @@ import (
 
 func TestAmqpMongodb(t *testing.T) {
 	amqpURL := os.Getenv("AMQP_URL")
-	mongodbURL := os.Getenv("MONGODB_URL2")
+	mongodbURL := os.Getenv("MONGODB_URL")
 	if amqpURL == "" || mongodbURL == "" {
 		return
 	}

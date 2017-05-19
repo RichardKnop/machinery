@@ -8,7 +8,7 @@ import (
 
 func TestRedisMongodb(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
-	mongodbURL := os.Getenv("MONGODB_URL2")
+	mongodbURL := os.Getenv("MONGODB_URL")
 	if redisURL == "" || mongodbURL == "" {
 		return
 	}
