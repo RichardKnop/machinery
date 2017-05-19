@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	machinery "github.com/RichardKnop/machinery/v1"
+	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"

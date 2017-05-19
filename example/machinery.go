@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	machinery "github.com/RichardKnop/machinery/v1"
+	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"

@@ -233,7 +233,7 @@ A Machinery library must be instantiated before use. The way this is done is by 
 ```go
 import (
   "github.com/RichardKnop/machinery/v1/config"
-  machinery "github.com/RichardKnop/machinery/v1"
+  "github.com/RichardKnop/machinery/v1"
 )
 
 var cnf = config.Config{
@@ -578,7 +578,7 @@ Running a single asynchronous task is fine but often you will want to design a w
 ```go
 import (
   "github.com/RichardKnop/machinery/v1/tasks"
-  machinery "github.com/RichardKnop/machinery/v1"
+  "github.com/RichardKnop/machinery/v1"
 )
 
 signature1 := tasks.Signature{
@@ -639,7 +639,7 @@ for _, asyncResult := range asyncResults {
 ```go
 import (
   "github.com/RichardKnop/machinery/v1/tasks"
-  machinery "github.com/RichardKnop/machinery/v1"
+  "github.com/RichardKnop/machinery/v1"
 )
 
 signature1 := tasks.Signature{
@@ -715,7 +715,7 @@ for _, result := range results {
 ```go
 import (
   "github.com/RichardKnop/machinery/v1/tasks"
-  machinery "github.com/RichardKnop/machinery/v1"
+  "github.com/RichardKnop/machinery/v1"
 )
 
 signature1 := tasks.Signature{
