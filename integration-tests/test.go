@@ -20,6 +20,17 @@ func (a ascendingInt64s) Len() int           { return len(a) }
 func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
+func testAll(server *machinery.Server, t *testing.T) {
+	testSendTask(server, t)
+	testSendGroup(server, t)
+	testSendChord(server, t)
+	testSendChain(server, t)
+	testReturnJustError(server, t)
+	testReturnMultipleValues(server, t)
+	testPanic(server, t)
+	testDelay(server, t)
+}
+
 func testSendTask(server *machinery.Server, t *testing.T) {
 	addTask := newAddTask(1, 1)
 
@@ -233,6 +244,43 @@ func testPanic(server *machinery.Server, t *testing.T) {
 	assert.Equal(t, "oops", err.Error())
 }
 
+func testDelay(server *machinery.Server, t *testing.T) {
+	now := time.Now().UTC()
+	eta := now.Add(100 * (time.Millisecond))
+	task := newDelayTask(eta)
+	asyncResult, err := server.SendTask(task)
+	if err != nil {
+		t.Error(err)
+	}
+
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+	}
+
+	tm, ok := results[0].Interface().(int64)
+	if !ok {
+		t.Errorf(
+			"Could not type assert = %v(%v) to int64",
+			results[0].Type().String(),
+			results[0].Interface(),
+		)
+	}
+
+	if tm < eta.UnixNano() {
+		t.Errorf(
+			"result = %v(%v), want >= int64(%d)",
+			results[0].Type().String(),
+			results[0].Interface(),
+			eta.UnixNano(),
+		)
+	}
+}
+
 func setup(cnf *config.Config) *machinery.Server {
 	server, err := machinery.NewServer(cnf)
 	if err != nil {
@@ -271,6 +319,9 @@ func setup(cnf *config.Config) *machinery.Server {
 		},
 		"panic": func() (string, error) {
 			panic(errors.New("oops"))
+		},
+		"delay_test": func() (int64, error) {
+			return time.Now().UTC().UnixNano(), nil
 		},
 	}
 	server.RegisterTasks(tasks)
@@ -341,5 +392,12 @@ func newMultipleReturnTask(arg1, arg2 string, fail bool) *tasks.Signature {
 				Value: fail,
 			},
 		},
+	}
+}
+
+func newDelayTask(eta time.Time) *tasks.Signature {
+	return &tasks.Signature{
+		Name: "delay_test",
+		ETA:  &eta,
 	}
 }

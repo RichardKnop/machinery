@@ -206,6 +206,10 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 // with appropriate ttl expiration headers, after the expiration, it is sent to
 // the proper queue with consumers
 func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
+	if delayMs <= 0 {
+		return errors.New("Cannot delay task by 0ms")
+	}
+
 	var (
 		conn    *amqp.Connection
 		channel *amqp.Channel

@@ -27,12 +27,6 @@ func TestAmqpAmqp(t *testing.T) {
 	})
 	worker := server.NewWorker("test_worker")
 	go worker.Launch()
-	testSendTask(server, t)
-	testSendGroup(server, t)
-	testSendChord(server, t)
-	testSendChain(server, t)
-	testReturnJustError(server, t)
-	testReturnMultipleValues(server, t)
-	testPanic(server, t)
+	testAll(server, t)
 	worker.Quit()
 }
