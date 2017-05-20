@@ -17,6 +17,11 @@ type Broker struct {
 	stopChan            chan int
 }
 
+// New creates new Broker instance
+func New(cnf *config.Config) Broker {
+	return Broker{cnf: cnf, retry: true}
+}
+
 // SetRegisteredTaskNames sets registered task names
 func (b *Broker) SetRegisteredTaskNames(names []string) {
 	b.registeredTaskNames = names
@@ -35,6 +40,25 @@ func (b *Broker) IsTaskRegistered(name string) bool {
 // GetPendingTasks returns a slice of task.Signatures waiting in the queue
 func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return nil, errors.New("Not implemented")
+}
+
+// AdjustRoutingKey makes sure the routing key is correct.
+// If the routing key is an empty string:
+// a) set it to binding key for direct exchange type
+// b) set it to default queue name
+func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
+	if s.RoutingKey != "" {
+		return
+	}
+
+	if b.cnf.AMQP != nil && b.cnf.AMQP.ExchangeType == "direct" {
+		// The routing algorithm behind a direct exchange is simple - a message goes
+		// to the queues whose binding key exactly matches the routing key of the message.
+		s.RoutingKey = b.cnf.AMQP.BindingKey
+		return
+	}
+
+	s.RoutingKey = b.cnf.DefaultQueue
 }
 
 // startConsuming is a common part of StartConsuming method

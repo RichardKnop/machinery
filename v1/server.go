@@ -9,7 +9,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/uuid"
+	"github.com/satori/go.uuid"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -123,7 +123,7 @@ func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResul
 
 	// Auto generate a UUID if not set already
 	if signature.UUID == "" {
-		signature.UUID = fmt.Sprintf("task_%v", uuid.New())
+		signature.UUID = fmt.Sprintf("task_%v", uuid.NewV4())
 	}
 
 	// Set initial task state to PENDING

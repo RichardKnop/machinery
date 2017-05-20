@@ -1,7 +1,10 @@
 package tasks
 
 import (
+	"fmt"
 	"time"
+
+	"github.com/satori/go.uuid"
 )
 
 // Arg represents a single argument passed to invocation fo a task
@@ -29,19 +32,11 @@ type Signature struct {
 	ChordCallback  *Signature
 }
 
-// AdjustRoutingKey makes sure the routing key is correct.
-// If the routing key is an empty string:
-// a) set it to binding key for direct exchange type
-// b) set it to default queue name
-func (s *Signature) AdjustRoutingKey(exchangeType, bindingKey, queueName string) {
-	if s.RoutingKey != "" {
-		return
+// NewSignature creates a new task signature
+func NewSignature(name string, args []Arg) *Signature {
+	return &Signature{
+		UUID: fmt.Sprintf("task_%v", uuid.NewV4()),
+		Name: name,
+		Args: args,
 	}
-
-	if exchangeType == "direct" {
-		s.RoutingKey = bindingKey
-		return
-	}
-
-	s.RoutingKey = queueName
 }

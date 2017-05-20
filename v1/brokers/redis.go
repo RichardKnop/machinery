@@ -32,7 +32,7 @@ type RedisBroker struct {
 
 // NewRedisBroker creates new RedisBroker instance
 func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db int) Interface {
-	b := &RedisBroker{Broker: Broker{cnf: cnf, retry: true}}
+	b := &RedisBroker{Broker: New(cnf)}
 	b.host = host
 	b.db = db
 	b.password = password
@@ -144,6 +144,8 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 	}
 	defer conn.Close()
 
+	b.AdjustRoutingKey(signature)
+
 	// Check the ETA signature field, if it is set and it is in the future,
 	// delay the task
 	if signature.ETA != nil {
@@ -156,7 +158,7 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 		}
 	}
 
-	_, err = conn.Do("RPUSH", b.cnf.DefaultQueue, msg)
+	_, err = conn.Do("RPUSH", signature.RoutingKey, msg)
 	return err
 }
 

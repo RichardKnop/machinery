@@ -126,6 +126,5 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 		if results[0].Kind() == reflect.Int64 {
 			s.Equal(int64(200), results[0].Int())
 		}
-
 	}
 }

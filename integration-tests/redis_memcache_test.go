@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/RichardKnop/machinery/v1/config"
 )
 
 func TestRedisMemcache(t *testing.T) {
@@ -14,14 +16,19 @@ func TestRedisMemcache(t *testing.T) {
 	}
 
 	// Redis broker, Redis result backend
-	server := _setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("memcache://%v", memcacheURL))
+	server := setup(&config.Config{
+		Broker:        fmt.Sprintf("redis://%v", redisURL),
+		DefaultQueue:  "test_queue",
+		ResultBackend: fmt.Sprintf("memcache://%v", memcacheURL),
+	})
 	worker := server.NewWorker("test_worker")
 	go worker.Launch()
-	_testSendTask(server, t)
-	_testSendGroup(server, t)
-	_testSendChord(server, t)
-	_testSendChain(server, t)
-	_testReturnJustError(server, t)
-	_testReturnMultipleValues(server, t)
+	testSendTask(server, t)
+	testSendGroup(server, t)
+	testSendChord(server, t)
+	testSendChain(server, t)
+	testReturnJustError(server, t)
+	testReturnMultipleValues(server, t)
+	testPanic(server, t)
 	worker.Quit()
 }

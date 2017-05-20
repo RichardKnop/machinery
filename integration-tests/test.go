@@ -20,96 +20,76 @@ func (a ascendingInt64s) Len() int           { return len(a) }
 func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
-func _getSignatures() []*tasks.Signature {
-	task0 := &tasks.Signature{
+func newAddTask(a, b int) *tasks.Signature {
+	return &tasks.Signature{
 		Name: "add",
 		Args: []tasks.Arg{
 			{
 				Type:  "int64",
-				Value: 1,
+				Value: a,
 			},
 			{
 				Type:  "int64",
-				Value: 1,
+				Value: b,
 			},
 		},
 	}
+}
 
-	task1 := &tasks.Signature{
-		Name: "add",
-		Args: []tasks.Arg{
-			{
-				Type:  "int64",
-				Value: 2,
-			},
-			{
-				Type:  "int64",
-				Value: 2,
-			},
-		},
+func newMultipleTask(nums ...int) *tasks.Signature {
+	args := make([]tasks.Arg, len(nums))
+	for i, n := range nums {
+		args[i] = tasks.Arg{
+			Type:  "int64",
+			Value: n,
+		}
 	}
-
-	task2 := &tasks.Signature{
-		Name: "add",
-		Args: []tasks.Arg{
-			{
-				Type:  "int64",
-				Value: 5,
-			},
-			{
-				Type:  "int64",
-				Value: 6,
-			},
-		},
-	}
-
-	task3 := &tasks.Signature{
+	return &tasks.Signature{
 		Name: "multiply",
-		Args: []tasks.Arg{
-			{
-				Type:  "int64",
-				Value: 4,
-			},
-		},
+		Args: args,
 	}
+}
 
-	task4 := &tasks.Signature{
-		Name: "multiply",
-	}
-
-	task5 := &tasks.Signature{
+func newErrorTask(msg string, fail bool) *tasks.Signature {
+	return &tasks.Signature{
 		Name: "return_just_error",
 		Args: []tasks.Arg{
 			{
 				Type:  "string",
-				Value: "Test error",
+				Value: msg,
+			},
+			{
+				Type:  "bool",
+				Value: fail,
 			},
 		},
 	}
+}
 
-	task6 := &tasks.Signature{
+func newMultipleReturnTask(arg1, arg2 string, fail bool) *tasks.Signature {
+	return &tasks.Signature{
 		Name: "return_multiple_values",
 		Args: []tasks.Arg{
 			{
 				Type:  "string",
-				Value: "foo",
+				Value: arg1,
 			},
 			{
 				Type:  "string",
-				Value: "bar",
+				Value: arg2,
+			},
+			{
+				Type:  "bool",
+				Value: fail,
 			},
 		},
 	}
-
-	return []*tasks.Signature{
-		task0, task1, task2, task3, task4, task5, task6,
-	}
 }
 
-func _testSendTask(server *machinery.Server, t *testing.T) {
-	signatures := _getSignatures()
+func testSendTask(server *machinery.Server, t *testing.T) {
+	addTask := newAddTask(1, 1)
 
-	asyncResult, err := server.SendTask(signatures[0])
+	asyncResult, err := server.SendTask(addTask)
 	if err != nil {
 		t.Error(err)
 	}
@@ -132,10 +112,10 @@ func _testSendTask(server *machinery.Server, t *testing.T) {
 	}
 }
 
-func _testSendGroup(server *machinery.Server, t *testing.T) {
-	signatures := _getSignatures()
+func testSendGroup(server *machinery.Server, t *testing.T) {
+	t1, t2, t3 := newAddTask(1, 1), newAddTask(2, 2), newAddTask(5, 6)
 
-	group := tasks.NewGroup(signatures[0], signatures[1], signatures[2])
+	group := tasks.NewGroup(t1, t2, t3)
 	asyncResults, err := server.SendGroup(group)
 	if err != nil {
 		t.Error(err)
@@ -173,38 +153,10 @@ func _testSendGroup(server *machinery.Server, t *testing.T) {
 	}
 }
 
-func _testSendChord(server *machinery.Server, t *testing.T) {
-	signatures := _getSignatures()
+func testSendChain(server *machinery.Server, t *testing.T) {
+	t1, t2, t3 := newAddTask(2, 2), newAddTask(5, 6), newMultipleTask(4)
 
-	group := tasks.NewGroup(signatures[0], signatures[1], signatures[2])
-	chord := tasks.NewChord(group, signatures[4])
-	chordAsyncResult, err := server.SendChord(chord)
-	if err != nil {
-		t.Error(err)
-	}
-
-	results, err := chordAsyncResult.Get(time.Duration(time.Millisecond * 5))
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(results) != 1 {
-		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
-	}
-
-	if results[0].Interface() != int64(88) {
-		t.Errorf(
-			"result = %v(%v), want int64(88)",
-			results[0].Type().String(),
-			results[0].Interface(),
-		)
-	}
-}
-
-func _testSendChain(server *machinery.Server, t *testing.T) {
-	signatures := _getSignatures()
-
-	chain := tasks.NewChain(signatures[1], signatures[2], signatures[3])
+	chain := tasks.NewChain(t1, t2, t3)
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		t.Error(err)
@@ -228,27 +180,67 @@ func _testSendChain(server *machinery.Server, t *testing.T) {
 	}
 }
 
-func _testReturnJustError(server *machinery.Server, t *testing.T) {
-	signatures := _getSignatures()
+func testSendChord(server *machinery.Server, t *testing.T) {
+	t1, t2, t3, t4 := newAddTask(1, 1), newAddTask(2, 2), newAddTask(5, 6), newMultipleTask()
 
-	asyncResult, err := server.SendTask(signatures[5])
+	group := tasks.NewGroup(t1, t2, t3)
+	chord := tasks.NewChord(group, t4)
+	chordAsyncResult, err := server.SendChord(chord)
+	if err != nil {
+		t.Error(err)
+	}
+
+	results, err := chordAsyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+	}
+
+	if results[0].Interface() != int64(88) {
+		t.Errorf(
+			"result = %v(%v), want int64(88)",
+			results[0].Type().String(),
+			results[0].Interface(),
+		)
+	}
+}
+
+func testReturnJustError(server *machinery.Server, t *testing.T) {
+	// Fails, returns error as the only value
+	task := newErrorTask("Test error", true)
+	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}
 
 	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
-
 	if len(results) != 0 {
 		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 0)
 	}
-
 	assert.Equal(t, "Test error", err.Error())
+
+	// Successful, returns nil as the only value
+	task = newErrorTask("", false)
+	asyncResult, err = server.SendTask(task)
+	if err != nil {
+		t.Error(err)
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if len(results) != 0 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 0)
+	}
+	assert.NoError(t, err)
 }
 
-func _testReturnMultipleValues(server *machinery.Server, t *testing.T) {
-	signatures := _getSignatures()
+func testReturnMultipleValues(server *machinery.Server, t *testing.T) {
+	// Successful task with multiple return values
+	task := newMultipleReturnTask("foo", "bar", false)
 
-	asyncResult, err := server.SendTask(signatures[6])
+	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}
@@ -277,22 +269,38 @@ func _testReturnMultipleValues(server *machinery.Server, t *testing.T) {
 			results[1].Interface(),
 		)
 	}
-}
 
-func _setup(brokerURL, backend string) *machinery.Server {
-	cnf := config.Config{
-		Broker:        brokerURL,
-		DefaultQueue:  "test_queue",
-		ResultBackend: backend,
-		AMQP: &config.AMQPConfig{
-			Exchange:      "test_exchange",
-			ExchangeType:  "direct",
-			BindingKey:    "test_task",
-			PrefetchCount: 1,
-		},
+	// Failed task with multiple return values
+	task = newMultipleReturnTask("", "", true)
+
+	asyncResult, err = server.SendTask(task)
+	if err != nil {
+		t.Error(err)
 	}
 
-	server, err := machinery.NewServer(&cnf)
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if len(results) != 0 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 0)
+	}
+	assert.Error(t, err)
+}
+
+func testPanic(server *machinery.Server, t *testing.T) {
+	task := &tasks.Signature{Name: "panic"}
+	asyncResult, err := server.SendTask(task)
+	if err != nil {
+		t.Error(err)
+	}
+
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if len(results) != 0 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 0)
+	}
+	assert.Equal(t, "oops", err.Error())
+}
+
+func setup(cnf *config.Config) *machinery.Server {
+	server, err := machinery.NewServer(cnf)
 	if err != nil {
 		log.Fatal(err, "Could not initialize server")
 	}
@@ -312,11 +320,23 @@ func _setup(brokerURL, backend string) *machinery.Server {
 			}
 			return sum, nil
 		},
-		"return_just_error": func(arg string) error {
-			return errors.New(arg)
+		"return_just_error": func(msg string, fail bool) (err error) {
+			if fail {
+				err = errors.New(msg)
+			}
+			return err
 		},
-		"return_multiple_values": func(arg1, arg2 string) (string, string, error) {
-			return arg1, arg2, nil
+		"return_multiple_values": func(arg1, arg2 string, fail bool) (r1 string, r2 string, err error) {
+			if fail {
+				err = errors.New("some error")
+			} else {
+				r1 = arg1
+				r2 = arg2
+			}
+			return r1, r2, err
+		},
+		"panic": func() (string, error) {
+			panic(errors.New("oops"))
 		},
 	}
 	server.RegisterTasks(tasks)

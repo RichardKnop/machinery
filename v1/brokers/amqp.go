@@ -21,7 +21,7 @@ type AMQPBroker struct {
 
 // NewAMQPBroker creates new AMQPBroker instance
 func NewAMQPBroker(cnf *config.Config) Interface {
-	return &AMQPBroker{Broker{cnf: cnf, retry: true}}
+	return &AMQPBroker{Broker: New(cnf)}
 }
 
 // StartConsuming enters a loop and waits for incoming messages
@@ -74,6 +74,8 @@ func (b *AMQPBroker) StopConsuming() {
 
 // Publish places a new message on the default queue
 func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
+	b.AdjustRoutingKey(signature)
+
 	// Check the ETA signature field, if it is set and it is in the future,
 	// delay the task
 	if signature.ETA != nil {
@@ -97,11 +99,6 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 	}
 	defer b.close(channel, conn)
 
-	signature.AdjustRoutingKey(
-		b.cnf.AMQP.ExchangeType,
-		b.cnf.AMQP.BindingKey,
-		b.cnf.DefaultQueue,
-	)
 	if err := channel.Publish(
 		b.cnf.AMQP.Exchange,  // exchange
 		signature.RoutingKey, // routing key

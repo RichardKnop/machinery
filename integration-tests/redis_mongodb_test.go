@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/RichardKnop/machinery/v1/config"
 )
 
 func TestRedisMongodb(t *testing.T) {
@@ -14,14 +16,19 @@ func TestRedisMongodb(t *testing.T) {
 	}
 
 	// Redis broker, MongoDB result backend
-	server := _setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("mongodb://%v", mongodbURL))
+	server := setup(&config.Config{
+		Broker:        fmt.Sprintf("redis://%v", redisURL),
+		DefaultQueue:  "test_queue",
+		ResultBackend: fmt.Sprintf("mongodb://%v", mongodbURL),
+	})
 	worker := server.NewWorker("test_worker")
 	go worker.Launch()
-	_testSendTask(server, t)
-	_testSendGroup(server, t)
-	_testSendChord(server, t)
-	_testSendChain(server, t)
-	_testReturnJustError(server, t)
-	_testReturnMultipleValues(server, t)
+	testSendTask(server, t)
+	testSendGroup(server, t)
+	testSendChord(server, t)
+	testSendChain(server, t)
+	testReturnJustError(server, t)
+	testReturnMultipleValues(server, t)
+	testPanic(server, t)
 	worker.Quit()
 }

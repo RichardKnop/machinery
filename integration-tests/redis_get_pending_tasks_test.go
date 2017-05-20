@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/RichardKnop/machinery/v1/config"
 )
 
 func TestRedisGetPendingTasks(t *testing.T) {
@@ -13,7 +15,11 @@ func TestRedisGetPendingTasks(t *testing.T) {
 	}
 
 	// Redis broker, Redis result backend
-	server := _setup(fmt.Sprintf("redis://%v", redisURL), fmt.Sprintf("redis://%v", redisURL))
+	server := setup(&config.Config{
+		Broker:        fmt.Sprintf("redis://%v", redisURL),
+		DefaultQueue:  "test_queue",
+		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+	})
 	pendingMessages, err := server.GetBroker().GetPendingTasks(server.GetConfig().DefaultQueue)
 	if err != nil {
 		t.Error(err)
