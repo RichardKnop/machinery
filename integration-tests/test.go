@@ -20,72 +20,6 @@ func (a ascendingInt64s) Len() int           { return len(a) }
 func (a ascendingInt64s) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ascendingInt64s) Less(i, j int) bool { return a[i] < a[j] }
 
-func newAddTask(a, b int) *tasks.Signature {
-	return &tasks.Signature{
-		Name: "add",
-		Args: []tasks.Arg{
-			{
-				Type:  "int64",
-				Value: a,
-			},
-			{
-				Type:  "int64",
-				Value: b,
-			},
-		},
-	}
-}
-
-func newMultipleTask(nums ...int) *tasks.Signature {
-	args := make([]tasks.Arg, len(nums))
-	for i, n := range nums {
-		args[i] = tasks.Arg{
-			Type:  "int64",
-			Value: n,
-		}
-	}
-	return &tasks.Signature{
-		Name: "multiply",
-		Args: args,
-	}
-}
-
-func newErrorTask(msg string, fail bool) *tasks.Signature {
-	return &tasks.Signature{
-		Name: "return_just_error",
-		Args: []tasks.Arg{
-			{
-				Type:  "string",
-				Value: msg,
-			},
-			{
-				Type:  "bool",
-				Value: fail,
-			},
-		},
-	}
-}
-
-func newMultipleReturnTask(arg1, arg2 string, fail bool) *tasks.Signature {
-	return &tasks.Signature{
-		Name: "return_multiple_values",
-		Args: []tasks.Arg{
-			{
-				Type:  "string",
-				Value: arg1,
-			},
-			{
-				Type:  "string",
-				Value: arg2,
-			},
-			{
-				Type:  "bool",
-				Value: fail,
-			},
-		},
-	}
-}
-
 func testSendTask(server *machinery.Server, t *testing.T) {
 	addTask := newAddTask(1, 1)
 
@@ -342,4 +276,70 @@ func setup(cnf *config.Config) *machinery.Server {
 	server.RegisterTasks(tasks)
 
 	return server
+}
+
+func newAddTask(a, b int) *tasks.Signature {
+	return &tasks.Signature{
+		Name: "add",
+		Args: []tasks.Arg{
+			{
+				Type:  "int64",
+				Value: a,
+			},
+			{
+				Type:  "int64",
+				Value: b,
+			},
+		},
+	}
+}
+
+func newMultipleTask(nums ...int) *tasks.Signature {
+	args := make([]tasks.Arg, len(nums))
+	for i, n := range nums {
+		args[i] = tasks.Arg{
+			Type:  "int64",
+			Value: n,
+		}
+	}
+	return &tasks.Signature{
+		Name: "multiply",
+		Args: args,
+	}
+}
+
+func newErrorTask(msg string, fail bool) *tasks.Signature {
+	return &tasks.Signature{
+		Name: "return_just_error",
+		Args: []tasks.Arg{
+			{
+				Type:  "string",
+				Value: msg,
+			},
+			{
+				Type:  "bool",
+				Value: fail,
+			},
+		},
+	}
+}
+
+func newMultipleReturnTask(arg1, arg2 string, fail bool) *tasks.Signature {
+	return &tasks.Signature{
+		Name: "return_multiple_values",
+		Args: []tasks.Arg{
+			{
+				Type:  "string",
+				Value: arg1,
+			},
+			{
+				Type:  "string",
+				Value: arg2,
+			},
+			{
+				Type:  "bool",
+				Value: fail,
+			},
+		},
+	}
 }
