@@ -10,19 +10,21 @@ import (
 
 func TestRegisterTasks(t *testing.T) {
 	server := getTestServer(t)
-	server.RegisterTasks(map[string]interface{}{
-		"test_task": func() {},
+	err := server.RegisterTasks(map[string]interface{}{
+		"test_task": func() error { return nil },
 	})
+	assert.NoError(t, err)
 
-	_, err := server.GetRegisteredTask("test_task")
+	_, err = server.GetRegisteredTask("test_task")
 	assert.NoError(t, err, "test_task is not registered but it should be")
 }
 
 func TestRegisterTask(t *testing.T) {
 	server := getTestServer(t)
-	server.RegisterTask("test_task", func() {})
+	err := server.RegisterTask("test_task", func() error { return nil })
+	assert.NoError(t, err)
 
-	_, err := server.GetRegisteredTask("test_task")
+	_, err = server.GetRegisteredTask("test_task")
 	assert.NoError(t, err, "test_task is not registered but it should be")
 }
 
@@ -34,11 +36,14 @@ func TestGetRegisteredTask(t *testing.T) {
 
 func TestGetRegisteredTaskNames(t *testing.T) {
 	server := getTestServer(t)
+
 	taskName := "test_task"
-	server.RegisterTask(taskName, func() {})
-	names := server.GetRegisteredTaskNames()
-	assert.Equal(t, 1, len(names))
-	assert.Equal(t, taskName, names[0])
+	err := server.RegisterTask(taskName, func() error { return nil })
+	assert.NoError(t, err)
+
+	taskNames := server.GetRegisteredTaskNames()
+	assert.Equal(t, 1, len(taskNames))
+	assert.Equal(t, taskName, taskNames[0])
 }
 
 func getTestServer(t *testing.T) *machinery.Server {

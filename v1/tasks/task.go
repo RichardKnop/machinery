@@ -11,14 +11,8 @@ import (
 	"github.com/RichardKnop/machinery/v1/log"
 )
 
-var (
-	// ErrTaskPanicked ...
-	ErrTaskPanicked = errors.New("Invoking task caused a panic")
-	// ErrTaskReturnedNoValues ...
-	ErrTaskReturnedNoValues = errors.New("Task returned no values. At least an error return value is required")
-	// ErrLastReturnValueMustBeError ..
-	ErrLastReturnValueMustBeError = errors.New("Last return value of a task must be error")
-)
+// ErrTaskPanicked ...
+var ErrTaskPanicked = errors.New("Invoking task caused a panic")
 
 // Task wraps a signature and methods used to reflect task arguments and
 // return values after invoking the task
@@ -31,7 +25,6 @@ type Task struct {
 // New tries to use reflection to convert the function and arguments
 // into a reflect.Value and prepare it for invocation
 func New(taskFunc interface{}, args []Arg) (*Task, error) {
-
 	task := &Task{
 		TaskFunc: reflect.ValueOf(taskFunc),
 	}
@@ -85,15 +78,17 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 	// Invoke the task
 	results := t.TaskFunc.Call(args)
 
-	// Task must return at least a single error argument
+	// Task must return at least a value
 	if len(results) == 0 {
-		return nil, ErrTaskReturnedNoValues
+		return nil, ErrTaskReturnsNoValue
 	}
 
+	// Last returned value
 	lastResult := results[len(results)-1]
 
-	// If an error was returned by the task func, propagate it
-	// to the caller via err.
+	// If the last returned value is not nil, it has to be of error type, if that
+	// is not the case, return error message, otherwise propagate the task error
+	// to the caller
 	if !lastResult.IsNil() {
 		errorInterface := reflect.TypeOf((*error)(nil)).Elem()
 		if !lastResult.Type().Implements(errorInterface) {

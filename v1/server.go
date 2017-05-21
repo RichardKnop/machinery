@@ -88,15 +88,25 @@ func (server *Server) SetConfig(cnf *config.Config) {
 }
 
 // RegisterTasks registers all tasks at once
-func (server *Server) RegisterTasks(tasks map[string]interface{}) {
-	server.registeredTasks = tasks
+func (server *Server) RegisterTasks(namedTaskFuncs map[string]interface{}) error {
+	for _, task := range namedTaskFuncs {
+		if err := tasks.ValidateTask(task); err != nil {
+			return err
+		}
+	}
+	server.registeredTasks = namedTaskFuncs
 	server.broker.SetRegisteredTaskNames(server.GetRegisteredTaskNames())
+	return nil
 }
 
 // RegisterTask registers a single task
-func (server *Server) RegisterTask(name string, task interface{}) {
-	server.registeredTasks[name] = task
+func (server *Server) RegisterTask(name string, taskFunc interface{}) error {
+	if err := tasks.ValidateTask(taskFunc); err != nil {
+		return err
+	}
+	server.registeredTasks[name] = taskFunc
 	server.broker.SetRegisteredTaskNames(server.GetRegisteredTaskNames())
+	return nil
 }
 
 // IsTaskRegistered returns true if the task name is registered with this broker
@@ -107,11 +117,11 @@ func (server *Server) IsTaskRegistered(name string) bool {
 
 // GetRegisteredTask returns registered task by name
 func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
-	task, ok := server.registeredTasks[name]
+	taskFunc, ok := server.registeredTasks[name]
 	if !ok {
 		return nil, fmt.Errorf("Task not registered: %s", name)
 	}
-	return task, nil
+	return taskFunc, nil
 }
 
 // SendTask publishes a task to the default queue
@@ -214,9 +224,11 @@ func (server *Server) SendChord(chord *tasks.Chord) (*backends.ChordAsyncResult,
 
 // GetRegisteredTaskNames returns slice of registered task names
 func (server *Server) GetRegisteredTaskNames() []string {
-	var names []string
+	taskNames := make([]string, len(server.registeredTasks))
+	var i = 0
 	for name := range server.registeredTasks {
-		names = append(names, name)
+		taskNames[i] = name
+		i++
 	}
-	return names
+	return taskNames
 }

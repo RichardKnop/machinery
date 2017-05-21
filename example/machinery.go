@@ -146,9 +146,8 @@ func startServer() (*machinery.Server, error) {
 		"multiply":   exampletasks.Multiply,
 		"panic_task": exampletasks.PanicTask,
 	}
-	server.RegisterTasks(tasks)
 
-	return server, nil
+	return server, server.RegisterTasks(tasks)
 }
 
 func worker() error {
