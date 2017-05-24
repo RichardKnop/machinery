@@ -15,7 +15,7 @@ fmt:
 	bash -c 'git ls-files "**.go" | grep -v ^vendor/ | xargs -n1 gofmt -e -s -w'
 
 ci:
-	bash -c 'docker-compose -f docker-compose.test.yml -p ci up --build -d && docker wait sut'
+	bash -c '(docker-compose -f docker-compose.test.yml -p machinery_ci up --build -d) && (docker logs -f machinery_sut &) && (docker wait machinery_sut)'
 
 test:
 	bash -c 'go list ./... | grep -v vendor | grep -v example | xargs -n1 go test -timeout=30s'

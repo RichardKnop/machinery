@@ -2,8 +2,8 @@ version: "2"
 
 services:
   sut:
-    container_name: sut
-    image: sut:latest
+    container_name: machinery_sut
+    image: machinery_sut:latest
     depends_on:
       - rabbitmq
       - redis
