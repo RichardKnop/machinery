@@ -24,16 +24,20 @@ services:
       MONGODB_URL: 'mongo:27017'
 
   rabbitmq:
+    container_name: machinery_sut_rabbitmq
     image: rabbitmq
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
 
   redis:
+    container_name: machinery_sut_redis
     image: redis
 
   memcached:
+    container_name: machinery_sut_memcached
     image: memcached
 
   mongo:
+    container_name: machinery_sut_mongo
     image: mongo
