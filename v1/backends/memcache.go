@@ -151,6 +151,12 @@ func (b *MemcacheBackend) SetStateFailure(signature *tasks.Signature, err string
 	return b.updateState(taskState)
 }
 
+// SetStateRetry updates task state to RETRY
+func (b *MemcacheBackend) SetStateRetry(signature *tasks.Signature) error {
+	state := tasks.NewRetryTaskState(signature)
+	return b.updateState(state)
+}
+
 // GetState returns the latest task state
 func (b *MemcacheBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	item, err := b.getClient().Get(taskUUID)

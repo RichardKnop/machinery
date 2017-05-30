@@ -237,6 +237,10 @@ func (worker *Worker) finalizeError(signature *tasks.Signature, err error) error
 		worker.server.SendTask(errorTask)
 	}
 
+	if signature.RetryCount > 0 {
+		signature.RetryCount--
+	}
+
 	return nil
 }
 

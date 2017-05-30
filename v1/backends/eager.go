@@ -113,6 +113,12 @@ func (b *EagerBackend) SetStateFailure(signature *tasks.Signature, err string) e
 	return b.updateState(state)
 }
 
+// SetStateRetry updates task state to RETRY
+func (b *EagerBackend) SetStateRetry(signature *tasks.Signature) error {
+	state := tasks.NewRetryTaskState(signature)
+	return b.updateState(state)
+}
+
 // GetState returns the latest task state
 func (b *EagerBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	tasktStateBytes, ok := b.tasks[taskUUID]

@@ -174,6 +174,12 @@ func (b *AMQPBackend) SetStateFailure(signature *tasks.Signature, err string) er
 	return b.markTaskCompleted(signature, taskState)
 }
 
+// SetStateRetry updates task state to RETRY
+func (b *AMQPBackend) SetStateRetry(signature *tasks.Signature) error {
+	state := tasks.NewRetryTaskState(signature)
+	return b.updateState(state)
+}
+
 // GetState returns the latest task state. It will only return the status once
 // as the message will get consumed and removed from the queue.
 func (b *AMQPBackend) GetState(taskUUID string) (*tasks.TaskState, error) {

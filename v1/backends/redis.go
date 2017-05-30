@@ -161,6 +161,12 @@ func (b *RedisBackend) SetStateFailure(signature *tasks.Signature, err string) e
 	return b.updateState(taskState)
 }
 
+// SetStateRetry updates task state to RETRY
+func (b *RedisBackend) SetStateRetry(signature *tasks.Signature) error {
+	state := tasks.NewRetryTaskState(signature)
+	return b.updateState(state)
+}
+
 // GetState returns the latest task state
 func (b *RedisBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	conn := b.open()

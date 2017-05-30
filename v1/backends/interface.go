@@ -17,6 +17,7 @@ type Interface interface {
 	SetStateStarted(signature *tasks.Signature) error
 	SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error
 	SetStateFailure(signature *tasks.Signature, err string) error
+	SetStateRetry(signature *tasks.Signature) error
 	GetState(taskUUID string) (*tasks.TaskState, error)
 	// Purging stored stored tasks states and group meta data
 	PurgeState(taskUUID string) error

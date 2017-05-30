@@ -152,6 +152,12 @@ func (b *MongodbBackend) SetStateFailure(signature *tasks.Signature, err string)
 	return b.updateState(signature, update)
 }
 
+// SetStateRetry updates task state to RETRY
+func (b *MongodbBackend) SetStateRetry(signature *tasks.Signature) error {
+	update := bson.M{"state": tasks.RetryState}
+	return b.updateState(signature, update)
+}
+
 // GetState returns the latest task state
 func (b *MongodbBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	if err := b.connect(); err != nil {

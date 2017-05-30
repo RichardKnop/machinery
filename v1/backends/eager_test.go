@@ -258,6 +258,19 @@ func (s *EagerBackendTestSuite) TestSetStateFailure() {
 	}
 }
 
+func (s *EagerBackendTestSuite) TestSetStateRetry() {
+	// task6
+	{
+		t := s.st[5]
+		s.backend.SetStateRetry(t)
+		st, err := s.backend.GetState(t.UUID)
+		s.Nil(err)
+		if st != nil {
+			s.Equal(tasks.RetryState, st.State)
+		}
+	}
+}
+
 func (s *EagerBackendTestSuite) TestGetState() {
 	// get something not existed -- empty string
 	st, err := s.backend.GetState("")
