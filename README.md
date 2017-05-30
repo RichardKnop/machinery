@@ -24,6 +24,7 @@ So called tasks (or jobs if you like) are executed concurrently either by many w
   * [Supported Types](#supported-types)
   * [Sending Tasks](#sending-tasks)
   * [Delayed Tasks](#delayed-tasks)
+  * [Retry Tasks](#retry-tasks)
   * [Get Pending Tasks](#get-pending-tasks)
   * [Keeping Results](#keeping-results)
 * [Workflows](#workflows)
@@ -481,12 +482,15 @@ You can delay a task by setting the `ETA` timestamp field on the task signature.
 // Delay the task by 5 seconds
 eta := time.Now().UTC().Add(time.Second * 5)
 signature.ETA = &eta
+```
 
-asyncResult, err := server.SendTask(signature)
-if err != nil {
-  // failed to send the task
-  // do something with the error
-}
+### Retry Tasks
+
+You can set a number of retry attempts before declaring task as failed. Fibonacci sequence will be used to space out retry requests over time.
+
+```go
+// If the task fails, retry it up to 3 times
+signature.RetryCount = 3
 ```
 
 ### Get Pending Tasks
