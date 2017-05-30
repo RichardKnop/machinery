@@ -130,6 +130,12 @@ func (b *MongodbBackend) SetStateStarted(signature *tasks.Signature) error {
 	return b.updateState(signature, update)
 }
 
+// SetStateRetry updates task state to RETRY
+func (b *MongodbBackend) SetStateRetry(signature *tasks.Signature) error {
+	update := bson.M{"state": tasks.RetryState}
+	return b.updateState(signature, update)
+}
+
 // SetStateSuccess updates task state to SUCCESS
 func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	bsonResults := make([]bson.M, len(results))

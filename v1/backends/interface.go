@@ -15,6 +15,7 @@ type Interface interface {
 	SetStatePending(signature *tasks.Signature) error
 	SetStateReceived(signature *tasks.Signature) error
 	SetStateStarted(signature *tasks.Signature) error
+	SetStateRetry(signature *tasks.Signature) error
 	SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error
 	SetStateFailure(signature *tasks.Signature, err string) error
 	GetState(taskUUID string) (*tasks.TaskState, error)

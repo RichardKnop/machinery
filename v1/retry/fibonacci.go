@@ -8,3 +8,13 @@ func Fibonacci() func() int {
 		return a
 	}
 }
+
+// FibonacciNext returns next number in Fibonacci sequence greater than start
+func FibonacciNext(start int) int {
+	fib := Fibonacci()
+	num := fib()
+	for num <= start {
+		num = fib()
+	}
+	return num
+}

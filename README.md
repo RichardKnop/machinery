@@ -353,6 +353,8 @@ Simply put, when a worker receives a message like this:
     }
   ],
   "Immutable": false,
+  "RetryCount": 0,
+  "RetryTimeout": 0,
   "OnSuccess": null,
   "OnError": null,
   "ChordCallback": null
@@ -388,6 +390,8 @@ type Signature struct {
   Args           []Arg
   Headers        Headers
   Immutable      bool
+  RetryCount     int
+  RetryTimeout   int
   OnSuccess      []*Signature
   OnError        []*Signature
   ChordCallback  *Signature
@@ -409,6 +413,10 @@ type Signature struct {
 `Headers` is a list of headers that will be used when publishing the task to AMQP queue.
 
 `Immutable` is a flag which defines whether a result of the executed task can be modified or not. This is important with `OnSuccess` callbacks. Immutable task will not pass its result to its success callbacks while a mutable task will prepend its result to args sent to callback tasks. Long story short, set Immutable to false if you want to pass result of the first task in a chain to the second task.
+
+`RetryCount` specifies how many times a failed task should be retried (defaults to 0). Retry attempts will be spaced out in time, after each failure another attempt will be scheduled further to the future.
+
+`RetryTimeout` specifies how long to wait before resending task to the queue for retry attempt. Default behaviour is to use fibonacci sequence to increase the timeout after each failed retry attempt.
 
 `OnSuccess` defines tasks which will be called after the task has executed successfully. It is a slice of task signature structs.
 

@@ -135,12 +135,12 @@ func (b *RedisBroker) StopConsuming() {
 func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 	msg, err := json.Marshal(signature)
 	if err != nil {
-		return fmt.Errorf("JSON Encode Message: %v", err)
+		return fmt.Errorf("JSON marshal error: %v", err)
 	}
 
 	conn, err := b.open()
 	if err != nil {
-		return fmt.Errorf("Dial: %s", err)
+		return fmt.Errorf("Dial error: %s", err)
 	}
 	defer conn.Close()
 
@@ -166,7 +166,7 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	conn, err := b.open()
 	if err != nil {
-		return nil, fmt.Errorf("Dial: %s", err)
+		return nil, fmt.Errorf("Dial error: %s", err)
 	}
 	defer conn.Close()
 

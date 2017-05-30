@@ -149,6 +149,12 @@ func (b *RedisBackend) SetStateStarted(signature *tasks.Signature) error {
 	return b.updateState(taskState)
 }
 
+// SetStateRetry updates task state to RETRY
+func (b *RedisBackend) SetStateRetry(signature *tasks.Signature) error {
+	state := tasks.NewRetryTaskState(signature)
+	return b.updateState(state)
+}
+
 // SetStateSuccess updates task state to SUCCESS
 func (b *RedisBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	taskState := tasks.NewSuccessTaskState(signature, results)

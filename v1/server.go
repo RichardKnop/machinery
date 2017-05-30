@@ -119,7 +119,7 @@ func (server *Server) IsTaskRegistered(name string) bool {
 func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
 	taskFunc, ok := server.registeredTasks[name]
 	if !ok {
-		return nil, fmt.Errorf("Task not registered: %s", name)
+		return nil, fmt.Errorf("Task not registered error: %s", name)
 	}
 	return taskFunc, nil
 }
@@ -138,11 +138,11 @@ func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResul
 
 	// Set initial task state to PENDING
 	if err := server.backend.SetStatePending(signature); err != nil {
-		return nil, fmt.Errorf("Set State Pending: %v", err)
+		return nil, fmt.Errorf("Set state pending error: %v", err)
 	}
 
 	if err := server.broker.Publish(signature); err != nil {
-		return nil, fmt.Errorf("Publish Message: %v", err)
+		return nil, fmt.Errorf("Publish message error: %v", err)
 	}
 
 	return backends.NewAsyncResult(signature, server.backend), nil
@@ -186,7 +186,7 @@ func (server *Server) SendGroup(group *tasks.Group) ([]*backends.AsyncResult, er
 
 			// Publish task
 			if err := server.broker.Publish(s); err != nil {
-				errorsChan <- fmt.Errorf("Publish Message: %v", err)
+				errorsChan <- fmt.Errorf("Publish message error: %v", err)
 				return
 			}
 

@@ -101,6 +101,12 @@ func (b *EagerBackend) SetStateStarted(signature *tasks.Signature) error {
 	return b.updateState(state)
 }
 
+// SetStateRetry updates task state to RETRY
+func (b *EagerBackend) SetStateRetry(signature *tasks.Signature) error {
+	state := tasks.NewRetryTaskState(signature)
+	return b.updateState(state)
+}
+
 // SetStateSuccess updates task state to SUCCESS
 func (b *EagerBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	state := tasks.NewSuccessTaskState(signature, results)

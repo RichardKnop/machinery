@@ -11,6 +11,8 @@ const (
 	SuccessState = "SUCCESS"
 	// FailureState - when processing of the task fails
 	FailureState = "FAILURE"
+	// RetryState - when failed task has been scheduled for retry
+	RetryState = "RETRY"
 )
 
 // TaskState represents a state of a task
@@ -70,6 +72,14 @@ func NewFailureTaskState(signature *Signature, err string) *TaskState {
 		TaskUUID: signature.UUID,
 		State:    FailureState,
 		Error:    err,
+	}
+}
+
+// NewRetryTaskState ...
+func NewRetryTaskState(signature *Signature) *TaskState {
+	return &TaskState{
+		TaskUUID: signature.UUID,
+		State:    RetryState,
 	}
 }
 

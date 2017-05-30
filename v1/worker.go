@@ -3,6 +3,7 @@ package machinery
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/log"
+	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
@@ -82,48 +84,76 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 		return nil
 	}
 
-	backend := worker.server.GetBackend()
-
 	// Update task state to RECEIVED
-	if err = backend.SetStateReceived(signature); err != nil {
-		return fmt.Errorf("Set State Received: %v", err)
+	if err = worker.server.GetBackend().SetStateReceived(signature); err != nil {
+		return fmt.Errorf("Set state received error: %v", err)
 	}
 
 	// Prepare task for processing
 	task, err := tasks.New(taskFunc, signature.Args)
+	// if this failed, it means the task is malformed, probably has invalid
+	// signature, go directly to task failed without checking whether to retry
 	if err != nil {
-		worker.finalizeError(signature, err)
+		worker.taskFailed(signature, err)
 		return err
 	}
 
 	// Update task state to STARTED
-	if err = backend.SetStateStarted(signature); err != nil {
-		return fmt.Errorf("Set State Started: %v", err)
+	if err = worker.server.GetBackend().SetStateStarted(signature); err != nil {
+		return fmt.Errorf("Set state started error: %v", err)
 	}
 
 	// Call the task
 	results, err := task.Call()
 	if err != nil {
-		return worker.finalizeError(signature, err)
+		// Let's retry the task
+		if signature.RetryCount > 0 {
+			return worker.taskRetry(signature)
+		}
+
+		return worker.taskFailed(signature, err)
 	}
 
-	return worker.finalizeSuccess(signature, results)
+	return worker.taskSucceeded(signature, results)
 }
 
-// Task succeeded, update state and trigger success callbacks
-func (worker *Worker) finalizeSuccess(signature *tasks.Signature, taskResults []*tasks.TaskResult) error {
-	// Update task state to SUCCESS
-	backend := worker.server.GetBackend()
+// retryTask decrements RetryCount counter and republishes the task to the queue
+func (worker *Worker) taskRetry(signature *tasks.Signature) error {
+	// Update task state to RETRY
+	if err := worker.server.GetBackend().SetStateRetry(signature); err != nil {
+		return fmt.Errorf("Set state retry error: %v", err)
+	}
 
-	if err := backend.SetStateSuccess(signature, taskResults); err != nil {
-		return fmt.Errorf("Set State Success: %v", err)
+	// Decrement the retry counter, when it reaches 0, we won't retry again
+	signature.RetryCount--
+
+	// Increase retry timeout
+	signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
+
+	// Delay task by signature.RetryTimeout seconds
+	eta := time.Now().UTC().Add(time.Second * time.Duration(signature.RetryTimeout))
+	signature.ETA = &eta
+
+	log.WARNING.Printf("Task %s failed. Going to retry in %ds.", signature.UUID, signature.RetryTimeout)
+
+	// Send the task back to the queue
+	_, err := worker.server.SendTask(signature)
+	return err
+}
+
+// taskSucceeded updates the task state and triggers success callbacks or a
+// chord callback if this was the last task of a group with a chord callback
+func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*tasks.TaskResult) error {
+	// Update task state to SUCCESS
+	if err := worker.server.GetBackend().SetStateSuccess(signature, taskResults); err != nil {
+		return fmt.Errorf("Set state success error: %v", err)
 	}
 
 	debugResults := make([]string, len(taskResults))
 	for i, taskResult := range taskResults {
 		debugResults[i] = fmt.Sprintf("%v", taskResult.Value)
 	}
-	log.INFO.Printf("Processed %s. Results = [%v]", signature.UUID, strings.Join(debugResults, ", "))
+	log.INFO.Printf("Processed task %s. Results = [%v]", signature.UUID, strings.Join(debugResults, ", "))
 
 	// Trigger success callbacks
 	for _, successTask := range signature.OnSuccess {
@@ -153,7 +183,7 @@ func (worker *Worker) finalizeSuccess(signature *tasks.Signature, taskResults []
 		signature.GroupTaskCount,
 	)
 	if err != nil {
-		return fmt.Errorf("GroupCompleted: %v", err)
+		return fmt.Errorf("Group completed error: %v", err)
 	}
 	// If the group has not yet completed, just return
 	if !groupCompleted {
@@ -162,7 +192,7 @@ func (worker *Worker) finalizeSuccess(signature *tasks.Signature, taskResults []
 
 	// Defer purging of group meta queue if we are using AMQP backend
 	if worker.hasAMQPBackend() {
-		defer worker.server.backend.PurgeGroupMeta(signature.GroupUUID)
+		defer worker.server.GetBackend().PurgeGroupMeta(signature.GroupUUID)
 	}
 
 	// There is no chord callback, just return
@@ -171,9 +201,9 @@ func (worker *Worker) finalizeSuccess(signature *tasks.Signature, taskResults []
 	}
 
 	// Trigger chord callback
-	shouldTrigger, err := worker.server.backend.TriggerChord(signature.GroupUUID)
+	shouldTrigger, err := worker.server.GetBackend().TriggerChord(signature.GroupUUID)
 	if err != nil {
-		return fmt.Errorf("TriggerChord: %v", err)
+		return fmt.Errorf("Trigger chord error: %v", err)
 	}
 
 	// Chord has already been triggered
@@ -216,22 +246,21 @@ func (worker *Worker) finalizeSuccess(signature *tasks.Signature, taskResults []
 	return nil
 }
 
-// Task failed, update state and trigger error callbacks
-func (worker *Worker) finalizeError(signature *tasks.Signature, err error) error {
+// taskFailed updates the task state and triggers error callbacks
+func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) error {
 	// Update task state to FAILURE
-	backend := worker.server.GetBackend()
-	if err1 := backend.SetStateFailure(signature, err.Error()); err1 != nil {
-		return fmt.Errorf("Set State Failure: %v", err1)
+	if err := worker.server.GetBackend().SetStateFailure(signature, taskErr.Error()); err != nil {
+		return fmt.Errorf("Set state failure error: %v", err)
 	}
 
-	log.ERROR.Printf("Failed processing %s. Error = %v", signature.UUID, err)
+	log.ERROR.Printf("Failed processing %s. Error = %v", signature.UUID, taskErr)
 
 	// Trigger error callbacks
 	for _, errorTask := range signature.OnError {
 		// Pass error as a first argument to error callbacks
 		args := append([]tasks.Arg{{
 			Type:  "string",
-			Value: err.Error(),
+			Value: taskErr.Error(),
 		}}, errorTask.Args...)
 		errorTask.Args = args
 		worker.server.SendTask(errorTask)
@@ -242,6 +271,6 @@ func (worker *Worker) finalizeError(signature *tasks.Signature, err error) error
 
 // Returns true if the worker uses AMQP backend
 func (worker *Worker) hasAMQPBackend() bool {
-	_, ok := worker.server.backend.(*backends.AMQPBackend)
+	_, ok := worker.server.GetBackend().(*backends.AMQPBackend)
 	return ok
 }
