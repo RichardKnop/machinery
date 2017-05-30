@@ -44,13 +44,13 @@ func (eagerBroker *EagerBroker) Publish(task *tasks.Signature) error {
 	// and unmarshal it back
 	message, err := json.Marshal(task)
 	if err != nil {
-		return fmt.Errorf("json marshaling failed: %v", err)
+		return fmt.Errorf("JSON marshal error: %v", err)
 	}
 
 	signature := new(tasks.Signature)
 	err = json.Unmarshal(message, &signature)
 	if err != nil {
-		return fmt.Errorf("json unmarshaling failed: %v", err)
+		return fmt.Errorf("JSON unmarshal error: %v", err)
 	}
 
 	// blocking call to the task directly

@@ -42,7 +42,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 		0,     // prefetch size
 		false, // global
 	); err != nil {
-		return b.retry, fmt.Errorf("Channel Qos: %s", err)
+		return b.retry, fmt.Errorf("Channel qos error: %s", err)
 	}
 
 	deliveries, err := channel.Consume(
@@ -55,7 +55,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 		nil,         // arguments
 	)
 	if err != nil {
-		return b.retry, fmt.Errorf("Queue Consume: %s", err)
+		return b.retry, fmt.Errorf("Queue consume error: %s", err)
 	}
 
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
@@ -90,7 +90,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 
 	message, err := json.Marshal(signature)
 	if err != nil {
-		return fmt.Errorf("JSON Encode Message: %v", err)
+		return fmt.Errorf("JSON marshal error: %v", err)
 	}
 
 	conn, channel, _, confirmsChan, err := b.connect()
@@ -219,7 +219,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 
 	message, err := json.Marshal(signature)
 	if err != nil {
-		return fmt.Errorf("JSON Encode Message: %v", err)
+		return fmt.Errorf("JSON marshal error: %v", err)
 	}
 
 	// Connect to server
@@ -239,7 +239,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 		false, // noWait
 		nil,   // arguments
 	); err != nil {
-		return fmt.Errorf("Exchange Declare: %s", err)
+		return fmt.Errorf("Exchange declare error: %s", err)
 	}
 
 	// It's necessary to redeclare the queue each time (to zero its TTL timer).
@@ -269,7 +269,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 		holdQueueArgs, // arguments
 	)
 	if err != nil {
-		return fmt.Errorf("Queue Declare: %s", err)
+		return fmt.Errorf("Queue declare error: %s", err)
 	}
 
 	// Bind the queue
@@ -280,7 +280,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 		false,               // noWait
 		amqp.Table(b.cnf.AMQP.QueueBindingArguments), // arguments
 	); err != nil {
-		return fmt.Errorf("Queue Bind: %s", err)
+		return fmt.Errorf("Queue bind error: %s", err)
 	}
 
 	if err := channel.Publish(
@@ -327,7 +327,7 @@ func (b *AMQPBroker) connect() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-c
 		false, // noWait
 		nil,   // arguments
 	); err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Exchange Declare: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Exchange declare error: %s", err)
 	}
 
 	// Declare a queue
@@ -340,7 +340,7 @@ func (b *AMQPBroker) connect() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-c
 		nil,                // arguments
 	)
 	if err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Queue Declare: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Queue declare error: %s", err)
 	}
 
 	// Bind the queue
@@ -351,7 +351,7 @@ func (b *AMQPBroker) connect() (*amqp.Connection, *amqp.Channel, amqp.Queue, <-c
 		false,                 // noWait
 		amqp.Table(b.cnf.AMQP.QueueBindingArguments), // arguments
 	); err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Queue Bind: %s", err)
+		return conn, channel, queue, nil, fmt.Errorf("Queue bind error: %s", err)
 	}
 
 	// Enable publish confirmations
@@ -375,13 +375,13 @@ func (b *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, error) {
 	// and will dial a plain connection when it encounters an amqp:// scheme.
 	conn, err = amqp.DialTLS(b.cnf.Broker, b.cnf.TLSConfig)
 	if err != nil {
-		return conn, channel, fmt.Errorf("Dial: %s", err)
+		return conn, channel, fmt.Errorf("Dial error: %s", err)
 	}
 
 	// Open a channel
 	channel, err = conn.Channel()
 	if err != nil {
-		return conn, channel, fmt.Errorf("Channel: %s", err)
+		return conn, channel, fmt.Errorf("Open channel error: %s", err)
 	}
 
 	return conn, channel, nil
@@ -391,13 +391,13 @@ func (b *AMQPBroker) open() (*amqp.Connection, *amqp.Channel, error) {
 func (b *AMQPBroker) close(channel *amqp.Channel, conn *amqp.Connection) error {
 	if channel != nil {
 		if err := channel.Close(); err != nil {
-			return fmt.Errorf("Channel Close: %s", err)
+			return fmt.Errorf("Close channel error: %s", err)
 		}
 	}
 
 	if conn != nil {
 		if err := conn.Close(); err != nil {
-			return fmt.Errorf("Connection Close: %s", err)
+			return fmt.Errorf("Close connection error: %s", err)
 		}
 	}
 

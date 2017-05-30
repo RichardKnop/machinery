@@ -38,7 +38,7 @@ func New(taskFunc interface{}, args []Arg) (*Task, error) {
 	}
 
 	if err := task.ReflectArgs(args); err != nil {
-		return nil, fmt.Errorf("Reflect task args: %v", err)
+		return nil, fmt.Errorf("Reflect task args error: %v", err)
 	}
 
 	return task, nil

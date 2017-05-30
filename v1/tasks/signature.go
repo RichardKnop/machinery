@@ -28,6 +28,7 @@ type Signature struct {
 	Headers        Headers
 	Immutable      bool
 	RetryCount     int
+	RetryTimeout   int
 	OnSuccess      []*Signature
 	OnError        []*Signature
 	ChordCallback  *Signature
