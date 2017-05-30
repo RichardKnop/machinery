@@ -512,6 +512,7 @@ const (
   PendingState  = "PENDING"
   ReceivedState = "RECEIVED"
   StartedState  = "STARTED"
+  RetryState    = "RETRY"
   SuccessState  = "SUCCESS"
   FailureState  = "FAILURE"
 )

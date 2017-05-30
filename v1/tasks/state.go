@@ -7,12 +7,12 @@ const (
 	ReceivedState = "RECEIVED"
 	// StartedState - when the worker starts processing the task
 	StartedState = "STARTED"
+	// RetryState - when failed task has been scheduled for retry
+	RetryState = "RETRY"
 	// SuccessState - when the task is processed successfully
 	SuccessState = "SUCCESS"
 	// FailureState - when processing of the task fails
 	FailureState = "FAILURE"
-	// RetryState - when failed task has been scheduled for retry
-	RetryState = "RETRY"
 )
 
 // TaskState represents a state of a task
