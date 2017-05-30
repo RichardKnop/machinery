@@ -2,6 +2,7 @@
 
 [![GoDoc](https://godoc.org/github.com/nathany/looper?status.svg)](http://godoc.org/github.com/RichardKnop/logging)
 [![Travis Status for RichardKnop/logging](https://travis-ci.org/RichardKnop/logging.svg?branch=master)](https://travis-ci.org/RichardKnop/logging)
+[![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://richardknop.github.io/donate/)
 
 # Logging
 

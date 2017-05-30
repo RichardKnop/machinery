@@ -8,7 +8,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/RichardKnop/logging",
-			"Rev": "5fb94889ec5c914337a95913c9b9bfc6cbfdc8b1"
+			"Rev": "8692ae85bb7c50aadb496ffd6fb58a76300eaab1"
 		},
 		{
 			"ImportPath": "github.com/bradfitz/gomemcache/memcache",
@@ -46,18 +46,18 @@
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Comment": "v1.1.4-27-g4d4bfba",
-			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+			"Comment": "v1.1.4-47-geb84487",
+			"Rev": "eb84487caee2d64c96bb5c6afb60fd4f631eb0f0"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/require",
-			"Comment": "v1.1.4-27-g4d4bfba",
-			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+			"Comment": "v1.1.4-47-geb84487",
+			"Rev": "eb84487caee2d64c96bb5c6afb60fd4f631eb0f0"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/suite",
-			"Comment": "v1.1.4-27-g4d4bfba",
-			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+			"Comment": "v1.1.4-47-geb84487",
+			"Rev": "eb84487caee2d64c96bb5c6afb60fd4f631eb0f0"
 		},
 		{
 			"ImportPath": "github.com/urfave/cli",
