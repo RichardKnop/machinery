@@ -5,6 +5,7 @@
 
 [![GoDoc](https://godoc.org/github.com/nathany/looper?status.svg)](http://godoc.org/github.com/RichardKnop/machinery/v1)
 [![Travis Status for RichardKnop/machinery](https://travis-ci.org/RichardKnop/machinery.svg?branch=master)](https://travis-ci.org/RichardKnop/machinery)
+[![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://richardknop.github.io/donate/)
 
 # Machinery
 
