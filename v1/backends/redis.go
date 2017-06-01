@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -22,6 +23,7 @@ type RedisBackend struct {
 	// If set, path to a socket file overrides hostname
 	socketPath string
 	redsync    *redsync.Redsync
+	common.RedisConnector
 }
 
 // NewRedisBackend creates RedisBackend instance
@@ -306,53 +308,11 @@ func (b *RedisBackend) setExpirationTime(key string) error {
 // open returns or creates instance of Redis connection
 func (b *RedisBackend) open() redis.Conn {
 	if b.pool == nil {
-		b.pool = b.newPool()
+		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db)
 	}
 	if b.redsync == nil {
 		var pools = []redsync.Pool{b.pool}
 		b.redsync = redsync.New(pools)
 	}
 	return b.pool.Get()
-}
-
-// newPool creates a new pool of Redis connections
-func (b *RedisBackend) newPool() *redis.Pool {
-	return &redis.Pool{
-		MaxIdle:     3,
-		IdleTimeout: 240 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			var (
-				c    redis.Conn
-				err  error
-				opts = make([]redis.DialOption, 0)
-			)
-
-			if b.password != "" {
-				opts = append(opts, redis.DialPassword(b.password))
-			}
-
-			if b.socketPath != "" {
-				c, err = redis.Dial("unix", b.socketPath, opts...)
-			} else {
-				c, err = redis.Dial("tcp", b.host, opts...)
-			}
-
-			if b.db != 0 {
-				_, err = c.Do("SELECT", b.db)
-			}
-
-			if err != nil {
-				return nil, err
-			}
-			return c, err
-		},
-		// PINGs connections that have been idle more than 15 seconds
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			if time.Since(t) < time.Duration(15*time.Second) {
-				return nil
-			}
-			_, err := c.Do("PING")
-			return err
-		},
-	}
 }

@@ -6,11 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/garyburd/redigo/redis"
+	"gopkg.in/redsync.v1"
 )
 
 var redisDelayedTasksKey = "delayed_tasks"
@@ -27,7 +29,9 @@ type RedisBroker struct {
 	delayedWG         sync.WaitGroup
 	// If set, path to a socket file overrides hostname
 	socketPath string
+	redsync    *redsync.Redsync
 	Broker
+	common.RedisConnector
 }
 
 // NewRedisBroker creates new RedisBroker instance
@@ -45,17 +49,16 @@ func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db in
 func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
 	b.startConsuming(consumerTag, taskProcessor)
 
-	b.pool = b.newPool()
+	conn := b.open()
+	defer conn.Close()
 	defer b.pool.Close()
 
 	// Ping the server to make sure connection is live
-	conn := b.pool.Get()
 	_, err := conn.Do("PING")
 	if err != nil {
 		b.retryFunc()
 		return b.retry, err
 	}
-	conn.Close()
 
 	b.retryFunc = retry.Closure()
 
@@ -138,13 +141,10 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 		return fmt.Errorf("JSON marshal error: %v", err)
 	}
 
-	conn, err := b.open()
-	if err != nil {
-		return fmt.Errorf("Dial error: %s", err)
-	}
-	defer conn.Close()
-
 	b.AdjustRoutingKey(signature)
+
+	conn := b.open()
+	defer conn.Close()
 
 	// Check the ETA signature field, if it is set and it is in the future,
 	// delay the task
@@ -164,10 +164,7 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 
 // GetPendingTasks returns a slice of task signatures waiting in the queue
 func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
-	conn, err := b.open()
-	if err != nil {
-		return nil, fmt.Errorf("Dial error: %s", err)
-	}
+	conn := b.open()
 	defer conn.Close()
 
 	if queue == "" {
@@ -256,7 +253,7 @@ func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) e
 	// If the task is not registered, we requeue it,
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(sig.Name) {
-		conn := b.pool.Get()
+		conn := b.open()
 		defer conn.Close()
 
 		conn.Do("RPUSH", b.cnf.DefaultQueue, delivery)
@@ -268,7 +265,7 @@ func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) e
 
 // nextTask pops next available task from the default queue
 func (b *RedisBroker) nextTask(queue string) (result []byte, err error) {
-	conn := b.pool.Get()
+	conn := b.open()
 	defer conn.Close()
 
 	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, 1))
@@ -290,7 +287,7 @@ func (b *RedisBroker) nextTask(queue string) (result []byte, err error) {
 // nextDelayedTask pops a value from the ZSET key using WATCH/MULTI/EXEC commands.
 // https://github.com/garyburd/redigo/blob/master/redis/zpop_example_test.go
 func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
-	conn := b.pool.Get()
+	conn := b.open()
 	defer conn.Close()
 
 	defer func() {
@@ -358,48 +355,14 @@ func (b *RedisBroker) stopDelayed() {
 	b.delayedWG.Wait()
 }
 
-// Returns / creates instance of Redis connection
-func (b *RedisBroker) open() (redis.Conn, error) {
-	var opts = []redis.DialOption{redis.DialDatabase(b.db)}
-
-	if b.password != "" {
-		opts = append(opts, redis.DialPassword(b.password))
+// open returns or creates instance of Redis connection
+func (b *RedisBroker) open() redis.Conn {
+	if b.pool == nil {
+		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db)
 	}
-
-	if b.socketPath != "" {
-		return redis.Dial("unix", b.socketPath, opts...)
+	if b.redsync == nil {
+		var pools = []redsync.Pool{b.pool}
+		b.redsync = redsync.New(pools)
 	}
-
-	return redis.Dial("tcp", b.host, opts...)
-}
-
-// Returns a new pool of Redis connections
-func (b *RedisBroker) newPool() *redis.Pool {
-	return &redis.Pool{
-		MaxIdle:     3,
-		IdleTimeout: 240 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			c, err := b.open()
-			if err != nil {
-				return nil, err
-			}
-
-			if b.db != 0 {
-				_, err = c.Do("SELECT", b.db)
-			}
-
-			if err != nil {
-				return nil, err
-			}
-			return c, err
-		},
-		// PINGs connections that have been idle more than 15 seconds
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			if time.Since(t) < time.Duration(15*time.Second) {
-				return nil
-			}
-			_, err := c.Do("PING")
-			return err
-		},
-	}
+	return b.pool.Get()
 }
