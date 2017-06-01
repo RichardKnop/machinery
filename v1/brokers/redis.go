@@ -360,12 +360,17 @@ func (b *RedisBroker) stopDelayed() {
 
 // Returns / creates instance of Redis connection
 func (b *RedisBroker) open() (redis.Conn, error) {
-	if b.socketPath != "" {
-		return redis.Dial("unix", b.socketPath, redis.DialPassword(b.password), redis.DialDatabase(b.db))
+	var opts = []redis.DialOption{redis.DialDatabase(b.db)}
+
+	if b.password != "" {
+		opts = append(opts, redis.DialPassword(b.password))
 	}
 
-	// package redis takes care of pwd or db
-	return redis.Dial("tcp", b.host, redis.DialPassword(b.password), redis.DialDatabase(b.db))
+	if b.socketPath != "" {
+		return redis.Dial("unix", b.socketPath, opts...)
+	}
+
+	return redis.Dial("tcp", b.host, opts...)
 }
 
 // Returns a new pool of Redis connections
@@ -374,21 +379,7 @@ func (b *RedisBroker) newPool() *redis.Pool {
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			var (
-				c    redis.Conn
-				err  error
-				opts = make([]redis.DialOption, 0)
-			)
-
-			if b.password != "" {
-				opts = append(opts, redis.DialPassword(b.password))
-			}
-
-			if b.socketPath != "" {
-				c, err = redis.Dial("unix", b.socketPath, opts...)
-			} else {
-				c, err = redis.Dial("tcp", b.host, opts...)
-			}
+			c, err := b.open()
 			if err != nil {
 				return nil, err
 			}
