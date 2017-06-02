@@ -1,17 +1,19 @@
 [1]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker.png
 [2]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker_receives_tasks.png
 
-[![Codeship Status for RichardKnop/machinery](https://app.codeship.com/projects/35dc5880-71a7-0133-ec05-06b1c29ec1d7/status?branch=master)](https://app.codeship.com/projects/116961)
-
-[![GoDoc](https://godoc.org/github.com/nathany/looper?status.svg)](http://godoc.org/github.com/RichardKnop/machinery/v1)
-[![Travis Status for RichardKnop/machinery](https://travis-ci.org/RichardKnop/machinery.svg?branch=master)](https://travis-ci.org/RichardKnop/machinery)
-[![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://richardknop.github.io/donate/)
-
-# Machinery
+## Machinery
 
 Machinery is an asynchronous task queue/job queue based on distributed message passing.
 
-So called tasks (or jobs if you like) are executed concurrently either by many workers on many servers or multiple worker processes on a single server using Golang's goroutines.
+[![Travis Status for RichardKnop/machinery](https://travis-ci.org/RichardKnop/machinery.svg?branch=master&label=linux+build)](https://travis-ci.org/RichardKnop/machinery)
+[![godoc for RichardKnop/machinery](https://godoc.org/github.com/nathany/looper?status.svg)](http://godoc.org/github.com/RichardKnop/machinery/v1)
+[![goreportcard for RichardKnop/machinery](https://goreportcard.com/badge/github.com/RichardKnop/machinery)](https://goreportcard.com/report/RichardKnop/machinery)
+[![Codeship Status for RichardKnop/machinery](https://app.codeship.com/projects/35dc5880-71a7-0133-ec05-06b1c29ec1d7/status?branch=master)](https://app.codeship.com/projects/116961)
+
+[![Sourcegraph for RichardKnop/machinery](https://sourcegraph.com/github.com/RichardKnop/machinery/-/badge.svg)](https://sourcegraph.com/github.com/RichardKnop/machinery?badge)
+[![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://richardknop.github.io/donate/)
+
+---
 
 * [First Steps](#first-steps)
 * [Configuration](#configuration)
@@ -36,7 +38,7 @@ So called tasks (or jobs if you like) are executed concurrently either by many w
   * [Dependencies](#dependencies)
   * [Testing](#testing)
 
-## First Steps
+### First Steps
 
 Add the Machinery library to your $GOPATH/src:
 
@@ -64,7 +66,7 @@ You will be able to see the tasks being processed asynchronously by the worker:
 
 ![Example worker receives tasks][2]
 
-## Configuration
+### Configuration
 
 The [config](/v1/config/config.go) package has convenience methods for loading configuration from environment variables or a YAML file. For example, load configuration from environment variables:
 
@@ -82,11 +84,11 @@ The first boolean flag signals whether configuration must be loaded successfully
 
 Machinery configuration is encapsulated by a `Config` struct and injected as a dependency to objects that need it.
 
-### Broker
+#### Broker
 
 A message broker. Currently supported brokers are:
 
-#### AMQP
+##### AMQP
 
 Use AMQP URL in the format:
 
@@ -98,7 +100,7 @@ For example:
 
 1. `amqp://guest:guest@localhost:5672`
 
-#### Redis
+##### Redis
 
 Use Redis URL in one of these formats:
 
@@ -112,17 +114,17 @@ For example:
 1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
 
-### DefaultQueue
+#### DefaultQueue
 
 Default queue name, e.g. `machinery_tasks`.
 
-### ResultBackend
+#### ResultBackend
 
 Result backend to use for keeping task states and results.
 
 Currently supported backends are:
 
-#### Redis
+##### Redis
 
 Use Redis URL in one of these formats:
 
@@ -136,7 +138,7 @@ For example:
 1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
 
-#### Memcache
+##### Memcache
 
 Use Memcache URL in the format:
 
@@ -149,7 +151,7 @@ For example:
 1. `memcache://127.0.0.1:11211` for a single instance, or
 2. `memcache://10.0.0.1:11211,10.0.0.2:11211` for a cluster
 
-#### AMQP
+##### AMQP
 
 Use AMQP URL in the format:
 
@@ -163,7 +165,7 @@ For example:
 
 > Keep in mind AMQP is not recommended as a result backend. See [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
 
-#### MongoDB
+##### MongoDB
 
 Use Mongodb URL in the format:
 
@@ -177,11 +179,11 @@ For example:
 
 See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/) for more information.
 
-### ResultsExpireIn
+#### ResultsExpireIn
 
 How long to store task results for in seconds. Defaults to `3600` (1 hour).
 
-### AMQP
+#### AMQP
 
 RabbitMQ related configuration. Not neccessarry if you are using other broker/backend.
 
@@ -191,7 +193,7 @@ RabbitMQ related configuration. Not neccessarry if you are using other broker/ba
 * `BindingKey`: The queue is bind to the exchange with this key, e.g. `machinery_task`
 * `PrefetchCount`: How many tasks to prefetch (set to `1` if you have long running tasks)
 
-## Custom Logger
+### Custom Logger
 
 You can define a custom logger by implementing the following interface:
 
@@ -217,7 +219,7 @@ Then just set the logger in your setup code by calling `Set` function exported b
 log.Set(myCustomLogger)
 ```
 
-## Server
+### Server
 
 A Machinery library must be instantiated before use. The way this is done is by creating a `Server` instance. `Server` is a base object which stores Machinery configuration and registered tasks. E.g.:
 
@@ -245,7 +247,7 @@ if err != nil {
 }
 ```
 
-## Workers
+### Workers
 
 In order to consume tasks, you need to have one or more workers running. All you need to run a worker is a `Server` instance with registered tasks. E.g.:
 
@@ -262,7 +264,7 @@ in a goroutine. Use the `MaxWorkerInstances` config option to limit the number o
 calls (per worker). `MaxWorkerInstances = 1` will serialize task execution. `MaxWorkerInstances = 0` makes the number of
 concurrently executed tasks unlimited (default).
 
-## Tasks
+### Tasks
 
 Tasks are a building block of Machinery applications. A task is a function which defines what happens when a worker receives a message.
 
@@ -304,7 +306,7 @@ func DummyTask2(arg1, arg2 string) (string, string error) {
 }
 ```
 
-### Registering Tasks
+#### Registering Tasks
 
 Before your workers can consume a task, you need to register it with the server. This is done by assigning a task a unique name:
 
@@ -355,7 +357,7 @@ It will call Add(1, 1). Each task should return an error as well so we can handl
 
 Ideally, tasks should be idempotent which means there will be no unintended consequences when a task is called multiple times with the same arguments.
 
-### Signatures
+#### Signatures
 
 A signature wraps calling arguments, execution options (such as immutability) and success/error callbacks of a task so it can be sent across the wire to workers. Task signatures implement a simple interface:
 
@@ -414,7 +416,7 @@ type Signature struct {
 
 `ChordCallback` is used to create a callback to a group of tasks.
 
-### Supported Types
+#### Supported Types
 
 Machinery encodes tasks to JSON before sending them to the broker. Task results are also stored in the backend as JSON encoded strings. Therefor only types with native JSON representation can be supported. Currently supported types are:
 
@@ -433,7 +435,7 @@ Machinery encodes tasks to JSON before sending them to the broker. Task results 
 * `float64`
 * `string`
 
-### Sending Tasks
+#### Sending Tasks
 
 Tasks can be called by passing an instance of `Signature` to an `Server` instance. E.g:
 
@@ -463,7 +465,7 @@ if err != nil {
 }
 ```
 
-### Delayed Tasks
+#### Delayed Tasks
 
 You can delay a task by setting the `ETA` timestamp field on the task signature.
 
@@ -473,7 +475,7 @@ eta := time.Now().UTC().Add(time.Second * 5)
 signature.ETA = &eta
 ```
 
-### Retry Tasks
+#### Retry Tasks
 
 You can set a number of retry attempts before declaring task as failed. Fibonacci sequence will be used to space out retry requests over time.
 
@@ -482,7 +484,7 @@ You can set a number of retry attempts before declaring task as failed. Fibonacc
 signature.RetryCount = 3
 ```
 
-### Get Pending Tasks
+#### Get Pending Tasks
 
 Tasks currently waiting in the queue to be consumed by workers can be inspected, e.g.:
 
@@ -492,7 +494,7 @@ server.GetBroker().GetPendingTasks("some_queue")
 
 > Currently only supported by Redis broker.
 
-### Keeping Results
+#### Keeping Results
 
 If you configure a result backend, the task states and results will be persisted. Possible states:
 
@@ -570,11 +572,11 @@ for _, result := range results {
 }
 ```
 
-## Workflows
+### Workflows
 
 Running a single asynchronous task is fine but often you will want to design a workflow of tasks to be executed in an orchestrated way. There are couple of useful functions to help you design workflows.
 
-### Groups
+#### Groups
 
 `Group` is a set of tasks which will be executed in parallel, independent of each other. E.g.:
 
@@ -635,7 +637,7 @@ for _, asyncResult := range asyncResults {
 }
 ```
 
-### Chords
+#### Chords
 
 `Chord` allows you to define a callback to be executed after all tasks in a group finished processing, e.g.:
 
@@ -711,7 +713,7 @@ for _, result := range results {
 }
 ```
 
-### Chains
+#### Chains
 
 `Chain` is simply a set of tasks which will be executed one by one, each successful task triggering the next task in the chain. E.g.:
 
@@ -792,9 +794,9 @@ for _, result := range results {
 }
 ```
 
-## Development
+### Development
 
-### Requirements
+#### Requirements
 
 * Go
 * RabbitMQ
@@ -812,7 +814,7 @@ brew install memcached
 brew install mongodb
 ```
 
-### Dependencies
+#### Dependencies
 
 According to [Go 1.5 Vendor experiment](https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo), all dependencies are stored in the vendor directory. This approach is called `vendoring` and is the best practice for Go projects to lock versions of dependencies in order to achieve reproducible builds.
 
@@ -828,7 +830,7 @@ To install dependencies:
 make install-deps
 ```
 
-### Testing
+#### Testing
 
 Easiest (and platform agnostic) way to run tests is via `docker-compose`:
 
