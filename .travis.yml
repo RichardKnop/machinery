@@ -19,7 +19,7 @@ install:
   - go get github.com/tsenart/deadcode
 
 script:
-  - gometalinter --disable-all -E vet -E gofmt -E misspell -E ineffassign -E goimports -E deadcode --tests --vendor ./...
+  - make lint
   - vendorcheck ./...
   - make ci
 
