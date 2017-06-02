@@ -14,6 +14,9 @@ install-deps:
 fmt:
 	bash -c 'git ls-files "**.go" | grep -v ^vendor/ | xargs -n1 gofmt -e -s -w'
 
+lint:
+	bash -c 'gometalinter --disable-all -E vet -E gofmt -E misspell -E ineffassign -E goimports -E deadcode --tests --vendor ./...'
+
 ci:
 	bash -c '(docker-compose -f docker-compose.test.yml -p machinery_ci up --build -d) && (docker logs -f machinery_sut &) && (docker wait machinery_sut)'
 
