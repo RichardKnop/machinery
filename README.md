@@ -500,12 +500,18 @@ If you configure a result backend, the task states and results will be persisted
 
 ```go
 const (
-  PendingState  = "PENDING"
-  ReceivedState = "RECEIVED"
-  StartedState  = "STARTED"
-  RetryState    = "RETRY"
-  SuccessState  = "SUCCESS"
-  FailureState  = "FAILURE"
+	// StatePending - initial state of a task
+	StatePending = "PENDING"
+	// StateReceived - when task is received by a worker
+	StateReceived = "RECEIVED"
+	// StateStarted - when the worker starts processing the task
+	StateStarted = "STARTED"
+	// StateRetry - when failed task has been scheduled for retry
+	StateRetry = "RETRY"
+	// StateSuccess - when the task is processed successfully
+	StateSuccess = "SUCCESS"
+	// StateFailure - when processing of the task fails
+	StateFailure = "FAILURE"
 )
 ```
 

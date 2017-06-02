@@ -1,4 +1,4 @@
-package integrationtests
+package integration_test
 
 import (
 	"os"
@@ -14,7 +14,7 @@ func TestAmqpAmqp(t *testing.T) {
 	}
 
 	// AMQP broker, AMQP result backend
-	server := setup(&config.Config{
+	server := testSetup(&config.Config{
 		Broker:        amqpURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: amqpURL,

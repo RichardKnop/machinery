@@ -1,4 +1,4 @@
-package integrationtests
+package integration_test
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ func TestRedisSocket(t *testing.T) {
 	}
 
 	// Redis broker, Redis result backend
-	server := setup(&config.Config{
+	server := testSetup(&config.Config{
 		Broker:        fmt.Sprintf("redis+socket://%v", redisSocket),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis+socket://%v", redisSocket),

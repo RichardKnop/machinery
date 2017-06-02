@@ -114,25 +114,25 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 
 // SetStatePending updates task state to PENDING
 func (b *MongodbBackend) SetStatePending(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.PendingState}
+	update := bson.M{"state": tasks.StatePending}
 	return b.updateState(signature, update)
 }
 
 // SetStateReceived updates task state to RECEIVED
 func (b *MongodbBackend) SetStateReceived(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.ReceivedState}
+	update := bson.M{"state": tasks.StateReceived}
 	return b.updateState(signature, update)
 }
 
 // SetStateStarted updates task state to STARTED
 func (b *MongodbBackend) SetStateStarted(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.StartedState}
+	update := bson.M{"state": tasks.StateStarted}
 	return b.updateState(signature, update)
 }
 
 // SetStateRetry updates task state to RETRY
 func (b *MongodbBackend) SetStateRetry(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.RetryState}
+	update := bson.M{"state": tasks.StateRetry}
 	return b.updateState(signature, update)
 }
 
@@ -146,7 +146,7 @@ func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*
 		}
 	}
 	update := bson.M{
-		"state":   tasks.SuccessState,
+		"state":   tasks.StateSuccess,
 		"results": bsonResults,
 	}
 	return b.updateState(signature, update)
@@ -154,7 +154,7 @@ func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*
 
 // SetStateFailure updates task state to FAILURE
 func (b *MongodbBackend) SetStateFailure(signature *tasks.Signature, err string) error {
-	update := bson.M{"state": tasks.FailureState, "error": err}
+	update := bson.M{"state": tasks.StateFailure, "error": err}
 	return b.updateState(signature, update)
 }
 

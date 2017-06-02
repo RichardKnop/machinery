@@ -1,18 +1,18 @@
 package tasks
 
 const (
-	// PendingState - initial state of a task
-	PendingState = "PENDING"
-	// ReceivedState - when task is received by a worker
-	ReceivedState = "RECEIVED"
-	// StartedState - when the worker starts processing the task
-	StartedState = "STARTED"
-	// RetryState - when failed task has been scheduled for retry
-	RetryState = "RETRY"
-	// SuccessState - when the task is processed successfully
-	SuccessState = "SUCCESS"
-	// FailureState - when processing of the task fails
-	FailureState = "FAILURE"
+	// StatePending - initial state of a task
+	StatePending = "PENDING"
+	// StateReceived - when task is received by a worker
+	StateReceived = "RECEIVED"
+	// StateStarted - when the worker starts processing the task
+	StateStarted = "STARTED"
+	// StateRetry - when failed task has been scheduled for retry
+	StateRetry = "RETRY"
+	// StateSuccess - when the task is processed successfully
+	StateSuccess = "SUCCESS"
+	// StateFailure - when processing of the task fails
+	StateFailure = "FAILURE"
 )
 
 // TaskState represents a state of a task
@@ -37,7 +37,7 @@ type GroupMeta struct {
 func NewPendingTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
-		State:    PendingState,
+		State:    StatePending,
 	}
 }
 
@@ -45,7 +45,7 @@ func NewPendingTaskState(signature *Signature) *TaskState {
 func NewReceivedTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
-		State:    ReceivedState,
+		State:    StateReceived,
 	}
 }
 
@@ -53,7 +53,7 @@ func NewReceivedTaskState(signature *Signature) *TaskState {
 func NewStartedTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
-		State:    StartedState,
+		State:    StateStarted,
 	}
 }
 
@@ -61,7 +61,7 @@ func NewStartedTaskState(signature *Signature) *TaskState {
 func NewSuccessTaskState(signature *Signature, results []*TaskResult) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
-		State:    SuccessState,
+		State:    StateSuccess,
 		Results:  results,
 	}
 }
@@ -70,7 +70,7 @@ func NewSuccessTaskState(signature *Signature, results []*TaskResult) *TaskState
 func NewFailureTaskState(signature *Signature, err string) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
-		State:    FailureState,
+		State:    StateFailure,
 		Error:    err,
 	}
 }
@@ -79,22 +79,22 @@ func NewFailureTaskState(signature *Signature, err string) *TaskState {
 func NewRetryTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID: signature.UUID,
-		State:    RetryState,
+		State:    StateRetry,
 	}
 }
 
-// IsCompleted returns true if state is SUCCESSS or FAILURE,
+// IsCompleted returns true if state is SUCCESS or FAILURE,
 // i.e. the task has finished processing and either succeeded or failed.
 func (taskState *TaskState) IsCompleted() bool {
 	return taskState.IsSuccess() || taskState.IsFailure()
 }
 
-// IsSuccess returns true if state is SUCCESSS
+// IsSuccess returns true if state is SUCCESS
 func (taskState *TaskState) IsSuccess() bool {
-	return taskState.State == SuccessState
+	return taskState.State == StateSuccess
 }
 
 // IsFailure returns true if state is FAILURE
 func (taskState *TaskState) IsFailure() bool {
-	return taskState.State == FailureState
+	return taskState.State == StateFailure
 }

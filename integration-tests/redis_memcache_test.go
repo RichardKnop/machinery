@@ -1,4 +1,4 @@
-package integrationtests
+package integration_test
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ func TestRedisMemcache(t *testing.T) {
 	}
 
 	// Redis broker, Redis result backend
-	server := setup(&config.Config{
+	server := testSetup(&config.Config{
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("memcache://%v", memcacheURL),

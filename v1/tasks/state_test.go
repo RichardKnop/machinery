@@ -10,20 +10,20 @@ import (
 func TestTaskStateIsCompleted(t *testing.T) {
 	taskState := &tasks.TaskState{
 		TaskUUID: "taskUUID",
-		State:    tasks.PendingState,
+		State:    tasks.StatePending,
 	}
 
 	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = tasks.ReceivedState
+	taskState.State = tasks.StateReceived
 	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = tasks.StartedState
+	taskState.State = tasks.StateStarted
 	assert.False(t, taskState.IsCompleted())
 
-	taskState.State = tasks.SuccessState
+	taskState.State = tasks.StateSuccess
 	assert.True(t, taskState.IsCompleted())
 
-	taskState.State = tasks.FailureState
+	taskState.State = tasks.StateFailure
 	assert.True(t, taskState.IsCompleted())
 }

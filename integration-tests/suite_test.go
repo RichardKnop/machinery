@@ -1,4 +1,4 @@
-package integrationtests
+package integration_test
 
 import (
 	"errors"
@@ -281,7 +281,7 @@ func testDelay(server *machinery.Server, t *testing.T) {
 	}
 }
 
-func setup(cnf *config.Config) *machinery.Server {
+func testSetup(cnf *config.Config) *machinery.Server {
 	server, err := machinery.NewServer(cnf)
 	if err != nil {
 		log.Fatal(err, "Could not initialize server")

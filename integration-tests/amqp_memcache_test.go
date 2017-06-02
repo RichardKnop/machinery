@@ -1,4 +1,4 @@
-package integrationtests
+package integration_test
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ func TestAmqpMemcache(t *testing.T) {
 	}
 
 	// AMQP broker, Memcache result backend
-	server := setup(&config.Config{
+	server := testSetup(&config.Config{
 		Broker:        amqpURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("memcache://%v", memcacheURL),
