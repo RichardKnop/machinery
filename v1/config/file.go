@@ -2,10 +2,10 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -19,7 +19,7 @@ func NewFromYaml(cnfPath string, mustLoadOnce, keepReloading bool) *Config {
 	if mustLoadOnce && !configLoaded {
 		newCnf, err := fromFile(cnfPath)
 		if err != nil {
-			log.Fatal(err)
+			log.FATAL.Fatal(err)
 		}
 
 		// Refresh the config
@@ -27,7 +27,7 @@ func NewFromYaml(cnfPath string, mustLoadOnce, keepReloading bool) *Config {
 
 		// Set configLoaded to true
 		configLoaded = true
-		log.Print("Successfully loaded config from file for the first time")
+		log.INFO.Print("Successfully loaded config from file for the first time")
 	}
 
 	if keepReloading {
@@ -40,7 +40,7 @@ func NewFromYaml(cnfPath string, mustLoadOnce, keepReloading bool) *Config {
 				// Attempt to reload the config
 				newCnf, err := fromFile(theConfigPath)
 				if err != nil {
-					log.Print("Failed to reload config from file: ", err)
+					log.WARNING.Print("Failed to reload config from file: ", err)
 					continue
 				}
 

@@ -1,9 +1,9 @@
 package config
 
 import (
-	"log"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -17,7 +17,7 @@ func NewFromEnvironment(mustLoadOnce, keepReloading bool) *Config {
 	if mustLoadOnce && !configLoaded {
 		newCnf, err := fromEnvironment()
 		if err != nil {
-			log.Fatal(err)
+			log.FATAL.Fatal(err)
 		}
 
 		// Refresh the config
@@ -25,7 +25,7 @@ func NewFromEnvironment(mustLoadOnce, keepReloading bool) *Config {
 
 		// Set configLoaded to true
 		configLoaded = true
-		log.Print("Successfully loaded config from environment for the first time")
+		log.INFO.Print("Successfully loaded config from environment for the first time")
 	}
 
 	if keepReloading {
@@ -38,7 +38,7 @@ func NewFromEnvironment(mustLoadOnce, keepReloading bool) *Config {
 				// Attempt to reload the config
 				newCnf, err := fromEnvironment()
 				if err != nil {
-					log.Print("Failed to reload config from environment: ", err)
+					log.WARNING.Print("Failed to reload config from environment: ", err)
 					continue
 				}
 
