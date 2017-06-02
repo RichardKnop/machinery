@@ -9,6 +9,6 @@ amqp:
   exchange: machinery_exchange
   exchange_type: direct
   prefetch_count: 3
-  queue_binding_arguments:
+  queue_binding_args:
     image-type: png
     x-match: any

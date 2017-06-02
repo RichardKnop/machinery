@@ -66,32 +66,21 @@ You will be able to see the tasks being processed asynchronously by the worker:
 
 ## Configuration
 
-Machinery has several configuration options. Configuration is encapsulated by a `Config` struct and injected as a dependency to objects that need it.
+The [config](/blob/master/v1/config/config.go) package has convenience methods for loading configuration from environment variables or a YAML file. For example, load configuration from environment variables:
 
 ```go
-// Config holds all configuration for our program
-type Config struct {
-  Broker             string     `yaml:"broker"`
-  DefaultQueue       string     `yaml:"default_queue"`
-  ResultBackend      string     `yaml:"result_backend"`
-  ResultsExpireIn    int        `yaml:"results_expire_in"`
-  MaxWorkerInstances int        `yaml:"max_worker_instances"`
-  AMQP               AMQPConfig `yaml:"amqp"`
-  TLSConfig          *tls.Config
-}
-
-// QueueBindingArguments arguments which are used when binding to the exchange
-type QueueBindingArguments map[string]interface{}
-
-// AMQPConfig wraps RabbitMQ related configuration
-type AMQPConfig struct {
-  Exchange              string                `yaml:"exchange"`
-  ExchangeType          string                `yaml:"exchange_type"`
-  QueueBindingArguments QueueBindingArguments `yaml:"queue_binding_arguments"`
-  BindingKey            string                `yaml:"binding_key"`
-  PrefetchCount         int                   `yaml:"prefetch_count"`
-}
+cnf := config.NewFromEnvironment(true, true)
 ```
+
+Or load from YAML file:
+
+```go
+cnf := config.NewFromFile("config.yml", true, true)
+```
+
+The first boolean flag signals whether configuration must be loaded successfully at least one time. Second flag enables live reloading of configuration every 10 seconds.
+
+Machinery configuration is encapsulated by a `Config` struct and injected as a dependency to objects that need it.
 
 ### Broker
 

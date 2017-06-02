@@ -15,15 +15,8 @@ import (
 )
 
 var (
-	app               *cli.App
-	configPath        string
-	broker            string
-	defaultQueue      string
-	resultBackend     string
-	amqpExchange      string
-	amqpExchangeType  string
-	amqpBindingKey    string
-	amqpPrefetchCount int64
+	app        *cli.App
+	configPath string
 )
 
 func init() {
@@ -37,51 +30,9 @@ func init() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "c",
-			Value:       "config.yml",
+			Value:       "",
 			Destination: &configPath,
 			Usage:       "Path to a configuration file",
-		},
-		cli.StringFlag{
-			Name:        "b",
-			Value:       "amqp://guest:guest@localhost:5672/",
-			Destination: &broker,
-			Usage:       "Broker URL",
-		},
-		cli.StringFlag{
-			Name:        "q",
-			Value:       "machinery_tasks",
-			Destination: &defaultQueue,
-			Usage:       "Ephemeral AMQP/Redis queue name",
-		},
-		cli.StringFlag{
-			Name:        "r",
-			Value:       "amqp://guest:guest@localhost:5672/",
-			Destination: &resultBackend,
-			Usage:       "Result backend",
-		},
-		cli.StringFlag{
-			Name:        "e",
-			Value:       "machinery_exchange",
-			Destination: &amqpExchange,
-			Usage:       "Durable, non-auto-deleted AMQP exchange name",
-		},
-		cli.StringFlag{
-			Name:        "t",
-			Value:       "direct",
-			Destination: &amqpExchangeType,
-			Usage:       "Exchange type - direct|fanout|topic|x-custom",
-		},
-		cli.StringFlag{
-			Name:        "k",
-			Value:       "machinery_task",
-			Destination: &amqpBindingKey,
-			Usage:       "AMQP binding key",
-		},
-		cli.Int64Flag{
-			Name:        "p",
-			Value:       int64(3),
-			Destination: &amqpPrefetchCount,
-			Usage:       "AMQP prefetch count",
 		},
 	}
 }
@@ -111,33 +62,19 @@ func main() {
 	}
 }
 
-func startServer() (*machinery.Server, error) {
-	cnf := config.Config{
-		Broker:        broker,
-		DefaultQueue:  defaultQueue,
-		ResultBackend: resultBackend,
-		AMQP: &config.AMQPConfig{
-			Exchange:      amqpExchange,
-			ExchangeType:  amqpExchangeType,
-			BindingKey:    amqpBindingKey,
-			PrefetchCount: int(amqpPrefetchCount),
-		},
+func loadConfig() *config.Config {
+	if configPath != "" {
+		return config.NewFromYaml(configPath, true, true)
 	}
 
-	// If present, the config file takes priority over cli flags
-	data, err := config.ReadFromFile(configPath)
-	if err != nil {
-		log.WARNING.Printf("Could not load config from file: %s", err.Error())
-	} else {
-		if err = config.ParseYAMLConfig(&data, &cnf); err != nil {
-			return nil, fmt.Errorf("Could not parse config file: %s", err.Error())
-		}
-	}
+	return config.NewFromEnvironment(true, true)
+}
 
+func startServer() (server *machinery.Server, err error) {
 	// Create server instance
-	server, err := machinery.NewServer(&cnf)
+	server, err = machinery.NewServer(loadConfig())
 	if err != nil {
-		return nil, fmt.Errorf("Could not initialize server: %s", err.Error())
+		return
 	}
 
 	// Register tasks
@@ -147,7 +84,8 @@ func startServer() (*machinery.Server, error) {
 		"panic_task": exampletasks.PanicTask,
 	}
 
-	return server, server.RegisterTasks(tasks)
+	err = server.RegisterTasks(tasks)
+	return
 }
 
 func worker() error {

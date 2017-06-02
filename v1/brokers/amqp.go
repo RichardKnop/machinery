@@ -41,7 +41,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 		b.cnf.AMQP.BindingKey, // queue binding key
 		nil, // exchange declare args
 		nil, // queue declare args
-		amqp.Table(b.cnf.AMQP.QueueBindingArguments), // queue binding args
+		amqp.Table(b.cnf.AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
 		b.retryFunc()
@@ -118,7 +118,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 		b.cnf.AMQP.BindingKey, // queue binding key
 		nil, // exchange declare args
 		nil, // queue declare args
-		amqp.Table(b.cnf.AMQP.QueueBindingArguments), // queue binding args
+		amqp.Table(b.cnf.AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
 		return err
@@ -270,7 +270,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 		queueName,                                    // queue binding key
 		nil,                                          // exchange declare args
 		declareQueueArgs,                             // queue declare args
-		amqp.Table(b.cnf.AMQP.QueueBindingArguments), // queue binding args
+		amqp.Table(b.cnf.AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
 		return err
