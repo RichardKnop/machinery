@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// LoadFromYaml parses YAML data into Config object
+// NewFromYaml creates a config object from YAML file
 func NewFromYaml(cnfPath string, mustLoadOnce, keepReloading bool) *Config {
 	if configLoaded {
 		return cnf

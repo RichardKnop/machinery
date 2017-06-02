@@ -9,7 +9,7 @@ import (
 // RedisConnector ...
 type RedisConnector struct{}
 
-// Returns a new pool of Redis connections
+// NewPool returns a new pool of Redis connections
 func (rc *RedisConnector) NewPool(socketPath, host, password string, db int) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     3,

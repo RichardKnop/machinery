@@ -7,7 +7,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
-// NewFromEnvironment will load configuration from environment variables
+// NewFromEnvironment creates a config object from environment variables
 func NewFromEnvironment(mustLoadOnce, keepReloading bool) *Config {
 	if configLoaded {
 		return cnf

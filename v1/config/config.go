@@ -51,8 +51,8 @@ type AMQPConfig struct {
 	PrefetchCount    int              `yaml:"prefetch_count" envconfig:"AMQP_PREFETCH_COUNT"`
 }
 
-// Any field whose type (or pointer-to-type) implements envconfig.Decoder
-// can control its own deserialization
+// Decode from yaml to map (any field whose type or pointer-to-type implements
+// envconfig.Decoder can control its own deserialization)
 func (args *QueueBindingArgs) Decode(value string) error {
 	pairs := strings.Split(value, ",")
 	mp := make(map[string]interface{}, len(pairs))
