@@ -24,5 +24,4 @@ script:
   - make ci
 
 after_script:
-  # TODO: When Go 1.9 is released, replace $(go list) subcommand with ./... because vendor folder should be ignored
-  - golint $(go list ./... | grep -v vendor)
+  - make golint
