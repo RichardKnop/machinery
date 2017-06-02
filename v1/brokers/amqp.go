@@ -104,7 +104,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 
 	message, err := json.Marshal(signature)
 	if err != nil {
-		return fmt.Errorf("JSON marshal error: %v", err)
+		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
 	conn, channel, _, confirmsChan, err := b.Connect(
@@ -238,7 +238,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 
 	message, err := json.Marshal(signature)
 	if err != nil {
-		return fmt.Errorf("JSON marshal error: %v", err)
+		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
 	// It's necessary to redeclare the queue each time (to zero its TTL timer).
@@ -262,14 +262,14 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 	conn, channel, _, _, err := b.Connect(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
-		b.cnf.AMQP.Exchange,                          // exchange name
-		b.cnf.AMQP.ExchangeType,                      // exchange type
-		queueName,                                    // queue name
-		true,                                         // queue durable
-		false,                                        // queue delete when unused
-		queueName,                                    // queue binding key
-		nil,                                          // exchange declare args
-		declareQueueArgs,                             // queue declare args
+		b.cnf.AMQP.Exchange,                     // exchange name
+		b.cnf.AMQP.ExchangeType,                 // exchange type
+		queueName,                               // queue name
+		true,                                    // queue durable
+		false,                                   // queue delete when unused
+		queueName,                               // queue binding key
+		nil,                                     // exchange declare args
+		declareQueueArgs,                        // queue declare args
 		amqp.Table(b.cnf.AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {

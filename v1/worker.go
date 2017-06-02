@@ -48,7 +48,7 @@ func (worker *Worker) Launch() error {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
 
 			if retry {
-				log.WARNING.Printf("Going to retry launching the worker. Error: %v", err)
+				log.WARNING.Printf("Going to retry launching the worker. error: %s", err)
 			} else {
 				errorsChan <- err // stop the goroutine
 				return
@@ -86,7 +86,7 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 
 	// Update task state to RECEIVED
 	if err = worker.server.GetBackend().SetStateReceived(signature); err != nil {
-		return fmt.Errorf("Set state received error: %v", err)
+		return fmt.Errorf("Set state received error: %s", err)
 	}
 
 	// Prepare task for processing
@@ -100,7 +100,7 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 
 	// Update task state to STARTED
 	if err = worker.server.GetBackend().SetStateStarted(signature); err != nil {
-		return fmt.Errorf("Set state started error: %v", err)
+		return fmt.Errorf("Set state started error: %s", err)
 	}
 
 	// Call the task
@@ -121,7 +121,7 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 	// Update task state to RETRY
 	if err := worker.server.GetBackend().SetStateRetry(signature); err != nil {
-		return fmt.Errorf("Set state retry error: %v", err)
+		return fmt.Errorf("Set state retry error: %s", err)
 	}
 
 	// Decrement the retry counter, when it reaches 0, we won't retry again
@@ -146,7 +146,7 @@ func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*tasks.TaskResult) error {
 	// Update task state to SUCCESS
 	if err := worker.server.GetBackend().SetStateSuccess(signature, taskResults); err != nil {
-		return fmt.Errorf("Set state success error: %v", err)
+		return fmt.Errorf("Set state success error: %s", err)
 	}
 
 	debugResults := make([]string, len(taskResults))
@@ -183,7 +183,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		signature.GroupTaskCount,
 	)
 	if err != nil {
-		return fmt.Errorf("Group completed error: %v", err)
+		return fmt.Errorf("Group completed error: %s", err)
 	}
 	// If the group has not yet completed, just return
 	if !groupCompleted {
@@ -203,7 +203,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	// Trigger chord callback
 	shouldTrigger, err := worker.server.GetBackend().TriggerChord(signature.GroupUUID)
 	if err != nil {
-		return fmt.Errorf("Trigger chord error: %v", err)
+		return fmt.Errorf("Trigger chord error: %s", err)
 	}
 
 	// Chord has already been triggered
@@ -250,7 +250,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) error {
 	// Update task state to FAILURE
 	if err := worker.server.GetBackend().SetStateFailure(signature, taskErr.Error()); err != nil {
-		return fmt.Errorf("Set state failure error: %v", err)
+		return fmt.Errorf("Set state failure error: %s", err)
 	}
 
 	log.ERROR.Printf("Failed processing %s. Error = %v", signature.UUID, taskErr)

@@ -324,7 +324,7 @@ func (b *AMQPBackend) markTaskCompleted(signature *tasks.Signature, taskState *t
 
 	message, err := json.Marshal(taskState)
 	if err != nil {
-		return fmt.Errorf("JSON marshal error: %v", err)
+		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
 	declareQueueArgs := amqp.Table{

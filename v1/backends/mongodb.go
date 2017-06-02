@@ -276,12 +276,12 @@ func (b *MongodbBackend) connect() error {
 // createMongoIndexes ensures all indexes are in place
 func (b *MongodbBackend) createMongoIndexes() error {
 	indexes := []mgo.Index{
-		mgo.Index{
+		{
 			Key:         []string{"state"},
 			Background:  true, // can be used while index is being built
 			ExpireAfter: time.Duration(b.cnf.ResultsExpireIn) * time.Second,
 		},
-		mgo.Index{
+		{
 			Key:         []string{"lock"},
 			Background:  true, // can be used while index is being built
 			ExpireAfter: time.Duration(b.cnf.ResultsExpireIn) * time.Second,

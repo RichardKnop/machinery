@@ -138,7 +138,7 @@ func (b *RedisBroker) StopConsuming() {
 func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 	msg, err := json.Marshal(signature)
 	if err != nil {
-		return fmt.Errorf("JSON marshal error: %v", err)
+		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
 	b.AdjustRoutingKey(signature)

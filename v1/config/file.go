@@ -62,14 +62,14 @@ func ReadFromFile(cnfPath string) ([]byte, error) {
 
 	// Config file not found
 	if err != nil {
-		return nil, fmt.Errorf("Open file error: %v", err)
+		return nil, fmt.Errorf("Open file error: %s", err)
 	}
 
 	// Config file found, let's try to read it
 	data := make([]byte, 1000)
 	count, err := file.Read(data)
 	if err != nil {
-		return nil, fmt.Errorf("Read from file error: %v", err)
+		return nil, fmt.Errorf("Read from file error: %s", err)
 	}
 
 	return data[:count], nil
@@ -85,7 +85,7 @@ func fromFile(cnfPath string) (*Config, error) {
 	}
 
 	if err := yaml.Unmarshal(data, &newCnf); err != nil {
-		return nil, fmt.Errorf("Unmarshal YAML error: %v", err)
+		return nil, fmt.Errorf("Unmarshal YAML error: %s", err)
 	}
 
 	return &newCnf, nil

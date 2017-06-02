@@ -138,11 +138,11 @@ func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResul
 
 	// Set initial task state to PENDING
 	if err := server.backend.SetStatePending(signature); err != nil {
-		return nil, fmt.Errorf("Set state pending error: %v", err)
+		return nil, fmt.Errorf("Set state pending error: %s", err)
 	}
 
 	if err := server.broker.Publish(signature); err != nil {
-		return nil, fmt.Errorf("Publish message error: %v", err)
+		return nil, fmt.Errorf("Publish message error: %s", err)
 	}
 
 	return backends.NewAsyncResult(signature, server.backend), nil
@@ -186,7 +186,7 @@ func (server *Server) SendGroup(group *tasks.Group) ([]*backends.AsyncResult, er
 
 			// Publish task
 			if err := server.broker.Publish(s); err != nil {
-				errorsChan <- fmt.Errorf("Publish message error: %v", err)
+				errorsChan <- fmt.Errorf("Publish message error: %s", err)
 				return
 			}
 
