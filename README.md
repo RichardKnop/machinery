@@ -66,7 +66,7 @@ You will be able to see the tasks being processed asynchronously by the worker:
 
 ## Configuration
 
-The [config](/blob/master/v1/config/config.go) package has convenience methods for loading configuration from environment variables or a YAML file. For example, load configuration from environment variables:
+The [config](/v1/config/config.go) package has convenience methods for loading configuration from environment variables or a YAML file. For example, load configuration from environment variables:
 
 ```go
 cnf := config.NewFromEnvironment(true, true)
