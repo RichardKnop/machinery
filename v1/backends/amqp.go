@@ -301,7 +301,7 @@ func (b *AMQPBackend) updateState(taskState *tasks.TaskState) error {
 		return nil
 	}
 
-	return fmt.Errorf("Failed delivery of delivery tag: %s", confirmed.DeliveryTag)
+	return fmt.Errorf("Failed delivery of delivery tag: %d", confirmed.DeliveryTag)
 }
 
 // getExpiresIn returns expiration time

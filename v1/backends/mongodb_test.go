@@ -176,7 +176,7 @@ func TestGroupCompleted(t *testing.T) {
 
 	isCompleted, err := backend.GroupCompleted(groupUUID, len(taskUUIDs))
 	if assert.NoError(t, err) {
-		assert.False(t, isCompleted, "Actualy group is not completed")
+		assert.False(t, isCompleted, "Actually group is not completed")
 	}
 
 	signature := &tasks.Signature{
@@ -208,7 +208,7 @@ func TestGroupCompleted(t *testing.T) {
 
 	isCompleted, err = backend.GroupCompleted(groupUUID, len(taskUUIDs))
 	if assert.NoError(t, err) {
-		assert.True(t, isCompleted, "Actualy group is completed")
+		assert.True(t, isCompleted, "Actually group is completed")
 	}
 
 	taskStates, err := backend.GroupTaskStates(groupUUID, len(taskUUIDs))
