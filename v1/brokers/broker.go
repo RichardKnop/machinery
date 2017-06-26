@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
@@ -13,7 +14,8 @@ type Broker struct {
 	cnf                 *config.Config
 	registeredTaskNames []string
 	retry               bool
-	retryFunc           func()
+	retryFunc           func(chan int)
+	retryStopChan       chan int
 	stopChan            chan int
 }
 
@@ -68,12 +70,19 @@ func (b *Broker) startConsuming(consumerTag string, taskProcessor TaskProcessor)
 	}
 
 	b.stopChan = make(chan int)
+	b.retryStopChan = make(chan int)
 }
 
 // startConsuming is a common part of StopConsuming
 func (b *Broker) stopConsuming() {
 	// Do not retry from now on
 	b.retry = false
+	// Stop the retry closure earlier
+	select {
+	case b.retryStopChan <- 1:
+		log.WARNING.Print("Stopping retry closue.")
+	default:
+	}
 	// Notifying the stop channel stops consuming of messages
 	b.stopChan <- 1
 }

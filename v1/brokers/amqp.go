@@ -10,7 +10,6 @@ import (
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/streadway/amqp"
 )
@@ -44,12 +43,10 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 		amqp.Table(b.cnf.AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
-		b.retryFunc()
+		b.retryFunc(b.retryStopChan)
 		return b.retry, err
 	}
 	defer b.Close(channel, conn)
-
-	b.retryFunc = retry.Closure()
 
 	if err = channel.Qos(
 		b.cnf.AMQP.PrefetchCount,

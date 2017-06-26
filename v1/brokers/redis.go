@@ -9,7 +9,6 @@ import (
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/garyburd/redigo/redis"
 	"gopkg.in/redsync.v1"
@@ -56,11 +55,9 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 	// Ping the server to make sure connection is live
 	_, err := conn.Do("PING")
 	if err != nil {
-		b.retryFunc()
+		b.retryFunc(b.retryStopChan)
 		return b.retry, err
 	}
-
-	b.retryFunc = retry.Closure()
 
 	// Channels and wait groups used to properly close down goroutines
 	b.stopReceivingChan = make(chan int)
