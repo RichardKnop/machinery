@@ -8,7 +8,7 @@ MAINTAINER Richard Knop <risoknop@gmail.com>
 # Set environment variables
 ENV PATH /go/bin:$PATH
 
-# Cd into the api code directory
+# Cd into the source code directory
 WORKDIR /go/src/github.com/RichardKnop/machinery
 
 # Copy the local package files to the container's workspace.
