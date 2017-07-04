@@ -42,7 +42,12 @@ func (rc *RedisConnector) NewPool(socketPath, host, password string, db int) *re
 
 // Open a new Redis connection
 func (rc *RedisConnector) open(socketPath, host, password string, db int) (redis.Conn, error) {
-	var opts = []redis.DialOption{redis.DialDatabase(db)}
+	var opts = []redis.DialOption{
+		redis.DialDatabase(db),
+		redis.DialReadTimeout(15 * time.Second),
+		redis.DialWriteTimeout(15 * time.Second),
+		redis.DialConnectTimeout(15 * time.Second),
+	}
 
 	if password != "" {
 		opts = append(opts, redis.DialPassword(password))
