@@ -8,7 +8,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/RichardKnop/logging",
-			"Rev": "8692ae85bb7c50aadb496ffd6fb58a76300eaab1"
+			"Rev": "faff9c1c28798bb458fa9078dc921466fc0cd3d9"
 		},
 		{
 			"ImportPath": "github.com/bradfitz/gomemcache/memcache",
@@ -22,13 +22,13 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
-			"Comment": "v1.0.0-23-gac91d6f",
-			"Rev": "ac91d6ff49bd0d278a90201de77a4f8ad9628e25"
+			"Comment": "v1.1.0-3-g95d11db",
+			"Rev": "95d11dba2d44531bdb8022752b98912baafae03a"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Comment": "v1.0.0-23-gac91d6f",
-			"Rev": "ac91d6ff49bd0d278a90201de77a4f8ad9628e25"
+			"Comment": "v1.1.0-3-g95d11db",
+			"Rev": "95d11dba2d44531bdb8022752b98912baafae03a"
 		},
 		{
 			"ImportPath": "github.com/kelseyhightower/envconfig",
@@ -47,22 +47,22 @@
 		},
 		{
 			"ImportPath": "github.com/streadway/amqp",
-			"Rev": "afe8eee29a74d213b1f3fb2586058157c397da60"
+			"Rev": "dfe15e36048539f4cda41f240b27a5ca25b9cd46"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Comment": "v1.1.4-47-geb84487",
-			"Rev": "eb84487caee2d64c96bb5c6afb60fd4f631eb0f0"
+			"Comment": "v1.1.4-66-gf6abca5",
+			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/require",
-			"Comment": "v1.1.4-47-geb84487",
-			"Rev": "eb84487caee2d64c96bb5c6afb60fd4f631eb0f0"
+			"Comment": "v1.1.4-66-gf6abca5",
+			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/suite",
-			"Comment": "v1.1.4-47-geb84487",
-			"Rev": "eb84487caee2d64c96bb5c6afb60fd4f631eb0f0"
+			"Comment": "v1.1.4-66-gf6abca5",
+			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 		},
 		{
 			"ImportPath": "github.com/urfave/cli",

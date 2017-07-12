@@ -181,12 +181,20 @@ func (p *Pool) Get() Conn {
 	return &pooledConnection{p: p, c: c}
 }
 
-// ActiveCount returns the number of active connections in the pool.
+// ActiveCount returns the number of connections in the pool. The count includes idle connections and connections in use.
 func (p *Pool) ActiveCount() int {
 	p.mu.Lock()
 	active := p.active
 	p.mu.Unlock()
 	return active
+}
+
+// IdleCount returns the number of idle connections in the pool.
+func (p *Pool) IdleCount() int {
+	p.mu.Lock()
+	idle := p.idle.Len()
+	p.mu.Unlock()
+	return idle
 }
 
 // Close releases the resources used by the pool.

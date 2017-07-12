@@ -289,24 +289,30 @@ func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
 
 	defer func() {
 		// Return connection to normal state on error.
+		// https://redis.io/commands/discard
 		if err != nil {
 			conn.Do("DISCARD")
 		}
 	}()
 
-	for {
-		// Space out queries to ZSET to 15ms intervals so we don't bombard redis
-		// server with relentless ZRANGEBYSCOREs
-		<-time.After(15 * time.Millisecond)
+	var (
+		items [][]byte
+		reply interface{}
+	)
 
-		if _, err := conn.Do("WATCH", key); err != nil {
-			return []byte{}, err
+	for {
+		// Space out queries to ZSET to 20ms intervals so we don't bombard redis
+		// server with relentless ZRANGEBYSCOREs
+		<-time.After(20 * time.Millisecond)
+
+		if _, err = conn.Do("WATCH", key); err != nil {
+			return
 		}
 
 		now := time.Now().UTC().UnixNano()
 
 		// https://redis.io/commands/zrangebyscore
-		items, err := redis.ByteSlices(conn.Do(
+		items, err = redis.ByteSlices(conn.Do(
 			"ZRANGEBYSCORE",
 			key,
 			0,
@@ -316,26 +322,27 @@ func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
 			1,
 		))
 		if err != nil {
-			return []byte{}, err
+			return
 		}
 		if len(items) != 1 {
-			return []byte{}, redis.ErrNil
+			err = redis.ErrNil
+			return
 		}
 
 		conn.Send("MULTI")
 		conn.Send("ZREM", key, items[0])
-		queued, err := conn.Do("EXEC")
+		reply, err = conn.Do("EXEC")
 		if err != nil {
-			return []byte{}, err
+			return
 		}
 
-		if queued != nil {
+		if reply != nil {
 			result = items[0]
 			break
 		}
 	}
 
-	return result, nil
+	return
 }
 
 // Stops the receiving goroutine
