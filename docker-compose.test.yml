@@ -4,6 +4,8 @@ services:
   sut:
     container_name: machinery_sut
     image: machinery_sut:latest
+    volumes:
+      - "./:/go/src/github.com/RichardKnop/machinery"
     depends_on:
       - rabbitmq
       - redis

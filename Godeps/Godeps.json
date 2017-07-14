@@ -8,7 +8,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/RichardKnop/logging",
-			"Rev": "faff9c1c28798bb458fa9078dc921466fc0cd3d9"
+			"Rev": "0745ebe7cc826d7d0453c7c9f08ea75a7fe86f7b"
 		},
 		{
 			"ImportPath": "github.com/bradfitz/gomemcache/memcache",
