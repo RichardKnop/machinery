@@ -188,7 +188,7 @@ func (b *AMQPBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	declareQueueArgs := amqp.Table{
 		"x-message-ttl": int32(b.getExpiresIn()),
 	}
-	conn, channel, _, _, err := b.Connect(
+	conn, channel, _, _, _, err := b.Connect(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
 		b.cnf.AMQP.Exchange,     // exchange name
@@ -263,7 +263,7 @@ func (b *AMQPBackend) updateState(taskState *tasks.TaskState) error {
 	declareQueueArgs := amqp.Table{
 		"x-message-ttl": int32(b.getExpiresIn()),
 	}
-	conn, channel, queue, confirmsChan, err := b.Connect(
+	conn, channel, queue, confirmsChan, _, err := b.Connect(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
 		b.cnf.AMQP.Exchange,     // exchange name
@@ -330,7 +330,7 @@ func (b *AMQPBackend) markTaskCompleted(signature *tasks.Signature, taskState *t
 	declareQueueArgs := amqp.Table{
 		"x-message-ttl": int32(b.getExpiresIn()),
 	}
-	conn, channel, queue, confirmsChan, err := b.Connect(
+	conn, channel, queue, confirmsChan, _, err := b.Connect(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
 		b.cnf.AMQP.Exchange,     // exchange name

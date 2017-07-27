@@ -29,7 +29,7 @@ func NewAMQPBroker(cnf *config.Config) Interface {
 func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
 	b.startConsuming(consumerTag, taskProcessor)
 
-	conn, channel, queue, _, err := b.Connect(
+	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
 		b.cnf.AMQP.Exchange,     // exchange name
@@ -71,7 +71,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
-	if err := b.consume(deliveries, taskProcessor); err != nil {
+	if err := b.consume(deliveries, taskProcessor, amqpCloseChan); err != nil {
 		return b.retry, err
 	}
 
@@ -104,7 +104,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
-	conn, channel, _, confirmsChan, err := b.Connect(
+	conn, channel, _, confirmsChan, _, err := b.Connect(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
 		b.cnf.AMQP.Exchange,     // exchange name
@@ -148,7 +148,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor) error {
+func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor, amqpCloseChan <-chan *amqp.Error) error {
 	maxWorkers := b.cnf.MaxWorkerInstances
 	pool := make(chan struct{}, maxWorkers)
 
@@ -167,6 +167,8 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor Task
 
 	for {
 		select {
+		case amqpErr := <-amqpCloseChan:
+			return amqpErr
 		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
@@ -256,7 +258,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 		// Time after that the queue will be deleted.
 		"x-expires": delayMs * 2,
 	}
-	conn, channel, _, _, err := b.Connect(
+	conn, channel, _, _, _, err := b.Connect(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
 		b.cnf.AMQP.Exchange,                     // exchange name
