@@ -156,17 +156,18 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	log.INFO.Printf("Processed task %s. Results = [%v]", signature.UUID, strings.Join(debugResults, ", "))
 
 	// Trigger success callbacks
+
 	for _, successTask := range signature.OnSuccess {
 		if signature.Immutable == false {
 			// Pass results of the task to success callbacks
-			args := make([]tasks.Arg, 0)
-			for _, taskResult := range taskResults {
-				args = append([]tasks.Arg{{
+			args := make([]tasks.Arg, len(taskResults)+len(successTask.Args))
+			for i, taskResult := range taskResults {
+				args[i] = tasks.Arg{
 					Type:  taskResult.Type,
 					Value: taskResult.Value,
-				}}, successTask.Args...)
+				}
 			}
-			successTask.Args = args
+			successTask.Args = append(args, successTask.Args...)
 		}
 
 		worker.server.SendTask(successTask)
