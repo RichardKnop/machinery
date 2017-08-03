@@ -230,19 +230,19 @@ import (
   "github.com/RichardKnop/machinery/v1"
 )
 
-var cnf = config.Config{
+var cnf = &config.Config{
   Broker:             "amqp://guest:guest@localhost:5672/",
+  DefaultQueue:       "machinery_tasks",
   ResultBackend:      "amqp://guest:guest@localhost:5672/",
   MaxWorkerInstances: 0,
-  AMQP:               config.AMQPConfig{
+  AMQP:               &config.AMQPConfig{
     Exchange:     "machinery_exchange",
     ExchangeType: "direct",
-    DefaultQueue: "machinery_tasks",
     BindingKey:   "machinery_task",
   },
 }
 
-server, err := machinery.NewServer(&cnf)
+server, err := machinery.NewServer(cnf)
 if err != nil {
   // do something with the error
 }
