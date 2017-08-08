@@ -19,6 +19,7 @@ import (
 type Worker struct {
 	server      *Server
 	ConsumerTag string
+	Concurrency int
 }
 
 // Launch starts a new worker process. The worker subscribes
@@ -45,7 +46,7 @@ func (worker *Worker) Launch() error {
 
 	go func() {
 		for {
-			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
+			retry, err := broker.StartConsuming(worker.ConsumerTag, worker.Concurrency, worker)
 
 			if retry {
 				log.WARNING.Printf("Start consuming error: %s", err)

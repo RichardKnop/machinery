@@ -10,11 +10,10 @@ import (
 var (
 	// Start with sensible default values
 	cnf = &Config{
-		Broker:             "amqp://guest:guest@localhost:5672/",
-		DefaultQueue:       "machinery_tasks",
-		ResultBackend:      "amqp://guest:guest@localhost:5672/",
-		ResultsExpireIn:    3600,
-		MaxWorkerInstances: 3,
+		Broker:          "amqp://guest:guest@localhost:5672/",
+		DefaultQueue:    "machinery_tasks",
+		ResultBackend:   "amqp://guest:guest@localhost:5672/",
+		ResultsExpireIn: 3600,
 		AMQP: &AMQPConfig{
 			Exchange:      "machinery_exchange",
 			ExchangeType:  "direct",
@@ -30,13 +29,12 @@ var (
 
 // Config holds all configuration for our program
 type Config struct {
-	Broker             string      `yaml:"broker" envconfig:"BROKER"`
-	DefaultQueue       string      `yaml:"default_queue" envconfig:"DEFAULT_QUEUE"`
-	ResultBackend      string      `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
-	ResultsExpireIn    int         `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
-	MaxWorkerInstances int         `yaml:"max_worker_instances" envconfig:"MAX_WORKER_INSTANCES"`
-	AMQP               *AMQPConfig `yaml:"amqp"`
-	TLSConfig          *tls.Config
+	Broker          string      `yaml:"broker" envconfig:"BROKER"`
+	DefaultQueue    string      `yaml:"default_queue" envconfig:"DEFAULT_QUEUE"`
+	ResultBackend   string      `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
+	ResultsExpireIn int         `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
+	AMQP            *AMQPConfig `yaml:"amqp"`
+	TLSConfig       *tls.Config
 }
 
 // QueueBindingArgs arguments which are used when binding to the exchange

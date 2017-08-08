@@ -96,7 +96,7 @@ func worker() error {
 
 	// The second argument is a consumer tag
 	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
-	worker := server.NewWorker("machinery_worker")
+	worker := server.NewWorker("machinery_worker", 0)
 
 	if err := worker.Launch(); err != nil {
 		return err

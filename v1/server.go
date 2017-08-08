@@ -43,17 +43,18 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	if ok {
 		// we don't have to call worker.Lauch
 		// in eager mode
-		eager.AssignWorker(srv.NewWorker("eager"))
+		eager.AssignWorker(srv.NewWorker("eager", 0))
 	}
 
 	return srv, nil
 }
 
 // NewWorker creates Worker instance
-func (server *Server) NewWorker(consumerTag string) *Worker {
+func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
 	return &Worker{
 		server:      server,
 		ConsumerTag: consumerTag,
+		Concurrency: concurrency,
 	}
 }
 
