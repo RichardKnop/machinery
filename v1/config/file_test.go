@@ -12,7 +12,6 @@ import (
 var configYAMLData = `---
 broker: "amqp://guest:guest@localhost:5672/"
 default_queue: machinery_tasks
-max_worker_instances: 10
 result_backend: amqp
 results_expire_in: 3600000
 amqp:
@@ -49,7 +48,6 @@ func TestNewFromYaml(t *testing.T) {
 	assert.Equal(t, "machinery_tasks", cnf.DefaultQueue)
 	assert.Equal(t, "amqp", cnf.ResultBackend)
 	assert.Equal(t, 3600000, cnf.ResultsExpireIn)
-	assert.Equal(t, 10, cnf.MaxWorkerInstances)
 	assert.Equal(t, "machinery_exchange", cnf.AMQP.Exchange)
 	assert.Equal(t, "direct", cnf.AMQP.ExchangeType)
 	assert.Equal(t, "machinery_task", cnf.AMQP.BindingKey)

@@ -59,7 +59,7 @@ func (s *EagerIntegrationTestSuite) TestCalled() {
 				Value: 100.0,
 			},
 		},
-	})
+	}, false)
 
 	s.Nil(err)
 	s.Equal(100.0, s.called)
@@ -76,7 +76,7 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 					Value: 100.0,
 				},
 			},
-		})
+		}, false)
 
 		s.NotNil(asyncResult)
 		s.Nil(err)
@@ -107,7 +107,7 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 					Value: 100,
 				},
 			},
-		})
+		}, false)
 
 		s.NotNil(asyncResult)
 		s.Nil(err)

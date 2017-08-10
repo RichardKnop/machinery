@@ -45,7 +45,7 @@ func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db in
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
+func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskProcessor TaskProcessor) (bool, error) {
 	b.startConsuming(consumerTag, taskProcessor)
 
 	conn := b.open()
@@ -113,7 +113,7 @@ func (b *RedisBroker) StartConsuming(consumerTag string, taskProcessor TaskProce
 		}
 	}()
 
-	if err := b.consume(deliveries, taskProcessor); err != nil {
+	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
 		return b.retry, err
 	}
 
@@ -132,7 +132,7 @@ func (b *RedisBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *RedisBroker) Publish(signature *tasks.Signature) error {
+func (b *RedisBroker) Publish(signature *tasks.Signature, head bool) error {
 	msg, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
@@ -155,7 +155,12 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 		}
 	}
 
-	_, err = conn.Do("RPUSH", signature.RoutingKey, msg)
+	if head {
+		_, err = conn.Do("LPUSH", signature.RoutingKey, msg)
+	} else {
+		_, err = conn.Do("RPUSH", signature.RoutingKey, msg)
+	}
+
 	return err
 }
 
@@ -189,13 +194,12 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) 
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProcessor) error {
-	maxWorkers := b.cnf.MaxWorkerInstances
-	pool := make(chan struct{}, maxWorkers)
+func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskProcessor TaskProcessor) error {
+	pool := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
 	go func() {
-		for i := 0; i < maxWorkers; i++ {
+		for i := 0; i < concurrency; i++ {
 			pool <- struct{}{}
 		}
 	}()
@@ -211,7 +215,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProces
 		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
-			if maxWorkers != 0 {
+			if concurrency != 0 {
 				// get worker from pool (blocks until one is available)
 				<-pool
 			}
@@ -227,7 +231,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, taskProcessor TaskProces
 					errorsChan <- err
 				}
 
-				if maxWorkers != 0 {
+				if concurrency != 0 {
 					// give worker back to pool
 					pool <- struct{}{}
 				}

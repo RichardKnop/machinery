@@ -19,6 +19,7 @@ import (
 type Worker struct {
 	server      *Server
 	ConsumerTag string
+	Concurrency int
 }
 
 // Launch starts a new worker process. The worker subscribes
@@ -45,7 +46,7 @@ func (worker *Worker) Launch() error {
 
 	go func() {
 		for {
-			retry, err := broker.StartConsuming(worker.ConsumerTag, worker)
+			retry, err := broker.StartConsuming(worker.ConsumerTag, worker.Concurrency, worker)
 
 			if retry {
 				log.WARNING.Printf("Start consuming error: %s", err)
@@ -137,7 +138,7 @@ func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 	log.WARNING.Printf("Task %s failed. Going to retry in %ds.", signature.UUID, signature.RetryTimeout)
 
 	// Send the task back to the queue
-	_, err := worker.server.SendTask(signature)
+	_, err := worker.server.SendTask(signature, false)
 	return err
 }
 
@@ -170,7 +171,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 			successTask.Args = append(args, successTask.Args...)
 		}
 
-		worker.server.SendTask(successTask)
+		worker.server.SendTask(successTask, true)
 	}
 
 	// If the task was not part of a group, just return
@@ -239,7 +240,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	}
 
 	// Send the chord task
-	_, err = worker.server.SendTask(signature.ChordCallback)
+	_, err = worker.server.SendTask(signature.ChordCallback, false)
 	if err != nil {
 		return err
 	}
@@ -264,7 +265,7 @@ func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) erro
 			Value: taskErr.Error(),
 		}}, errorTask.Args...)
 		errorTask.Args = args
-		worker.server.SendTask(errorTask)
+		worker.server.SendTask(errorTask, false)
 	}
 
 	return nil

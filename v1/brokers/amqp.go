@@ -26,7 +26,7 @@ func NewAMQPBroker(cnf *config.Config) Interface {
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProcessor) (bool, error) {
+func (b *AMQPBroker) StartConsuming(consumerTag string, concurrency int, taskProcessor TaskProcessor) (bool, error) {
 	b.startConsuming(consumerTag, taskProcessor)
 
 	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
@@ -71,7 +71,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, taskProcessor TaskProces
 
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
-	if err := b.consume(deliveries, taskProcessor, amqpCloseChan); err != nil {
+	if err := b.consume(deliveries, concurrency, taskProcessor, amqpCloseChan); err != nil {
 		return b.retry, err
 	}
 
@@ -84,7 +84,7 @@ func (b *AMQPBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
+func (b *AMQPBroker) Publish(signature *tasks.Signature, head bool) error {
 	b.AdjustRoutingKey(signature)
 
 	// Check the ETA signature field, if it is set and it is in the future,
@@ -148,13 +148,12 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor TaskProcessor, amqpCloseChan <-chan *amqp.Error) error {
-	maxWorkers := b.cnf.MaxWorkerInstances
-	pool := make(chan struct{}, maxWorkers)
+func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskProcessor TaskProcessor, amqpCloseChan <-chan *amqp.Error) error {
+	pool := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
 	go func() {
-		for i := 0; i < maxWorkers; i++ {
+		for i := 0; i < concurrency; i++ {
 			pool <- struct{}{}
 		}
 	}()
@@ -172,7 +171,7 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor Task
 		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
-			if maxWorkers != 0 {
+			if concurrency != 0 {
 				// get worker from pool (blocks until one is available)
 				<-pool
 			}
@@ -188,7 +187,7 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, taskProcessor Task
 					errorsChan <- err
 				}
 
-				if maxWorkers != 0 {
+				if concurrency != 0 {
 					// give worker back to pool
 					pool <- struct{}{}
 				}

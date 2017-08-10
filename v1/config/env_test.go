@@ -34,7 +34,6 @@ func TestNewFromEnvironment(t *testing.T) {
 	assert.Equal(t, "machinery_tasks", cnf.DefaultQueue)
 	assert.Equal(t, "amqp", cnf.ResultBackend)
 	assert.Equal(t, 3600000, cnf.ResultsExpireIn)
-	assert.Equal(t, 10, cnf.MaxWorkerInstances)
 	assert.Equal(t, "machinery_exchange", cnf.AMQP.Exchange)
 	assert.Equal(t, "direct", cnf.AMQP.ExchangeType)
 	assert.Equal(t, "machinery_task", cnf.AMQP.BindingKey)

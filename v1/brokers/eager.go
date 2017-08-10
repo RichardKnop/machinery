@@ -25,7 +25,7 @@ type EagerMode interface {
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (eagerBroker *EagerBroker) StartConsuming(consumerTag string, p TaskProcessor) (bool, error) {
+func (eagerBroker *EagerBroker) StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error) {
 	return true, nil
 }
 
@@ -35,7 +35,7 @@ func (eagerBroker *EagerBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (eagerBroker *EagerBroker) Publish(task *tasks.Signature) error {
+func (eagerBroker *EagerBroker) Publish(task *tasks.Signature, head bool) error {
 	if eagerBroker.worker == nil {
 		return errors.New("worker is not assigned in eager-mode")
 	}
