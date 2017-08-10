@@ -34,7 +34,7 @@ func testAll(server *machinery.Server, t *testing.T) {
 func testSendTask(server *machinery.Server, t *testing.T) {
 	addTask := newAddTask(1, 1)
 
-	asyncResult, err := server.SendTask(addTask, false)
+	asyncResult, err := server.SendTask(addTask)
 	if err != nil {
 		t.Error(err)
 	}
@@ -156,7 +156,7 @@ func testSendChord(server *machinery.Server, t *testing.T) {
 func testReturnJustError(server *machinery.Server, t *testing.T) {
 	// Fails, returns error as the only value
 	task := newErrorTask("Test error", true)
-	asyncResult, err := server.SendTask(task, false)
+	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}
@@ -169,7 +169,7 @@ func testReturnJustError(server *machinery.Server, t *testing.T) {
 
 	// Successful, returns nil as the only value
 	task = newErrorTask("", false)
-	asyncResult, err = server.SendTask(task, false)
+	asyncResult, err = server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}
@@ -185,7 +185,7 @@ func testReturnMultipleValues(server *machinery.Server, t *testing.T) {
 	// Successful task with multiple return values
 	task := newMultipleReturnTask("foo", "bar", false)
 
-	asyncResult, err := server.SendTask(task, false)
+	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}
@@ -218,7 +218,7 @@ func testReturnMultipleValues(server *machinery.Server, t *testing.T) {
 	// Failed task with multiple return values
 	task = newMultipleReturnTask("", "", true)
 
-	asyncResult, err = server.SendTask(task, false)
+	asyncResult, err = server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}
@@ -232,7 +232,7 @@ func testReturnMultipleValues(server *machinery.Server, t *testing.T) {
 
 func testPanic(server *machinery.Server, t *testing.T) {
 	task := &tasks.Signature{Name: "panic"}
-	asyncResult, err := server.SendTask(task, false)
+	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}
@@ -248,7 +248,7 @@ func testDelay(server *machinery.Server, t *testing.T) {
 	now := time.Now().UTC()
 	eta := now.Add(100 * (time.Millisecond))
 	task := newDelayTask(eta)
-	asyncResult, err := server.SendTask(task, false)
+	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}

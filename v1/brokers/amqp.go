@@ -84,7 +84,7 @@ func (b *AMQPBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *AMQPBroker) Publish(signature *tasks.Signature, head bool) error {
+func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 	b.AdjustRoutingKey(signature)
 
 	// Check the ETA signature field, if it is set and it is in the future,

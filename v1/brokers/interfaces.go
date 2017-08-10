@@ -10,7 +10,7 @@ type Interface interface {
 	IsTaskRegistered(name string) bool
 	StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error)
 	StopConsuming()
-	Publish(task *tasks.Signature, head bool) error
+	Publish(task *tasks.Signature) error
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)
 }
 

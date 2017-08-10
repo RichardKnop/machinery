@@ -181,7 +181,7 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Single task:")
 
-	asyncResult, err := server.SendTask(&task0, false)
+	asyncResult, err := server.SendTask(&task0)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
@@ -254,7 +254,7 @@ func send() error {
 
 	// Let's try a task which throws panic to make sure stack trace is not lost
 	initTasks()
-	asyncResult, err = server.SendTask(&task5, false)
+	asyncResult, err = server.SendTask(&task5)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}

@@ -8,8 +8,7 @@ import (
 
 // Chain creates a chain of tasks to be executed one after another
 type Chain struct {
-	Tasks    []*Signature
-	Priority bool
+	Tasks []*Signature
 }
 
 // Group creates a set of tasks to be executed in parallel
