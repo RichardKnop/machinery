@@ -126,7 +126,7 @@ func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
 }
 
 // SendTask publishes a task to the default queue
-func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResult, error) {
+func (server *Server) SendTask(signature *tasks.Signature, head bool) (*backends.AsyncResult, error) {
 	// Make sure result backend is defined
 	if server.backend == nil {
 		return nil, errors.New("Result backend required")
@@ -142,7 +142,7 @@ func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResul
 		return nil, fmt.Errorf("Set state pending error: %s", err)
 	}
 
-	if err := server.broker.Publish(signature); err != nil {
+	if err := server.broker.Publish(signature, head); err != nil {
 		return nil, fmt.Errorf("Publish message error: %s", err)
 	}
 
@@ -151,7 +151,7 @@ func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResul
 
 // SendChain triggers a chain of tasks
 func (server *Server) SendChain(chain *tasks.Chain) (*backends.ChainAsyncResult, error) {
-	_, err := server.SendTask(chain.Tasks[0])
+	_, err := server.SendTask(chain.Tasks[0], false)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (server *Server) SendGroup(group *tasks.Group) ([]*backends.AsyncResult, er
 			}
 
 			// Publish task
-			if err := server.broker.Publish(s); err != nil {
+			if err := server.broker.Publish(s, false); err != nil {
 				errorsChan <- fmt.Errorf("Publish message error: %s", err)
 				return
 			}

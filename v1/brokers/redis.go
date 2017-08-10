@@ -132,7 +132,7 @@ func (b *RedisBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *RedisBroker) Publish(signature *tasks.Signature) error {
+func (b *RedisBroker) Publish(signature *tasks.Signature, head bool) error {
 	msg, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
@@ -155,7 +155,12 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 		}
 	}
 
-	_, err = conn.Do("RPUSH", signature.RoutingKey, msg)
+	if head {
+		_, err = conn.Do("LPUSH", signature.RoutingKey, msg)
+	} else {
+		_, err = conn.Do("RPUSH", signature.RoutingKey, msg)
+	}
+
 	return err
 }
 
