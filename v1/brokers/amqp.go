@@ -171,7 +171,7 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, t
 		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
-			if concurrency != 0 {
+			if concurrency > 0 {
 				// get worker from pool (blocks until one is available)
 				<-pool
 			}
@@ -187,7 +187,7 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, t
 					errorsChan <- err
 				}
 
-				if concurrency != 0 {
+				if concurrency > 0 {
 					// give worker back to pool
 					pool <- struct{}{}
 				}

@@ -215,7 +215,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
-			if concurrency != 0 {
+			if concurrency > 0 {
 				// get worker from pool (blocks until one is available)
 				<-pool
 			}
@@ -231,7 +231,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 					errorsChan <- err
 				}
 
-				if concurrency != 0 {
+				if concurrency > 0 {
 					// give worker back to pool
 					pool <- struct{}{}
 				}
