@@ -201,7 +201,7 @@ func send() error {
 	log.INFO.Println("Group of tasks (parallel execution):")
 
 	group := tasks.NewGroup(&task0, &task1, &task2)
-	asyncResults, err := server.SendGroup(group)
+	asyncResults, err := server.SendGroup(group, 10)
 	if err != nil {
 		return fmt.Errorf("Could not send group: %s", err.Error())
 	}
@@ -225,7 +225,7 @@ func send() error {
 
 	group = tasks.NewGroup(&task0, &task1, &task2)
 	chord := tasks.NewChord(group, &task4)
-	chordAsyncResult, err := server.SendChord(chord)
+	chordAsyncResult, err := server.SendChord(chord, 10)
 	if err != nil {
 		return fmt.Errorf("Could not send chord: %s", err.Error())
 	}

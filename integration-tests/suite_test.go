@@ -61,7 +61,7 @@ func testSendGroup(server *machinery.Server, t *testing.T) {
 	t1, t2, t3 := newAddTask(1, 1), newAddTask(2, 2), newAddTask(5, 6)
 
 	group := tasks.NewGroup(t1, t2, t3)
-	asyncResults, err := server.SendGroup(group)
+	asyncResults, err := server.SendGroup(group, 10)
 	if err != nil {
 		t.Error(err)
 	}
@@ -130,7 +130,7 @@ func testSendChord(server *machinery.Server, t *testing.T) {
 
 	group := tasks.NewGroup(t1, t2, t3)
 	chord := tasks.NewChord(group, t4)
-	chordAsyncResult, err := server.SendChord(chord)
+	chordAsyncResult, err := server.SendChord(chord, 10)
 	if err != nil {
 		t.Error(err)
 	}
