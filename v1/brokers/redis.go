@@ -48,6 +48,7 @@ func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db in
 func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskProcessor TaskProcessor) (bool, error) {
 	b.startConsuming(consumerTag, taskProcessor)
 
+	b.pool = nil
 	conn := b.open()
 	defer conn.Close()
 	defer b.pool.Close()
@@ -199,7 +200,8 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 		}
 	}()
 
-	errorsChan := make(chan error)
+	errorsChan := make(chan error, concurrency*2)
+	//errorsChan := make(chan error)
 
 	// Use wait group to make sure task processing completes on interrupt signal
 	var wg sync.WaitGroup
