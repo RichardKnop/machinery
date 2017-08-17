@@ -185,6 +185,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	if err != nil {
 		return fmt.Errorf("Group completed error: %s", err)
 	}
+
 	// If the group has not yet completed, just return
 	if !groupCompleted {
 		return nil
