@@ -2,10 +2,9 @@ package backends
 
 import (
 	"errors"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"reflect"
 	"time"
-
-	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 // AsyncResult represents a task result
@@ -60,6 +59,36 @@ func NewChainAsyncResult(tasks []*tasks.Signature, backend Interface) *ChainAsyn
 		asyncResults: asyncResults,
 		backend:      backend,
 	}
+}
+
+//touch the state and no wait
+func (asyncResult *AsyncResult) Touch() ([]reflect.Value, error) {
+	if asyncResult.backend == nil {
+		return nil, errors.New("Result backend not configured")
+	}
+	asyncResult.GetState()
+	// Purge state if we are using AMQP backend
+	_, isAMQPBackend := asyncResult.backend.(*AMQPBackend)
+	if isAMQPBackend && asyncResult.taskState.IsCompleted() {
+		asyncResult.backend.PurgeState(asyncResult.taskState.TaskUUID)
+	}
+
+	if asyncResult.taskState.IsSuccess() {
+		resultValues := make([]reflect.Value, len(asyncResult.taskState.Results))
+		for i, result := range asyncResult.taskState.Results {
+			resultValue, err := tasks.ReflectValue(result.Type, result.Value)
+			if err != nil {
+				return nil, err
+			}
+			resultValues[i] = resultValue
+		}
+		return resultValues, nil
+	}
+
+	if asyncResult.taskState.IsFailure() {
+		return nil, errors.New(asyncResult.taskState.Error)
+	}
+	return nil, nil
 }
 
 // Get returns task results (synchronous blocking call)
@@ -189,4 +218,83 @@ func (chordAsyncResult *ChordAsyncResult) Get(sleepDuration time.Duration) ([]re
 	}
 
 	return chordAsyncResult.chordAsyncResult.Get(sleepDuration)
+}
+
+// Get returns results of a chain of tasks with timeout
+func (chainAsyncResult *ChainAsyncResult) GetWithTimeout(timeoutDuration, sleepDuration time.Duration) ([]reflect.Value, error) {
+	if chainAsyncResult.backend == nil {
+		return nil, errors.New("Result backend not configured")
+	}
+
+	var (
+		results []reflect.Value
+		err     error
+	)
+
+	timeout := time.NewTimer(timeoutDuration)
+	ln := len(chainAsyncResult.asyncResults)
+	lastResult := chainAsyncResult.asyncResults[ln-1]
+
+	for {
+		select {
+		case <-timeout.C:
+			return nil, errors.New("Timeout reach")
+		default:
+
+			for _, asyncResult := range chainAsyncResult.asyncResults {
+				_, errcur := asyncResult.Touch()
+				if errcur != nil {
+					return nil, err
+				}
+			}
+
+			results, err = lastResult.Touch()
+			if err != nil {
+				return nil, err
+			}
+			if results != nil {
+				return results, err
+			}
+			<-time.After(sleepDuration)
+		}
+	}
+	return results, err
+}
+
+// Get returns result of a chord with timeout
+func (chordAsyncResult *ChordAsyncResult) GetWithTimeout(timeoutDuration, sleepDuration time.Duration) ([]reflect.Value, error) {
+	if chordAsyncResult.backend == nil {
+		return nil, errors.New("Result backend not configured")
+	}
+
+	var (
+		results []reflect.Value
+		err     error
+	)
+
+	timeout := time.NewTimer(timeoutDuration)
+	for {
+		select {
+		case <-timeout.C:
+			return nil, errors.New("Timeout reach")
+		default:
+			for _, asyncResult := range chordAsyncResult.groupAsyncResults {
+				_, errcur := asyncResult.Touch()
+				if errcur != nil {
+					return nil, err
+				}
+			}
+
+			results, err = chordAsyncResult.chordAsyncResult.Touch()
+			if err != nil {
+				return nil, nil
+			}
+			if results != nil {
+				return results, err
+			}
+			<-time.After(sleepDuration)
+		}
+	}
+
+	return results, err
 }
