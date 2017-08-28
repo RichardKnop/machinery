@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -258,6 +259,12 @@ func send() error {
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err == nil {
+		return errors.New("Error should not be nil if task panicked")
+	}
+	log.INFO.Printf("Task panicked and returned error = %v\n", err.Error())
 
 	return nil
 }

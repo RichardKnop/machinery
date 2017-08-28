@@ -186,7 +186,11 @@ func (b *AMQPBackend) SetStateFailure(signature *tasks.Signature, err string) er
 // as the message will get consumed and removed from the queue.
 func (b *AMQPBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	declareQueueArgs := amqp.Table{
+		// Time in milliseconds
+		// after that message will expire
 		"x-message-ttl": int32(b.getExpiresIn()),
+		// Time after that the queue will be deleted.
+		"x-expires": int32(b.getExpiresIn()),
 	}
 	conn, channel, _, _, _, err := b.Connect(
 		b.cnf.Broker,
@@ -261,7 +265,11 @@ func (b *AMQPBackend) updateState(taskState *tasks.TaskState) error {
 	}
 
 	declareQueueArgs := amqp.Table{
+		// Time in milliseconds
+		// after that message will expire
 		"x-message-ttl": int32(b.getExpiresIn()),
+		// Time after that the queue will be deleted.
+		"x-expires": int32(b.getExpiresIn()),
 	}
 	conn, channel, queue, confirmsChan, _, err := b.Connect(
 		b.cnf.Broker,
@@ -328,7 +336,11 @@ func (b *AMQPBackend) markTaskCompleted(signature *tasks.Signature, taskState *t
 	}
 
 	declareQueueArgs := amqp.Table{
+		// Time in milliseconds
+		// after that message will expire
 		"x-message-ttl": int32(b.getExpiresIn()),
+		// Time after that the queue will be deleted.
+		"x-expires": int32(b.getExpiresIn()),
 	}
 	conn, channel, queue, confirmsChan, _, err := b.Connect(
 		b.cnf.Broker,
