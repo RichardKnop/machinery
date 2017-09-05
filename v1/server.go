@@ -185,7 +185,9 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*bac
 
 	pool := make(chan struct{}, sendConcurrency)
 	go func() {
-		pool <- struct{}{}
+		for i := 0; i < sendConcurrency; i++ {
+			pool <- struct{}{}
+		}
 	}()
 
 	for i, signature := range group.Tasks {
@@ -198,13 +200,17 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*bac
 			defer wg.Done()
 
 			// Publish task
-			if err := server.broker.Publish(s); err != nil {
-				errorsChan <- fmt.Errorf("Publish message error: %s", err)
+
+			err := server.broker.Publish(s)
+
+			if sendConcurrency > 0 {
 				pool <- struct{}{}
-				return
 			}
 
-			pool <- struct{}{}
+			if err != nil {
+				errorsChan <- fmt.Errorf("Publish message error: %s", err)
+				return
+			}
 
 			asyncResults[index] = backends.NewAsyncResult(s, server.backend)
 		}(signature, i)
