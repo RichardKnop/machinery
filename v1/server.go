@@ -170,7 +170,7 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*bac
 
 	var wg sync.WaitGroup
 	wg.Add(len(group.Tasks))
-	errorsChan := make(chan error)
+	errorsChan := make(chan error, len(group.Tasks)*2)
 
 	// Init group
 	server.backend.InitGroup(group.GroupUUID, group.GetUUIDs())
