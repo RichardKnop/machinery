@@ -14,8 +14,9 @@ func Add(args ...int64) (int64, error) {
 }
 
 func TestString(str string) (string, error) {
-	return str,nil
+	return str, nil
 }
+
 // Multiply ...
 func Multiply(args ...int64) (int64, error) {
 	sum := int64(1)
