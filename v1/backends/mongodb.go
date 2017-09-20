@@ -138,11 +138,24 @@ func (b *MongodbBackend) SetStateRetry(signature *tasks.Signature) error {
 
 // SetStateSuccess updates task state to SUCCESS
 func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
+//edited by surendra tiwari
 	bsonResults := make([]bson.M, len(results))
 	for i, result := range results {
-		bsonResults[i] = bson.M{
-			"type":  result.Type,
-			"value": result.Value,
+		//to hold the json result
+		bsonResult_ := bson.M{}
+		//convert type to json 
+		err := bson.UnmarshalJSON([]byte(result.Value.(string)),&bsonResult_)
+        	//if we get error then it means its not convertable to json so push it as it is
+		if err != nil {
+                	bsonResults[i] = bson.M{
+                        "type":  result.Type,
+                        "value": result.Value,
+                	}
+        	}else {
+			bsonResults[i] = bson.M{
+			"type":  "Json",
+			"value": bsonResult_,
+			}
 		}
 	}
 	update := bson.M{
