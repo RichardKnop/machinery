@@ -1,6 +1,6 @@
 {
-	"ImportPath": "github.com/RichardKnop/machinery",
-	"GoVersion": "go1.8",
+	"ImportPath": "github.com/GetStream/machinery",
+	"GoVersion": "go1.9",
 	"GodepVersion": "v79",
 	"Packages": [
 		"./..."

@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/GetStream/machinery/v1/common"
+	"github.com/GetStream/machinery/v1/config"
+	"github.com/GetStream/machinery/v1/log"
+	"github.com/GetStream/machinery/v1/tasks"
 	"github.com/streadway/amqp"
 )
 
@@ -217,7 +217,7 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 	// If the task is not registered, we nack it and requeue,
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(signature.Name) {
-		d.Nack(false, true) // multiple, requeue
+		d.Nack(false, b.cnf.AMQP.RequeueUnknownTasks) // multiple, requeue
 		return nil
 	}
 
