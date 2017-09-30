@@ -1,10 +1,10 @@
 package backends
 
 import (
-	"time"
-
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"reflect"
+	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -139,22 +139,30 @@ func (b *MongodbBackend) SetStateRetry(signature *tasks.Signature) error {
 // SetStateSuccess updates task state to SUCCESS
 func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	//edited by surendra tiwari
+	var err error
 	bsonResults := make([]bson.M, len(results))
 	for i, result := range results {
 		//to hold the json result
 		bsonResult_ := bson.M{}
-		//convert type to json
-		err := bson.UnmarshalJSON([]byte(result.Value.(string)), &bsonResult_)
-		//if we get error then it means its not convertable to json so push it as it is
-		if err != nil {
-			bsonResults[i] = bson.M{
-				"type":  result.Type,
-				"value": result.Value,
+		result_type := reflect.TypeOf(result.Value).Kind()
+		if result_type == reflect.String {
+			//convert type to json
+			err = bson.UnmarshalJSON([]byte(result.Value.(string)), &bsonResult_)
+			if err == nil {
+				bsonResults[i] = bson.M{
+					"type":  "Json",
+					"value": bsonResult_,
+				}
+			} else {
+				bsonResults[i] = bson.M{
+					"type":  result.Type,
+					"value": result.Value,
+				}
 			}
 		} else {
 			bsonResults[i] = bson.M{
-				"type":  "Json",
-				"value": bsonResult_,
+				"type":  result.Type,
+				"value": result.Value,
 			}
 		}
 	}
