@@ -1,13 +1,14 @@
 package backends
 
 import (
+	"reflect"
+	"time"
+
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"reflect"
-	"time"
 )
 
 // MongodbBackend represents a MongoDB result backend
