@@ -217,11 +217,11 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 	// If the task is not registered, we nack it and requeue,
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(signature.Name) {
-		d.Nack(false, b.cnf.AMQP.RequeueUnknownTasks) // multiple, requeue
-		if b.cnf.AMQP.RequeueUnknownTasks {
-			log.WARNING.Printf("Requeued unknown message: %s", signature.Name)
-		} else {
+		d.Nack(false, !b.cnf.AMQP.DropUnregisteredTasks) // multiple, requeue
+		if b.cnf.AMQP.DropUnregisteredTasks {
 			log.WARNING.Printf("Discarded unknown message: %s", signature.Name)
+		} else {
+			log.WARNING.Printf("Requeued unknown message: %s", signature.Name)
 		}
 		return nil
 	}

@@ -42,12 +42,12 @@ type QueueBindingArgs map[string]interface{}
 
 // AMQPConfig wraps RabbitMQ related configuration
 type AMQPConfig struct {
-	Exchange            string           `yaml:"exchange" envconfig:"AMQP_EXCHANGE"`
-	ExchangeType        string           `yaml:"exchange_type" envconfig:"AMQP_EXCHANGE_TYPE"`
-	QueueBindingArgs    QueueBindingArgs `yaml:"queue_binding_args" envconfig:"AMQP_QUEUE_BINDING_ARGS"`
-	BindingKey          string           `yaml:"binding_key" envconfig:"AMQP_BINDING_KEY"`
-	PrefetchCount       int              `yaml:"prefetch_count" envconfig:"AMQP_PREFETCH_COUNT"`
-	RequeueUnknownTasks bool             `yaml:"requeue_unknown_tasks" envconfig:"AMQP_REQUEUE_UNKNOWN_TASKS"`
+	Exchange              string           `yaml:"exchange" envconfig:"AMQP_EXCHANGE"`
+	ExchangeType          string           `yaml:"exchange_type" envconfig:"AMQP_EXCHANGE_TYPE"`
+	QueueBindingArgs      QueueBindingArgs `yaml:"queue_binding_args" envconfig:"AMQP_QUEUE_BINDING_ARGS"`
+	BindingKey            string           `yaml:"binding_key" envconfig:"AMQP_BINDING_KEY"`
+	PrefetchCount         int              `yaml:"prefetch_count" envconfig:"AMQP_PREFETCH_COUNT"`
+	DropUnregisteredTasks bool             `yaml:"drop_unregistered_tasks" envconfig:"AMQP_DROP_UNREGISTERED_TASKS"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements
