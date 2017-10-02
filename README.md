@@ -826,13 +826,7 @@ According to [Go 1.5 Vendor experiment](https://docs.google.com/document/d/1Bz5-
 To update dependencies during development:
 
 ```sh
-make update-deps
-```
-
-To install dependencies:
-
-```sh
-make install-deps
+dep ensure
 ```
 
 #### Testing

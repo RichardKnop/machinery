@@ -2,16 +2,6 @@
 # TODO: When Go 1.9 is released vendor folder should be ignored automatically
 PACKAGES=`go list ./... | grep -v vendor | grep -v mocks`
 
-update-deps:
-	rm -rf Godeps
-	rm -rf vendor
-	go get github.com/tools/godep
-	godep save ./...
-
-install-deps:
-	go get github.com/tools/godep
-	godep restore
-
 fmt:
 	for pkg in ${PACKAGES}; do \
 		go fmt $$pkg; \

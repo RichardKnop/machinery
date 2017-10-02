@@ -174,4 +174,4 @@
 // non-recoverable error such as a network error or protocol parsing error. If
 // Err() returns a non-nil value, then the connection is not usable and should
 // be closed.
-package redis
+package redis // import "github.com/garyburd/redigo/redis"

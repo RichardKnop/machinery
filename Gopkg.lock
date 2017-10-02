@@ -1,0 +1,79 @@
+memo = "51f4c93a911746dd90aa000d1de4d70f643b775e0f4804b64496ccd752ba1748"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/RichardKnop/logging"
+  packages = ["."]
+  revision = "0745ebe7cc826d7d0453c7c9f08ea75a7fe86f7b"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/bradfitz/gomemcache"
+  packages = ["memcache"]
+  revision = "1952afaa557dc08e8e0d89eafab110fb501c1a2b"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/garyburd/redigo"
+  packages = ["internal","redis"]
+  revision = "95d11dba2d44531bdb8022752b98912baafae03a"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/kelseyhightower/envconfig"
+  packages = ["."]
+  revision = "70f0258d44cbaa3b6a2581d82f58da01a38e4de4"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  revision = "5bf94b69c6b68ee1b541973bb8e1144db23a194b"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/streadway/amqp"
+  packages = ["."]
+  revision = "dfe15e36048539f4cda41f240b27a5ca25b9cd46"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/stretchr/testify"
+  packages = ["assert","require","suite"]
+  revision = "05e8a0eda380579888eb53c394909df027f06991"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/urfave/cli"
+  packages = ["."]
+  revision = "4b90d79a682b4bf685762c7452db20f2a676ecb2"
+
+[[projects]]
+  branch = "master"
+  name = "gopkg.in/mgo.v2"
+  packages = [".","bson","internal/json","internal/sasl","internal/scram"]
+  revision = "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+
+[[projects]]
+  branch = "master"
+  name = "gopkg.in/redsync.v1"
+  packages = ["."]
+  revision = "98dabdf1c8574561bf976911c14ff652c47b1ddf"
+
+[[projects]]
+  branch = "master"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  revision = "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b"
