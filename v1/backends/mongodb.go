@@ -143,15 +143,15 @@ func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*
 	bsonResults := make([]bson.M, len(results))
 	for i, result := range results {
 		//to hold the json result
-		bsonResult_ := bson.M{}
-		result_type := reflect.TypeOf(result.Value).Kind()
-		if result_type == reflect.String {
+		bsonResult := new(bson.M)
+		resultType := reflect.TypeOf(result.Value).Kind()
+		if resultType == reflect.String {
 			//convert type to json
-			err = bson.UnmarshalJSON([]byte(result.Value.(string)), &bsonResult_)
+			err = bson.UnmarshalJSON([]byte(result.Value.(string)), bsonResult)
 			if err == nil {
 				bsonResults[i] = bson.M{
 					"type":  "Json",
-					"value": bsonResult_,
+					"value": bsonResult,
 				}
 			} else {
 				bsonResults[i] = bson.M{
