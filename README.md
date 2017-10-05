@@ -823,7 +823,7 @@ brew install mongodb
 
 According to [Go 1.5 Vendor experiment](https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo), all dependencies are stored in the vendor directory. This approach is called `vendoring` and is the best practice for Go projects to lock versions of dependencies in order to achieve reproducible builds.
 
-To update dependencies during development:
+This project uses [dep](https://github.com/golang/dep) for dependency management. To update dependencies during development:
 
 ```sh
 dep ensure
