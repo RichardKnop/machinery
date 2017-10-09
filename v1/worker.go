@@ -162,10 +162,10 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		if signature.Immutable == false {
 			// Pass results of the task to success callbacks
 			for _, taskResult := range taskResults {
-				successTask.Args = append([]tasks.Arg{{
+				successTask.Args = append(successTask.Args, tasks.Arg{
 					Type:  taskResult.Type,
 					Value: taskResult.Value,
-				}}, successTask.Args...)
+				})
 			}
 		}
 
