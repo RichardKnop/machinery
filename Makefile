@@ -1,4 +1,4 @@
-.PHONY: update-deps install-deps fmt lint golint test test-with-coverage ci
+.PHONY: fmt lint golint test test-with-coverage ci
 # TODO: When Go 1.9 is released vendor folder should be ignored automatically
 PACKAGES=`go list ./... | grep -v vendor | grep -v mocks`
 
