@@ -90,13 +90,14 @@ func (server *Server) SetConfig(cnf *config.Config) {
 
 // RegisterTasks registers all tasks at once
 func (server *Server) RegisterTasks(namedTaskFuncs map[string]interface{}) error {
-	for _, task := range namedTaskFuncs {
+	for name, task := range namedTaskFuncs {
 		if err := tasks.ValidateTask(task); err != nil {
 			return err
 		}
+		if err := server.RegisterTask(name, task); err != nil {
+			return err
+		}
 	}
-	server.registeredTasks = namedTaskFuncs
-	server.broker.SetRegisteredTaskNames(server.GetRegisteredTaskNames())
 	return nil
 }
 
