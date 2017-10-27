@@ -21,7 +21,7 @@ type Broker struct {
 
 // New creates new Broker instance
 func New(cnf *config.Config) Broker {
-	return Broker{cnf: cnf, retry: true}
+	return Broker{cnf: cnf, retry: true, stopChan: make(chan int), retryStopChan: make(chan int)}
 }
 
 // SetRegisteredTaskNames sets registered task names
@@ -68,9 +68,6 @@ func (b *Broker) startConsuming(consumerTag string, taskProcessor TaskProcessor)
 	if b.retryFunc == nil {
 		b.retryFunc = retry.Closure()
 	}
-
-	b.stopChan = make(chan int)
-	b.retryStopChan = make(chan int)
 }
 
 // startConsuming is a common part of StopConsuming
