@@ -1,5 +1,7 @@
 [1]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker.png
 [2]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker_receives_tasks.png
+[3]: http://patreon_public_assets.s3.amazonaws.com/sized/becomeAPatronBanner.png
+[4]: http://richardknop.com/images/btcaddress.png
 
 ## Machinery
 
@@ -37,6 +39,7 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
   * [Requirements](#requirements)
   * [Dependencies](#dependencies)
   * [Testing](#testing)
+* [Supporting the project](#supporting-the-project)
 
 ### First Steps
 
@@ -860,3 +863,13 @@ make test
 ```
 
 If the environment variables are not exported, `make test` will only run unit tests.
+
+### Supporting the project
+
+Become a patreon:
+
+[![http://patreon.com/richardknop][3]](http://patreon.com/richardknop)
+
+Or donate BTC to my wallet: `12iFVjQ5n3Qdmiai4Mp9EG93NSvDipyRKV`
+
+![Donate BTC][4]
