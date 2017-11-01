@@ -1,0 +1,19 @@
+memo = "229b117ce0bc14efdd38d21bce5bb75f2ab67db1a949fb886bad21a4be0fc614"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  revision = "05e8a0eda380579888eb53c394909df027f06991"

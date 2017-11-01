@@ -84,13 +84,13 @@
   name = "github.com/urfave/cli"
 
 [[dependencies]]
-  branch = "master"
+  branch = "v2"
   name = "gopkg.in/mgo.v2"
 
 [[dependencies]]
-  branch = "master"
+  version = "v1.0.1"
   name = "gopkg.in/redsync.v1"
 
 [[dependencies]]
-  branch = "master"
+  branch = "v2"
   name = "gopkg.in/yaml.v2"

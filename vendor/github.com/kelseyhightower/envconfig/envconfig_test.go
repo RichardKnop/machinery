@@ -41,7 +41,7 @@ type Specification struct {
 	MultiWordVarWithLowerCaseAlt string  `envconfig:"multi_word_var_with_lower_case_alt"`
 	NoPrefixWithAlt              string  `envconfig:"SERVICE_HOST"`
 	DefaultVar                   string  `default:"foobar"`
-	RequiredVar                  string  `required:"True"`
+	RequiredVar                  string  `required:"true"`
 	NoPrefixDefault              string  `envconfig:"BROKER" default:"127.0.0.1"`
 	RequiredDefault              string  `required:"true" default:"foo2bar"`
 	Ignored                      string  `ignored:"true"`
@@ -323,16 +323,6 @@ func TestRequiredVar(t *testing.T) {
 
 	if s.RequiredVar != "foobar" {
 		t.Errorf("expected %s, got %s", "foobar", s.RequiredVar)
-	}
-}
-
-func TestRequiredMissing(t *testing.T) {
-	var s Specification
-	os.Clearenv()
-
-	err := Process("env_config", &s)
-	if err == nil {
-		t.Error("no failure when missing required variable")
 	}
 }
 

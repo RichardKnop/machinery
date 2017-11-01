@@ -256,7 +256,7 @@ func (c *Connection) ConnectionState() tls.ConnectionState {
 
 /*
 NotifyClose registers a listener for close events either initiated by an error
-accompaning a connection.close method or by a normal shutdown.
+accompanying a connection.close method or by a normal shutdown.
 
 On normal shutdowns, the chan will be closed.
 
