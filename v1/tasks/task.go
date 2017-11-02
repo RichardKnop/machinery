@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"runtime/debug"
 
 	"context"
 
@@ -63,7 +62,7 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 				err = errors.New(e)
 			}
 			// Print stack trace
-			log.ERROR.Printf("%s", debug.Stack())
+			log.ERROR.Print(err)
 		}
 	}()
 
