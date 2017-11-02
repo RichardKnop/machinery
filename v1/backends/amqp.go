@@ -225,8 +225,7 @@ func (b *AMQPBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 
 	state := new(tasks.TaskState)
 	if err := json.Unmarshal([]byte(d.Body), state); err != nil {
-		log.ERROR.Printf("Failed to unmarshal task state: %s", string(d.Body))
-		log.ERROR.Print(err)
+		log.ERROR.Printf("Failed to unmarshal task state: %s (%v)", string(d.Body), err)
 		return nil, err
 	}
 
