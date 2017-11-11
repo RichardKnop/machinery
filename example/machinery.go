@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1"
@@ -58,9 +60,7 @@ func main() {
 	}
 
 	// Run the CLI app
-	if err := app.Run(os.Args); err != nil {
-		log.FATAL.Print(err)
-	}
+	app.Run(os.Args)
 }
 
 func loadConfig() *config.Config {
@@ -80,9 +80,10 @@ func startServer() (server *machinery.Server, err error) {
 
 	// Register tasks
 	tasks := map[string]interface{}{
-		"add":        exampletasks.Add,
-		"multiply":   exampletasks.Multiply,
-		"panic_task": exampletasks.PanicTask,
+		"add":               exampletasks.Add,
+		"multiply":          exampletasks.Multiply,
+		"panic_task":        exampletasks.PanicTask,
+		"long_running_task": exampletasks.LongRunningTask,
 	}
 
 	err = server.RegisterTasks(tasks)
@@ -99,11 +100,7 @@ func worker() error {
 	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
 	worker := server.NewWorker("machinery_worker", 0)
 
-	if err := worker.Launch(); err != nil {
-		return err
-	}
-
-	return nil
+	return worker.Launch()
 }
 
 func send() error {
@@ -112,10 +109,15 @@ func send() error {
 		return err
 	}
 
-	var task0, task1, task2, task3, task4, task5 tasks.Signature
+	var (
+		addTask0, addTask1, addTask2 tasks.Signature
+		multiplyTask0, multiplyTask1 tasks.Signature
+		panicTask                    tasks.Signature
+		longRunningTask              tasks.Signature
+	)
 
 	var initTasks = func() {
-		task0 = tasks.Signature{
+		addTask0 = tasks.Signature{
 			Name: "add",
 			Args: []tasks.Arg{
 				{
@@ -129,7 +131,7 @@ func send() error {
 			},
 		}
 
-		task1 = tasks.Signature{
+		addTask1 = tasks.Signature{
 			Name: "add",
 			Args: []tasks.Arg{
 				{
@@ -143,7 +145,7 @@ func send() error {
 			},
 		}
 
-		task2 = tasks.Signature{
+		addTask2 = tasks.Signature{
 			Name: "add",
 			Args: []tasks.Arg{
 				{
@@ -157,7 +159,7 @@ func send() error {
 			},
 		}
 
-		task3 = tasks.Signature{
+		multiplyTask0 = tasks.Signature{
 			Name: "multiply",
 			Args: []tasks.Arg{
 				{
@@ -167,12 +169,16 @@ func send() error {
 			},
 		}
 
-		task4 = tasks.Signature{
+		multiplyTask1 = tasks.Signature{
 			Name: "multiply",
 		}
 
-		task5 = tasks.Signature{
+		panicTask = tasks.Signature{
 			Name: "panic_task",
+		}
+
+		longRunningTask = tasks.Signature{
+			Name: "long_running_task",
 		}
 	}
 
@@ -182,7 +188,7 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Single task:")
 
-	asyncResult, err := server.SendTask(&task0)
+	asyncResult, err := server.SendTask(&addTask0)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
@@ -191,7 +197,7 @@ func send() error {
 	if err != nil {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
-	log.INFO.Printf("1 + 1 = %v\n", results[0].Interface())
+	log.INFO.Printf("1 + 1 = %v\n", humanReadableResults(results))
 
 	/*
 	 * Now let's explore ways of sending multiple tasks
@@ -201,7 +207,7 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Group of tasks (parallel execution):")
 
-	group := tasks.NewGroup(&task0, &task1, &task2)
+	group := tasks.NewGroup(&addTask0, &addTask1, &addTask2)
 	asyncResults, err := server.SendGroup(group, 10)
 	if err != nil {
 		return fmt.Errorf("Could not send group: %s", err.Error())
@@ -216,7 +222,7 @@ func send() error {
 			"%v + %v = %v\n",
 			asyncResult.Signature.Args[0].Value,
 			asyncResult.Signature.Args[1].Value,
-			results[0].Interface(),
+			humanReadableResults(results),
 		)
 	}
 
@@ -224,8 +230,8 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Group of tasks with a callback (chord):")
 
-	group = tasks.NewGroup(&task0, &task1, &task2)
-	chord := tasks.NewChord(group, &task4)
+	group = tasks.NewGroup(&addTask0, &addTask1, &addTask2)
+	chord := tasks.NewChord(group, &multiplyTask1)
 	chordAsyncResult, err := server.SendChord(chord, 10)
 	if err != nil {
 		return fmt.Errorf("Could not send chord: %s", err.Error())
@@ -235,13 +241,13 @@ func send() error {
 	if err != nil {
 		return fmt.Errorf("Getting chord result failed with error: %s", err.Error())
 	}
-	log.INFO.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", results[0].Interface())
+	log.INFO.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", humanReadableResults(results))
 
 	// Now let's try chaining task results
 	initTasks()
 	log.INFO.Println("Chain of tasks:")
 
-	chain := tasks.NewChain(&task0, &task1, &task2, &task3)
+	chain := tasks.NewChain(&addTask0, &addTask1, &addTask2, &multiplyTask0)
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		return fmt.Errorf("Could not send chain: %s", err.Error())
@@ -251,11 +257,11 @@ func send() error {
 	if err != nil {
 		return fmt.Errorf("Getting chain result failed with error: %s", err.Error())
 	}
-	log.INFO.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", results[0].Interface())
+	log.INFO.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", humanReadableResults(results))
 
 	// Let's try a task which throws panic to make sure stack trace is not lost
 	initTasks()
-	asyncResult, err = server.SendTask(&task5)
+	asyncResult, err = server.SendTask(&panicTask)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
@@ -266,5 +272,31 @@ func send() error {
 	}
 	log.INFO.Printf("Task panicked and returned error = %v\n", err.Error())
 
+	// Let's try a long running task
+	initTasks()
+	asyncResult, err = server.SendTask(&longRunningTask)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting long running task result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("Long running task returned = %v\n", humanReadableResults(results))
+
 	return nil
+}
+
+func humanReadableResults(results []reflect.Value) string {
+	if len(results) == 1 {
+		return fmt.Sprintf("%v", results[0].Interface())
+	}
+
+	readableResults := make([]string, len(results))
+	for i := 0; i < len(results); i++ {
+		readableResults[i] = fmt.Sprintf("%v", results[i].Interface())
+	}
+
+	return fmt.Sprintf("[%s]", strings.Join(readableResults, ", "))
 }

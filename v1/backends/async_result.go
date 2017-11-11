@@ -98,12 +98,12 @@ func (asyncResult *AsyncResult) Touch() ([]reflect.Value, error) {
 // Get returns task results (synchronous blocking call)
 func (asyncResult *AsyncResult) Get(sleepDuration time.Duration) ([]reflect.Value, error) {
 	for {
-		result, err := asyncResult.Touch()
+		results, err := asyncResult.Touch()
 
-		if result == nil && err == nil {
+		if results == nil && err == nil {
 			<-time.After(sleepDuration)
 		} else {
-			return result, err
+			return results, err
 		}
 	}
 }
@@ -117,12 +117,12 @@ func (asyncResult *AsyncResult) GetWithTimeout(timeoutDuration, sleepDuration ti
 		case <-timeout.C:
 			return nil, errors.New("Timeout reached")
 		default:
-			result, err := asyncResult.Touch()
+			results, err := asyncResult.Touch()
 
-			if result == nil && err == nil {
+			if results == nil && err == nil {
 				<-time.After(sleepDuration)
 			} else {
-				return result, err
+				return results, err
 			}
 		}
 	}

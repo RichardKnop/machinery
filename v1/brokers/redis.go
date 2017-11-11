@@ -24,6 +24,7 @@ type RedisBroker struct {
 	pool              *redis.Pool
 	stopReceivingChan chan int
 	stopDelayedChan   chan int
+	processingWG      sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
 	receivingWG       sync.WaitGroup
 	delayedWG         sync.WaitGroup
 	// If set, path to a socket file overrides hostname
@@ -118,18 +119,28 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 		return b.retry, err
 	}
 
+	// Waiting for any tasks being processed to finish
+	b.processingWG.Wait()
+
 	return b.retry, nil
 }
 
 // StopConsuming quits the loop
 func (b *RedisBroker) StopConsuming() {
+	b.stopConsuming()
+
 	// Stop the receiving goroutine
-	b.stopReceiving()
+	b.stopReceivingChan <- 1
+	// Waiting for the receiving goroutine to have stopped
+	b.receivingWG.Wait()
 
 	// Stop the delayed tasks goroutine
-	b.stopDelayed()
+	b.stopDelayedChan <- 1
+	// Waiting for the delayed tasks goroutine to have stopped
+	b.delayedWG.Wait()
 
-	b.stopConsuming()
+	// Waiting for any tasks being processed to finish
+	b.processingWG.Wait()
 }
 
 // Publish places a new message on the default queue
@@ -201,11 +212,6 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 	}()
 
 	errorsChan := make(chan error, concurrency*2)
-	//errorsChan := make(chan error)
-
-	// Use wait group to make sure task processing completes on interrupt signal
-	var wg sync.WaitGroup
-	defer wg.Wait()
 
 	for {
 		select {
@@ -217,16 +223,16 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 				<-pool
 			}
 
-			wg.Add(1)
+			b.processingWG.Add(1)
 
 			// Consume the task inside a gotourine so multiple tasks
 			// can be processed concurrently
 			go func() {
-				defer wg.Done()
-
 				if err := b.consumeOne(d, taskProcessor); err != nil {
 					errorsChan <- err
 				}
+
+				b.processingWG.Done()
 
 				if concurrency > 0 {
 					// give worker back to pool
@@ -241,8 +247,6 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 
 // consumeOne processes a single message using TaskProcessor
 func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) error {
-	log.INFO.Printf("Received new message: %s", delivery)
-
 	sig := new(tasks.Signature)
 	if err := json.Unmarshal(delivery, sig); err != nil {
 		return err
@@ -257,6 +261,8 @@ func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) e
 		conn.Do("RPUSH", b.cnf.DefaultQueue, delivery)
 		return nil
 	}
+
+	log.INFO.Printf("Received new message: %s", delivery)
 
 	return taskProcessor.Process(sig)
 }
@@ -344,20 +350,6 @@ func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
 	}
 
 	return
-}
-
-// Stops the receiving goroutine
-func (b *RedisBroker) stopReceiving() {
-	b.stopReceivingChan <- 1
-	// Waiting for the receiving goroutine to have stopped
-	b.receivingWG.Wait()
-}
-
-// Stops the delayed tasks goroutine
-func (b *RedisBroker) stopDelayed() {
-	b.stopDelayedChan <- 1
-	// Waiting for the delayed tasks goroutine to have stopped
-	b.delayedWG.Wait()
 }
 
 // open returns or creates instance of Redis connection
