@@ -9,6 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestIsTaskRegistered(t *testing.T) {
+	broker := brokers.New(new(config.Config))
+	broker.SetRegisteredTaskNames([]string{"foo", "bar"})
+
+	assert.True(t, broker.IsTaskRegistered("foo"))
+	assert.False(t, broker.IsTaskRegistered("bogus"))
+}
+
 func TestAdjustRoutingKey(t *testing.T) {
 	var (
 		s      *tasks.Signature
