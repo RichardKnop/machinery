@@ -1,13 +1,13 @@
 package machinery
 
 import (
+	"errors"
 	"fmt"
-	"strings"
-	"time"
-
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -43,6 +43,7 @@ func (worker *Worker) Launch() error {
 	errorsChan := make(chan error)
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	quitting := false
 
 	go func() {
 		for {
@@ -58,10 +59,22 @@ func (worker *Worker) Launch() error {
 	}()
 
 	go func() {
-		err := fmt.Errorf("Signal received: %v. Quitting the worker", <-sig)
-		log.WARNING.Print(err.Error())
-		worker.Quit()
-		errorsChan <- err
+		for {
+			select {
+			case s := <-sig:
+				log.WARNING.Printf("Signal received: %v", s)
+				if quitting {
+					return
+				}
+
+				quitting = true
+				log.WARNING.Print("Waiting for running tasks to finish before shutting down")
+				go func() {
+					worker.Quit()
+					errorsChan <- errors.New("Worker quit")
+				}()
+			}
+		}
 	}()
 
 	return <-errorsChan
