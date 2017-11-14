@@ -13,7 +13,7 @@ import (
 
 // MongodbBackend represents a MongoDB result backend
 type MongodbBackend struct {
-	cnf                  *config.Config
+	Backend
 	session              *mgo.Session
 	tasksCollection      *mgo.Collection
 	groupMetasCollection *mgo.Collection
@@ -21,7 +21,7 @@ type MongodbBackend struct {
 
 // NewMongodbBackend creates MongodbBackend instance
 func NewMongodbBackend(cnf *config.Config) Interface {
-	return &MongodbBackend{cnf: cnf}
+	return &MongodbBackend{Backend: New(cnf)}
 }
 
 // InitGroup creates and saves a group meta data object

@@ -8,6 +8,13 @@ import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
+var (
+	// ErrBackendNotConfigured ...
+	ErrBackendNotConfigured = errors.New("Result backend not configured")
+	// ErrTimeoutReached ...
+	ErrTimeoutReached = errors.New("Timeout reached")
+)
+
 // AsyncResult represents a task result
 type AsyncResult struct {
 	Signature *tasks.Signature
@@ -65,15 +72,18 @@ func NewChainAsyncResult(tasks []*tasks.Signature, backend Interface) *ChainAsyn
 // Touch the state and don't wait
 func (asyncResult *AsyncResult) Touch() ([]reflect.Value, error) {
 	if asyncResult.backend == nil {
-		return nil, errors.New("Result backend not configured")
+		return nil, ErrBackendNotConfigured
 	}
 
 	asyncResult.GetState()
 
 	// Purge state if we are using AMQP backend
-	_, isAMQPBackend := asyncResult.backend.(*AMQPBackend)
-	if isAMQPBackend && asyncResult.taskState.IsCompleted() {
+	if IsAMQP(asyncResult.backend) && asyncResult.taskState.IsCompleted() {
 		asyncResult.backend.PurgeState(asyncResult.taskState.TaskUUID)
+	}
+
+	if asyncResult.taskState.IsFailure() {
+		return nil, errors.New(asyncResult.taskState.Error)
 	}
 
 	if asyncResult.taskState.IsSuccess() {
@@ -86,10 +96,6 @@ func (asyncResult *AsyncResult) Touch() ([]reflect.Value, error) {
 			resultValues[i] = resultValue
 		}
 		return resultValues, nil
-	}
-
-	if asyncResult.taskState.IsFailure() {
-		return nil, errors.New(asyncResult.taskState.Error)
 	}
 
 	return nil, nil
@@ -115,7 +121,7 @@ func (asyncResult *AsyncResult) GetWithTimeout(timeoutDuration, sleepDuration ti
 	for {
 		select {
 		case <-timeout.C:
-			return nil, errors.New("Timeout reached")
+			return nil, ErrTimeoutReached
 		default:
 			results, err := asyncResult.Touch()
 
@@ -145,7 +151,7 @@ func (asyncResult *AsyncResult) GetState() *tasks.TaskState {
 // Get returns results of a chain of tasks (synchronous blocking call)
 func (chainAsyncResult *ChainAsyncResult) Get(sleepDuration time.Duration) ([]reflect.Value, error) {
 	if chainAsyncResult.backend == nil {
-		return nil, errors.New("Result backend not configured")
+		return nil, ErrBackendNotConfigured
 	}
 
 	var (
@@ -166,7 +172,7 @@ func (chainAsyncResult *ChainAsyncResult) Get(sleepDuration time.Duration) ([]re
 // Get returns result of a chord (synchronous blocking call)
 func (chordAsyncResult *ChordAsyncResult) Get(sleepDuration time.Duration) ([]reflect.Value, error) {
 	if chordAsyncResult.backend == nil {
-		return nil, errors.New("Result backend not configured")
+		return nil, ErrBackendNotConfigured
 	}
 
 	var err error
@@ -183,7 +189,7 @@ func (chordAsyncResult *ChordAsyncResult) Get(sleepDuration time.Duration) ([]re
 // GetWithTimeout returns results of a chain of tasks with timeout (synchronous blocking call)
 func (chainAsyncResult *ChainAsyncResult) GetWithTimeout(timeoutDuration, sleepDuration time.Duration) ([]reflect.Value, error) {
 	if chainAsyncResult.backend == nil {
-		return nil, errors.New("Result backend not configured")
+		return nil, ErrBackendNotConfigured
 	}
 
 	var (
@@ -198,7 +204,7 @@ func (chainAsyncResult *ChainAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 	for {
 		select {
 		case <-timeout.C:
-			return nil, errors.New("Timeout reached")
+			return nil, ErrTimeoutReached
 		default:
 
 			for _, asyncResult := range chainAsyncResult.asyncResults {
@@ -223,7 +229,7 @@ func (chainAsyncResult *ChainAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 // GetWithTimeout returns result of a chord with a timeout (synchronous blocking call)
 func (chordAsyncResult *ChordAsyncResult) GetWithTimeout(timeoutDuration, sleepDuration time.Duration) ([]reflect.Value, error) {
 	if chordAsyncResult.backend == nil {
-		return nil, errors.New("Result backend not configured")
+		return nil, ErrBackendNotConfigured
 	}
 
 	var (
@@ -235,7 +241,7 @@ func (chordAsyncResult *ChordAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 	for {
 		select {
 		case <-timeout.C:
-			return nil, errors.New("Timeout reached")
+			return nil, ErrTimeoutReached
 		default:
 			for _, asyncResult := range chordAsyncResult.groupAsyncResults {
 				_, errcur := asyncResult.Touch()

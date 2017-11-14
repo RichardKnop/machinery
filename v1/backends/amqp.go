@@ -28,13 +28,13 @@ import (
 
 // AMQPBackend represents an AMQP result backend
 type AMQPBackend struct {
-	cnf *config.Config
+	Backend
 	common.AMQPConnector
 }
 
 // NewAMQPBackend creates AMQPBackend instance
 func NewAMQPBackend(cnf *config.Config) Interface {
-	return &AMQPBackend{cnf: cnf, AMQPConnector: common.AMQPConnector{}}
+	return &AMQPBackend{Backend: New(cnf), AMQPConnector: common.AMQPConnector{}}
 }
 
 // InitGroup creates and saves a group meta data object
