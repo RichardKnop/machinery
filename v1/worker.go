@@ -43,7 +43,7 @@ func (worker *Worker) Launch() error {
 	errorsChan := make(chan error)
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	quitting := false
+	var signalsReceived uint
 
 	go func() {
 		for {
@@ -63,16 +63,19 @@ func (worker *Worker) Launch() error {
 			select {
 			case s := <-sig:
 				log.WARNING.Printf("Signal received: %v", s)
-				if quitting {
-					return
-				}
+				signalsReceived++
 
-				quitting = true
-				log.WARNING.Print("Waiting for running tasks to finish before shutting down")
-				go func() {
-					worker.Quit()
-					errorsChan <- errors.New("Worker quit")
-				}()
+				if signalsReceived < 2 {
+					// After first Ctrl+C start quitting the worker gracefully
+					log.WARNING.Print("Waiting for running tasks to finish before shutting down")
+					go func() {
+						worker.Quit()
+						errorsChan <- errors.New("Worker quit gracefully")
+					}()
+				} else {
+					// Abort the program when user hits Ctrl+C second time in a row
+					errorsChan <- errors.New("Worker quit abruptly")
+				}
 			}
 		}
 	}()
