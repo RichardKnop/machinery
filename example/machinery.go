@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1"
@@ -197,7 +195,7 @@ func send() error {
 	if err != nil {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
-	log.INFO.Printf("1 + 1 = %v\n", humanReadableResults(results))
+	log.INFO.Printf("1 + 1 = %v\n", tasks.HumanReadableResults(results))
 
 	/*
 	 * Now let's explore ways of sending multiple tasks
@@ -222,7 +220,7 @@ func send() error {
 			"%v + %v = %v\n",
 			asyncResult.Signature.Args[0].Value,
 			asyncResult.Signature.Args[1].Value,
-			humanReadableResults(results),
+			tasks.HumanReadableResults(results),
 		)
 	}
 
@@ -241,7 +239,7 @@ func send() error {
 	if err != nil {
 		return fmt.Errorf("Getting chord result failed with error: %s", err.Error())
 	}
-	log.INFO.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", humanReadableResults(results))
+	log.INFO.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", tasks.HumanReadableResults(results))
 
 	// Now let's try chaining task results
 	initTasks()
@@ -257,7 +255,7 @@ func send() error {
 	if err != nil {
 		return fmt.Errorf("Getting chain result failed with error: %s", err.Error())
 	}
-	log.INFO.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", humanReadableResults(results))
+	log.INFO.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", tasks.HumanReadableResults(results))
 
 	// Let's try a task which throws panic to make sure stack trace is not lost
 	initTasks()
@@ -283,20 +281,7 @@ func send() error {
 	if err != nil {
 		return fmt.Errorf("Getting long running task result failed with error: %s", err.Error())
 	}
-	log.INFO.Printf("Long running task returned = %v\n", humanReadableResults(results))
+	log.INFO.Printf("Long running task returned = %v\n", tasks.HumanReadableResults(results))
 
 	return nil
-}
-
-func humanReadableResults(results []reflect.Value) string {
-	if len(results) == 1 {
-		return fmt.Sprintf("%v", results[0].Interface())
-	}
-
-	readableResults := make([]string, len(results))
-	for i := 0; i < len(results); i++ {
-		readableResults[i] = fmt.Sprintf("%v", results[i].Interface())
-	}
-
-	return fmt.Sprintf("[%s]", strings.Join(readableResults, ", "))
 }

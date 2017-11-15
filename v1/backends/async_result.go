@@ -87,15 +87,7 @@ func (asyncResult *AsyncResult) Touch() ([]reflect.Value, error) {
 	}
 
 	if asyncResult.taskState.IsSuccess() {
-		resultValues := make([]reflect.Value, len(asyncResult.taskState.Results))
-		for i, result := range asyncResult.taskState.Results {
-			resultValue, err := tasks.ReflectValue(result.Type, result.Value)
-			if err != nil {
-				return nil, err
-			}
-			resultValues[i] = resultValue
-		}
-		return resultValues, nil
+		return tasks.ReflectTaskResults(asyncResult.taskState.Results)
 	}
 
 	return nil, nil
