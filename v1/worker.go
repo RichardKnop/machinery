@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -25,9 +24,19 @@ type Worker struct {
 // Launch starts a new worker process. The worker subscribes
 // to the default queue and processes incoming registered tasks
 func (worker *Worker) Launch() error {
+	errorsChan := make(chan error)
+
+	worker.LaunchAsync(errorsChan)
+
+	return <-errorsChan
+}
+
+// LaunchAsync is a non blocking version of Launch
+func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 	cnf := worker.server.GetConfig()
 	broker := worker.server.GetBroker()
 
+	// Log some useful information about woorker configuration
 	log.INFO.Printf("Launching a worker with the following settings:")
 	log.INFO.Printf("- Broker: %s", cnf.Broker)
 	log.INFO.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
@@ -40,11 +49,7 @@ func (worker *Worker) Launch() error {
 		log.INFO.Printf("  - PrefetchCount: %d", cnf.AMQP.PrefetchCount)
 	}
 
-	errorsChan := make(chan error)
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	var signalsReceived uint
-
+	// Goroutine to start broker consumption and handle retries when broker connection dies
 	go func() {
 		for {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker.Concurrency, worker)
@@ -58,6 +63,11 @@ func (worker *Worker) Launch() error {
 		}
 	}()
 
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	var signalsReceived uint
+
+	// Goroutine Handle SIGINT and SIGTERM signals
 	go func() {
 		for {
 			select {
@@ -79,8 +89,6 @@ func (worker *Worker) Launch() error {
 			}
 		}
 	}()
-
-	return <-errorsChan
 }
 
 // Quit tears down the running worker process
@@ -166,11 +174,15 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		return fmt.Errorf("Set state success error: %s", err)
 	}
 
-	debugResults := make([]string, len(taskResults))
-	for i, taskResult := range taskResults {
-		debugResults[i] = fmt.Sprintf("%v", taskResult.Value)
+	// Log human readable results of the processed task
+	var debugResults = "[]"
+	results, err := tasks.ReflectTaskResults(taskResults)
+	if err != nil {
+		log.WARNING.Print(err)
+	} else {
+		debugResults = tasks.HumanReadableResults(results)
 	}
-	log.INFO.Printf("Processed task %s. Results = [%v]", signature.UUID, strings.Join(debugResults, ", "))
+	log.INFO.Printf("Processed task %s. Results = %s", signature.UUID, debugResults)
 
 	// Trigger success callbacks
 
