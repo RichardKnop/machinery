@@ -76,17 +76,20 @@ func (b *SQSBroker) Publish(signature *tasks.Signature) error {
 	// Create a SQS service client.
 	svc := sqs.New(b.sess)
 
-	// Use Machinery's signature Group UUID as SQS Message Group ID.
-	MsgGroupID := signature.GroupUUID
-
-	// Use Machinery's signature Task UUID as SQS Message Group ID.
-	MsgDedupID := signature.UUID
-
 	MsgInput := &sqs.SendMessageInput{
-		MessageGroupId:         aws.String(MsgGroupID),
-		MessageDeduplicationId: aws.String(MsgDedupID),
-		MessageBody:            aws.String(string(msg)),
-		QueueUrl:               aws.String(b.cnf.Broker + "/" + signature.RoutingKey),
+		MessageBody: aws.String(string(msg)),
+		QueueUrl:    aws.String(b.cnf.Broker + "/" + signature.RoutingKey),
+	}
+
+	// if this is a fifo queue, there needs to be some addtional parameters.
+	if strings.HasSuffix(signature.RoutingKey, ".fifo") {
+		// Use Machinery's signature Task UUID as SQS Message Group ID.
+		MsgDedupID := signature.UUID
+		MsgInput.MessageDeduplicationId = aws.String(MsgDedupID)
+
+		// Use Machinery's signature Group UUID as SQS Message Group ID.
+		MsgGroupID := signature.GroupUUID
+		MsgInput.MessageGroupId = aws.String(MsgGroupID)
 	}
 
 	// Check the ETA signature field, if it is set and it is in the future,
