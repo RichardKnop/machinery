@@ -236,9 +236,9 @@ func ExampleChannel_Consume() {
 	}
 
 	bindings := []bind{
-		bind{"page", "alert"},
-		bind{"email", "info"},
-		bind{"firehose", "#"},
+		{"page", "alert"},
+		{"email", "info"},
+		{"firehose", "#"},
 	}
 
 	for _, b := range bindings {
@@ -303,7 +303,7 @@ func ExampleChannel_Consume() {
 	// To show how to process the items in parallel, we'll use a work pool.
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go func(work <-chan amqp.Delivery) {
-			for _ = range work {
+			for range work {
 				// ... this consumer pulls from the firehose and doesn't need to acknowledge
 			}
 		}(firehose)

@@ -74,16 +74,16 @@ You will be able to see the tasks being processed asynchronously by the worker:
 The [config](/v1/config/config.go) package has convenience methods for loading configuration from environment variables or a YAML file. For example, load configuration from environment variables:
 
 ```go
-cnf := config.NewFromEnvironment(true, true)
+cnf, err := config.NewFromEnvironment(true)
 ```
 
 Or load from YAML file:
 
 ```go
-cnf := config.NewFromFile("config.yml", true, true)
+cnf := config.NewFromFile("config.yml", true)
 ```
 
-The first boolean flag signals whether configuration must be loaded successfully at least one time. Second flag enables live reloading of configuration every 10 seconds.
+Second boolean flag enables live reloading of configuration every 10 seconds. Use `false` to disable live reloading.
 
 Machinery configuration is encapsulated by a `Config` struct and injected as a dependency to objects that need it.
 

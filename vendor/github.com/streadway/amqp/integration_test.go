@@ -149,7 +149,7 @@ func TestIntegrationExchangeDeclarePassiveOnDeclaredShouldNotError(t *testing.T)
 	if c != nil {
 		defer c.Close()
 
-		exchange := "test-integration-decalred-passive-exchange"
+		exchange := "test-integration-declared-passive-exchange"
 
 		ch, err := c.Channel()
 		if err != nil {
@@ -579,7 +579,7 @@ func TestIntegrationNonBlockingClose(t *testing.T) {
 
 		// Simulate a consumer
 		go func() {
-			for _ = range msgs {
+			for range msgs {
 				t.Logf("Oh my, received message on an empty queue")
 			}
 		}()
@@ -1806,7 +1806,7 @@ func integrationConnection(t *testing.T, name string) *Connection {
 	return loggedConnection(t, conn, name)
 }
 
-// Returns a connection, channel and delcares a queue when the AMQP_URL is in the environment
+// Returns a connection, channel and declares a queue when the AMQP_URL is in the environment
 func integrationQueue(t *testing.T, name string) (*Connection, *Channel) {
 	if conn := integrationConnection(t, name); conn != nil {
 		if channel, err := conn.Channel(); err == nil {

@@ -45,14 +45,20 @@ func main() {
 			Name:  "worker",
 			Usage: "launch machinery worker",
 			Action: func(c *cli.Context) error {
-				return worker()
+				if err := worker(); err != nil {
+					return cli.NewExitError(err.Error(), 1)
+				}
+				return nil
 			},
 		},
 		{
 			Name:  "send",
 			Usage: "send example tasks ",
 			Action: func(c *cli.Context) error {
-				return send()
+				if err := send(); err != nil {
+					return cli.NewExitError(err.Error(), 1)
+				}
+				return nil
 			},
 		},
 	}
@@ -61,19 +67,24 @@ func main() {
 	app.Run(os.Args)
 }
 
-func loadConfig() *config.Config {
+func loadConfig() (*config.Config, error) {
 	if configPath != "" {
-		return config.NewFromYaml(configPath, true, true)
+		return config.NewFromYaml(configPath, true)
 	}
 
-	return config.NewFromEnvironment(true, true)
+	return config.NewFromEnvironment(true)
 }
 
-func startServer() (server *machinery.Server, err error) {
-	// Create server instance
-	server, err = machinery.NewServer(loadConfig())
+func startServer() (*machinery.Server, error) {
+	cnf, err := loadConfig()
 	if err != nil {
-		return
+		return nil, err
+	}
+
+	// Create server instance
+	server, err := machinery.NewServer(cnf)
+	if err != nil {
+		return nil, err
 	}
 
 	// Register tasks
@@ -84,8 +95,7 @@ func startServer() (server *machinery.Server, err error) {
 		"long_running_task": exampletasks.LongRunningTask,
 	}
 
-	err = server.RegisterTasks(tasks)
-	return
+	return server, server.RegisterTasks(tasks)
 }
 
 func worker() error {

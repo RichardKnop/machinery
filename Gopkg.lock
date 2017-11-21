@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/RichardKnop/logging"
   packages = ["."]
-  revision = "c29d67bd732ba53b98680ceacd5131d8ec3bd285"
+  revision = "7db1e03898200cf257fad35013005eccf89eccca"
 
 [[projects]]
   branch = "master"
@@ -22,8 +22,8 @@
 [[projects]]
   name = "github.com/garyburd/redigo"
   packages = ["internal","redis"]
-  revision = "34a326de1fea52965fa5ad664d3fc7163dd4b0a1"
-  version = "v1.2.0"
+  revision = "47dc60e71eed504e3ef8e77ee3c6fe720f3be57f"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/kelseyhightower/envconfig"
@@ -47,7 +47,7 @@
   branch = "master"
   name = "github.com/streadway/amqp"
   packages = ["."]
-  revision = "7db842394ca79f338f781d47bc59115f44adb20b"
+  revision = "ff791c2d22d3f1588b4e2cc71a9fba5e1da90654"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -77,7 +77,7 @@
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "eb3733d160e74a9c7e442f435eb3bea458e1d19f"
+  revision = "287cf08546ab5e7e37d55a84f7ed3fd1db036de5"
 
 [solve-meta]
   analyzer-name = "dep"

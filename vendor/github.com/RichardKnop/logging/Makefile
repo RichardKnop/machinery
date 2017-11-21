@@ -8,7 +8,7 @@ fmt:
 	done;
 
 lint:
-	gometalinter --disable-all -E vet -E gofmt -E misspell -E ineffassign -E goimports -E deadcode --tests --vendor ./...
+	gometalinter --exclude=vendor/ --tests --config=gometalinter.json --disable-all -E vet -E gofmt -E misspell -E ineffassign -E goimports -E deadcode ./...
 
 golint:
 	for pkg in ${PACKAGES}; do \
