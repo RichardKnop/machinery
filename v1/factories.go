@@ -52,7 +52,7 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 		return brokers.NewEagerBroker(), nil
 	}
 
-	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
+	return nil, fmt.Errorf("Factory failed with broker URL: \"%v\"", cnf.Broker)
 }
 
 // BackendFactory creates a new object of backends.Interface

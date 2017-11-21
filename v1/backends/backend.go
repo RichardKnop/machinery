@@ -4,7 +4,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
-// Broker represents a base backend structure
+// Backend represents a base backend structure
 type Backend struct {
 	cnf *config.Config
 }

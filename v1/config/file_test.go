@@ -43,9 +43,10 @@ func TestReadFromFile(t *testing.T) {
 }
 
 func TestNewFromYaml(t *testing.T) {
-	config.Reset()
-
-	cnf := config.NewFromYaml("testconfig.yml", true, false)
+	cnf, err := config.NewFromYaml("testconfig.yml", false)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	assert.Equal(t, "broker", cnf.Broker)
 	assert.Equal(t, "default_queue", cnf.DefaultQueue)

@@ -9,7 +9,7 @@ import (
 
 var (
 	// Start with sensible default values
-	cnf = &Config{
+	defaultCnf = &Config{
 		Broker:          "amqp://guest:guest@localhost:5672/",
 		DefaultQueue:    "machinery_tasks",
 		ResultBackend:   "amqp://guest:guest@localhost:5672/",
@@ -21,8 +21,6 @@ var (
 			PrefetchCount: 3,
 		},
 	}
-
-	configLoaded = false
 
 	reloadDelay = time.Second * 10
 )
@@ -63,19 +61,4 @@ func (args *QueueBindingArgs) Decode(value string) error {
 	}
 	*args = QueueBindingArgs(mp)
 	return nil
-}
-
-// Get returns internally stored configuration
-func Get() *Config {
-	return cnf
-}
-
-// Refresh sets config through the pointer so config actually gets refreshed
-func Refresh(newCnf *Config) {
-	*cnf = *newCnf
-}
-
-// Reset sets configLoaded back to false
-func Reset() {
-	configLoaded = false
 }

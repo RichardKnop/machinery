@@ -11,8 +11,6 @@ import (
 )
 
 func TestNewFromEnvironment(t *testing.T) {
-	config.Reset()
-
 	file, err := os.Open("test.env")
 	if err != nil {
 		t.Fatal(err)
@@ -28,7 +26,10 @@ func TestNewFromEnvironment(t *testing.T) {
 		os.Setenv(parts[0], parts[1])
 	}
 
-	cnf := config.NewFromEnvironment(true, false)
+	cnf, err := config.NewFromEnvironment(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	assert.Equal(t, "broker", cnf.Broker)
 	assert.Equal(t, "default_queue", cnf.DefaultQueue)
