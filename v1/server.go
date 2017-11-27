@@ -30,7 +30,6 @@ func NewServer(cnf *config.Config) (*Server, error) {
 
 	// Backend is optional so we ignore the error
 	backend, _ := BackendFactory(cnf)
-
 	srv := &Server{
 		config:          cnf,
 		registeredTasks: make(map[string]interface{}),

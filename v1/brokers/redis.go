@@ -11,10 +11,10 @@ import (
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/garyburd/redigo/redis"
-	"gopkg.in/redsync.v1"
+	redsync "gopkg.in/redsync.v1"
 )
 
-var redisDelayedTasksKey = "delayed_tasks"
+var redisDelayedTasksKey = "_delayed_tasks"
 
 // RedisBroker represents a Redis broker
 type RedisBroker struct {
@@ -105,7 +105,7 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 			case <-b.stopDelayedChan:
 				return
 			default:
-				delayedTask, err := b.nextDelayedTask(redisDelayedTasksKey)
+				delayedTask, err := b.nextDelayedTask(b.cnf.DefaultQueue + redisDelayedTasksKey)
 				if err != nil {
 					continue
 				}
@@ -162,7 +162,7 @@ func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 
 		if signature.ETA.After(now) {
 			score := signature.ETA.UnixNano()
-			_, err = conn.Do("ZADD", redisDelayedTasksKey, score, msg)
+			_, err = conn.Do("ZADD", b.cnf.DefaultQueue+redisDelayedTasksKey, score, msg)
 			return err
 		}
 	}
