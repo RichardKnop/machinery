@@ -55,7 +55,7 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker.Concurrency, worker)
 
 			if retry {
-				log.WARNING.Printf("Start consuming error: %s", err)
+				log.WARNING.Printf("Broker failed with error: %s", err)
 			} else {
 				errorsChan <- err // stop the goroutine
 				return

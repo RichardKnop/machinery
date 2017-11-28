@@ -214,7 +214,7 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 	signature := new(tasks.Signature)
 	if err := json.Unmarshal(d.Body, signature); err != nil {
 		d.Nack(multiple, requeue)
-		return err
+		return fmt.Errorf("Could not unmarshal '%s'. Error: %s", d.Body, err)
 	}
 
 	// If the task is not registered, we nack it and requeue,

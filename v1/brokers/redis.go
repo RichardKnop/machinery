@@ -249,7 +249,7 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) error {
 	sig := new(tasks.Signature)
 	if err := json.Unmarshal(delivery, sig); err != nil {
-		return err
+		return fmt.Errorf("Could not unmarshal '%s'. Error: %s", delivery, err)
 	}
 
 	// If the task is not registered, we requeue it,
