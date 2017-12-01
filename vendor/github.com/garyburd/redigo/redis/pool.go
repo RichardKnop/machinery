@@ -115,7 +115,6 @@ var (
 //  }
 //
 type Pool struct {
-
 	// Dial is an application supplied function for creating and configuring a
 	// connection.
 	//
@@ -179,6 +178,26 @@ func (p *Pool) Get() Conn {
 		return errorConnection{err}
 	}
 	return &pooledConnection{p: p, c: c}
+}
+
+// PoolStats contains pool statistics.
+type PoolStats struct {
+	// ActiveCount is the number of connections in the pool. The count includes idle connections and connections in use.
+	ActiveCount int
+	// IdleCount is the number of idle connections in the pool.
+	IdleCount int
+}
+
+// Stats returns pool's statistics.
+func (p *Pool) Stats() PoolStats {
+	p.mu.Lock()
+	stats := PoolStats{
+		ActiveCount: p.active,
+		IdleCount:   p.idle.Len(),
+	}
+	p.mu.Unlock()
+
+	return stats
 }
 
 // ActiveCount returns the number of connections in the pool. The count includes idle connections and connections in use.
@@ -249,7 +268,6 @@ func (p *Pool) get() (Conn, error) {
 	}
 
 	for {
-
 		// Get idle connection.
 
 		for i, n := 0, p.idle.Len(); i < n; i++ {

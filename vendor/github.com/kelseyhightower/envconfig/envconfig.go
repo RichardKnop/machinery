@@ -72,7 +72,7 @@ func gatherInfo(prefix string, spec interface{}) ([]varInfo, error) {
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
 		ftype := typeOfSpec.Field(i)
-		if !f.CanSet() || isTrue(ftype.Tag.Get("ignored")) {
+		if !f.CanSet() || ftype.Tag.Get("ignored") == "true" {
 			continue
 		}
 
@@ -100,7 +100,7 @@ func gatherInfo(prefix string, spec interface{}) ([]varInfo, error) {
 		info.Key = info.Name
 
 		// Best effort to un-pick camel casing as separate words
-		if isTrue(ftype.Tag.Get("split_words")) {
+		if ftype.Tag.Get("split_words") == "true" {
 			words := expr.FindAllStringSubmatch(ftype.Name, -1)
 			if len(words) > 0 {
 				var name []string
@@ -164,7 +164,7 @@ func Process(prefix string, spec interface{}) error {
 
 		req := info.Tags.Get("required")
 		if !ok && def == "" {
-			if isTrue(req) {
+			if req == "true" {
 				return fmt.Errorf("required key %s missing value", info.Key)
 			}
 			continue
@@ -316,9 +316,4 @@ func setterFrom(field reflect.Value) (s Setter) {
 func textUnmarshaler(field reflect.Value) (t encoding.TextUnmarshaler) {
 	interfaceFrom(field, func(v interface{}, ok *bool) { t, *ok = v.(encoding.TextUnmarshaler) })
 	return t
-}
-
-func isTrue(s string) bool {
-	b, _ := strconv.ParseBool(s)
-	return b
 }

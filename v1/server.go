@@ -43,17 +43,18 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	if ok {
 		// we don't have to call worker.Lauch
 		// in eager mode
-		eager.AssignWorker(srv.NewWorker("eager"))
+		eager.AssignWorker(srv.NewWorker("eager", 0))
 	}
 
 	return srv, nil
 }
 
 // NewWorker creates Worker instance
-func (server *Server) NewWorker(consumerTag string) *Worker {
+func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
 	return &Worker{
 		server:      server,
 		ConsumerTag: consumerTag,
+		Concurrency: concurrency,
 	}
 }
 
@@ -159,7 +160,7 @@ func (server *Server) SendChain(chain *tasks.Chain) (*backends.ChainAsyncResult,
 }
 
 // SendGroup triggers a group of parallel tasks
-func (server *Server) SendGroup(group *tasks.Group) ([]*backends.AsyncResult, error) {
+func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*backends.AsyncResult, error) {
 	// Make sure result backend is defined
 	if server.backend == nil {
 		return nil, errors.New("Result backend required")
@@ -169,23 +170,44 @@ func (server *Server) SendGroup(group *tasks.Group) ([]*backends.AsyncResult, er
 
 	var wg sync.WaitGroup
 	wg.Add(len(group.Tasks))
-	errorsChan := make(chan error)
+	errorsChan := make(chan error, len(group.Tasks)*2)
 
 	// Init group
 	server.backend.InitGroup(group.GroupUUID, group.GetUUIDs())
 
+	// Init the tasks Pending state first
+	for _, signature := range group.Tasks {
+		if err := server.backend.SetStatePending(signature); err != nil {
+			errorsChan <- err
+			continue
+		}
+	}
+
+	pool := make(chan struct{}, sendConcurrency)
+	go func() {
+		for i := 0; i < sendConcurrency; i++ {
+			pool <- struct{}{}
+		}
+	}()
+
 	for i, signature := range group.Tasks {
+
+		if sendConcurrency > 0 {
+			<-pool
+		}
+
 		go func(s *tasks.Signature, index int) {
 			defer wg.Done()
 
-			// Set initial task states to PENDING
-			if err := server.backend.SetStatePending(s); err != nil {
-				errorsChan <- err
-				return
+			// Publish task
+
+			err := server.broker.Publish(s)
+
+			if sendConcurrency > 0 {
+				pool <- struct{}{}
 			}
 
-			// Publish task
-			if err := server.broker.Publish(s); err != nil {
+			if err != nil {
 				errorsChan <- fmt.Errorf("Publish message error: %s", err)
 				return
 			}
@@ -209,8 +231,8 @@ func (server *Server) SendGroup(group *tasks.Group) ([]*backends.AsyncResult, er
 }
 
 // SendChord triggers a group of parallel tasks with a callback
-func (server *Server) SendChord(chord *tasks.Chord) (*backends.ChordAsyncResult, error) {
-	_, err := server.SendGroup(chord.Group)
+func (server *Server) SendChord(chord *tasks.Chord, sendConcurrency int) (*backends.ChordAsyncResult, error) {
+	_, err := server.SendGroup(chord.Group, sendConcurrency)
 	if err != nil {
 		return nil, err
 	}

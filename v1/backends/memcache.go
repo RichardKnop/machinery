@@ -12,7 +12,7 @@ import (
 
 // MemcacheBackend represents a Memcache result backend
 type MemcacheBackend struct {
-	cnf     *config.Config
+	Backend
 	servers []string
 	client  *memcache.Client
 }
@@ -20,7 +20,7 @@ type MemcacheBackend struct {
 // NewMemcacheBackend creates MemcacheBackend instance
 func NewMemcacheBackend(cnf *config.Config, servers []string) Interface {
 	return &MemcacheBackend{
-		cnf:     cnf,
+		Backend: New(cnf),
 		servers: servers,
 	}
 }

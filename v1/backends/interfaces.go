@@ -11,6 +11,7 @@ type Interface interface {
 	GroupCompleted(groupUUID string, groupTaskCount int) (bool, error)
 	GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error)
 	TriggerChord(groupUUID string) (bool, error)
+
 	// Setting / getting task state
 	SetStatePending(signature *tasks.Signature) error
 	SetStateReceived(signature *tasks.Signature) error
@@ -19,6 +20,7 @@ type Interface interface {
 	SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error
 	SetStateFailure(signature *tasks.Signature, err string) error
 	GetState(taskUUID string) (*tasks.TaskState, error)
+
 	// Purging stored stored tasks states and group meta data
 	PurgeState(taskUUID string) error
 	PurgeGroupMeta(groupUUID string) error

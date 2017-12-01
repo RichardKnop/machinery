@@ -84,7 +84,7 @@ func TestBrokerFactory(t *testing.T) {
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
-			fmt.Sprintf("conn = %v, want %v, actual, expected"),
+			fmt.Sprintf("conn = %v, want %v", actual, expected),
 		)
 	}
 }
@@ -97,7 +97,7 @@ func TestBrokerFactoryError(t *testing.T) {
 	conn, err := machinery.BrokerFactory(&cnf)
 	if assert.Error(t, err) {
 		assert.Nil(t, conn)
-		assert.Equal(t, "Factory failed with broker URL: BOGUS", err.Error())
+		assert.Equal(t, "Factory failed with broker URL: \"BOGUS\"", err.Error())
 	}
 }
 
