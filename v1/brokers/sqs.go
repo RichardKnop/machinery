@@ -8,16 +8,21 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"sync"
 )
 
 // SQSBroker represents a SQS broker
 type SQSBroker struct {
 	Broker
-	sess *session.Session
+	processingWG      sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
+	receivingWG       sync.WaitGroup
+	stopReceivingChan chan int
+	sess              *session.Session
 }
 
 // SQSNew creates new Broker instance
@@ -52,14 +57,78 @@ func (b *SQSBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *SQSBroker) StartConsuming(consumerTag string, p TaskProcessor) (bool, error) {
-	// b.startConsuming(consumerTag, taskProcessor)
-	return true, nil
+func (b *SQSBroker) StartConsuming(consumerTag string, concurrency int, taskProcessor TaskProcessor) (bool, error) {
+	b.startConsuming(consumerTag, taskProcessor)
+	// TODO: decide for default queue or selected queue
+	qURL := b.cnf.Broker + "/" + b.cnf.DefaultQueue
+	log.INFO.Printf(qURL)
+	deliveries := make(chan *sqs.ReceiveMessageOutput)
+
+	b.stopReceivingChan = make(chan int)
+	b.receivingWG.Add(1)
+
+	go func() {
+		defer b.receivingWG.Done()
+
+		log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
+
+		for {
+			select {
+			// A way to stop this goroutine from b.StopConsuming
+			case <-b.stopReceivingChan:
+				return
+			default:
+				log.INFO.Print("Receiving messages now")
+				svc := sqs.New(b.sess)
+				result, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
+					AttributeNames: []*string{
+						aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
+					},
+					MessageAttributeNames: []*string{
+						aws.String(sqs.QueueAttributeNameAll),
+					},
+					QueueUrl:            &qURL,
+					MaxNumberOfMessages: aws.Int64(1),
+					VisibilityTimeout:   aws.Int64(36000), // 10 hours
+					WaitTimeSeconds:     aws.Int64(0),
+				})
+				if err != nil {
+					//TODO: Error handling
+					fmt.Println("errors......")
+					//return b.retry, fmt.Errorf("Queue consume error: %s", err)
+				}
+				if len(result.Messages) == 0 {
+					fmt.Println("Received no messages")
+					continue
+				}
+				fmt.Println("xxxxxxxxx")
+				fmt.Println(result)
+
+				deliveries <- result
+			}
+		}
+	}()
+
+	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
+		return b.retry, err
+	}
+
+	return b.retry, nil
 }
 
 // StopConsuming quits the loop
 func (b *SQSBroker) StopConsuming() {
-	// do nothing
+	b.stopConsuming()
+	// Stop the receiving goroutine
+	b.stopReceivingChan <- 1
+
+	// Waiting for any tasks being processed to finish
+	b.processingWG.Wait()
+	log.INFO.Printf("===== Wait for processingWG ===")
+
+	// Waiting for the receiving goroutine to have stopped
+	b.receivingWG.Wait()
+	log.INFO.Printf("===== Wait for receivingWG ===")
 }
 
 // Publish places a new message on the default queue
@@ -114,3 +183,72 @@ func (b *SQSBroker) Publish(signature *tasks.Signature) error {
 
 // TODO: Add GetPendingTasks() & add AssignWorker(), refer to
 // RichardKnop's broker.
+
+func (b *SQSBroker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor) error {
+	pool := make(chan struct{}, concurrency)
+
+	// initialize worker pool with maxWorkers workers
+	go func() {
+		for i := 0; i < concurrency; i++ {
+			pool <- struct{}{}
+		}
+	}()
+
+	errorsChan := make(chan error)
+
+	for {
+		select {
+		case err := <-errorsChan:
+			return err
+		case d := <-deliveries:
+			if concurrency > 0 {
+				// get worker from pool (blocks until one is available)
+				<-pool
+			}
+			log.INFO.Println("============Got Delivery============")
+			b.processingWG.Add(1)
+
+			// Consume the task inside a gotourine so multiple tasks
+			// can be processed concurrently
+			go func() {
+
+				if err := b.consumeOne(d, taskProcessor); err != nil {
+					errorsChan <- err
+				}
+
+				b.processingWG.Done()
+
+				if concurrency > 0 {
+					// give worker back to pool
+					pool <- struct{}{}
+				}
+			}()
+		case <-b.stopChan:
+			return nil
+		default:
+			//fmt.Println("no message received")
+		}
+
+	}
+}
+
+func (b *SQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor TaskProcessor) error {
+	//sig := new(tasks.Signature)
+	log.INFO.Println(delivery.Messages)
+	log.INFO.Println(delivery.GoString())
+	log.INFO.Println("OOOOOOOK")
+	//if err := json.Unmarshal([]byte(delivery.GoString()), sig); err != nil {
+	//	return err
+	//}
+	//
+	//// If the task is not registered, we requeue it,
+	//// there might be different workers for processing specific tasks
+	//if !b.IsTaskRegistered(sig.Name) {
+	//	//todo publish it to queue
+	//	log.INFO.Println("=======unregistered task=======")
+	//	//b.Publish(sig)
+	//	return nil
+	//}
+	//return taskProcessor.Process(sig)
+	return nil
+}

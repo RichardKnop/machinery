@@ -81,7 +81,7 @@ func (b *Broker) stopConsuming() {
 	// Stop the retry closure earlier
 	select {
 	case b.retryStopChan <- 1:
-		log.WARNING.Print("Stopping retry closue.")
+		log.WARNING.Print("Stopping retry closure.")
 	default:
 	}
 	// Notifying the stop channel stops consuming of messages
