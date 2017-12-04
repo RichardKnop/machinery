@@ -231,8 +231,9 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 
 	log.INFO.Printf("Received new message: %s", d.Body)
 
+	err := taskProcessor.Process(signature)
 	d.Ack(multiple)
-	return taskProcessor.Process(signature)
+	return err
 }
 
 // delay a task by delayDuration miliseconds, the way it works is a new queue
