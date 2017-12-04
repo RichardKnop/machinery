@@ -61,7 +61,6 @@ func (b *SQSBroker) StartConsuming(consumerTag string, concurrency int, taskProc
 	b.startConsuming(consumerTag, taskProcessor)
 	// TODO: decide for default queue or selected queue
 	qURL := b.cnf.Broker + "/" + b.cnf.DefaultQueue
-	log.INFO.Printf(qURL)
 	deliveries := make(chan *sqs.ReceiveMessageOutput)
 
 	b.stopReceivingChan = make(chan int)
@@ -78,7 +77,6 @@ func (b *SQSBroker) StartConsuming(consumerTag string, concurrency int, taskProc
 			case <-b.stopReceivingChan:
 				return
 			default:
-				log.INFO.Print("Receiving messages now")
 				svc := sqs.New(b.sess)
 				result, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
 					AttributeNames: []*string{
@@ -93,16 +91,15 @@ func (b *SQSBroker) StartConsuming(consumerTag string, concurrency int, taskProc
 					WaitTimeSeconds:     aws.Int64(0),
 				})
 				if err != nil {
-					//TODO: Error handling
-					fmt.Println("errors......")
-					//return b.retry, fmt.Errorf("Queue consume error: %s", err)
-				}
-				if len(result.Messages) == 0 {
-					fmt.Println("Received no messages")
+					//TODO: Elegant error handling
+					log.ERROR.Printf("Queue consume error: %s", err)
 					continue
 				}
-				fmt.Println("xxxxxxxxx")
-				fmt.Println(result)
+				// There is no message
+				if len(result.Messages) == 0 {
+					//fmt.Println("Received no messages")
+					continue
+				}
 
 				deliveries <- result
 			}
@@ -124,11 +121,9 @@ func (b *SQSBroker) StopConsuming() {
 
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()
-	log.INFO.Printf("===== Wait for processingWG ===")
 
 	// Waiting for the receiving goroutine to have stopped
 	b.receivingWG.Wait()
-	log.INFO.Printf("===== Wait for receivingWG ===")
 }
 
 // Publish places a new message on the default queue
@@ -205,7 +200,7 @@ func (b *SQSBroker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, concurr
 				// get worker from pool (blocks until one is available)
 				<-pool
 			}
-			log.INFO.Println("============Got Delivery============")
+
 			b.processingWG.Add(1)
 
 			// Consume the task inside a gotourine so multiple tasks
@@ -232,23 +227,29 @@ func (b *SQSBroker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, concurr
 	}
 }
 
+// TODO: delete msg after consuming
 func (b *SQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor TaskProcessor) error {
-	//sig := new(tasks.Signature)
-	log.INFO.Println(delivery.Messages)
-	log.INFO.Println(delivery.GoString())
-	log.INFO.Println("OOOOOOOK")
-	//if err := json.Unmarshal([]byte(delivery.GoString()), sig); err != nil {
-	//	return err
-	//}
-	//
-	//// If the task is not registered, we requeue it,
-	//// there might be different workers for processing specific tasks
-	//if !b.IsTaskRegistered(sig.Name) {
-	//	//todo publish it to queue
-	//	log.INFO.Println("=======unregistered task=======")
-	//	//b.Publish(sig)
-	//	return nil
-	//}
-	//return taskProcessor.Process(sig)
-	return nil
+	sig := new(tasks.Signature)
+	if len(delivery.Messages) == 0 {
+		log.ERROR.Printf("received an empty message, the delivery was %v", delivery)
+		return errors.New("received empty message, the delivery is " + delivery.GoString())
+	}
+	msg := delivery.Messages[0].Body
+	if err := json.Unmarshal([]byte(*msg), sig); err != nil {
+		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
+		return err
+	}
+
+	// If the task is not registered, we requeue it,
+	// there might be different workers for processing specific tasks
+	if !b.IsTaskRegistered(sig.Name) {
+		//todo: publish it to queue
+		err := b.Publish(sig)
+		if err != nil {
+			return err
+		}
+		log.INFO.Printf("requeue a task to default queue: %v", sig)
+		return nil
+	}
+	return taskProcessor.Process(sig)
 }
