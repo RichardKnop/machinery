@@ -134,8 +134,6 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 
 // StopConsuming quits the loop
 func (b *RedisBroker) StopConsuming() {
-	b.stopConsuming()
-
 	// Stop the receiving goroutine
 	b.stopReceivingChan <- 1
 	// Waiting for the receiving goroutine to have stopped
@@ -146,6 +144,8 @@ func (b *RedisBroker) StopConsuming() {
 	// Waiting for the delayed tasks goroutine to have stopped
 	b.delayedWG.Wait()
 
+	b.stopConsuming()
+
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()
 }
@@ -153,7 +153,7 @@ func (b *RedisBroker) StopConsuming() {
 // Publish places a new message on the default queue
 func (b *RedisBroker) Publish(signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
-	b.AdjustRoutingKey(signature)
+	AdjustRoutingKey(b, signature)
 
 	msg, err := json.Marshal(signature)
 	if err != nil {
