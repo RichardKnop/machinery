@@ -15,7 +15,7 @@ func New(cnf *config.Config) Backend {
 }
 
 // IsAMQP returns true if the backend is AMQP
-func IsAMQP(backend Interface) bool {
-	_, isAMQPBackend := backend.(*AMQPBackend)
+func IsAMQP(b Interface) bool {
+	_, isAMQPBackend := b.(*AMQPBackend)
 	return isAMQPBackend
 }

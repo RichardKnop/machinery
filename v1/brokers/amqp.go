@@ -93,7 +93,7 @@ func (b *AMQPBroker) StopConsuming() {
 // Publish places a new message on the default queue
 func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
-	b.AdjustRoutingKey(signature)
+	AdjustRoutingKey(b, signature)
 
 	msg, err := json.Marshal(signature)
 	if err != nil {
