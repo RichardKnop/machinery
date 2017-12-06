@@ -118,48 +118,23 @@ func (b *DynamoDBBackend) TriggerChord(groupUUID string) (bool, error) {
 }
 
 func (b *DynamoDBBackend) SetStatePending(signature *tasks.Signature) error {
-	err := b.setTaskState(signature, tasks.StatePending)
-	if err != nil {
-		log.ERROR.Println("Error when set task's state to pending. Error: %v", err)
-		return err
-	}
-	return nil
+	return b.setTaskState(signature, tasks.StatePending)
 }
 
 func (b *DynamoDBBackend) SetStateReceived(signature *tasks.Signature) error {
-	err := b.setTaskState(signature, tasks.StateReceived)
-	if err != nil {
-		log.ERROR.Println("Error when set task's state to received. Error: %v", err)
-		return err
-	}
-	return nil
+	return b.setTaskState(signature, tasks.StateReceived)
 }
 
 func (b *DynamoDBBackend) SetStateStarted(signature *tasks.Signature) error {
-	err := b.setTaskState(signature, tasks.StateStarted)
-	if err != nil {
-		log.ERROR.Println("Error when set task's state to started. Error: %v", err)
-		return err
-	}
-	return nil
+	return b.setTaskState(signature, tasks.StateStarted)
 }
 
 func (b *DynamoDBBackend) SetStateRetry(signature *tasks.Signature) error {
-	err := b.setTaskState(signature, tasks.StateReceived)
-	if err != nil {
-		log.ERROR.Println("Error when set task's state to retry. Error: %v", err)
-		return err
-	}
-	return nil
+	return b.setTaskState(signature, tasks.StateReceived)
 }
 
 func (b *DynamoDBBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
-	err := b.setTaskState(signature, tasks.StateSuccess)
-	if err != nil {
-		log.ERROR.Println("Error when set task's state to success. Error: %v", err)
-		return err
-	}
-	return nil
+	return b.setTaskState(signature, tasks.StateSuccess)
 }
 
 func (b *DynamoDBBackend) SetStateFailure(signature *tasks.Signature, err string) error {
@@ -348,35 +323,6 @@ func (b *DynamoDBBackend) chordTriggered(groupUUID string) error {
 	_, err := b.client.UpdateItem(input)
 
 	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (b *DynamoDBBackend) updateSignatureState(signature *tasks.Signature, state string) error {
-	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#S": aws.String("state"),
-		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":s": {
-				S: aws.String(state),
-			},
-		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"_id": {
-				S: aws.String(signature.UUID),
-			},
-		},
-		ReturnValues:     aws.String("UPDATED_NEW"),
-		TableName:        aws.String("tasks"),
-		UpdateExpression: aws.String("SET #S = :s"),
-	}
-
-	_, err := b.client.UpdateItem(input)
-
-	if err != nil {
-		fmt.Println(err.Error())
 		return err
 	}
 	return nil
