@@ -70,7 +70,7 @@ func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) (
 }
 
 // TriggerChord flags chord as triggered in the backend storage to make sure
-// chord is never trigerred multiple times. Returns a boolean flag to indicate
+// chord is never triggered multiple times. Returns a boolean flag to indicate
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
 func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
