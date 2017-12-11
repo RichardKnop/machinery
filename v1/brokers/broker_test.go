@@ -33,14 +33,14 @@ func TestAdjustRoutingKey(t *testing.T) {
 			BindingKey:   "binding_key",
 		},
 	})
-	broker.AdjustRoutingKey(s)
+	brokers.AdjustRoutingKey(&broker, s)
 	assert.Equal(t, "routing_key", s.RoutingKey)
 
 	s = &tasks.Signature{RoutingKey: "routing_key"}
 	broker = brokers.New(&config.Config{
 		DefaultQueue: "queue",
 	})
-	broker.AdjustRoutingKey(s)
+	brokers.AdjustRoutingKey(&broker, s)
 	assert.Equal(t, "routing_key", s.RoutingKey)
 
 	// Signatures without routing key
@@ -53,13 +53,13 @@ func TestAdjustRoutingKey(t *testing.T) {
 			BindingKey:   "binding_key",
 		},
 	})
-	broker.AdjustRoutingKey(s)
+	brokers.AdjustRoutingKey(&broker, s)
 	assert.Equal(t, "binding_key", s.RoutingKey)
 
 	s = new(tasks.Signature)
 	broker = brokers.New(&config.Config{
 		DefaultQueue: "queue",
 	})
-	broker.AdjustRoutingKey(s)
+	brokers.AdjustRoutingKey(&broker, s)
 	assert.Equal(t, "queue", s.RoutingKey)
 }
