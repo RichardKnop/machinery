@@ -497,7 +497,6 @@ func TestApp_Float64Flag(t *testing.T) {
 }
 
 func TestApp_ParseSliceFlags(t *testing.T) {
-	var parsedOption, firstArg string
 	var parsedIntSlice []int
 	var parsedStringSlice []string
 
@@ -511,8 +510,6 @@ func TestApp_ParseSliceFlags(t *testing.T) {
 		Action: func(c *Context) error {
 			parsedIntSlice = c.IntSlice("p")
 			parsedStringSlice = c.StringSlice("ip")
-			parsedOption = c.String("option")
-			firstArg = c.Args().First()
 			return nil
 		},
 	}
@@ -1658,6 +1655,42 @@ func TestHandleAction_WithInvalidFuncReturnSignature(t *testing.T) {
 
 	if exitErr.ExitCode() != 2 {
 		t.Fatalf("expected error exit code to be 2, but got: %v", exitErr.ExitCode())
+	}
+}
+
+func TestHandleExitCoder_Default(t *testing.T) {
+	app := NewApp()
+	fs, err := flagSet(app.Name, app.Flags)
+	if err != nil {
+		t.Errorf("error creating FlagSet: %s", err)
+	}
+
+	ctx := NewContext(app, fs, nil)
+	app.handleExitCoder(ctx, NewExitError("Default Behavior Error", 42))
+
+	output := fakeErrWriter.String()
+	if !strings.Contains(output, "Default") {
+		t.Fatalf("Expected Default Behavior from Error Handler but got: %s", output)
+	}
+}
+
+func TestHandleExitCoder_Custom(t *testing.T) {
+	app := NewApp()
+	fs, err := flagSet(app.Name, app.Flags)
+	if err != nil {
+		t.Errorf("error creating FlagSet: %s", err)
+	}
+
+	app.ExitErrHandler = func(_ *Context, _ error) {
+		fmt.Fprintln(ErrWriter, "I'm a Custom error handler, I print what I want!")
+	}
+
+	ctx := NewContext(app, fs, nil)
+	app.handleExitCoder(ctx, NewExitError("Default Behavior Error", 42))
+
+	output := fakeErrWriter.String()
+	if !strings.Contains(output, "Custom") {
+		t.Fatalf("Expected Custom Behavior from Error Handler but got: %s", output)
 	}
 }
 

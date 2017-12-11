@@ -88,6 +88,10 @@ func (b *Broker) stopConsuming() {
 	b.stopChan <- 1
 }
 
+func (b *Broker) GetRegisteredTaskNames() []string {
+	return b.registeredTaskNames
+}
+
 // AdjustRoutingKey makes sure the routing key is correct.
 // If the routing key is an empty string:
 // a) set it to binding key for direct exchange type
@@ -109,6 +113,6 @@ func AdjustRoutingKey(b Interface, s *tasks.Signature) {
 
 // IsAMQP returns true if the broker is AMQP
 func IsAMQP(b Interface) bool {
-	_, isAMQPBackend := b.(*AMQPBroker)
-	return isAMQPBackend
+	_, isAMQPBroker := b.(*AMQPBroker)
+	return isAMQPBroker
 }
