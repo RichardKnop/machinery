@@ -23,43 +23,47 @@ func TestAdjustRoutingKey(t *testing.T) {
 		broker brokers.Broker
 	)
 
-	// Signatures with routing key
-
-	s = &tasks.Signature{RoutingKey: "routing_key"}
-	broker = brokers.New(&config.Config{
-		DefaultQueue: "queue",
-		AMQP: &config.AMQPConfig{
-			ExchangeType: "direct",
-			BindingKey:   "binding_key",
-		},
+	t.Run("with routing and binding keys", func(t *testing.T) {
+		s := &tasks.Signature{RoutingKey: "routing_key"}
+		broker := brokers.NewAMQPBroker(&config.Config{
+			DefaultQueue: "queue",
+			AMQP: &config.AMQPConfig{
+				ExchangeType: "direct",
+				BindingKey:   "binding_key",
+			},
+		})
+		brokers.AdjustRoutingKey(broker, s)
+		assert.Equal(t, "routing_key", s.RoutingKey)
 	})
-	brokers.AdjustRoutingKey(&broker, s)
-	assert.Equal(t, "routing_key", s.RoutingKey)
 
-	s = &tasks.Signature{RoutingKey: "routing_key"}
-	broker = brokers.New(&config.Config{
-		DefaultQueue: "queue",
+	t.Run("with routing key", func(t *testing.T) {
+		s = &tasks.Signature{RoutingKey: "routing_key"}
+		broker = brokers.New(&config.Config{
+			DefaultQueue: "queue",
+		})
+		brokers.AdjustRoutingKey(&broker, s)
+		assert.Equal(t, "routing_key", s.RoutingKey)
 	})
-	brokers.AdjustRoutingKey(&broker, s)
-	assert.Equal(t, "routing_key", s.RoutingKey)
 
-	// Signatures without routing key
-
-	s = new(tasks.Signature)
-	broker = brokers.New(&config.Config{
-		DefaultQueue: "queue",
-		AMQP: &config.AMQPConfig{
-			ExchangeType: "direct",
-			BindingKey:   "binding_key",
-		},
+	t.Run("with binding key", func(t *testing.T) {
+		s = new(tasks.Signature)
+		amqpBroker := brokers.NewAMQPBroker(&config.Config{
+			DefaultQueue: "queue",
+			AMQP: &config.AMQPConfig{
+				ExchangeType: "direct",
+				BindingKey:   "binding_key",
+			},
+		})
+		brokers.AdjustRoutingKey(amqpBroker, s)
+		assert.Equal(t, "binding_key", s.RoutingKey)
 	})
-	brokers.AdjustRoutingKey(&broker, s)
-	assert.Equal(t, "binding_key", s.RoutingKey)
 
-	s = new(tasks.Signature)
-	broker = brokers.New(&config.Config{
-		DefaultQueue: "queue",
+	t.Run("with neither routing nor binding key", func(t *testing.T) {
+		s = new(tasks.Signature)
+		broker = brokers.New(&config.Config{
+			DefaultQueue: "queue",
+		})
+		brokers.AdjustRoutingKey(&broker, s)
+		assert.Equal(t, "queue", s.RoutingKey)
 	})
-	brokers.AdjustRoutingKey(&broker, s)
-	assert.Equal(t, "queue", s.RoutingKey)
 }
