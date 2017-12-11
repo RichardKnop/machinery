@@ -25,10 +25,12 @@ test:
 test-with-coverage:
 	echo "" > coverage.out
 	echo "mode: set" > coverage-all.out
+	TEST_FAILED= ; \
 	for pkg in ${PACKAGES}; do \
-		go test -coverprofile=coverage.out -covermode=set $$pkg; \
+		go test -coverprofile=coverage.out -covermode=set $$pkg || TEST_FAILED=1; \
 		tail -n +2 coverage.out >> coverage-all.out; \
-	done;
+	done; \
+	[ -z "$$TEST_FAILED" ]
 	#go tool cover -html=coverage-all.out
 
 ci:
