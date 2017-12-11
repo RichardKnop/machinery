@@ -86,3 +86,7 @@ func (b *Broker) stopConsuming() {
 	// Notifying the stop channel stops consuming of messages
 	b.stopChan <- 1
 }
+
+func (b *Broker) GetRegisteredTaskNames() []string {
+	return b.registeredTaskNames
+}

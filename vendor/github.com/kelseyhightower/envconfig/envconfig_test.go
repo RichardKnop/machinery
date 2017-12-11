@@ -41,7 +41,7 @@ type Specification struct {
 	MultiWordVarWithLowerCaseAlt string  `envconfig:"multi_word_var_with_lower_case_alt"`
 	NoPrefixWithAlt              string  `envconfig:"SERVICE_HOST"`
 	DefaultVar                   string  `default:"foobar"`
-	RequiredVar                  string  `required:"true"`
+	RequiredVar                  string  `required:"True"`
 	NoPrefixDefault              string  `envconfig:"BROKER" default:"127.0.0.1"`
 	RequiredDefault              string  `required:"true" default:"foo2bar"`
 	Ignored                      string  `ignored:"true"`
@@ -52,6 +52,7 @@ type Specification struct {
 	AfterNested  string
 	DecodeStruct HonorDecodeInStruct `envconfig:"honor"`
 	Datetime     time.Time
+	MapField     map[string]string `default:"one:two,three:four"`
 }
 
 type Embedded struct {
@@ -326,6 +327,16 @@ func TestRequiredVar(t *testing.T) {
 	}
 }
 
+func TestRequiredMissing(t *testing.T) {
+	var s Specification
+	os.Clearenv()
+
+	err := Process("env_config", &s)
+	if err == nil {
+		t.Error("no failure when missing required variable")
+	}
+}
+
 func TestBlankDefaultVar(t *testing.T) {
 	var s Specification
 	os.Clearenv()
@@ -419,6 +430,24 @@ func TestPointerFieldBlank(t *testing.T) {
 
 	if s.SomePointer != nil {
 		t.Errorf("expected <nil>, got %q", *s.SomePointer)
+	}
+}
+
+func TestEmptyMapFieldOverride(t *testing.T) {
+	var s Specification
+	os.Clearenv()
+	os.Setenv("ENV_CONFIG_REQUIREDVAR", "foo")
+	os.Setenv("ENV_CONFIG_MAPFIELD", "")
+	if err := Process("env_config", &s); err != nil {
+		t.Error(err.Error())
+	}
+
+	if s.MapField == nil {
+		t.Error("expected empty map, got <nil>")
+	}
+
+	if len(s.MapField) != 0 {
+		t.Errorf("expected empty map, got map of size %d", len(s.MapField))
 	}
 }
 
