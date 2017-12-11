@@ -16,9 +16,11 @@ golint:
 	done;
 
 test:
+	TEST_FAILED= ; \
 	for pkg in ${PACKAGES}; do \
-		go test $$pkg; \
-	done;
+		go test $$pkg || TEST_FAILED=1; \
+	done; \
+	[ -z "$$TEST_FAILED" ]
 
 test-with-coverage:
 	echo "" > coverage.out
