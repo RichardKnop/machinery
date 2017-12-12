@@ -51,7 +51,6 @@ func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskP
 
 	b.stopReceivingChan = make(chan int)
 	b.receivingWG.Add(1)
-	consumingErrorChan := make(chan error)
 
 	go func() {
 		defer b.receivingWG.Done()
@@ -64,36 +63,10 @@ func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskP
 			case <-b.stopReceivingChan:
 				return
 			default:
-				//result, err := b.service.ReceiveMessage(&sqs.ReceiveMessageInput{
-				//	AttributeNames: []*string{
-				//		aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
-				//	},
-				//	MessageAttributeNames: []*string{
-				//		aws.String(sqs.QueueAttributeNameAll),
-				//	},
-				//	QueueUrl:            qURL,
-				//	MaxNumberOfMessages: aws.Int64(1),
-				//	VisibilityTimeout:   aws.Int64(int64(b.cnf.ResultsExpireIn)), // 10 hours
-				//	WaitTimeSeconds:     aws.Int64(0),
-				//})
-				//if err != nil {
-				//	log.ERROR.Printf("Queue consume error: %s", err)
-				//	consumingErrorChan <- err
-				//	return
-				//}
-				//// There is no message
-				//if len(result.Messages) == 0 {
-				//	continue
-				//}
-				//
-				//deliveries <- result
-
 				output, err := b.receiveMessage(qURL)
 				if err != nil {
 					log.ERROR.Printf("Queue consume error: %s", err)
-					consumingErrorChan <- err
-					//return b.retry, err
-					return
+					continue
 				}
 				if len(output.Messages) == 0 {
 					continue
@@ -101,15 +74,16 @@ func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskP
 
 				deliveries <- output
 			}
+
+			whetherContinue, err := b.continueReceivingMessages(qURL, deliveries)
+			if err != nil {
+				log.ERROR.Printf("Error when receiving messages. Error: %v", err)
+			}
+			if whetherContinue == false {
+				return
+			}
 		}
 	}()
-
-	// Handling error when consuming the queue
-	// TODO: wrong logic, using sth like in consume()?
-	//select {
-	//case err := <-consumingErrorChan:
-	//	return b.retry, err
-	//}
 
 	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
 		return b.retry, err
@@ -121,8 +95,8 @@ func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskP
 // StopConsuming quits the loop
 func (b *AWSSQSBroker) StopConsuming() {
 	b.stopConsuming()
-	// Stop the receiving goroutine
-	b.stopReceivingChan <- 1
+
+	b.stopReceiving()
 
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()
@@ -214,8 +188,10 @@ func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProces
 	}
 
 	// Delete message after consuming successfully
-	// TODO: error handling
-	b.deleteOne(delivery)
+	err := b.deleteOne(delivery)
+	if err != nil {
+		log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
+	}
 
 	// If the task is not registered, we requeue it,
 	// there might be different workers for processing specific tasks
@@ -303,4 +279,27 @@ func (b *AWSSQSBroker) consumeDeliveries(deliveries <-chan *sqs.ReceiveMessageOu
 		return nil
 	}
 	return nil
+}
+
+func (b *AWSSQSBroker) continueReceivingMessages(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
+	select {
+	// A way to stop this goroutine from b.StopConsuming
+	case <-b.stopReceivingChan:
+		return false, nil
+	default:
+		output, err := b.receiveMessage(qURL)
+		if err != nil {
+			return true, err
+		}
+		if len(output.Messages) == 0 {
+			return true, nil
+		}
+		go func() { deliveries <- output }()
+	}
+	return true, nil
+}
+
+func (b *AWSSQSBroker) stopReceiving() {
+	// Stop the receiving goroutine
+	b.stopReceivingChan <- 1
 }
