@@ -1,132 +1,32 @@
-package brokers
+package brokers_test
 
 import (
 	"testing"
 
-	"encoding/json"
 	"errors"
 	"github.com/RichardKnop/machinery/v1"
+	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"sync"
 )
 
 var (
-	testBroker           Interface
-	testAWSSQSBroker     *AWSSQSBroker
-	errAWSSQSBroker      *AWSSQSBroker
+	testBroker           brokers.Interface
+	testAWSSQSBroker     *brokers.AWSSQSBroker
+	errAWSSQSBroker      *brokers.AWSSQSBroker
 	cnf                  *config.Config
 	receiveMessageOutput *sqs.ReceiveMessageOutput
 )
 
-type FakeSQS struct {
-	sqsiface.SQSAPI
-}
-
-func (f *FakeSQS) SendMessage(*sqs.SendMessageInput) (*sqs.SendMessageOutput, error) {
-	output := sqs.SendMessageOutput{
-		MD5OfMessageAttributes: aws.String("d25a6aea97eb8f585bfa92d314504a92"),
-		MD5OfMessageBody:       aws.String("bbdc5fdb8be7251f5c910905db994bab"),
-		MessageId:              aws.String("47f8b355-5115-4b45-b33a-439016400411"),
-	}
-	return &output, nil
-}
-
-func (f *FakeSQS) ReceiveMessage(*sqs.ReceiveMessageInput) (*sqs.ReceiveMessageOutput, error) {
-	return receiveMessageOutput, nil
-}
-
-func (f *FakeSQS) DeleteMessage(*sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
-	return &sqs.DeleteMessageOutput{}, nil
-}
-
-type ErrorSQS struct {
-	sqsiface.SQSAPI
-}
-
-func (e *ErrorSQS) SendMessage(*sqs.SendMessageInput) (*sqs.SendMessageOutput, error) {
-	err := errors.New("this is an error")
-	return nil, err
-}
-
-func (e *ErrorSQS) ReceiveMessage(*sqs.ReceiveMessageInput) (*sqs.ReceiveMessageOutput, error) {
-	err := errors.New("this is an error")
-	return nil, err
-}
-
-func (e *ErrorSQS) DeleteMessage(*sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
-	err := errors.New("this is an error")
-	return nil, err
-}
-
 func init() {
-	redisURL := os.Getenv("REDIS_URL")
-	brokerUrl := "https://sqs.foo.amazonaws.com.cn"
-	cnf = &config.Config{
-		Broker:        brokerUrl,
-		DefaultQueue:  "test_queue",
-		ResultBackend: redisURL,
-	}
-	testBroker = NewAWSSQSBroker(cnf)
-
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	svc := new(FakeSQS)
-	testAWSSQSBroker = &AWSSQSBroker{
-		Broker:            New(cnf),
-		sess:              sess,
-		service:           svc,
-		processingWG:      sync.WaitGroup{},
-		receivingWG:       sync.WaitGroup{},
-		stopReceivingChan: make(chan int),
-	}
-
-	errSvc := new(ErrorSQS)
-	errAWSSQSBroker = &AWSSQSBroker{
-		Broker:            New(cnf),
-		sess:              sess,
-		service:           errSvc,
-		processingWG:      sync.WaitGroup{},
-		receivingWG:       sync.WaitGroup{},
-		stopReceivingChan: make(chan int),
-	}
-
-	messageBody, _ := json.Marshal(map[string]int{"apple": 5, "lettuce": 7})
-	receiveMessageOutput = &sqs.ReceiveMessageOutput{
-		Messages: []*sqs.Message{
-			&sqs.Message{
-				Attributes: map[string]*string{
-					"SentTimestamp": aws.String("1512962021537"),
-				},
-				Body:                   aws.String(string(messageBody)),
-				MD5OfBody:              aws.String("bbdc5fdb8be7251f5c910905db994bab"),
-				MD5OfMessageAttributes: aws.String("d25a6aea97eb8f585bfa92d314504a92"),
-				MessageAttributes: map[string]*sqs.MessageAttributeValue{
-					"Title": &sqs.MessageAttributeValue{
-						DataType:    aws.String("String"),
-						StringValue: aws.String("The Whistler"),
-					},
-					"Author": &sqs.MessageAttributeValue{
-						DataType:    aws.String("String"),
-						StringValue: aws.String("John Grisham"),
-					},
-					"WeeksOn": &sqs.MessageAttributeValue{
-						DataType:    aws.String("Number"),
-						StringValue: aws.String("6"),
-					},
-				},
-				MessageId:     aws.String("47f8b355-5115-4b45-b33a-439016400411"),
-				ReceiptHandle: aws.String("AQEBGhTR/nhq+pDPAunCDgLpwQuCq0JkD2dtv7pAcPF5DA/XaoPAjHfgn/PZ5DeG3YiQdTjCUj+rvFq5b79DTq+hK6r1Niuds02l+jdIk3u2JiL01Dsd203pW1lLUNryd74QAcn462eXzv7/hVDagXTn+KtOzox3X0vmPkCSQkWXWxtc23oa5+5Q7HWDmRm743L0zza1579rQ2R2B0TrdlTMpNsdjQlDmybNu+aDq8bazD/Wew539tIvUyYADuhVyKyS1L2QQuyXll73/DixulPNmvGPRHNoB1GIo+Ex929OHFchXoKonoFJnurX4VNNl1p/Byp2IYBi6nkTRzeJUFCrFq0WMAHKLwuxciezJSlLD7g3bbU8kgEer8+jTz1DBriUlDGsARr0s7mnlsd02cb46K/j+u1oPfA69vIVc0FaRtA="),
-			},
-		},
-	}
+	testAWSSQSBroker = brokers.TestAWSSQSBroker
+	errAWSSQSBroker = brokers.ErrAWSSQSBroker
+	cnf = brokers.TestConf
+	receiveMessageOutput = brokers.ReceiveMessageOutput
+	testBroker = brokers.NewAWSSQSBroker(cnf)
 }
 
 func TestNewAWSSQSBroker(t *testing.T) {
@@ -134,11 +34,12 @@ func TestNewAWSSQSBroker(t *testing.T) {
 }
 
 func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
-	qURL := testAWSSQSBroker.defaultQueueURL()
+	qURL := testAWSSQSBroker.DefaultQueueURLForTesting()
 	deliveries := make(chan *sqs.ReceiveMessageOutput)
 
 	go func() {
-		testAWSSQSBroker.stopReceivingChan <- 1
+		stopReceivingChan := testAWSSQSBroker.GetStopReceivingChanForTesting()
+		stopReceivingChan <- 1
 	}()
 
 	var (
@@ -146,24 +47,24 @@ func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 		err             error
 	)
 	go func() {
-		whetherContinue, err = testAWSSQSBroker.continueReceivingMessages(qURL, deliveries)
+		whetherContinue, err = testAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
 	}()
 	assert.False(t, whetherContinue)
 	assert.Nil(t, err)
 
-	whetherContinue, err = testAWSSQSBroker.continueReceivingMessages(qURL, deliveries)
+	whetherContinue, err = testAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
 	assert.True(t, whetherContinue)
 	assert.Nil(t, err)
 	d := <-deliveries
 	assert.Equal(t, receiveMessageOutput, d)
 
-	whetherContinue, err = errAWSSQSBroker.continueReceivingMessages(qURL, deliveries)
+	whetherContinue, err = errAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
 	assert.True(t, whetherContinue)
 	assert.NotNil(t, err)
 
 	outputCopy := *receiveMessageOutput
 	receiveMessageOutput.Messages = []*sqs.Message{}
-	whetherContinue, err = testAWSSQSBroker.continueReceivingMessages(qURL, deliveries)
+	whetherContinue, err = testAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
 	assert.True(t, whetherContinue)
 	assert.Nil(t, err)
 	*receiveMessageOutput = outputCopy
@@ -182,7 +83,7 @@ func TestPrivateFunc_consume(t *testing.T) {
 	go func() { deliveries <- &outputCopy }()
 
 	// an infinite loop will be executed only when there is no error
-	err = testAWSSQSBroker.consume(deliveries, 0, wk)
+	err = testAWSSQSBroker.ConsumeForTesting(deliveries, 0, wk)
 	assert.NotNil(t, err)
 
 }
@@ -193,12 +94,12 @@ func TestPrivateFunc_consumeOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	wk := server1.NewWorker("sms_worker", 0)
-	err = testAWSSQSBroker.consumeOne(receiveMessageOutput, wk)
+	err = testAWSSQSBroker.ConsumeOneForTesting(receiveMessageOutput, wk)
 	assert.Nil(t, err)
 
 	outputCopy := *receiveMessageOutput
 	outputCopy.Messages = []*sqs.Message{}
-	err = testAWSSQSBroker.consumeOne(&outputCopy, wk)
+	err = testAWSSQSBroker.ConsumeOneForTesting(&outputCopy, wk)
 	assert.NotNil(t, err)
 
 	outputCopy.Messages = []*sqs.Message{
@@ -206,14 +107,14 @@ func TestPrivateFunc_consumeOne(t *testing.T) {
 			Body: aws.String("foo message"),
 		},
 	}
-	err = testAWSSQSBroker.consumeOne(&outputCopy, wk)
+	err = testAWSSQSBroker.ConsumeOneForTesting(&outputCopy, wk)
 	assert.NotNil(t, err)
 }
 
 func TestPrivateFunc_initializePool(t *testing.T) {
 	concurrency := 9
 	pool := make(chan struct{}, concurrency)
-	testAWSSQSBroker.initializePool(pool, concurrency)
+	testAWSSQSBroker.InitializePoolForTesting(pool, concurrency)
 	assert.Len(t, pool, concurrency)
 }
 
@@ -224,27 +125,31 @@ func TestPrivateFunc_startConsuming(t *testing.T) {
 	}
 
 	wk := server1.NewWorker("sms_worker", 0)
-	assert.Nil(t, testAWSSQSBroker.retryFunc)
-	testAWSSQSBroker.startConsuming("fooTag", wk)
-	assert.IsType(t, testAWSSQSBroker.retryFunc, retry.Closure())
-	assert.Equal(t, len(testAWSSQSBroker.stopChan), 0)
-	assert.Equal(t, len(testAWSSQSBroker.retryStopChan), 0)
+	retryFunc := testAWSSQSBroker.GetRetryFuncForTesting()
+	stopChan := testAWSSQSBroker.GetStopChanForTesting()
+	retryStopChan := testAWSSQSBroker.GetRetryStopChanForTesting()
+	assert.Nil(t, retryFunc)
+	testAWSSQSBroker.StartConsumingForTesting("fooTag", wk)
+	assert.IsType(t, retryFunc, retry.Closure())
+	assert.Equal(t, len(stopChan), 0)
+	assert.Equal(t, len(retryStopChan), 0)
 }
 
 func TestPrivateFuncDefaultQueueURL(t *testing.T) {
-	qURL := testAWSSQSBroker.defaultQueueURL()
+	qURL := testAWSSQSBroker.DefaultQueueURLForTesting()
 
 	assert.EqualValues(t, *qURL, "https://sqs.foo.amazonaws.com.cn/test_queue")
 }
 
 func TestPrivateFunc_stopReceiving(t *testing.T) {
-	go testAWSSQSBroker.stopReceiving()
-	assert.NotNil(t, <-testAWSSQSBroker.stopReceivingChan)
+	go testAWSSQSBroker.StopReceivingForTesting()
+	stopReceivingChan := testAWSSQSBroker.GetStopReceivingChanForTesting()
+	assert.NotNil(t, <-stopReceivingChan)
 }
 
 func TestPrivateFunc_receiveMessage(t *testing.T) {
-	qURL := testAWSSQSBroker.defaultQueueURL()
-	output, err := testAWSSQSBroker.receiveMessage(qURL)
+	qURL := testAWSSQSBroker.DefaultQueueURLForTesting()
+	output, err := testAWSSQSBroker.ReceiveMessageForTesting(qURL)
 	assert.Nil(t, err)
 	assert.Equal(t, receiveMessageOutput, output)
 }
@@ -260,38 +165,38 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	}
 	wk := server1.NewWorker("sms_worker", 0)
 	go func() { deliveries <- receiveMessageOutput }()
-	err = testAWSSQSBroker.consumeDeliveries(deliveries, concurrency, wk, pool, errorsChan)
+	err = testAWSSQSBroker.ConsumeDeliveriesForTesting(deliveries, concurrency, wk, pool, errorsChan)
 
 	assert.Nil(t, err)
 
 	go func() { errorsChan <- errors.New("foo error") }()
-	err = testAWSSQSBroker.consumeDeliveries(deliveries, concurrency, wk, pool, errorsChan)
+	err = testAWSSQSBroker.ConsumeDeliveriesForTesting(deliveries, concurrency, wk, pool, errorsChan)
 	assert.NotNil(t, err)
 
-	go func() { testAWSSQSBroker.stopChan <- 1 }()
-	err = testAWSSQSBroker.consumeDeliveries(deliveries, concurrency, wk, pool, errorsChan)
+	go func() { testAWSSQSBroker.GetStopChanForTesting() <- 1 }()
+	err = testAWSSQSBroker.ConsumeDeliveriesForTesting(deliveries, concurrency, wk, pool, errorsChan)
 	assert.Nil(t, err)
 
 	outputCopy := *receiveMessageOutput
 	outputCopy.Messages = []*sqs.Message{}
 	go func() { deliveries <- &outputCopy }()
-	err = testAWSSQSBroker.consumeDeliveries(deliveries, concurrency, wk, pool, errorsChan)
+	err = testAWSSQSBroker.ConsumeDeliveriesForTesting(deliveries, concurrency, wk, pool, errorsChan)
 	e := <-errorsChan
 	assert.NotNil(t, e)
 	assert.Nil(t, err)
 
 	go func() { pool <- struct{}{} }()
 	go func() { deliveries <- receiveMessageOutput }()
-	err = testAWSSQSBroker.consumeDeliveries(deliveries, concurrency, wk, pool, errorsChan)
+	err = testAWSSQSBroker.ConsumeDeliveriesForTesting(deliveries, concurrency, wk, pool, errorsChan)
 	p := <-pool
 	assert.NotNil(t, p)
 	assert.Nil(t, err)
 }
 
 func TestPrivateFunc_deleteOne(t *testing.T) {
-	err := testAWSSQSBroker.deleteOne(receiveMessageOutput)
+	err := testAWSSQSBroker.DeleteOneForTesting(receiveMessageOutput)
 	assert.Nil(t, err)
 
-	err = errAWSSQSBroker.deleteOne(receiveMessageOutput)
+	err = errAWSSQSBroker.DeleteOneForTesting(receiveMessageOutput)
 	assert.NotNil(t, err)
 }
