@@ -8,14 +8,9 @@
   revision = "7db1e03898200cf257fad35013005eccf89eccca"
 
 [[projects]]
-  name = "github.com/RichardKnop/machinery"
-  packages = ["example/tasks","v1","v1/backends","v1/brokers","v1/common","v1/config","v1/log","v1/retry","v1/tasks"]
-  revision = "60bc4ffeec852287112dbf4fb7047b2a6178a4bb"
-
-[[projects]]
   branch = "master"
   name = "github.com/aws/aws-sdk-go"
-  packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/xml/xmlutil","service/sqs","service/sts"]
+  packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/xml/xmlutil","service/sqs","service/sqs/sqsiface","service/sts"]
   revision = "e8d800f9df9c2ed9c58d49852d27eef69f320c4f"
 
 [[projects]]
@@ -104,6 +99,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0bd3c20098cb3904a2bb63446c803a84492a1f265650e1b153a611837d0ba238"
+  inputs-digest = "d356c48d44bafa2ca3a19deb4d431b30a844715c266a9d4fc381c371cf5a32a3"
   solver-name = "gps-cdcl"
   solver-version = 1
