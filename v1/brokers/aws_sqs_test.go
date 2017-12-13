@@ -36,7 +36,7 @@ func TestNewAWSSQSBroker(t *testing.T) {
 func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 	qURL := testAWSSQSBroker.DefaultQueueURLForTesting()
 	deliveries := make(chan *sqs.ReceiveMessageOutput)
-
+	nextStep := make(chan int)
 	go func() {
 		stopReceivingChan := testAWSSQSBroker.GetStopReceivingChanForTesting()
 		stopReceivingChan <- 1
@@ -48,10 +48,12 @@ func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 	)
 	go func() {
 		whetherContinue, err = testAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
+		nextStep <- 1
 	}()
 	assert.False(t, whetherContinue)
 	assert.Nil(t, err)
 
+	<-nextStep
 	whetherContinue, err = testAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
 	assert.True(t, whetherContinue)
 	assert.Nil(t, err)
