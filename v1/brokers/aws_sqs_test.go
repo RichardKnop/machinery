@@ -57,8 +57,6 @@ func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 	whetherContinue, err = testAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
 	assert.True(t, whetherContinue)
 	assert.Nil(t, err)
-	d := <-deliveries
-	assert.Equal(t, receiveMessageOutput, d)
 
 	whetherContinue, err = errAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
 	assert.True(t, whetherContinue)
