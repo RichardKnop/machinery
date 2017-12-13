@@ -2,7 +2,6 @@ package backends
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -10,13 +9,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"time"
 )
 
 type DynamoDBBackend struct {
 	cnf     *config.Config
-	client  *dynamodb.DynamoDB
+	client  dynamodbiface.DynamoDBAPI
 	session *session.Session
 }
 
