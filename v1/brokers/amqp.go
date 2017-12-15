@@ -92,7 +92,13 @@ func (b *AMQPBroker) StopConsuming() {
 
 // Publish places a new message on the default queue
 func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
-	b.AdjustRoutingKey(signature)
+	// Adjust routing key (this decides which queue the message will be published to)
+	AdjustRoutingKey(b, signature)
+
+	msg, err := json.Marshal(signature)
+	if err != nil {
+		return fmt.Errorf("JSON marshal error: %s", err)
+	}
 
 	// Check the ETA signature field, if it is set and it is in the future,
 	// delay the task
@@ -106,17 +112,12 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 		}
 	}
 
-	message, err := json.Marshal(signature)
-	if err != nil {
-		return fmt.Errorf("JSON marshal error: %s", err)
-	}
-
 	conn, channel, _, confirmsChan, _, err := b.Connect(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
 		b.cnf.AMQP.Exchange,     // exchange name
 		b.cnf.AMQP.ExchangeType, // exchange type
-		b.cnf.DefaultQueue,      // queue name
+		signature.RoutingKey,    // queue name
 		true,                    // queue durable
 		false,                   // queue delete when unused
 		b.cnf.AMQP.BindingKey, // queue binding key
@@ -137,7 +138,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 		amqp.Publishing{
 			Headers:      amqp.Table(signature.Headers),
 			ContentType:  "application/json",
-			Body:         message,
+			Body:         msg,
 			DeliveryMode: amqp.Persistent,
 		},
 	); err != nil {
@@ -214,7 +215,7 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 	signature := new(tasks.Signature)
 	if err := json.Unmarshal(d.Body, signature); err != nil {
 		d.Nack(multiple, requeue)
-		return fmt.Errorf("Could not unmarshal '%s'. Error: %s", d.Body, err)
+		return NewErrCouldNotUnmarshaTaskSignature(d.Body, err)
 	}
 
 	// If the task is not registered, we nack it and requeue,
@@ -230,8 +231,9 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 
 	log.INFO.Printf("Received new message: %s", d.Body)
 
+	err := taskProcessor.Process(signature)
 	d.Ack(multiple)
-	return taskProcessor.Process(signature)
+	return err
 }
 
 // delay a task by delayDuration miliseconds, the way it works is a new queue

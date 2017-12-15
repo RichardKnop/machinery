@@ -31,7 +31,7 @@ func NewFromEnvironment(keepReloading bool) (*Config, error) {
 				}
 
 				*cnf = *newCnf
-				log.INFO.Printf("Successfully reloaded config from the environment")
+				// log.INFO.Printf("Successfully reloaded config from the environment")
 			}
 		}()
 	}

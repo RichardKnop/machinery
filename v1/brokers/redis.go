@@ -105,12 +105,19 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 			case <-b.stopDelayedChan:
 				return
 			default:
-				delayedTask, err := b.nextDelayedTask(redisDelayedTasksKey)
+				task, err := b.nextDelayedTask(redisDelayedTasksKey)
 				if err != nil {
 					continue
 				}
 
-				deliveries <- delayedTask
+				signature := new(tasks.Signature)
+				if err := json.Unmarshal(task, signature); err != nil {
+					log.ERROR.Print(NewErrCouldNotUnmarshaTaskSignature(task, err))
+				}
+
+				if err := b.Publish(signature); err != nil {
+					log.ERROR.Print(err)
+				}
 			}
 		}
 	}()
@@ -127,8 +134,6 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 
 // StopConsuming quits the loop
 func (b *RedisBroker) StopConsuming() {
-	b.stopConsuming()
-
 	// Stop the receiving goroutine
 	b.stopReceivingChan <- 1
 	// Waiting for the receiving goroutine to have stopped
@@ -139,18 +144,21 @@ func (b *RedisBroker) StopConsuming() {
 	// Waiting for the delayed tasks goroutine to have stopped
 	b.delayedWG.Wait()
 
+	b.stopConsuming()
+
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()
 }
 
 // Publish places a new message on the default queue
 func (b *RedisBroker) Publish(signature *tasks.Signature) error {
+	// Adjust routing key (this decides which queue the message will be published to)
+	AdjustRoutingKey(b, signature)
+
 	msg, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
-
-	b.AdjustRoutingKey(signature)
 
 	conn := b.open()
 	defer conn.Close()
@@ -190,11 +198,11 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) 
 
 	taskSignatures := make([]*tasks.Signature, len(results))
 	for i, result := range results {
-		sig := new(tasks.Signature)
-		if err := json.Unmarshal(result, sig); err != nil {
+		signature := new(tasks.Signature)
+		if err := json.Unmarshal(result, signature); err != nil {
 			return nil, err
 		}
-		taskSignatures[i] = sig
+		taskSignatures[i] = signature
 	}
 	return taskSignatures, nil
 }
@@ -247,14 +255,14 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 
 // consumeOne processes a single message using TaskProcessor
 func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) error {
-	sig := new(tasks.Signature)
-	if err := json.Unmarshal(delivery, sig); err != nil {
-		return fmt.Errorf("Could not unmarshal '%s'. Error: %s", delivery, err)
+	signature := new(tasks.Signature)
+	if err := json.Unmarshal(delivery, signature); err != nil {
+		return NewErrCouldNotUnmarshaTaskSignature(delivery, err)
 	}
 
 	// If the task is not registered, we requeue it,
 	// there might be different workers for processing specific tasks
-	if !b.IsTaskRegistered(sig.Name) {
+	if !b.IsTaskRegistered(signature.Name) {
 		conn := b.open()
 		defer conn.Close()
 
@@ -264,7 +272,7 @@ func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) e
 
 	log.INFO.Printf("Received new message: %s", delivery)
 
-	return taskProcessor.Process(sig)
+	return taskProcessor.Process(signature)
 }
 
 // nextTask pops next available task from the default queue
