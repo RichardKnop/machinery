@@ -7,6 +7,36 @@ import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
+// ErrGroupNotFound ...
+type ErrGroupNotFound struct {
+	groupUUID string
+}
+
+// NewErrGroupNotFound returns new instance of ErrGroupNotFound
+func NewErrGroupNotFound(groupUUID string) ErrGroupNotFound {
+	return ErrGroupNotFound{groupUUID: groupUUID}
+}
+
+// Error implements error interface
+func (e ErrGroupNotFound) Error() string {
+	return fmt.Sprintf("Group not found: %v", e.groupUUID)
+}
+
+// ErrTasknotFound ...
+type ErrTasknotFound struct {
+	taskUUID string
+}
+
+// NewErrTasknotFound returns new instance of ErrTasknotFound
+func NewErrTasknotFound(taskUUID string) ErrTasknotFound {
+	return ErrTasknotFound{taskUUID: taskUUID}
+}
+
+// Error implements error interface
+func (e ErrTasknotFound) Error() string {
+	return fmt.Sprintf("Task not found: %v", e.taskUUID)
+}
+
 // EagerBackend represents an "eager" in-memory result backend
 type EagerBackend struct {
 	groups map[string][]string
@@ -37,7 +67,7 @@ func (b *EagerBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 func (b *EagerBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	tasks, ok := b.groups[groupUUID]
 	if !ok {
-		return false, fmt.Errorf("Group not found: %v", groupUUID)
+		return false, NewErrGroupNotFound(groupUUID)
 	}
 
 	var countSuccessTasks = 0
@@ -59,7 +89,7 @@ func (b *EagerBackend) GroupCompleted(groupUUID string, groupTaskCount int) (boo
 func (b *EagerBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	taskUUIDs, ok := b.groups[groupUUID]
 	if !ok {
-		return nil, fmt.Errorf("Group not found: %v", groupUUID)
+		return nil, NewErrGroupNotFound(groupUUID)
 	}
 
 	ret := make([]*tasks.TaskState, 0, groupTaskCount)
@@ -123,12 +153,11 @@ func (b *EagerBackend) SetStateFailure(signature *tasks.Signature, err string) e
 func (b *EagerBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	tasktStateBytes, ok := b.tasks[taskUUID]
 	if !ok {
-		return nil, fmt.Errorf("Task not found: %v", taskUUID)
+		return nil, NewErrTasknotFound(taskUUID)
 	}
 
 	state := new(tasks.TaskState)
-	err := json.Unmarshal(tasktStateBytes, state)
-	if err != nil {
+	if err := json.Unmarshal(tasktStateBytes, state); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal task state %v", b)
 	}
 
@@ -139,7 +168,7 @@ func (b *EagerBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 func (b *EagerBackend) PurgeState(taskUUID string) error {
 	_, ok := b.tasks[taskUUID]
 	if !ok {
-		return fmt.Errorf("Task not found: %v", taskUUID)
+		return NewErrTasknotFound(taskUUID)
 	}
 
 	delete(b.tasks, taskUUID)
@@ -150,7 +179,7 @@ func (b *EagerBackend) PurgeState(taskUUID string) error {
 func (b *EagerBackend) PurgeGroupMeta(groupUUID string) error {
 	_, ok := b.groups[groupUUID]
 	if !ok {
-		return fmt.Errorf("Group not found: %v", groupUUID)
+		return NewErrGroupNotFound(groupUUID)
 	}
 
 	delete(b.groups, groupUUID)
@@ -161,7 +190,7 @@ func (b *EagerBackend) updateState(s *tasks.TaskState) error {
 	// simulate the behavior of json marshal/unmarshal
 	msg, err := json.Marshal(s)
 	if err != nil {
-		return fmt.Errorf("JSON Encode State: %v", err)
+		return fmt.Errorf("Marshal task state error: %v", err)
 	}
 
 	b.tasks[s.TaskUUID] = msg

@@ -8,7 +8,7 @@ import (
 type Interface interface {
 	SetRegisteredTaskNames(names []string)
 	IsTaskRegistered(name string) bool
-	StartConsuming(consumerTag string, p TaskProcessor) (bool, error)
+	StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error)
 	StopConsuming()
 	Publish(task *tasks.Signature) error
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)

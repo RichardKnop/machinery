@@ -25,7 +25,7 @@ type EagerMode interface {
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (eagerBroker *EagerBroker) StartConsuming(consumerTag string, p TaskProcessor) (bool, error) {
+func (eagerBroker *EagerBroker) StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error) {
 	return true, nil
 }
 

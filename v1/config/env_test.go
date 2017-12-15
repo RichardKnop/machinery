@@ -11,8 +11,6 @@ import (
 )
 
 func TestNewFromEnvironment(t *testing.T) {
-	config.Reset()
-
 	file, err := os.Open("test.env")
 	if err != nil {
 		t.Fatal(err)
@@ -28,17 +26,19 @@ func TestNewFromEnvironment(t *testing.T) {
 		os.Setenv(parts[0], parts[1])
 	}
 
-	cnf := config.NewFromEnvironment(true, false)
+	cnf, err := config.NewFromEnvironment(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Equal(t, "amqp://guest:guest@localhost:5672/", cnf.Broker)
-	assert.Equal(t, "machinery_tasks", cnf.DefaultQueue)
-	assert.Equal(t, "amqp", cnf.ResultBackend)
-	assert.Equal(t, 3600000, cnf.ResultsExpireIn)
-	assert.Equal(t, 10, cnf.MaxWorkerInstances)
-	assert.Equal(t, "machinery_exchange", cnf.AMQP.Exchange)
-	assert.Equal(t, "direct", cnf.AMQP.ExchangeType)
-	assert.Equal(t, "machinery_task", cnf.AMQP.BindingKey)
+	assert.Equal(t, "broker", cnf.Broker)
+	assert.Equal(t, "default_queue", cnf.DefaultQueue)
+	assert.Equal(t, "result_backend", cnf.ResultBackend)
+	assert.Equal(t, 123456, cnf.ResultsExpireIn)
+	assert.Equal(t, "exchange", cnf.AMQP.Exchange)
+	assert.Equal(t, "exchange_type", cnf.AMQP.ExchangeType)
+	assert.Equal(t, "binding_key", cnf.AMQP.BindingKey)
 	assert.Equal(t, "any", cnf.AMQP.QueueBindingArgs["x-match"])
 	assert.Equal(t, "png", cnf.AMQP.QueueBindingArgs["image-type"])
-	assert.Equal(t, 3, cnf.AMQP.PrefetchCount)
+	assert.Equal(t, 123, cnf.AMQP.PrefetchCount)
 }

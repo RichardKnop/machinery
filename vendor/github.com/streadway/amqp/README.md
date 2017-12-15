@@ -13,6 +13,11 @@ Future API changes are unlikely but possible. They will be discussed on [Github
 issues](https://github.com/streadway/amqp/issues) along with any bugs or
 enhancements.
 
+## Supported Go Versions
+
+This library supports two most recent Go release series, currently 1.8 and 1.9.
+
+
 ## Supported RabbitMQ Versions
 
 This project supports RabbitMQ versions starting with `2.0` but primarily tested

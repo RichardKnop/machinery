@@ -85,13 +85,13 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 		},
 	}
 
-	worker1 := server1.NewWorker("test_worker")
-	worker2 := server2.NewWorker("test_worker2")
+	worker1 := server1.NewWorker("test_worker", 0)
+	worker2 := server2.NewWorker("test_worker2", 0)
 	go worker1.Launch()
 	go worker2.Launch()
 
 	group := tasks.NewGroup(&task2, &task1)
-	asyncResults, err := server1.SendGroup(group)
+	asyncResults, err := server1.SendGroup(group, 10)
 	if err != nil {
 		t.Error(err)
 	}
@@ -196,13 +196,13 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 		},
 	}
 
-	worker1 := server1.NewWorker("test_worker")
-	worker2 := server2.NewWorker("test_worker2")
+	worker1 := server1.NewWorker("test_worker", 0)
+	worker2 := server2.NewWorker("test_worker2", 0)
 	go worker1.Launch()
 	go worker2.Launch()
 
 	group := tasks.NewGroup(&task2, &task1)
-	asyncResults, err := server1.SendGroup(group)
+	asyncResults, err := server1.SendGroup(group, 10)
 	if err != nil {
 		t.Error(err)
 	}

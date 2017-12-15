@@ -84,7 +84,7 @@ func TestBrokerFactory(t *testing.T) {
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
-			fmt.Sprintf("conn = %v, want %v, actual, expected"),
+			fmt.Sprintf("conn = %v, want %v", actual, expected),
 		)
 	}
 }

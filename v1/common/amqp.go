@@ -12,11 +12,11 @@ type AMQPConnector struct{}
 
 // Connect opens a connection to RabbitMQ, declares an exchange, opens a channel,
 // declares and binds the queue and enables publish notifications
-func (ac *AMQPConnector) Connect(url string, tlsConfig *tls.Config, exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
+func (ac *AMQPConnector) Connect(url string, tlsConfig *tls.Config, exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, <-chan *amqp.Error, error) {
 	// Connect to server
 	conn, channel, err := ac.Open(url, tlsConfig)
 	if err != nil {
-		return nil, nil, amqp.Queue{}, nil, err
+		return nil, nil, amqp.Queue{}, nil, nil, err
 	}
 
 	if exchange != "" {
@@ -30,7 +30,7 @@ func (ac *AMQPConnector) Connect(url string, tlsConfig *tls.Config, exchange, ex
 			false,               // noWait
 			exchangeDeclareArgs, // arguments
 		); err != nil {
-			return conn, channel, amqp.Queue{}, nil, fmt.Errorf("Exchange declare error: %s", err)
+			return conn, channel, amqp.Queue{}, nil, nil, fmt.Errorf("Exchange declare error: %s", err)
 		}
 	}
 
@@ -46,7 +46,7 @@ func (ac *AMQPConnector) Connect(url string, tlsConfig *tls.Config, exchange, ex
 			queueDeclareArgs, // arguments
 		)
 		if err != nil {
-			return conn, channel, amqp.Queue{}, nil, fmt.Errorf("Queue declare error: %s", err)
+			return conn, channel, amqp.Queue{}, nil, nil, fmt.Errorf("Queue declare error: %s", err)
 		}
 
 		// Bind the queue
@@ -57,16 +57,16 @@ func (ac *AMQPConnector) Connect(url string, tlsConfig *tls.Config, exchange, ex
 			false,            // noWait
 			queueBindingArgs, // arguments
 		); err != nil {
-			return conn, channel, queue, nil, fmt.Errorf("Queue bind error: %s", err)
+			return conn, channel, queue, nil, nil, fmt.Errorf("Queue bind error: %s", err)
 		}
 	}
 
 	// Enable publish confirmations
 	if err = channel.Confirm(false); err != nil {
-		return conn, channel, queue, nil, fmt.Errorf("Channel could not be put into confirm mode: %s", err)
+		return conn, channel, queue, nil, nil, fmt.Errorf("Channel could not be put into confirm mode: %s", err)
 	}
 
-	return conn, channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), nil
+	return conn, channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), conn.NotifyClose(make(chan *amqp.Error, 1)), nil
 }
 
 // DeleteQueue deletes a queue by name

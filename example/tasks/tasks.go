@@ -2,6 +2,9 @@ package exampletasks
 
 import (
 	"errors"
+	"time"
+
+	"github.com/RichardKnop/machinery/v1/log"
 )
 
 // Add ...
@@ -25,4 +28,15 @@ func Multiply(args ...int64) (int64, error) {
 // PanicTask ...
 func PanicTask() (string, error) {
 	panic(errors.New("oops"))
+}
+
+// LongRunningTask ...
+func LongRunningTask() error {
+	log.INFO.Print("Long running task started")
+	for i := 0; i < 10; i++ {
+		log.INFO.Print(10 - i)
+		<-time.After(1 * time.Second)
+	}
+	log.INFO.Print("Long running task finished")
+	return nil
 }
