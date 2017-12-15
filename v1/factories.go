@@ -52,6 +52,10 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 		return brokers.NewEagerBroker(), nil
 	}
 
+	if strings.HasPrefix(cnf.Broker, "https://sqs") {
+		return brokers.NewSQSBroker(cnf), nil
+	}
+
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
 }
 
