@@ -1,7 +1,7 @@
 package backends
 
 import (
-	"encoding/json"
+	"errors"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -36,6 +36,7 @@ func (b *DynamoDBBackend) InitGroup(groupUUID string, taskUUIDs []string) error 
 	meta := tasks.GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
+		CreatedAt: time.Now().UTC(),
 	}
 	av, err := dynamodbattribute.MarshalMap(meta)
 	if err != nil {
@@ -64,7 +65,6 @@ func (b *DynamoDBBackend) GroupCompleted(groupUUID string, groupTaskCount int) (
 	if err != nil {
 		return false, err
 	}
-
 	var countSuccessTasks = 0
 	for _, taskState := range taskStates {
 		if taskState.IsCompleted() {
@@ -78,7 +78,7 @@ func (b *DynamoDBBackend) GroupCompleted(groupUUID string, groupTaskCount int) (
 func (b *DynamoDBBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
-		return []*tasks.TaskState{}, err
+		return nil, err
 	}
 
 	return b.getStates(groupMeta.TaskUUIDs...)
@@ -87,6 +87,7 @@ func (b *DynamoDBBackend) GroupTaskStates(groupUUID string, groupTaskCount int) 
 func (b *DynamoDBBackend) TriggerChord(groupUUID string) (bool, error) {
 	// Get the group meta data
 	groupMeta, err := b.getGroupMeta(groupUUID)
+
 	if err != nil {
 		return false, err
 	}
@@ -117,34 +118,38 @@ func (b *DynamoDBBackend) TriggerChord(groupUUID string) (bool, error) {
 	return true, err
 }
 
+// todo: using curent function like newPendingTaskState
 func (b *DynamoDBBackend) SetStatePending(signature *tasks.Signature) error {
-	return b.setTaskState(signature, tasks.StatePending)
+	taskState := tasks.NewPendingTaskState(signature)
+	return b.setTaskState(taskState)
 }
 
 func (b *DynamoDBBackend) SetStateReceived(signature *tasks.Signature) error {
-	return b.setTaskState(signature, tasks.StateReceived)
+	taskState := tasks.NewReceivedTaskState(signature)
+	return b.setTaskState(taskState)
 }
 
 func (b *DynamoDBBackend) SetStateStarted(signature *tasks.Signature) error {
-	return b.setTaskState(signature, tasks.StateStarted)
+	taskState := tasks.NewStartedTaskState(signature)
+	return b.setTaskState(taskState)
 }
 
 func (b *DynamoDBBackend) SetStateRetry(signature *tasks.Signature) error {
-	return b.setTaskState(signature, tasks.StateReceived)
+	taskState := tasks.NewRetryTaskState(signature)
+	return b.setTaskState(taskState)
 }
 
 func (b *DynamoDBBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
-	return b.setTaskState(signature, tasks.StateSuccess)
+	taskState := tasks.NewSuccessTaskState(signature, results)
+	return b.setTaskState(taskState)
 }
 
 func (b *DynamoDBBackend) SetStateFailure(signature *tasks.Signature, err string) error {
-	// TODO: setTaskState not receive state
 	taskState := tasks.NewFailureTaskState(signature, err)
-	return b.setTaskState(signature, taskState.State)
+	return b.updateToFailureStateWithError(taskState)
 }
 
 func (b *DynamoDBBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
-	state := new(tasks.TaskState)
 	result, err := b.client.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(DBTableTaskStates),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -153,15 +158,13 @@ func (b *DynamoDBBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 			},
 		},
 	})
+	log.INFO.Println(result)
 
 	if err != nil {
 		return nil, err
 	}
-	err = dynamodbattribute.UnmarshalMap(result.Item, &state)
-	if err != nil {
-		return nil, err
-	}
-	return state, nil
+
+	return b.unmarshalTaskStateGetItemResult(result)
 }
 
 func (b *DynamoDBBackend) PurgeState(taskUUID string) error {
@@ -184,7 +187,7 @@ func (b *DynamoDBBackend) PurgeState(taskUUID string) error {
 func (b *DynamoDBBackend) PurgeGroupMeta(groupUUID string) error {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
-			"TaskUUID": {
+			"GroupUUID": {
 				N: aws.String(groupUUID),
 			},
 		},
@@ -208,21 +211,21 @@ func (b *DynamoDBBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, erro
 		},
 	})
 	if err != nil {
-		log.ERROR.Println("Error when getting group meta. Error: %v", err)
+		log.ERROR.Printf("Error when getting group meta. Error: %v", err)
 		return nil, err
 	}
 
-	item := tasks.GroupMeta{}
-	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
+	item, err := b.unmarshalGroupMetaGetItemResult(result)
+
 	if err != nil {
 		log.ERROR.Printf("Failed to unmarshal item, %v", err)
 		return nil, err
 	}
-	return &item, nil
+	return item, nil
 }
 
 func (b *DynamoDBBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
-	states := make([]*tasks.TaskState, len(taskUUIDs))
+	states := make([]*tasks.TaskState, 0)
 
 	filt := expression.Name("TaskUUID").In(expression.Value(taskUUIDs))
 	proj := expression.NamesList(expression.Name("State"), expression.Name("Results"), expression.Name("Error"))
@@ -328,24 +331,68 @@ func (b *DynamoDBBackend) chordTriggered(groupUUID string) error {
 	return nil
 }
 
-func (b *DynamoDBBackend) setTaskState(signature *tasks.Signature, state string) error {
+func (b *DynamoDBBackend) setTaskState(taskState *tasks.TaskState) error {
+	attributeNames := map[string]*string{
+		"#S": aws.String("State"),
+	}
+	attributeValues := map[string]*dynamodb.AttributeValue{
+		":s": {
+			S: aws.String(taskState.State),
+		},
+	}
+	exp := "SET #S = :s"
+	if !taskState.CreatedAt.IsZero() {
+		attributeNames["#C"] = aws.String("CreatedAt")
+		attributeValues[":c"] = &dynamodb.AttributeValue{
+			S: aws.String(taskState.CreatedAt.String()),
+		}
+		exp += ", #C = :c"
+	}
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: attributeNames,
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":s": {
+				S: aws.String(taskState.State),
+			},
+		},
+		Key:              attributeValues,
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		TableName:        aws.String(DBTableTaskStates),
+		UpdateExpression: aws.String(exp),
+	}
+
+	// UpdateItem will create an item if there is no record have been found
+	_, err := b.client.UpdateItem(input)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *DynamoDBBackend) updateToFailureStateWithError(taskState *tasks.TaskState) error {
+
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#S": aws.String("State"),
+			"#E": aws.String("Error"),
 		},
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":s": {
-				S: aws.String(state),
+				S: aws.String(taskState.State),
+			},
+			":e": {
+				S: aws.String(taskState.Error),
 			},
 		},
 		Key: map[string]*dynamodb.AttributeValue{
 			"TaskUUID": {
-				S: aws.String(signature.UUID),
+				S: aws.String(taskState.TaskUUID),
 			},
 		},
 		ReturnValues:     aws.String("UPDATED_NEW"),
 		TableName:        aws.String(DBTableTaskStates),
-		UpdateExpression: aws.String("SET #S = :s"),
+		UpdateExpression: aws.String("SET #S = :s, #E = :e"),
 	}
 
 	_, err := b.client.UpdateItem(input)
@@ -356,29 +403,32 @@ func (b *DynamoDBBackend) setTaskState(signature *tasks.Signature, state string)
 	return nil
 }
 
-// TODO: Discuss this design, whether to use two functions below to keep compatibility
-func (b *DynamoDBBackend) marshalTaskStateToJson(state tasks.TaskState) ([]byte, error) {
-	data := map[string]interface{}{}
-	data["_id"] = state.TaskUUID
-	data["state"] = state.State
-	data["results"] = state.Results
-	data["error"] = state.Error
-	result, err := json.Marshal(data)
-	if err != nil {
+func (b *DynamoDBBackend) unmarshalGroupMetaGetItemResult(result *dynamodb.GetItemOutput) (*tasks.GroupMeta, error) {
+	if result == nil {
+		err := errors.New("task state is nil")
+		log.ERROR.Printf("Got error when unmarshal map. Error: %v", err)
 		return nil, err
 	}
-	return result, err
+	item := tasks.GroupMeta{}
+	err := dynamodbattribute.UnmarshalMap(result.Item, &item)
+	if err != nil {
+		log.ERROR.Printf("Got error when unmarshal map. Error: %v", err)
+		return nil, err
+	}
+	return &item, err
 }
 
-func (b *DynamoDBBackend) marshalGroupMetaToJson(groupMeta tasks.GroupMeta) ([]byte, error) {
-	data := map[string]interface{}{}
-	data["_id"] = groupMeta.GroupUUID
-	data["task_uuids"] = groupMeta.TaskUUIDs
-	data["chord_triggered"] = groupMeta.ChordTriggered
-	data["lock"] = groupMeta.Lock
-	result, err := json.Marshal(data)
-	if err != nil {
+func (b *DynamoDBBackend) unmarshalTaskStateGetItemResult(result *dynamodb.GetItemOutput) (*tasks.TaskState, error) {
+	if result == nil {
+		err := errors.New("task state is nil")
+		log.ERROR.Printf("Got error when unmarshal map. Error: %v", err)
 		return nil, err
 	}
-	return result, err
+	state := tasks.TaskState{}
+	err := dynamodbattribute.UnmarshalMap(result.Item, &state)
+	if err != nil {
+		log.ERROR.Printf("Got error when unmarshal map. Error: %v", err)
+		return nil, err
+	}
+	return &state, nil
 }
