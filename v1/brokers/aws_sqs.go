@@ -115,7 +115,7 @@ func (b *AWSSQSBroker) Publish(signature *tasks.Signature) error {
 	}
 
 	// Check that signature.RoutingKey is set, if not switch to DefaultQueue
-	b.AdjustRoutingKey(signature)
+	AdjustRoutingKey(b, signature)
 
 	MsgInput := &sqs.SendMessageInput{
 		MessageBody: aws.String(string(msg)),
