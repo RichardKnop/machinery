@@ -90,6 +90,7 @@ func (b *Broker) stopConsuming() {
 
 func (b *Broker) GetRegisteredTaskNames() []string {
 	return b.registeredTaskNames
+}
 
 // AdjustRoutingKey makes sure the routing key is correct.
 // If the routing key is an empty string:
