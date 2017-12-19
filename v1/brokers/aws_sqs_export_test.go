@@ -123,58 +123,58 @@ func init() {
 	}
 }
 
-func (b *AWSSQSBroker) ConsumeForTesting(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor) error {
+func (b *AWSSQSBroker) ConsumeForTest(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor) error {
 	return b.consume(deliveries, concurrency, taskProcessor)
 }
 
-func (b *AWSSQSBroker) ConsumeOneForTesting(delivery *sqs.ReceiveMessageOutput, taskProcessor TaskProcessor) error {
+func (b *AWSSQSBroker) ConsumeOneForTest(delivery *sqs.ReceiveMessageOutput, taskProcessor TaskProcessor) error {
 	return b.consumeOne(delivery, taskProcessor)
 }
 
-func (b *AWSSQSBroker) DeleteOneForTesting(delivery *sqs.ReceiveMessageOutput) error {
+func (b *AWSSQSBroker) DeleteOneForTest(delivery *sqs.ReceiveMessageOutput) error {
 	return b.deleteOne(delivery)
 }
 
-func (b *AWSSQSBroker) DefaultQueueURLForTesting() *string {
+func (b *AWSSQSBroker) DefaultQueueURLForTest() *string {
 	return b.defaultQueueURL()
 }
 
-func (b *AWSSQSBroker) ReceiveMessageForTesting(qURL *string) (*sqs.ReceiveMessageOutput, error) {
+func (b *AWSSQSBroker) ReceiveMessageForTest(qURL *string) (*sqs.ReceiveMessageOutput, error) {
 	return b.receiveMessage(qURL)
 }
 
-func (b *AWSSQSBroker) InitializePoolForTesting(pool chan struct{}, concurrency int) {
+func (b *AWSSQSBroker) InitializePoolForTest(pool chan struct{}, concurrency int) {
 	b.initializePool(pool, concurrency)
 }
 
-func (b *AWSSQSBroker) ConsumeDeliveriesForTesting(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor, pool chan struct{}, errorsChan chan error) error {
+func (b *AWSSQSBroker) ConsumeDeliveriesForTest(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
 	return b.consumeDeliveries(deliveries, concurrency, taskProcessor, pool, errorsChan)
 }
 
-func (b *AWSSQSBroker) ContinueReceivingMessagesForTesting(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
+func (b *AWSSQSBroker) ContinueReceivingMessagesForTest(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
 	return b.continueReceivingMessages(qURL, deliveries)
 }
 
-func (b *AWSSQSBroker) StopReceivingForTesting() {
+func (b *AWSSQSBroker) StopReceivingForTest() {
 	b.stopReceiving()
 }
 
-func (b *AWSSQSBroker) GetStopReceivingChanForTesting() chan int {
+func (b *AWSSQSBroker) GetStopReceivingChanForTest() chan int {
 	return b.stopReceivingChan
 }
 
-func (b *Broker) StartConsumingForTesting(consumerTag string, taskProcessor TaskProcessor) {
+func (b *Broker) StartConsumingForTest(consumerTag string, taskProcessor TaskProcessor) {
 	b.startConsuming(consumerTag, taskProcessor)
 }
 
-func (b *Broker) GetRetryFuncForTesting() func(chan int) {
+func (b *Broker) GetRetryFuncForTest() func(chan int) {
 	return b.retryFunc
 }
 
-func (b *Broker) GetStopChanForTesting() chan int {
+func (b *Broker) GetStopChanForTest() chan int {
 	return b.stopChan
 }
 
-func (b *Broker) GetRetryStopChanForTesting() chan int {
+func (b *Broker) GetRetryStopChanForTest() chan int {
 	return b.retryStopChan
 }
