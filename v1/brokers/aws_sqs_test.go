@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"errors"
+
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -103,7 +104,7 @@ func TestPrivateFunc_consumeOne(t *testing.T) {
 	assert.NotNil(t, err)
 
 	outputCopy.Messages = []*sqs.Message{
-		&sqs.Message{
+		{
 			Body: aws.String("foo message"),
 		},
 	}
