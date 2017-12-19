@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -14,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"sync"
 )
 
 // AWSSQSBroker represents a AWS SQS broker
@@ -121,7 +121,7 @@ func (b *AWSSQSBroker) Publish(signature *tasks.Signature) error {
 		QueueUrl:    aws.String(b.cnf.Broker + "/" + signature.RoutingKey),
 	}
 
-	// if this is a fifo queue, there needs to be some addtional parameters.
+	// if this is a fifo queue, there needs to be some additional parameters.
 	if strings.HasSuffix(signature.RoutingKey, ".fifo") {
 		// Use Machinery's signature Task UUID as SQS Message Group ID.
 		MsgDedupID := signature.UUID
