@@ -3,13 +3,14 @@ package brokers
 import (
 	"encoding/json"
 	"errors"
+	"os"
+	"sync"
+
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"os"
-	"sync"
 )
 
 var (
@@ -94,7 +95,7 @@ func init() {
 	messageBody, _ := json.Marshal(map[string]int{"apple": 5, "lettuce": 7})
 	ReceiveMessageOutput = &sqs.ReceiveMessageOutput{
 		Messages: []*sqs.Message{
-			&sqs.Message{
+			{
 				Attributes: map[string]*string{
 					"SentTimestamp": aws.String("1512962021537"),
 				},
@@ -102,15 +103,15 @@ func init() {
 				MD5OfBody:              aws.String("bbdc5fdb8be7251f5c910905db994bab"),
 				MD5OfMessageAttributes: aws.String("d25a6aea97eb8f585bfa92d314504a92"),
 				MessageAttributes: map[string]*sqs.MessageAttributeValue{
-					"Title": &sqs.MessageAttributeValue{
+					"Title": {
 						DataType:    aws.String("String"),
 						StringValue: aws.String("The Whistler"),
 					},
-					"Author": &sqs.MessageAttributeValue{
+					"Author": {
 						DataType:    aws.String("String"),
 						StringValue: aws.String("John Grisham"),
 					},
-					"WeeksOn": &sqs.MessageAttributeValue{
+					"WeeksOn": {
 						DataType:    aws.String("Number"),
 						StringValue: aws.String("6"),
 					},
