@@ -68,6 +68,7 @@ func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 	whetherContinue, err = testAWSSQSBroker.ContinueReceivingMessagesForTesting(qURL, deliveries)
 	assert.True(t, whetherContinue)
 	assert.Nil(t, err)
+	// recover original value
 	*receiveMessageOutput = outputCopy
 
 }
