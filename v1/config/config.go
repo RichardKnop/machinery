@@ -33,6 +33,8 @@ type Config struct {
 	ResultsExpireIn int         `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
 	AMQP            *AMQPConfig `yaml:"amqp"`
 	TLSConfig       *tls.Config
+	//NoUnixSignals when set disables signal handling in machinery
+	NoUnixSignals bool `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
 }
 
 // QueueBindingArgs arguments which are used when binding to the exchange

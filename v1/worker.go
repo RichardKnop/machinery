@@ -62,33 +62,34 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 			}
 		}
 	}()
+	if !cnf.NoUnixSignals {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+		var signalsReceived uint
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	var signalsReceived uint
+		// Goroutine Handle SIGINT and SIGTERM signals
+		go func() {
+			for {
+				select {
+				case s := <-sig:
+					log.WARNING.Printf("Signal received: %v", s)
+					signalsReceived++
 
-	// Goroutine Handle SIGINT and SIGTERM signals
-	go func() {
-		for {
-			select {
-			case s := <-sig:
-				log.WARNING.Printf("Signal received: %v", s)
-				signalsReceived++
-
-				if signalsReceived < 2 {
-					// After first Ctrl+C start quitting the worker gracefully
-					log.WARNING.Print("Waiting for running tasks to finish before shutting down")
-					go func() {
-						worker.Quit()
-						errorsChan <- errors.New("Worker quit gracefully")
-					}()
-				} else {
-					// Abort the program when user hits Ctrl+C second time in a row
-					errorsChan <- errors.New("Worker quit abruptly")
+					if signalsReceived < 2 {
+						// After first Ctrl+C start quitting the worker gracefully
+						log.WARNING.Print("Waiting for running tasks to finish before shutting down")
+						go func() {
+							worker.Quit()
+							errorsChan <- errors.New("Worker quit gracefully")
+						}()
+					} else {
+						// Abort the program when user hits Ctrl+C second time in a row
+						errorsChan <- errors.New("Worker quit abruptly")
+					}
 				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 // Quit tears down the running worker process
