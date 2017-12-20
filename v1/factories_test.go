@@ -97,7 +97,7 @@ func TestBrokerFactoryError(t *testing.T) {
 	conn, err := machinery.BrokerFactory(&cnf)
 	if assert.Error(t, err) {
 		assert.Nil(t, conn)
-		assert.Equal(t, "Factory failed with broker URL: \"BOGUS\"", err.Error())
+		assert.Equal(t, "Factory failed with broker URL: BOGUS", err.Error())
 	}
 }
 

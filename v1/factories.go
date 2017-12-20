@@ -52,7 +52,11 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 		return brokers.NewEagerBroker(), nil
 	}
 
-	return nil, fmt.Errorf("Factory failed with broker URL: \"%v\"", cnf.Broker)
+	if strings.HasPrefix(cnf.Broker, "https://sqs") {
+		return brokers.NewAWSSQSBroker(cnf), nil
+	}
+
+	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
 }
 
 // BackendFactory creates a new object of backends.Interface
