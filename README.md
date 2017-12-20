@@ -116,6 +116,14 @@ For example:
 1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
 
+##### AWS SQS
+
+Use AWS SQS URL in the format:
+
+```
+https://sqs.us-east-2.amazonaws.com/123456789012
+```
+
 #### DefaultQueue
 
 Default queue name, e.g. `machinery_tasks`.

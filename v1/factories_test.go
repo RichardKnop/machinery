@@ -30,6 +30,12 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err := machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
+		_, isAMQPBroker := actual.(*brokers.AMQPBroker)
+		assert.True(
+			t,
+			isAMQPBroker,
+			"Broker should be instance of *brokers.AMQPBroker",
+		)
 		expected := brokers.NewAMQPBroker(&cnf)
 		assert.True(
 			t,
@@ -38,7 +44,7 @@ func TestBrokerFactory(t *testing.T) {
 		)
 	}
 
-	// 1) Redis broker test
+	// 2) Redis broker test
 
 	// with password
 	cnf = config.Config{
@@ -48,6 +54,12 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err = machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
+		_, isRedisBroker := actual.(*brokers.RedisBroker)
+		assert.True(
+			t,
+			isRedisBroker,
+			"Broker should be instance of *brokers.RedisBroker",
+		)
 		expected := brokers.NewRedisBroker(&cnf, "localhost:6379", "password", "", 0)
 		assert.True(
 			t,
@@ -64,6 +76,12 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err = machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
+		_, isRedisBroker := actual.(*brokers.RedisBroker)
+		assert.True(
+			t,
+			isRedisBroker,
+			"Broker should be instance of *brokers.RedisBroker",
+		)
 		expected := brokers.NewRedisBroker(&cnf, "localhost:6379", "", "", 0)
 		assert.True(
 			t,
@@ -80,11 +98,33 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err = machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
+		_, isRedisBroker := actual.(*brokers.RedisBroker)
+		assert.True(
+			t,
+			isRedisBroker,
+			"Broker should be instance of *brokers.RedisBroker",
+		)
 		expected := brokers.NewRedisBroker(&cnf, "", "", "/tmp/redis.sock", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
 			fmt.Sprintf("conn = %v, want %v", actual, expected),
+		)
+	}
+
+	// 3) AWS SQS
+	cnf = config.Config{
+		Broker:       "https://sqs.us-east-2.amazonaws.com/123456789012",
+		DefaultQueue: "machinery_tasks",
+	}
+
+	actual, err = machinery.BrokerFactory(&cnf)
+	if assert.NoError(t, err) {
+		_, isAWSSQSBroker := actual.(*brokers.AWSSQSBroker)
+		assert.True(
+			t,
+			isAWSSQSBroker,
+			"Broker should be instance of *brokers.AWSSQSBroker",
 		)
 	}
 }

@@ -113,6 +113,6 @@ func AdjustRoutingKey(b Interface, s *tasks.Signature) {
 
 // IsAMQP returns true if the broker is AMQP
 func IsAMQP(b Interface) bool {
-	_, isAMQPBackend := b.(*AMQPBroker)
-	return isAMQPBackend
+	_, isAMQPBroker := b.(*AMQPBroker)
+	return isAMQPBroker
 }
