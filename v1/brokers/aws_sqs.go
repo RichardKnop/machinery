@@ -18,6 +18,7 @@ import (
 )
 
 // AWSSQSBroker represents a AWS SQS broker
+// There are examples on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/sqs-example-create-queue.html
 type AWSSQSBroker struct {
 	Broker
 	processingWG      sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
@@ -30,6 +31,9 @@ type AWSSQSBroker struct {
 // NewAWSSQSBroker creates new Broker instance
 func NewAWSSQSBroker(cnf *config.Config) Interface {
 	b := &AWSSQSBroker{Broker: New(cnf)}
+	// Initialize a session that the SDK will use to load credentials from the shared credentials file, ~/.aws/credentials.
+	// See details on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
+	// Also, env AWS_REGION is also required
 	b.sess = session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -145,15 +149,16 @@ func (b *AWSSQSBroker) Publish(signature *tasks.Signature) error {
 	result, err := b.service.SendMessage(MsgInput)
 
 	if err != nil {
-		log.INFO.Println("Error", err)
+		log.ERROR.Printf("Error when sending a message: %v", err)
 		return err
 
 	}
-	log.INFO.Println("Success", *result.MessageId)
+	log.INFO.Printf("Sending a message successfully, the messageId is %v", *result.MessageId)
 	return nil
 
 }
 
+// consume is a method which keeps consuming deliveries from a channel, until there is an error or a stop signal
 func (b *AWSSQSBroker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor) error {
 	pool := make(chan struct{}, concurrency)
 
@@ -165,13 +170,17 @@ func (b *AWSSQSBroker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, conc
 	errorsChan := make(chan error)
 
 	for {
-		err := b.consumeDeliveries(deliveries, concurrency, taskProcessor, pool, errorsChan)
+		whetherContinue, err := b.consumeDeliveries(deliveries, concurrency, taskProcessor, pool, errorsChan)
 		if err != nil {
 			return err
+		}
+		if whetherContinue == false {
+			return nil
 		}
 	}
 }
 
+// consumeOne is a method consumes a delivery. If a delivery was consumed successfully, it will be deleted from AWS SQS
 func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor TaskProcessor) error {
 	sig := new(tasks.Signature)
 	if len(delivery.Messages) == 0 {
@@ -203,6 +212,7 @@ func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProces
 	return taskProcessor.Process(sig)
 }
 
+// deleteOne is a method delete a delivery from AWS SQS
 func (b *AWSSQSBroker) deleteOne(delivery *sqs.ReceiveMessageOutput) error {
 	qURL := b.defaultQueueURL()
 	_, err := b.service.DeleteMessage(&sqs.DeleteMessageInput{
@@ -216,10 +226,12 @@ func (b *AWSSQSBroker) deleteOne(delivery *sqs.ReceiveMessageOutput) error {
 	return nil
 }
 
+// defaultQueueURL is a method returns the default queue url
 func (b *AWSSQSBroker) defaultQueueURL() *string {
 	return aws.String(b.cnf.Broker + "/" + b.cnf.DefaultQueue)
 }
 
+// receiveMessage is a method receives a message from specified queue url
 func (b *AWSSQSBroker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, error) {
 	result, err := b.service.ReceiveMessage(&sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
@@ -239,16 +251,18 @@ func (b *AWSSQSBroker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, 
 	return result, err
 }
 
+// initializePool is a method which initializes concurrency pool
 func (b *AWSSQSBroker) initializePool(pool chan struct{}, concurrency int) {
 	for i := 0; i < concurrency; i++ {
 		pool <- struct{}{}
 	}
 }
 
-func (b *AWSSQSBroker) consumeDeliveries(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor, pool chan struct{}, errorsChan chan error) error {
+// consumeDeliveries is a method consuming deliveries from deliveries channel
+func (b *AWSSQSBroker) consumeDeliveries(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
 	select {
 	case err := <-errorsChan:
-		return err
+		return false, err
 	case d := <-deliveries:
 		if concurrency > 0 {
 			// get worker from pool (blocks until one is available)
@@ -273,11 +287,12 @@ func (b *AWSSQSBroker) consumeDeliveries(deliveries <-chan *sqs.ReceiveMessageOu
 			}
 		}()
 	case <-b.stopChan:
-		return nil
+		return false, nil
 	}
-	return nil
+	return true, nil
 }
 
+// continueReceivingMessages is a method returns a continue signal
 func (b *AWSSQSBroker) continueReceivingMessages(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
 	select {
 	// A way to stop this goroutine from b.StopConsuming
@@ -296,6 +311,7 @@ func (b *AWSSQSBroker) continueReceivingMessages(qURL *string, deliveries chan *
 	return true, nil
 }
 
+// stopReceiving is a method sending a signal to stopReceivingChan
 func (b *AWSSQSBroker) stopReceiving() {
 	// Stop the receiving goroutine
 	b.stopReceivingChan <- 1
