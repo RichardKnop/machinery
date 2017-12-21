@@ -189,6 +189,18 @@ For example:
 
 See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/) for more information.
 
+##### AWS SQS
+
+Use AWS SQS URL in the format
+```
+https://sqs.your-region.amazonaws.com
+```
+For example:
+`https://sqs.us-west-2.amazonaws.com`
+See [AWS SQS docs](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html) for more information.
+Also, configuring `AWS_REGION` is required, or an error would be thrown.
+
+
 #### ResultsExpireIn
 
 How long to store task results for in seconds. Defaults to `3600` (1 hour).
