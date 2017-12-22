@@ -40,11 +40,19 @@ func NewFromEnvironment(keepReloading bool) (*Config, error) {
 }
 
 func fromEnvironment() (*Config, error) {
+	loadedCnf := new(Config)
 	cnf := new(Config)
 	*cnf = *defaultCnf
 
 	if err := envconfig.Process("", cnf); err != nil {
 		return nil, err
+	}
+	if err := envconfig.Process("", loadedCnf); err != nil {
+		return nil, err
+	}
+
+	if loadedCnf.AMQP == nil {
+		cnf.AMQP = nil
 	}
 
 	return cnf, nil
