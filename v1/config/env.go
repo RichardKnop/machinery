@@ -40,8 +40,7 @@ func NewFromEnvironment(keepReloading bool) (*Config, error) {
 }
 
 func fromEnvironment() (*Config, error) {
-	loadedCnf := new(Config)
-	cnf := new(Config)
+	loadedCnf, cnf := new(Config), new(Config)
 	*cnf = *defaultCnf
 
 	if err := envconfig.Process("", cnf); err != nil {

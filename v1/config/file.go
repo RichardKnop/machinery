@@ -61,8 +61,7 @@ func ReadFromFile(cnfPath string) ([]byte, error) {
 }
 
 func fromFile(cnfPath string) (*Config, error) {
-	loadedCnf := new(Config)
-	cnf := new(Config)
+	loadedCnf, cnf := new(Config), new(Config)
 	*cnf = *defaultCnf
 
 	data, err := ReadFromFile(cnfPath)
