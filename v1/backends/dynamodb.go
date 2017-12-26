@@ -2,6 +2,8 @@ package backends
 
 import (
 	"errors"
+	"time"
+
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -10,8 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-	"time"
 )
 
 type DynamoDBBackend struct {
@@ -19,9 +19,6 @@ type DynamoDBBackend struct {
 	client  dynamodbiface.DynamoDBAPI
 	session *session.Session
 }
-
-const DBTableTaskStates = "task_states"
-const DBTableGroupMeta = "group_meta"
 
 // NewDynamoDBBackend creates a DynamoDBBackend instance
 func NewDynamoDBBackend(cnf *config.Config) Interface {
@@ -45,7 +42,7 @@ func (b *DynamoDBBackend) InitGroup(groupUUID string, taskUUIDs []string) error 
 	}
 	input := &dynamodb.PutItemInput{
 		Item:      av,
-		TableName: aws.String(DBTableGroupMeta),
+		TableName: aws.String(b.cnf.DynamoDB.GroupMetasTable),
 	}
 	_, err = b.client.PutItem(input)
 
@@ -118,10 +115,10 @@ func (b *DynamoDBBackend) TriggerChord(groupUUID string) (bool, error) {
 	return true, err
 }
 
-// todo: using curent function like newPendingTaskState
 func (b *DynamoDBBackend) SetStatePending(signature *tasks.Signature) error {
 	taskState := tasks.NewPendingTaskState(signature)
-	return b.setTaskState(taskState)
+	// taskUUID is the primary key of the table, so a new task need to be created first, instead of using dynamodb.UpdateItemInput directly
+	return b.initTaskState(taskState)
 }
 
 func (b *DynamoDBBackend) SetStateReceived(signature *tasks.Signature) error {
@@ -151,19 +148,16 @@ func (b *DynamoDBBackend) SetStateFailure(signature *tasks.Signature, err string
 
 func (b *DynamoDBBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	result, err := b.client.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(DBTableTaskStates),
+		TableName: aws.String(b.cnf.DynamoDB.TaskStatesTable),
 		Key: map[string]*dynamodb.AttributeValue{
 			"TaskUUID": {
 				S: aws.String(taskUUID),
 			},
 		},
 	})
-	log.INFO.Println(result)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return b.unmarshalTaskStateGetItemResult(result)
 }
 
@@ -174,7 +168,7 @@ func (b *DynamoDBBackend) PurgeState(taskUUID string) error {
 				N: aws.String(taskUUID),
 			},
 		},
-		TableName: aws.String(DBTableTaskStates),
+		TableName: aws.String(b.cnf.DynamoDB.TaskStatesTable),
 	}
 	_, err := b.client.DeleteItem(input)
 
@@ -191,7 +185,7 @@ func (b *DynamoDBBackend) PurgeGroupMeta(groupUUID string) error {
 				N: aws.String(groupUUID),
 			},
 		},
-		TableName: aws.String(DBTableGroupMeta),
+		TableName: aws.String(b.cnf.DynamoDB.GroupMetasTable),
 	}
 	_, err := b.client.DeleteItem(input)
 
@@ -203,7 +197,7 @@ func (b *DynamoDBBackend) PurgeGroupMeta(groupUUID string) error {
 
 func (b *DynamoDBBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 	result, err := b.client.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(DBTableGroupMeta),
+		TableName: aws.String(b.cnf.DynamoDB.GroupMetasTable),
 		Key: map[string]*dynamodb.AttributeValue{
 			"GroupUUID": {
 				S: aws.String(groupUUID),
@@ -214,10 +208,9 @@ func (b *DynamoDBBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, erro
 		log.ERROR.Printf("Error when getting group meta. Error: %v", err)
 		return nil, err
 	}
-
 	item, err := b.unmarshalGroupMetaGetItemResult(result)
-
 	if err != nil {
+		log.INFO.Println("!!!", result)
 		log.ERROR.Printf("Failed to unmarshal item, %v", err)
 		return nil, err
 	}
@@ -226,35 +219,25 @@ func (b *DynamoDBBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, erro
 
 func (b *DynamoDBBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	states := make([]*tasks.TaskState, 0)
+	stateChan := make(chan *tasks.TaskState, len(taskUUIDs))
+	errChan := make(chan error)
+	// There is no method like querying items by `in` a list of primary keys.
+	// So a for loop with go routine is used to get multiple items
+	for _, id := range taskUUIDs {
+		go func(id string) {
+			state, err := b.GetState(id)
+			if err != nil {
+				errChan <- err
+			}
+			stateChan <- state
+		}(id)
+	}
 
-	filt := expression.Name("TaskUUID").In(expression.Value(taskUUIDs))
-	proj := expression.NamesList(expression.Name("State"), expression.Name("Results"), expression.Name("Error"))
-	expr, err := expression.NewBuilder().WithFilter(filt).WithProjection(proj).Build()
-	if err != nil {
-		return nil, err
-	}
-	params := &dynamodb.ScanInput{
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
-		FilterExpression:          expr.Filter(),
-		ProjectionExpression:      expr.Projection(),
-		TableName:                 aws.String(DBTableTaskStates),
-	}
-
-	// Make the DynamoDB Query API call
-	result, err := b.client.Scan(params)
-	if err != nil {
-		log.ERROR.Printf("Error when calling DynamoDB scan API. Err: %v", err)
-		return nil, err
-	}
-	for _, i := range result.Items {
-		state := tasks.TaskState{}
-		err = dynamodbattribute.UnmarshalMap(i, &state)
-		if err != nil {
-			log.ERROR.Printf("Got error unmarshalling. Error: %v", err)
-			return nil, err
+	for s := range stateChan {
+		states = append(states, s)
+		if len(states) == len(taskUUIDs) {
+			close(stateChan)
 		}
-		states = append(states, &state)
 	}
 	return states, nil
 }
@@ -291,7 +274,7 @@ func (b *DynamoDBBackend) updateGroupMetaLock(groupUUID string, status bool) err
 			},
 		},
 		ReturnValues:     aws.String("UPDATED_NEW"),
-		TableName:        aws.String(DBTableGroupMeta),
+		TableName:        aws.String(b.cnf.DynamoDB.GroupMetasTable),
 		UpdateExpression: aws.String("SET #L = :l"),
 	}
 
@@ -319,7 +302,7 @@ func (b *DynamoDBBackend) chordTriggered(groupUUID string) error {
 			},
 		},
 		ReturnValues:     aws.String("UPDATED_NEW"),
-		TableName:        aws.String(DBTableGroupMeta),
+		TableName:        aws.String(b.cnf.DynamoDB.GroupMetasTable),
 		UpdateExpression: aws.String("SET #CT = :ct"),
 	}
 
@@ -332,37 +315,51 @@ func (b *DynamoDBBackend) chordTriggered(groupUUID string) error {
 }
 
 func (b *DynamoDBBackend) setTaskState(taskState *tasks.TaskState) error {
-	attributeNames := map[string]*string{
+	expAttributeNames := map[string]*string{
 		"#S": aws.String("State"),
 	}
-	attributeValues := map[string]*dynamodb.AttributeValue{
+	expAttributeValues := map[string]*dynamodb.AttributeValue{
 		":s": {
 			S: aws.String(taskState.State),
 		},
 	}
+	keyAttributeValues := map[string]*dynamodb.AttributeValue{
+		"TaskUUID": {
+			S: aws.String(taskState.TaskUUID),
+		},
+	}
 	exp := "SET #S = :s"
 	if !taskState.CreatedAt.IsZero() {
-		attributeNames["#C"] = aws.String("CreatedAt")
-		attributeValues[":c"] = &dynamodb.AttributeValue{
+		expAttributeNames["#C"] = aws.String("CreatedAt")
+		expAttributeValues[":c"] = &dynamodb.AttributeValue{
 			S: aws.String(taskState.CreatedAt.String()),
 		}
 		exp += ", #C = :c"
 	}
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeNames: attributeNames,
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":s": {
-				S: aws.String(taskState.State),
-			},
-		},
-		Key:              attributeValues,
+		ExpressionAttributeNames:  expAttributeNames,
+		ExpressionAttributeValues: expAttributeValues,
+		Key:              keyAttributeValues,
 		ReturnValues:     aws.String("UPDATED_NEW"),
-		TableName:        aws.String(DBTableTaskStates),
+		TableName:        aws.String(b.cnf.DynamoDB.TaskStatesTable),
 		UpdateExpression: aws.String(exp),
 	}
 
-	// UpdateItem will create an item if there is no record have been found
 	_, err := b.client.UpdateItem(input)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *DynamoDBBackend) initTaskState(taskState *tasks.TaskState) error {
+	av, err := dynamodbattribute.MarshalMap(taskState)
+	input := &dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String(b.cnf.DynamoDB.TaskStatesTable),
+	}
+	_, err = b.client.PutItem(input)
 
 	if err != nil {
 		return err
@@ -391,7 +388,7 @@ func (b *DynamoDBBackend) updateToFailureStateWithError(taskState *tasks.TaskSta
 			},
 		},
 		ReturnValues:     aws.String("UPDATED_NEW"),
-		TableName:        aws.String(DBTableTaskStates),
+		TableName:        aws.String(b.cnf.DynamoDB.TaskStatesTable),
 		UpdateExpression: aws.String("SET #S = :s, #E = :e"),
 	}
 

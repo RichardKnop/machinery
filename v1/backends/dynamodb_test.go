@@ -1,30 +1,25 @@
 package backends_test
 
 import (
+	"testing"
+
 	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
-
-var (
-	testConf *config.Config
-)
-
-func init() {
-}
 
 func TestNewDynamoDBBackend(t *testing.T) {
-	backend := backends.NewDynamoDBBackend(testConf)
+	backend := backends.NewDynamoDBBackend(backends.TestCnf)
 	assert.IsType(t, &backends.DynamoDBBackend{}, backend)
 }
 
 func TestInitGroup(t *testing.T) {
 	groupUUID := "testGroupUUID"
 	taskUUIDs = []string{"testTaskUUID1", "testTaskUUID2", "testTaskUUID3"}
+	log.INFO.Println(backends.TestDynamoDBBackend.GetConfig())
 	err := backends.TestDynamoDBBackend.InitGroup(groupUUID, taskUUIDs)
 	assert.Nil(t, err)
 
@@ -77,7 +72,7 @@ func TestDynamoDBGroupCompleted(t *testing.T) {
 		},
 	}
 
-	backends.TestDynamoDBScanOutputItems = append(backends.TestDynamoDBScanOutputItems, task1, task2, task3)
+	backends.TestTask1, backends.TestTask2, backends.TestTask3 = task1, task2, task3
 
 	groupUUID := "testGroupUUID"
 	taskUUIDs = []string{"testTaskUUID1", "testTaskUUID2", "testTaskUUID3"}
@@ -306,29 +301,27 @@ func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	// reset value
-	backends.TestDynamoDBScanOutputItems = nil
+	backends.TestTask1, backends.TestTask2, backends.TestTask3 = task1, task2, task3
 
-	backends.TestDynamoDBScanOutputItems = append(backends.TestDynamoDBScanOutputItems, task1, task2, task3)
 	taskUUIDs := []string{
 		"testTaskUUID1",
 		"testTaskUUID2",
 		"testTaskUUID3",
 	}
-	expectedStates := []*tasks.TaskState{
-		&tasks.TaskState{
+	expectedStates := map[string]*tasks.TaskState{
+		"testTaskUUID1": &tasks.TaskState{
 			TaskUUID: "testTaskUUID1",
 			Results:  nil,
 			State:    tasks.StatePending,
 			Error:    "",
 		},
-		&tasks.TaskState{
+		"testTaskUUID2": &tasks.TaskState{
 			TaskUUID: "testTaskUUID2",
 			Results:  nil,
 			State:    tasks.StateStarted,
 			Error:    "",
 		},
-		&tasks.TaskState{
+		"testTaskUUID3": &tasks.TaskState{
 			TaskUUID: "testTaskUUID3",
 			Results:  nil,
 			State:    tasks.StateSuccess,
@@ -338,15 +331,14 @@ func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 	states, err := backends.TestDynamoDBBackend.GetStatesForTest(taskUUIDs...)
 	assert.Nil(t, err)
 
-	for i, s := range expectedStates {
-		assert.EqualValues(t, *states[i], *s)
+	for _, s := range states {
+		assert.EqualValues(t, *s, *expectedStates[s.TaskUUID])
 	}
 }
 
 func TestDynamoDBGroupTaskStates(t *testing.T) {
 	groupUUID := "testGroupUUID"
 	count := 3
-	backends.TestDynamoDBScanOutputItems = nil
 	task1 := map[string]*dynamodb.AttributeValue{
 		"Error": &dynamodb.AttributeValue{
 			NULL: aws.Bool(true),
@@ -389,32 +381,33 @@ func TestDynamoDBGroupTaskStates(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	expectedStates := []*tasks.TaskState{
-		&tasks.TaskState{
+	backends.TestTask1, backends.TestTask2, backends.TestTask3 = task1, task2, task3
+	expectedStates := map[string]*tasks.TaskState{
+		"testTaskUUID1": &tasks.TaskState{
 			TaskUUID: "testTaskUUID1",
 			Results:  nil,
 			State:    tasks.StatePending,
 			Error:    "",
 		},
-		&tasks.TaskState{
+		"testTaskUUID2": &tasks.TaskState{
 			TaskUUID: "testTaskUUID2",
 			Results:  nil,
 			State:    tasks.StateStarted,
 			Error:    "",
 		},
-		&tasks.TaskState{
+		"testTaskUUID3": &tasks.TaskState{
 			TaskUUID: "testTaskUUID3",
 			Results:  nil,
 			State:    tasks.StateSuccess,
 			Error:    "",
 		},
 	}
-	backends.TestDynamoDBScanOutputItems = nil
-	backends.TestDynamoDBScanOutputItems = append(backends.TestDynamoDBScanOutputItems, task1, task2, task3)
 
 	states, err := backends.TestDynamoDBBackend.GroupTaskStates(groupUUID, count)
 	assert.Nil(t, err)
-	assert.EqualValues(t, expectedStates, states)
+	for _, s := range states {
+		assert.EqualValues(t, *s, *expectedStates[s.TaskUUID])
+	}
 }
 
 func TestDynamoDBTriggerChord(t *testing.T) {

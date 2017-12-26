@@ -2,24 +2,27 @@ package backends
 
 import (
 	"errors"
+	"os"
+
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"os"
 )
 
 var (
-	TestDynamoDBBackend         *DynamoDBBackend
-	TestErrDynamoDBBackend      *DynamoDBBackend
-	TestCnf                     *config.Config
-	TestSession                 *session.Session
-	TestDBClient                dynamodbiface.DynamoDBAPI
-	TestErrDBClient             dynamodbiface.DynamoDBAPI
-	TestGroupMeta               *tasks.GroupMeta
-	TestDynamoDBScanOutputItems []map[string]*dynamodb.AttributeValue
+	TestDynamoDBBackend    *DynamoDBBackend
+	TestErrDynamoDBBackend *DynamoDBBackend
+	TestCnf                *config.Config
+	TestSession            *session.Session
+	TestDBClient           dynamodbiface.DynamoDBAPI
+	TestErrDBClient        dynamodbiface.DynamoDBAPI
+	TestGroupMeta          *tasks.GroupMeta
+	TestTask1              map[string]*dynamodb.AttributeValue
+	TestTask2              map[string]*dynamodb.AttributeValue
+	TestTask3              map[string]*dynamodb.AttributeValue
 )
 
 type TestDynamoDBClient struct {
@@ -33,7 +36,7 @@ func (t *TestDynamoDBClient) PutItem(*dynamodb.PutItemInput) (*dynamodb.PutItemO
 func (t *TestDynamoDBClient) GetItem(input *dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error) {
 	var output *dynamodb.GetItemOutput
 	switch *input.TableName {
-	case DBTableGroupMeta:
+	case "group_metas":
 		output = &dynamodb.GetItemOutput{
 			Item: map[string]*dynamodb.AttributeValue{
 				"TaskUUIDs": &dynamodb.AttributeValue{
@@ -60,22 +63,39 @@ func (t *TestDynamoDBClient) GetItem(input *dynamodb.GetItemInput) (*dynamodb.Ge
 				},
 			},
 		}
-	case DBTableTaskStates:
-		output = &dynamodb.GetItemOutput{
-			Item: map[string]*dynamodb.AttributeValue{
-				"Error": &dynamodb.AttributeValue{
-					NULL: aws.Bool(false),
+	case "task_states":
+		if input.Key["TaskUUID"] == nil {
+			output = &dynamodb.GetItemOutput{
+				Item: map[string]*dynamodb.AttributeValue{
+					"Error": &dynamodb.AttributeValue{
+						NULL: aws.Bool(false),
+					},
+					"State": &dynamodb.AttributeValue{
+						S: aws.String(tasks.StatePending),
+					},
+					"TaskUUID": &dynamodb.AttributeValue{
+						S: aws.String("testTaskUUID1"),
+					},
+					"Results:": &dynamodb.AttributeValue{
+						NULL: aws.Bool(true),
+					},
 				},
-				"State": &dynamodb.AttributeValue{
-					S: aws.String(tasks.StatePending),
-				},
-				"TaskUUID": &dynamodb.AttributeValue{
-					S: aws.String("testTaskUUID1"),
-				},
-				"Results:": &dynamodb.AttributeValue{
-					NULL: aws.Bool(true),
-				},
-			},
+			}
+		} else {
+			if *(input.Key["TaskUUID"].S) == "testTaskUUID1" {
+				output = &dynamodb.GetItemOutput{
+					Item: TestTask1,
+				}
+			} else if *(input.Key["TaskUUID"].S) == "testTaskUUID2" {
+				output = &dynamodb.GetItemOutput{
+					Item: TestTask2,
+				}
+
+			} else if *(input.Key["TaskUUID"].S) == "testTaskUUID3" {
+				output = &dynamodb.GetItemOutput{
+					Item: TestTask3,
+				}
+			}
 		}
 
 	}
@@ -84,10 +104,6 @@ func (t *TestDynamoDBClient) GetItem(input *dynamodb.GetItemInput) (*dynamodb.Ge
 
 func (t *TestDynamoDBClient) DeleteItem(*dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error) {
 	return &dynamodb.DeleteItemOutput{}, nil
-}
-
-func (t *TestDynamoDBClient) Scan(input *dynamodb.ScanInput) (*dynamodb.ScanOutput, error) {
-	return &dynamodb.ScanOutput{Items: TestDynamoDBScanOutputItems}, nil
 }
 
 func (t *TestDynamoDBClient) UpdateItem(*dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
@@ -123,6 +139,10 @@ func init() {
 	TestCnf = &config.Config{
 		ResultBackend:   os.Getenv("DYNAMODB_URL"),
 		ResultsExpireIn: 30,
+		DynamoDB: &config.DynamoDBConfig{
+			TaskStatesTable: "task_states",
+			GroupMetasTable: "group_metas",
+		},
 	}
 	TestSession := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
