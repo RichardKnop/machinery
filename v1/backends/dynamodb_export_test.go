@@ -39,26 +39,26 @@ func (t *TestDynamoDBClient) GetItem(input *dynamodb.GetItemInput) (*dynamodb.Ge
 	case "group_metas":
 		output = &dynamodb.GetItemOutput{
 			Item: map[string]*dynamodb.AttributeValue{
-				"TaskUUIDs": &dynamodb.AttributeValue{
+				"TaskUUIDs": {
 					L: []*dynamodb.AttributeValue{
-						&dynamodb.AttributeValue{
+						{
 							S: aws.String("testTaskUUID1"),
 						},
-						&dynamodb.AttributeValue{
+						{
 							S: aws.String("testTaskUUID2"),
 						},
-						&dynamodb.AttributeValue{
+						{
 							S: aws.String("testTaskUUID3"),
 						},
 					},
 				},
-				"ChordTriggered": &dynamodb.AttributeValue{
+				"ChordTriggered": {
 					BOOL: aws.Bool(false),
 				},
-				"GroupUUID": &dynamodb.AttributeValue{
+				"GroupUUID": {
 					S: aws.String("testGroupUUID"),
 				},
-				"Lock": &dynamodb.AttributeValue{
+				"Lock": {
 					BOOL: aws.Bool(false),
 				},
 			},
@@ -67,16 +67,16 @@ func (t *TestDynamoDBClient) GetItem(input *dynamodb.GetItemInput) (*dynamodb.Ge
 		if input.Key["TaskUUID"] == nil {
 			output = &dynamodb.GetItemOutput{
 				Item: map[string]*dynamodb.AttributeValue{
-					"Error": &dynamodb.AttributeValue{
+					"Error": {
 						NULL: aws.Bool(false),
 					},
-					"State": &dynamodb.AttributeValue{
+					"State": {
 						S: aws.String(tasks.StatePending),
 					},
-					"TaskUUID": &dynamodb.AttributeValue{
+					"TaskUUID": {
 						S: aws.String("testTaskUUID1"),
 					},
-					"Results:": &dynamodb.AttributeValue{
+					"Results:": {
 						NULL: aws.Bool(true),
 					},
 				},

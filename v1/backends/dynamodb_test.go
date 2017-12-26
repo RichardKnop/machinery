@@ -30,44 +30,44 @@ func TestInitGroup(t *testing.T) {
 func TestDynamoDBGroupCompleted(t *testing.T) {
 
 	task1 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StatePending),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID1"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
 	task2 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StateStarted),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID2"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
 	task3 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StateSuccess),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID3"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
@@ -115,16 +115,16 @@ func TestDynamoDBPrivateFuncGetGroupMeta(t *testing.T) {
 func TestDynamoDBPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
 	result := dynamodb.GetItemOutput{
 		Item: map[string]*dynamodb.AttributeValue{
-			"Error": &dynamodb.AttributeValue{
+			"Error": {
 				NULL: aws.Bool(true),
 			},
-			"State": &dynamodb.AttributeValue{
+			"State": {
 				S: aws.String(tasks.StatePending),
 			},
-			"TaskUUID": &dynamodb.AttributeValue{
+			"TaskUUID": {
 				S: aws.String("testTaskUUID1"),
 			},
-			"Results:": &dynamodb.AttributeValue{
+			"Results:": {
 				NULL: aws.Bool(true),
 			},
 		},
@@ -132,16 +132,16 @@ func TestDynamoDBPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
 
 	invalidResult := dynamodb.GetItemOutput{
 		Item: map[string]*dynamodb.AttributeValue{
-			"Error": &dynamodb.AttributeValue{
+			"Error": {
 				BOOL: aws.Bool(true),
 			},
-			"State": &dynamodb.AttributeValue{
+			"State": {
 				S: aws.String(tasks.StatePending),
 			},
-			"TaskUUID": &dynamodb.AttributeValue{
+			"TaskUUID": {
 				S: aws.String("testTaskUUID1"),
 			},
-			"Results:": &dynamodb.AttributeValue{
+			"Results:": {
 				BOOL: aws.Bool(true),
 			},
 		},
@@ -168,26 +168,26 @@ func TestDynamoDBPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
 func TestDynamoDBPrivateFuncUnmarshalGroupMetaGetItemResult(t *testing.T) {
 	result := dynamodb.GetItemOutput{
 		Item: map[string]*dynamodb.AttributeValue{
-			"TaskUUIDs": &dynamodb.AttributeValue{
+			"TaskUUIDs": {
 				L: []*dynamodb.AttributeValue{
-					&dynamodb.AttributeValue{
+					{
 						S: aws.String("testTaskUUID1"),
 					},
-					&dynamodb.AttributeValue{
+					{
 						S: aws.String("testTaskUUID2"),
 					},
-					&dynamodb.AttributeValue{
+					{
 						S: aws.String("testTaskUUID3"),
 					},
 				},
 			},
-			"ChordTriggered": &dynamodb.AttributeValue{
+			"ChordTriggered": {
 				BOOL: aws.Bool(false),
 			},
-			"GroupUUID": &dynamodb.AttributeValue{
+			"GroupUUID": {
 				S: aws.String("testGroupUUID"),
 			},
-			"Lock": &dynamodb.AttributeValue{
+			"Lock": {
 				BOOL: aws.Bool(false),
 			},
 		},
@@ -195,26 +195,26 @@ func TestDynamoDBPrivateFuncUnmarshalGroupMetaGetItemResult(t *testing.T) {
 
 	invalidResult := dynamodb.GetItemOutput{
 		Item: map[string]*dynamodb.AttributeValue{
-			"TaskUUIDs": &dynamodb.AttributeValue{
+			"TaskUUIDs": {
 				L: []*dynamodb.AttributeValue{
-					&dynamodb.AttributeValue{
+					{
 						S: aws.String("testTaskUUID1"),
 					},
-					&dynamodb.AttributeValue{
+					{
 						S: aws.String("testTaskUUID2"),
 					},
-					&dynamodb.AttributeValue{
+					{
 						S: aws.String("testTaskUUID3"),
 					},
 				},
 			},
-			"ChordTriggered": &dynamodb.AttributeValue{
+			"ChordTriggered": {
 				S: aws.String("false"), // this attribute is invalid
 			},
-			"GroupUUID": &dynamodb.AttributeValue{
+			"GroupUUID": {
 				S: aws.String("testGroupUUID"),
 			},
-			"Lock": &dynamodb.AttributeValue{
+			"Lock": {
 				BOOL: aws.Bool(false),
 			},
 		},
@@ -260,44 +260,44 @@ func TestDynamoDBPrivateFuncSetTaskState(t *testing.T) {
 
 func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 	task1 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StatePending),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID1"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
 	task2 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StateStarted),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID2"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
 	task3 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StateSuccess),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID3"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
@@ -309,19 +309,19 @@ func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 		"testTaskUUID3",
 	}
 	expectedStates := map[string]*tasks.TaskState{
-		"testTaskUUID1": &tasks.TaskState{
+		"testTaskUUID1": {
 			TaskUUID: "testTaskUUID1",
 			Results:  nil,
 			State:    tasks.StatePending,
 			Error:    "",
 		},
-		"testTaskUUID2": &tasks.TaskState{
+		"testTaskUUID2": {
 			TaskUUID: "testTaskUUID2",
 			Results:  nil,
 			State:    tasks.StateStarted,
 			Error:    "",
 		},
-		"testTaskUUID3": &tasks.TaskState{
+		"testTaskUUID3": {
 			TaskUUID: "testTaskUUID3",
 			Results:  nil,
 			State:    tasks.StateSuccess,
@@ -340,62 +340,62 @@ func TestDynamoDBGroupTaskStates(t *testing.T) {
 	groupUUID := "testGroupUUID"
 	count := 3
 	task1 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StatePending),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID1"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
 	task2 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StateStarted),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID2"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
 	task3 := map[string]*dynamodb.AttributeValue{
-		"Error": &dynamodb.AttributeValue{
+		"Error": {
 			NULL: aws.Bool(true),
 		},
-		"State": &dynamodb.AttributeValue{
+		"State": {
 			S: aws.String(tasks.StateSuccess),
 		},
-		"TaskUUID": &dynamodb.AttributeValue{
+		"TaskUUID": {
 			S: aws.String("testTaskUUID3"),
 		},
-		"Results:": &dynamodb.AttributeValue{
+		"Results:": {
 			NULL: aws.Bool(true),
 		},
 	}
 	backends.TestTask1, backends.TestTask2, backends.TestTask3 = task1, task2, task3
 	expectedStates := map[string]*tasks.TaskState{
-		"testTaskUUID1": &tasks.TaskState{
+		"testTaskUUID1": {
 			TaskUUID: "testTaskUUID1",
 			Results:  nil,
 			State:    tasks.StatePending,
 			Error:    "",
 		},
-		"testTaskUUID2": &tasks.TaskState{
+		"testTaskUUID2": {
 			TaskUUID: "testTaskUUID2",
 			Results:  nil,
 			State:    tasks.StateStarted,
 			Error:    "",
 		},
-		"testTaskUUID3": &tasks.TaskState{
+		"testTaskUUID3": {
 			TaskUUID: "testTaskUUID3",
 			Results:  nil,
 			State:    tasks.StateSuccess,
