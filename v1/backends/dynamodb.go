@@ -2,6 +2,7 @@ package backends
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -335,6 +336,28 @@ func (b *DynamoDBBackend) setTaskState(taskState *tasks.TaskState) error {
 			S: aws.String(taskState.CreatedAt.String()),
 		}
 		exp += ", #C = :c"
+	}
+	if taskState.Results != nil {
+		expAttributeNames["#R"] = aws.String("Results")
+		var results []*dynamodb.AttributeValue
+		for _, r := range taskState.Results {
+			avMap := map[string]*dynamodb.AttributeValue{
+				"Type": {
+					S: aws.String(r.Type),
+				},
+				"Value": {
+					S: aws.String(fmt.Sprintf("%v", r.Value)),
+				},
+			}
+			rs := &dynamodb.AttributeValue{
+				M: avMap,
+			}
+			results = append(results, rs)
+		}
+		expAttributeValues[":r"] = &dynamodb.AttributeValue{
+			L: results,
+		}
+		exp += ", #R = :r"
 	}
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames:  expAttributeNames,
