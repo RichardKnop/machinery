@@ -9,7 +9,6 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 
 [![Travis Status for RichardKnop/machinery](https://travis-ci.org/RichardKnop/machinery.svg?branch=master&label=linux+build)](https://travis-ci.org/RichardKnop/machinery)
 [![godoc for RichardKnop/machinery](https://godoc.org/github.com/nathany/looper?status.svg)](http://godoc.org/github.com/RichardKnop/machinery/v1)
-[![goreportcard for RichardKnop/machinery](https://goreportcard.com/badge/github.com/RichardKnop/machinery)](https://goreportcard.com/report/RichardKnop/machinery)
 [![codecov for RichardKnop/machinery](https://codecov.io/gh/RichardKnop/machinery/branch/master/graph/badge.svg)](https://codecov.io/gh/RichardKnop/machinery)
 
 [![Sourcegraph for RichardKnop/machinery](https://sourcegraph.com/github.com/RichardKnop/machinery/-/badge.svg)](https://sourcegraph.com/github.com/RichardKnop/machinery?badge)
@@ -116,6 +115,14 @@ For example:
 
 1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
+
+##### AWS SQS
+
+Use AWS SQS URL in the format:
+
+```
+https://sqs.us-east-2.amazonaws.com/123456789012
+```
 
 #### DefaultQueue
 
