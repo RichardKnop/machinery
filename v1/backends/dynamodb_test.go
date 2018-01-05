@@ -495,3 +495,27 @@ func TestDynamoDBPrivateFuncUpdateToFailureStateWithError(t *testing.T) {
 	err := backends.TestDynamoDBBackend.UpdateToFailureStateWithErrorForTest(state)
 	assert.Nil(t, err)
 }
+
+func TestDynamoDBPrivateFuncTableExistsForTest(t *testing.T) {
+	tables := []*string{aws.String("foo")}
+	assert.False(t, backends.TestDynamoDBBackend.TableExistsForTest("bar", tables))
+	assert.True(t, backends.TestDynamoDBBackend.TableExistsForTest("foo", tables))
+}
+
+func TestDynamoDBPrivateFuncCheckRequiredTablesIfExistForTest(t *testing.T) {
+	err := backends.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
+	assert.Nil(t, err)
+	taskTable := backends.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable
+	groupTable := backends.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable
+	err = backends.TestErrDynamoDBBackend.CheckRequiredTablesIfExistForTest()
+	assert.NotNil(t, err)
+	backends.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable = "foo"
+	err = backends.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
+	assert.NotNil(t, err)
+	backends.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable = taskTable
+	backends.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable = "foo"
+	err = backends.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
+	assert.NotNil(t, err)
+	backends.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable = groupTable
+
+}

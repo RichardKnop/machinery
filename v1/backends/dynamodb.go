@@ -27,7 +27,13 @@ func NewDynamoDBBackend(cnf *config.Config) Interface {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 	dy := dynamodb.New(sess)
-	return &DynamoDBBackend{cnf: cnf, client: dy, session: sess}
+	backend := &DynamoDBBackend{cnf: cnf, client: dy, session: sess}
+	// Check if needed tables exist
+	err := backend.checkRequiredTablesIfExist()
+	if err != nil {
+		log.FATAL.Printf("Failed to prepare tables. Error: %v", err)
+	}
+	return backend
 }
 
 func (b *DynamoDBBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
@@ -451,4 +457,31 @@ func (b *DynamoDBBackend) unmarshalTaskStateGetItemResult(result *dynamodb.GetIt
 		return nil, err
 	}
 	return &state, nil
+}
+
+func (b *DynamoDBBackend) checkRequiredTablesIfExist() error {
+	var (
+		taskTableName  = b.cnf.DynamoDB.TaskStatesTable
+		groupTableName = b.cnf.DynamoDB.GroupMetasTable
+	)
+	result, err := b.client.ListTables(&dynamodb.ListTablesInput{})
+	if err != nil {
+		return err
+	}
+	if !b.tableExists(taskTableName, result.TableNames) {
+		return errors.New("task table doesn't exist")
+	}
+	if !b.tableExists(groupTableName, result.TableNames) {
+		return errors.New("group table doesn't exist")
+	}
+	return nil
+}
+
+func (b *DynamoDBBackend) tableExists(tableName string, tableNames []*string) bool {
+	for _, t := range tableNames {
+		if tableName == *t {
+			return true
+		}
+	}
+	return false
 }

@@ -110,6 +110,15 @@ func (t *TestDynamoDBClient) UpdateItem(*dynamodb.UpdateItemInput) (*dynamodb.Up
 	return &dynamodb.UpdateItemOutput{}, nil
 }
 
+func (t *TestDynamoDBClient) ListTables(*dynamodb.ListTablesInput) (*dynamodb.ListTablesOutput, error) {
+	return &dynamodb.ListTablesOutput{
+		TableNames: []*string{
+			aws.String("group_metas"),
+			aws.String("task_states"),
+		},
+	}, nil
+}
+
 // Always returns error
 type TestErrDynamoDBClient struct {
 	dynamodbiface.DynamoDBAPI
@@ -133,6 +142,10 @@ func (t *TestErrDynamoDBClient) Scan(*dynamodb.ScanInput) (*dynamodb.ScanOutput,
 
 func (t *TestErrDynamoDBClient) UpdateItem(*dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
 	return nil, errors.New("error when updating an item")
+}
+
+func (t *TestErrDynamoDBClient) ListTables(*dynamodb.ListTablesInput) (*dynamodb.ListTablesOutput, error) {
+	return nil, errors.New("error when listing tables")
 }
 
 func init() {
@@ -209,4 +222,12 @@ func (b *DynamoDBBackend) GetStatesForTest(taskUUIDs ...string) ([]*tasks.TaskSt
 
 func (b *DynamoDBBackend) UpdateToFailureStateWithErrorForTest(taskState *tasks.TaskState) error {
 	return b.updateToFailureStateWithError(taskState)
+}
+
+func (b *DynamoDBBackend) TableExistsForTest(tableName string, tableNames []*string) bool {
+	return b.tableExists(tableName, tableNames)
+}
+
+func (b *DynamoDBBackend) CheckRequiredTablesIfExistForTest() error {
+	return b.checkRequiredTablesIfExist()
 }

@@ -226,6 +226,7 @@ dynamodb:
   task_states_table: 'task_states'
   group_metas_table: 'group_metas'
 ```
+If these tables are not found, an fatal error would be thrown.
 
 ### Custom Logger
 
