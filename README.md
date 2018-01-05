@@ -215,6 +215,18 @@ RabbitMQ related configuration. Not neccessarry if you are using other broker/ba
 * `BindingKey`: The queue is bind to the exchange with this key, e.g. `machinery_task`
 * `PrefetchCount`: How many tasks to prefetch (set to `1` if you have long running tasks)
 
+#### Dynamodb
+Dynamodb related configuration. Not neccessarry if you are using other backend.
+* `task_states_table`: Custom table name for saving task states. Default one is `task_states`, and make sure to create this table in your AWS admin first, using `TaskUUID` as table's primary key.
+* `group_metas_table`: Custom table name for saving group metas. Default one is `group_metas`, and make sure to create this table in your AWS admin first, using `GroupUUID` as table's primary key.
+For example:
+
+```
+dynamodb:
+  task_states_table: 'task_states'
+  group_metas_table: 'group_metas'
+```
+
 ### Custom Logger
 
 You can define a custom logger by implementing the following interface:
@@ -558,7 +570,7 @@ type TaskState struct {
 type GroupMeta struct {
   GroupUUID      string   `bson:"_id"`
   TaskUUIDs      []string `bson:"task_uuids"`
-  ChordTriggered bool     `bson:"chord_trigerred"`
+  ChordTriggered bool     `bson:"chord_triggered"`
   Lock           bool     `bson:"lock"`
 }
 ```
