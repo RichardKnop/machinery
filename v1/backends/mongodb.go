@@ -114,7 +114,40 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 
 // SetStatePending updates task state to PENDING
 func (b *MongodbBackend) SetStatePending(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.StatePending}
+	var err error
+	bsonArgs := make([]bson.M, len(signature.Args))
+	for i, arg := range signature.Args {
+		//to hold the json arg
+		bsonArg := new(bson.M)
+		argType := reflect.TypeOf(arg.Value).Kind()
+		if argType == reflect.String {
+			//convert type to json
+			err = bson.UnmarshalJSON([]byte(arg.Value.(string)), bsonArg)
+			if err == nil {
+				bsonArgs[i] = bson.M{
+					"type":  "Json",
+					"value": bsonArg,
+				}
+			} else {
+				bsonArgs[i] = bson.M{
+					"type":  arg.Type,
+					"value": arg.Value,
+				}
+			}
+		} else {
+			bsonArgs[i] = bson.M{
+				"type":  arg.Type,
+				"value": arg.Value,
+			}
+		}
+	}
+	update := bson.M{
+		"id": signature.UUID,
+		"state": tasks.StatePending,
+		"name": signature.Name,
+		"queue_time": time.Now().UTC(),
+		"args": bsonArgs,
+	}
 	return b.updateState(signature, update)
 }
 
@@ -126,13 +159,15 @@ func (b *MongodbBackend) SetStateReceived(signature *tasks.Signature) error {
 
 // SetStateStarted updates task state to STARTED
 func (b *MongodbBackend) SetStateStarted(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.StateStarted}
+	update := bson.M{"state": tasks.StateStarted,
+                     "start_time": time.Now().UTC()}
 	return b.updateState(signature, update)
 }
 
 // SetStateRetry updates task state to RETRY
 func (b *MongodbBackend) SetStateRetry(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.StateRetry}
+	update := bson.M{"state": tasks.StateRetry,
+                     "start_time": time.Now().UTC()}
 	return b.updateState(signature, update)
 }
 
@@ -169,13 +204,17 @@ func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*
 	update := bson.M{
 		"state":   tasks.StateSuccess,
 		"results": bsonResults,
+        "end_time": time.Now().UTC(),
 	}
 	return b.updateState(signature, update)
 }
 
 // SetStateFailure updates task state to FAILURE
 func (b *MongodbBackend) SetStateFailure(signature *tasks.Signature, err string) error {
-	update := bson.M{"state": tasks.StateFailure, "error": err}
+	update := bson.M{"state": tasks.StateFailure,
+                     "error": err,
+                     "end_time": time.Now().UTC(),
+                 }
 	return b.updateState(signature, update)
 }
 
