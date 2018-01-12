@@ -124,6 +124,9 @@ Use AWS SQS URL in the format:
 https://sqs.us-east-2.amazonaws.com/123456789012
 ```
 
+See [AWS SQS docs](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html) for more information.
+Also, configuring `AWS_REGION` is required, or an error would be thrown.
+
 #### DefaultQueue
 
 Default queue name, e.g. `machinery_tasks`.
@@ -188,17 +191,6 @@ For example:
 1. `mongodb://127.0.0.1:27017/taskresults`
 
 See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/) for more information.
-
-##### AWS SQS
-
-Use AWS SQS URL in the format
-```
-https://sqs.your-region.amazonaws.com
-```
-For example:
-`https://sqs.us-west-2.amazonaws.com`
-See [AWS SQS docs](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html) for more information.
-Also, configuring `AWS_REGION` is required, or an error would be thrown.
 
 
 #### ResultsExpireIn
@@ -558,7 +550,7 @@ type TaskState struct {
 type GroupMeta struct {
   GroupUUID      string   `bson:"_id"`
   TaskUUIDs      []string `bson:"task_uuids"`
-  ChordTriggered bool     `bson:"chord_trigerred"`
+  ChordTriggered bool     `bson:"chord_triggered"`
   Lock           bool     `bson:"lock"`
 }
 ```
