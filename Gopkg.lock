@@ -5,13 +5,13 @@
   branch = "master"
   name = "github.com/RichardKnop/logging"
   packages = ["."]
-  revision = "7db1e03898200cf257fad35013005eccf89eccca"
+  revision = "66aaaba182584c20ec574b064975974f92f0936a"
 
 [[projects]]
   branch = "master"
   name = "github.com/aws/aws-sdk-go"
   packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/xml/xmlutil","service/sqs","service/sqs/sqsiface","service/sts"]
-  revision = "e8d800f9df9c2ed9c58d49852d27eef69f320c4f"
+  revision = "c8a63b5774a90dab70f0dc6fddc7e7925416d90a"
 
 [[projects]]
   branch = "master"
@@ -28,8 +28,8 @@
 [[projects]]
   name = "github.com/garyburd/redigo"
   packages = ["internal","redis"]
-  revision = "47dc60e71eed504e3ef8e77ee3c6fe720f3be57f"
-  version = "v1.3.0"
+  revision = "d1ed5c67e5794de818ea85e6b522fda02623a484"
+  version = "v1.4.0"
 
 [[projects]]
   name = "github.com/go-ini/ini"
@@ -57,26 +57,26 @@
 [[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
-  revision = "879c5887cd475cd7864858769793b2ceb0d44feb"
-  version = "v1.1.0"
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/streadway/amqp"
   packages = ["."]
-  revision = "ff791c2d22d3f1588b4e2cc71a9fba5e1da90654"
+  revision = "a354ab84f102bc6eb31c9be006ca89446cf5b372"
 
 [[projects]]
   name = "github.com/stretchr/testify"
   packages = ["assert","require","suite"]
-  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
-  version = "v1.1.4"
+  revision = "b91bfb9ebec76498946beb6af7c0230c7cc7ba6c"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/urfave/cli"
   packages = ["."]
-  revision = "7ace96b43d4bdc46f81d0d1219742b2469874cf6"
+  revision = "75104e932ac2ddb944a6ea19d9f9f26316ff1145"
 
 [[projects]]
   branch = "v2"
@@ -94,7 +94,7 @@
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "25c4ec802a7d637f88d584ab26798e94ad14c13b"
+  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
 
 [solve-meta]
   analyzer-name = "dep"
