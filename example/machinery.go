@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -180,93 +181,89 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Single task:")
 
-	for {
-		time.Sleep(time.Millisecond * 150)
-		asyncResult, err := server.SendTask(&task0)
-		if err != nil {
-			return fmt.Errorf("Could not send task: %s", err.Error())
-		}
+	asyncResult, err := server.SendTask(&task0)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
 
-		results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("1 + 1 = %v\n", results[0].Interface())
+
+	/*
+	 * Now let's explore ways of sending multiple tasks
+	 */
+
+	// Now let's try a parallel execution
+	initTasks()
+	log.INFO.Println("Group of tasks (parallel execution):")
+
+	group := tasks.NewGroup(&task0, &task1, &task2)
+	asyncResults, err := server.SendGroup(group, 10)
+	if err != nil {
+		return fmt.Errorf("Could not send group: %s", err.Error())
+	}
+
+	for _, asyncResult := range asyncResults {
+		results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
 		if err != nil {
 			return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 		}
-		log.INFO.Printf("1 + 1 = %v\n", results[0].Interface())
+		log.INFO.Printf(
+			"%v + %v = %v\n",
+			asyncResult.Signature.Args[0].Value,
+			asyncResult.Signature.Args[1].Value,
+			results[0].Interface(),
+		)
 	}
+
+	// Now let's try a group with a chord
+	initTasks()
+	log.INFO.Println("Group of tasks with a callback (chord):")
+
+	group = tasks.NewGroup(&task0, &task1, &task2)
+	chord := tasks.NewChord(group, &task4)
+	chordAsyncResult, err := server.SendChord(chord, 10)
+	if err != nil {
+		return fmt.Errorf("Could not send chord: %s", err.Error())
+	}
+
+	results, err = chordAsyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting chord result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", results[0].Interface())
+
+	// Now let's try chaining task results
+	initTasks()
+	log.INFO.Println("Chain of tasks:")
+
+	chain := tasks.NewChain(&task0, &task1, &task2, &task3)
+	chainAsyncResult, err := server.SendChain(chain)
+	if err != nil {
+		return fmt.Errorf("Could not send chain: %s", err.Error())
+	}
+
+	results, err = chainAsyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting chain result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", results[0].Interface())
+
+	// Let's try a task which throws panic to make sure stack trace is not lost
+	initTasks()
+	asyncResult, err = server.SendTask(&task5)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
+
+	_, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err == nil {
+		return errors.New("Error should not be nil if task panicked")
+	}
+	log.INFO.Printf("Task panicked and returned error = %v\n", err.Error())
+
+	return nil
 }
-
-// 	/*
-// 	 * Now let's explore ways of sending multiple tasks
-// 	 */
-
-// 	// Now let's try a parallel execution
-// 	initTasks()
-// 	log.INFO.Println("Group of tasks (parallel execution):")
-
-// 	group := tasks.NewGroup(&task0, &task1, &task2)
-// 	asyncResults, err := server.SendGroup(group, 10)
-// 	if err != nil {
-// 		return fmt.Errorf("Could not send group: %s", err.Error())
-// 	}
-
-// 	for _, asyncResult := range asyncResults {
-// 		results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
-// 		if err != nil {
-// 			return fmt.Errorf("Getting task result failed with error: %s", err.Error())
-// 		}
-// 		log.INFO.Printf(
-// 			"%v + %v = %v\n",
-// 			asyncResult.Signature.Args[0].Value,
-// 			asyncResult.Signature.Args[1].Value,
-// 			results[0].Interface(),
-// 		)
-// 	}
-
-// 	// Now let's try a group with a chord
-// 	initTasks()
-// 	log.INFO.Println("Group of tasks with a callback (chord):")
-
-// 	group = tasks.NewGroup(&task0, &task1, &task2)
-// 	chord := tasks.NewChord(group, &task4)
-// 	chordAsyncResult, err := server.SendChord(chord, 10)
-// 	if err != nil {
-// 		return fmt.Errorf("Could not send chord: %s", err.Error())
-// 	}
-
-// 	results, err = chordAsyncResult.Get(time.Duration(time.Millisecond * 5))
-// 	if err != nil {
-// 		return fmt.Errorf("Getting chord result failed with error: %s", err.Error())
-// 	}
-// 	log.INFO.Printf("(1 + 1) * (2 + 2) * (5 + 6) = %v\n", results[0].Interface())
-
-// 	// Now let's try chaining task results
-// 	initTasks()
-// 	log.INFO.Println("Chain of tasks:")
-
-// 	chain := tasks.NewChain(&task0, &task1, &task2, &task3)
-// 	chainAsyncResult, err := server.SendChain(chain)
-// 	if err != nil {
-// 		return fmt.Errorf("Could not send chain: %s", err.Error())
-// 	}
-
-// 	results, err = chainAsyncResult.Get(time.Duration(time.Millisecond * 5))
-// 	if err != nil {
-// 		return fmt.Errorf("Getting chain result failed with error: %s", err.Error())
-// 	}
-// 	log.INFO.Printf("(((1 + 1) + (2 + 2)) + (5 + 6)) * 4 = %v\n", results[0].Interface())
-
-// 	// Let's try a task which throws panic to make sure stack trace is not lost
-// 	initTasks()
-// 	asyncResult, err = server.SendTask(&task5)
-// 	if err != nil {
-// 		return fmt.Errorf("Could not send task: %s", err.Error())
-// 	}
-
-// 	_, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
-// 	if err == nil {
-// 		return errors.New("Error should not be nil if task panicked")
-// 	}
-// 	log.INFO.Printf("Task panicked and returned error = %v\n", err.Error())
-
-// 	return nil
-// }
