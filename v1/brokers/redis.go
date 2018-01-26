@@ -11,7 +11,7 @@ import (
 	"github.com/GetStream/machinery/v1/log"
 	"github.com/GetStream/machinery/v1/tasks"
 	"github.com/garyburd/redigo/redis"
-	"gopkg.in/redsync.v1"
+	"github.com/go-redsync/redsync"
 )
 
 var redisDelayedTasksKey = "delayed_tasks"

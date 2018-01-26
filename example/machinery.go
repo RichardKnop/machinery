@@ -6,13 +6,12 @@ import (
 	"os"
 	"time"
 
+	exampletasks "github.com/GetStream/machinery/example/tasks"
 	"github.com/GetStream/machinery/v1"
 	"github.com/GetStream/machinery/v1/config"
 	"github.com/GetStream/machinery/v1/log"
 	"github.com/GetStream/machinery/v1/tasks"
 	"github.com/urfave/cli"
-
-	exampletasks "github.com/GetStream/machinery/example/tasks"
 )
 
 var (

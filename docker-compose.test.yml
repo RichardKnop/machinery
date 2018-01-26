@@ -5,7 +5,7 @@ services:
     container_name: machinery_sut
     image: machinery_sut:latest
     volumes:
-      - "./:/go/src/github.com/RichardKnop/machinery"
+      - "./:/go/src/github.com/GetStream/machinery"
     depends_on:
       - rabbitmq
       - redis
@@ -31,15 +31,23 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
+    logging:
+      driver: none
 
   redis:
     container_name: machinery_sut_redis
     image: redis
+    logging:
+      driver: none
 
   memcached:
     container_name: machinery_sut_memcached
     image: memcached
+    logging:
+      driver: none
 
   mongo:
     container_name: machinery_sut_mongo
     image: mongo
+    logging:
+      driver: none

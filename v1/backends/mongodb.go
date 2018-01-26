@@ -3,12 +3,11 @@ package backends
 import (
 	"time"
 
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/GetStream/machinery/v1/config"
 	"github.com/GetStream/machinery/v1/log"
 	"github.com/GetStream/machinery/v1/tasks"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // MongodbBackend represents a MongoDB result backend
