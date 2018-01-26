@@ -10,13 +10,15 @@ import (
 
 // AMQPConnector ...
 type AMQPConnector struct {
-	conn *amqp.Connection
-	rmu  *sync.RWMutex
+	conn     *amqp.Connection
+	connChan chan *amqp.Error
+	rmu      *sync.RWMutex
 }
 
 func NewAMQPConnector() *AMQPConnector {
 	return &AMQPConnector{
-		rmu: &sync.RWMutex{},
+		rmu:      &sync.RWMutex{},
+		connChan: make(chan *amqp.Error),
 	}
 }
 
@@ -116,31 +118,40 @@ func (ac *AMQPConnector) Open(url string, tlsConfig *tls.Config) (*amqp.Connecti
 }
 
 func (ac *AMQPConnector) open(url string, tlsConfig *tls.Config, keepAlive bool) (*amqp.Connection, *amqp.Channel, error) {
-	var (
-		conn *amqp.Connection
-		err  error
-	)
-
-	ac.rmu.RLock()
-	createNew := ac.conn == nil
-	ac.rmu.RUnlock()
-
-	if !keepAlive || createNew {
-		conn, err = ac.createNewConn(url, tlsConfig)
-	} else {
-		conn = ac.conn
-	}
+	conn, err := ac.getConn(url, tlsConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Open a channel
 	channel, err := conn.Channel()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Open channel error: %s", err)
 	}
 
 	return conn, channel, nil
+}
+
+func (ac *AMQPConnector) getConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
+	ac.rmu.Lock()
+	defer ac.rmu.Unlock()
+
+	var done, makeNew bool
+	for !done {
+		select {
+		case err := <-ac.connChan:
+			if err == nil {
+				done = true
+			}
+			makeNew = true
+		default:
+			done = true
+		}
+	}
+	if ac.conn != nil && !makeNew {
+		return ac.conn, nil
+	}
+
+	return ac.createNewConn(url, tlsConfig)
 }
 
 func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
@@ -152,23 +163,12 @@ func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp
 		return nil, fmt.Errorf("Dial error: %s", err)
 	}
 	ac.setConn(conn)
-	ac.waitForConnClose()
-	return conn, err
+	return conn, nil
 }
 
 func (ac *AMQPConnector) setConn(conn *amqp.Connection) {
-	ac.rmu.Lock()
-	defer ac.rmu.Unlock()
 	ac.conn = conn
-}
-
-func (ac *AMQPConnector) waitForConnClose() {
-	recv := make(chan *amqp.Error)
-	go func() {
-		<-recv
-		ac.setConn(nil)
-	}()
-	ac.conn.NotifyClose(recv)
+	conn.NotifyClose(ac.connChan)
 }
 
 // Close connection
