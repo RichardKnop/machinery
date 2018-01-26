@@ -165,7 +165,6 @@ func (ac *AMQPConnector) getConn(url string, tlsConfig *tls.Config, keepAlive bo
 }
 
 func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
-	// Connect
 	// From amqp docs: DialTLS will use the provided tls.Config when it encounters an amqps:// scheme
 	// and will dial a plain connection when it encounters an amqp:// scheme.
 	conn, err := amqp.DialTLS(url, tlsConfig)
