@@ -10,6 +10,7 @@ import (
 	"github.com/GetStream/machinery/v1/brokers"
 	"github.com/GetStream/machinery/v1/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBrokerFactory(t *testing.T) {
@@ -30,12 +31,7 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err := machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := brokers.NewAMQPBroker(&cnf)
-		assert.True(
-			t,
-			reflect.DeepEqual(actual, expected),
-			fmt.Sprintf("conn = %v, want %v", actual, expected),
-		)
+		assert.IsType(t, &brokers.AMQPBroker{}, actual)
 	}
 
 	// 1) Redis broker test
@@ -47,14 +43,8 @@ func TestBrokerFactory(t *testing.T) {
 	}
 
 	actual, err = machinery.BrokerFactory(&cnf)
-	if assert.NoError(t, err) {
-		expected := brokers.NewRedisBroker(&cnf, "localhost:6379", "password", "", 0)
-		assert.True(
-			t,
-			reflect.DeepEqual(actual, expected),
-			fmt.Sprintf("conn = %v, want %v", actual, expected),
-		)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, &brokers.RedisBroker{}, actual)
 
 	// without password
 	cnf = config.Config{
@@ -63,14 +53,8 @@ func TestBrokerFactory(t *testing.T) {
 	}
 
 	actual, err = machinery.BrokerFactory(&cnf)
-	if assert.NoError(t, err) {
-		expected := brokers.NewRedisBroker(&cnf, "localhost:6379", "", "", 0)
-		assert.True(
-			t,
-			reflect.DeepEqual(actual, expected),
-			fmt.Sprintf("conn = %v, want %v", actual, expected),
-		)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, &brokers.RedisBroker{}, actual)
 
 	// using a socket file
 	cnf = config.Config{
@@ -79,14 +63,8 @@ func TestBrokerFactory(t *testing.T) {
 	}
 
 	actual, err = machinery.BrokerFactory(&cnf)
-	if assert.NoError(t, err) {
-		expected := brokers.NewRedisBroker(&cnf, "", "", "/tmp/redis.sock", 0)
-		assert.True(
-			t,
-			reflect.DeepEqual(actual, expected),
-			fmt.Sprintf("conn = %v, want %v", actual, expected),
-		)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, &brokers.RedisBroker{}, actual)
 }
 
 func TestBrokerFactoryError(t *testing.T) {
