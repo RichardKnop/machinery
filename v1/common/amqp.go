@@ -3,18 +3,36 @@ package common
 import (
 	"crypto/tls"
 	"fmt"
+	"sync"
 
 	"github.com/streadway/amqp"
 )
 
 // AMQPConnector ...
-type AMQPConnector struct{}
+type AMQPConnector struct {
+	conn *amqp.Connection
+	rmu  *sync.RWMutex
+}
+
+func NewAMQPConnector() *AMQPConnector {
+	return &AMQPConnector{
+		rmu: &sync.RWMutex{},
+	}
+}
 
 // Connect opens a connection to RabbitMQ, declares an exchange, opens a channel,
 // declares and binds the queue and enables publish notifications
 func (ac *AMQPConnector) Connect(url string, tlsConfig *tls.Config, exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, <-chan *amqp.Error, error) {
+	return ac.connect(false, url, tlsConfig, exchange, exchangeType, queueName, queueDurable, queueDelete, queueBindingKey, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs)
+}
+
+func (ac *AMQPConnector) ConnectKeepAlive(url string, tlsConfig *tls.Config, exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, <-chan *amqp.Error, error) {
+	return ac.connect(true, url, tlsConfig, exchange, exchangeType, queueName, queueDurable, queueDelete, queueBindingKey, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs)
+}
+
+func (ac *AMQPConnector) connect(keepAlive bool, url string, tlsConfig *tls.Config, exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, <-chan *amqp.Error, error) {
 	// Connect to server
-	conn, channel, err := ac.Open(url, tlsConfig)
+	conn, channel, err := ac.open(url, tlsConfig, keepAlive)
 	if err != nil {
 		return nil, nil, amqp.Queue{}, nil, nil, err
 	}
@@ -94,12 +112,26 @@ func (*AMQPConnector) InspectQueue(channel *amqp.Channel, queueName string) (*am
 
 // Open new RabbitMQ connection
 func (ac *AMQPConnector) Open(url string, tlsConfig *tls.Config) (*amqp.Connection, *amqp.Channel, error) {
-	// Connect
-	// From amqp docs: DialTLS will use the provided tls.Config when it encounters an amqps:// scheme
-	// and will dial a plain connection when it encounters an amqp:// scheme.
-	conn, err := amqp.DialTLS(url, tlsConfig)
+	return ac.open(url, tlsConfig, false)
+}
+
+func (ac *AMQPConnector) open(url string, tlsConfig *tls.Config, keepAlive bool) (*amqp.Connection, *amqp.Channel, error) {
+	var (
+		conn *amqp.Connection
+		err  error
+	)
+
+	ac.rmu.RLock()
+	createNew := ac.conn == nil
+	ac.rmu.RUnlock()
+
+	if !keepAlive || createNew {
+		conn, err = ac.createNewConn(url, tlsConfig)
+	} else {
+		conn = ac.conn
+	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("Dial error: %s", err)
+		return nil, nil, err
 	}
 
 	// Open a channel
@@ -109,6 +141,35 @@ func (ac *AMQPConnector) Open(url string, tlsConfig *tls.Config) (*amqp.Connecti
 	}
 
 	return conn, channel, nil
+}
+
+func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
+	// Connect
+	// From amqp docs: DialTLS will use the provided tls.Config when it encounters an amqps:// scheme
+	// and will dial a plain connection when it encounters an amqp:// scheme.
+	conn, err := amqp.DialTLS(url, tlsConfig)
+	if err != nil {
+		return nil, fmt.Errorf("Dial error: %s", err)
+	}
+
+	ac.rmu.Lock()
+	ac.conn = conn
+	ac.rmu.Unlock()
+
+	ac.waitForConnClose()
+
+	return conn, err
+}
+
+func (ac *AMQPConnector) waitForConnClose() {
+	recv := make(chan *amqp.Error)
+	go func() {
+		<-recv
+		ac.rmu.Lock()
+		ac.conn = nil
+		ac.rmu.Unlock()
+	}()
+	ac.conn.NotifyClose(recv)
 }
 
 // Close connection

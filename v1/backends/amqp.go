@@ -19,22 +19,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/GetStream/machinery/v1/common"
+	"github.com/GetStream/machinery/v1/config"
+	"github.com/GetStream/machinery/v1/log"
+	"github.com/GetStream/machinery/v1/tasks"
 	"github.com/streadway/amqp"
 )
 
 // AMQPBackend represents an AMQP result backend
 type AMQPBackend struct {
 	cnf *config.Config
-	common.AMQPConnector
+	*common.AMQPConnector
 }
 
 // NewAMQPBackend creates AMQPBackend instance
 func NewAMQPBackend(cnf *config.Config) Interface {
-	return &AMQPBackend{cnf: cnf, AMQPConnector: common.AMQPConnector{}}
+	return &AMQPBackend{cnf: cnf, AMQPConnector: common.NewAMQPConnector()}
 }
 
 // InitGroup creates and saves a group meta data object

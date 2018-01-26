@@ -7,22 +7,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/GetStream/machinery/v1/common"
+	"github.com/GetStream/machinery/v1/config"
+	"github.com/GetStream/machinery/v1/log"
+	"github.com/GetStream/machinery/v1/tasks"
 	"github.com/streadway/amqp"
 )
 
 // AMQPBroker represents an AMQP broker
 type AMQPBroker struct {
 	Broker
-	common.AMQPConnector
+	*common.AMQPConnector
 }
 
 // NewAMQPBroker creates new AMQPBroker instance
 func NewAMQPBroker(cnf *config.Config) Interface {
-	return &AMQPBroker{Broker: New(cnf), AMQPConnector: common.AMQPConnector{}}
+	return &AMQPBroker{Broker: New(cnf), AMQPConnector: common.NewAMQPConnector()}
 }
 
 // StartConsuming enters a loop and waits for incoming messages
@@ -104,7 +104,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
-	conn, channel, _, confirmsChan, _, err := b.Connect(
+	_, channel, _, confirmsChan, _, err := b.ConnectKeepAlive(
 		b.cnf.Broker,
 		b.cnf.TLSConfig,
 		b.cnf.AMQP.Exchange,     // exchange name
@@ -120,7 +120,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 	if err != nil {
 		return err
 	}
-	defer b.Close(channel, conn)
+	defer channel.Close()
 
 	if err := channel.Publish(
 		b.cnf.AMQP.Exchange,  // exchange name
