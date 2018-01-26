@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/GetStream/machinery/v1/config"
+	"github.com/GetStream/machinery/v1/log"
+	"github.com/GetStream/machinery/v1/tasks"
 	"github.com/bradfitz/gomemcache/memcache"
 )
 

@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/GetStream/machinery/v1/config"
 	"github.com/stretchr/testify/assert"
 )
 

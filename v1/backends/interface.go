@@ -1,7 +1,7 @@
 package backends
 
 import (
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/GetStream/machinery/v1/tasks"
 )
 
 // Interface - a common interface for all result backends

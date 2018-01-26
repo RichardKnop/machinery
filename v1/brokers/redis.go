@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/GetStream/machinery/v1/common"
+	"github.com/GetStream/machinery/v1/config"
+	"github.com/GetStream/machinery/v1/log"
+	"github.com/GetStream/machinery/v1/tasks"
 	"github.com/garyburd/redigo/redis"
-	"gopkg.in/redsync.v1"
+	"github.com/go-redsync/redsync"
 )
 
 var redisDelayedTasksKey = "delayed_tasks"
