@@ -151,23 +151,22 @@ func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp
 	if err != nil {
 		return nil, fmt.Errorf("Dial error: %s", err)
 	}
-
-	ac.rmu.Lock()
-	ac.conn = conn
-	ac.rmu.Unlock()
-
+	ac.setConn(conn)
 	ac.waitForConnClose()
-
 	return conn, err
+}
+
+func (ac *AMQPConnector) setConn(conn *amqp.Connection) {
+	ac.rmu.Lock()
+	defer ac.rmu.Unlock()
+	ac.conn = conn
 }
 
 func (ac *AMQPConnector) waitForConnClose() {
 	recv := make(chan *amqp.Error)
 	go func() {
 		<-recv
-		ac.rmu.Lock()
-		ac.conn = nil
-		ac.rmu.Unlock()
+		ac.setConn(nil)
 	}()
 	ac.conn.NotifyClose(recv)
 }
