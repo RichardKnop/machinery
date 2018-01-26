@@ -3,9 +3,9 @@ package brokers_test
 import (
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1/brokers"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/GetStream/machinery/v1/brokers"
+	"github.com/GetStream/machinery/v1/config"
+	"github.com/GetStream/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
