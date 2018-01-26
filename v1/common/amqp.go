@@ -118,7 +118,7 @@ func (ac *AMQPConnector) Open(url string, tlsConfig *tls.Config) (*amqp.Connecti
 }
 
 func (ac *AMQPConnector) open(url string, tlsConfig *tls.Config, keepAlive bool) (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := ac.getConn(url, tlsConfig)
+	conn, err := ac.getConn(url, tlsConfig, keepAlive)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -131,9 +131,13 @@ func (ac *AMQPConnector) open(url string, tlsConfig *tls.Config, keepAlive bool)
 	return conn, channel, nil
 }
 
-func (ac *AMQPConnector) getConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
+func (ac *AMQPConnector) getConn(url string, tlsConfig *tls.Config, keepAlive bool) (*amqp.Connection, error) {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
+
+	if !keepAlive {
+		return ac.createNewConn(url, tlsConfig)
+	}
 
 	var done, makeNew bool
 	for !done {
@@ -151,7 +155,13 @@ func (ac *AMQPConnector) getConn(url string, tlsConfig *tls.Config) (*amqp.Conne
 		return ac.conn, nil
 	}
 
-	return ac.createNewConn(url, tlsConfig)
+	conn, err := ac.createNewConn(url, tlsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	ac.setConn(conn)
+	return conn, nil
 }
 
 func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
@@ -162,12 +172,17 @@ func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp
 	if err != nil {
 		return nil, fmt.Errorf("Dial error: %s", err)
 	}
-	ac.setConn(conn)
 	return conn, nil
 }
 
 func (ac *AMQPConnector) setConn(conn *amqp.Connection) {
 	ac.conn = conn
+	recv := make(chan amqp.Blocking)
+	conn.NotifyBlocked(recv)
+	go func() {
+		v := <-recv
+		fmt.Println("blocker:", v)
+	}()
 	conn.NotifyClose(ac.connChan)
 }
 
