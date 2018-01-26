@@ -7,22 +7,6 @@
   revision = "0745ebe7cc826d7d0453c7c9f08ea75a7fe86f7b"
 
 [[projects]]
-  name = "github.com/RichardKnop/machinery"
-  packages = [
-    "example/tasks",
-    "v1",
-    "v1/backends",
-    "v1/brokers",
-    "v1/common",
-    "v1/config",
-    "v1/log",
-    "v1/retry",
-    "v1/tasks"
-  ]
-  revision = "d94e51516cb760758e09b14aba400ff83d0e4fcc"
-  version = "v1.0.14"
-
-[[projects]]
   branch = "master"
   name = "github.com/bradfitz/gomemcache"
   packages = ["memcache"]
@@ -96,12 +80,6 @@
   revision = "3f83fa5005286a7fe593b055f0d7771a7dce4655"
 
 [[projects]]
-  name = "gopkg.in/redsync.v1"
-  packages = ["."]
-  revision = "98dabdf1c8574561bf976911c14ff652c47b1ddf"
-  version = "v1.0.1"
-
-[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b"
@@ -109,6 +87,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b9b9e90476481073bcff6c94caef8c6ffe331820f448ff4f3da88fca8bf39603"
+  inputs-digest = "85b9712867b63bd784c4a17159d915f13622547775fb0c7aae3f5744edbe24ef"
   solver-name = "gps-cdcl"
   solver-version = 1
