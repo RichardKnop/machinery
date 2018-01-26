@@ -3,14 +3,8 @@
 PACKAGES=`go list ./... | grep -v vendor | grep -v mocks`
 
 update-deps:
-	rm -rf Godeps
-	rm -rf vendor
-	go get github.com/tools/godep
-	godep save ./...
-
-install-deps:
-	go get github.com/tools/godep
-	godep restore
+	go get github.com/golang/dep/cmd/dep
+	dep ensure
 
 fmt:
 	for pkg in ${PACKAGES}; do \

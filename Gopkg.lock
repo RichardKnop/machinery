@@ -2,9 +2,10 @@
 
 
 [[projects]]
+  branch = "master"
   name = "github.com/RichardKnop/logging"
   packages = ["."]
-  revision = "0745ebe7cc826d7d0453c7c9f08ea75a7fe86f7b"
+  revision = "66aaaba182584c20ec574b064975974f92f0936a"
 
 [[projects]]
   branch = "master"
@@ -24,7 +25,8 @@
     "internal",
     "redis"
   ]
-  revision = "95d11dba2d44531bdb8022752b98912baafae03a"
+  revision = "d1ed5c67e5794de818ea85e6b522fda02623a484"
+  version = "v1.4.0"
 
 [[projects]]
   name = "github.com/go-redsync/redsync"
@@ -35,7 +37,8 @@
 [[projects]]
   name = "github.com/kelseyhightower/envconfig"
   packages = ["."]
-  revision = "70f0258d44cbaa3b6a2581d82f58da01a38e4de4"
+  revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -46,12 +49,14 @@
 [[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
-  revision = "5bf94b69c6b68ee1b541973bb8e1144db23a194b"
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/streadway/amqp"
   packages = ["."]
-  revision = "dfe15e36048539f4cda41f240b27a5ca25b9cd46"
+  revision = "54ded0531dfd699a7893861d39a7a949c5749bc9"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -60,12 +65,14 @@
     "require",
     "suite"
   ]
-  revision = "f6abca593680b2315d2075e0f5e2a9751e3f431a"
+  revision = "b91bfb9ebec76498946beb6af7c0230c7cc7ba6c"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/urfave/cli"
   packages = ["."]
-  revision = "d70f47eeca3afd795160003bc6e28b001d60c67c"
+  revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
+  version = "v1.20.0"
 
 [[projects]]
   branch = "v2"
@@ -80,9 +87,10 @@
   revision = "3f83fa5005286a7fe593b055f0d7771a7dce4655"
 
 [[projects]]
+  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b"
+  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
 
 [solve-meta]
   analyzer-name = "dep"

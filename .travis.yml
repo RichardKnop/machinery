@@ -1,30 +1,16 @@
----
 language: go
 
 go:
-  - 1.8.3
+  - 1.8.x
+  - 1.9.x
   - tip
 
-services:
-  - docker
-
-install:
-  - go get github.com/golang/lint/golint
-  - go get github.com/FiloSottile/vendorcheck
-  # Install gometalinter and certain linters
-  - go get github.com/alecthomas/gometalinter
-  - go get github.com/client9/misspell/cmd/misspell
-  - go get github.com/gordonklaus/ineffassign
-  - go get golang.org/x/tools/cmd/goimports
-  - go get github.com/tsenart/deadcode
+before_install:
+- go get github.com/golang/dep/cmd/dep
+- dep ensure
 
 script:
-  - make lint
-  - vendorcheck ./...
-  - make ci
+  - ./test.sh
 
-after_script:
-  - make golint
-
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
+# after_success:
+#   - bash <(curl -s https://codecov.io/bash)
