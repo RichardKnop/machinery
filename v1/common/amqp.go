@@ -12,12 +12,12 @@ import (
 type AMQPConnector struct {
 	conn     *amqp.Connection
 	connChan chan *amqp.Error
-	rmu      *sync.RWMutex
+	mu       *sync.Mutex
 }
 
 func NewAMQPConnector() *AMQPConnector {
 	return &AMQPConnector{
-		rmu:      &sync.RWMutex{},
+		mu:       &sync.Mutex{},
 		connChan: make(chan *amqp.Error),
 	}
 }
@@ -132,8 +132,8 @@ func (ac *AMQPConnector) open(url string, tlsConfig *tls.Config, keepAlive bool)
 }
 
 func (ac *AMQPConnector) getConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
-	ac.rmu.Lock()
-	defer ac.rmu.Unlock()
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
 
 	var done, makeNew bool
 	for !done {
