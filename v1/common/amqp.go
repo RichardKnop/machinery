@@ -17,8 +17,7 @@ type AMQPConnector struct {
 
 func NewAMQPConnector() *AMQPConnector {
 	return &AMQPConnector{
-		mu:       &sync.Mutex{},
-		connChan: make(chan *amqp.Error),
+		mu: &sync.Mutex{},
 	}
 }
 
