@@ -177,12 +177,6 @@ func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp
 
 func (ac *AMQPConnector) setConn(conn *amqp.Connection) {
 	ac.conn = conn
-	recv := make(chan amqp.Blocking)
-	conn.NotifyBlocked(recv)
-	go func() {
-		v := <-recv
-		fmt.Println("blocker:", v)
-	}()
 	conn.NotifyClose(ac.connChan)
 }
 
