@@ -139,29 +139,16 @@ func (ac *AMQPConnector) getConn(url string, tlsConfig *tls.Config, keepAlive bo
 		return ac.createNewConn(url, tlsConfig)
 	}
 
-	var done, makeNew bool
-	for !done {
-		select {
-		case err := <-ac.connChan:
-			if err == nil {
-				done = true
-			}
-			makeNew = true
-		default:
-			done = true
-		}
+	if ac.conn == nil {
+		return ac.createAndStoreNewConn(url, tlsConfig)
 	}
-	if ac.conn != nil && !makeNew {
+
+	select {
+	case <-ac.connChan:
+		return ac.createAndStoreNewConn(url, tlsConfig)
+	default:
 		return ac.conn, nil
 	}
-
-	conn, err := ac.createNewConn(url, tlsConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	ac.setConn(conn)
-	return conn, nil
 }
 
 func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
@@ -174,8 +161,18 @@ func (ac *AMQPConnector) createNewConn(url string, tlsConfig *tls.Config) (*amqp
 	return conn, nil
 }
 
+func (ac *AMQPConnector) createAndStoreNewConn(url string, tlsConfig *tls.Config) (*amqp.Connection, error) {
+	conn, err := ac.createNewConn(url, tlsConfig)
+	if err != nil {
+		return nil, err
+	}
+	ac.setConn(conn)
+	return conn, nil
+}
+
 func (ac *AMQPConnector) setConn(conn *amqp.Connection) {
 	ac.conn = conn
+	ac.connChan = make(chan *amqp.Error)
 	conn.NotifyClose(ac.connChan)
 }
 
