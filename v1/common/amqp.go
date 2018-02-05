@@ -170,6 +170,12 @@ func (ac *AMQPConnector) createAndStoreNewConn(url string, tlsConfig *tls.Config
 }
 
 func (ac *AMQPConnector) setConn(conn *amqp.Connection) {
+	if ac.conn != nil {
+		// This should fix the memory leak: even if the connection is dead, apparently
+		// it's needed to explicitly close the connection because of how it's implemented.
+		ac.conn.Close()
+	}
+
 	ac.conn = conn
 	ac.connChan = make(chan *amqp.Error)
 	conn.NotifyClose(ac.connChan)
