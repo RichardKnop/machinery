@@ -31,8 +31,8 @@ type AWSSQSBroker struct {
 // NewAWSSQSBroker creates new Broker instance
 func NewAWSSQSBroker(cnf *config.Config) Interface {
 	b := &AWSSQSBroker{Broker: New(cnf)}
-	if cnf.SQS != nil {
-		// Use provided *SQS
+	if cnf.SQS != nil && cnf.SQS.Client != nil {
+		// Use provided *SQS client
 		b.service = cnf.SQS.Client
 	} else {
 		// Initialize a session that the SDK will use to load credentials from the shared credentials file, ~/.aws/credentials.
