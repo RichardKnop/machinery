@@ -10,22 +10,20 @@ import (
 
 // AMQPConnector ...
 type AMQPConnector struct {
-	connManager *amqpConnManager
+	connManager *amqpConnectionManager
 }
 
 func NewAMQPConnector(url string, tlsConfig *tls.Config) *AMQPConnector {
 	return &AMQPConnector{
-		connManager: newAMQPConnManager(url, tlsConfig),
+		connManager: newAMQPConnectionManager(url, tlsConfig),
 	}
 }
 
-// Connect opens a connection to RabbitMQ, declares an exchange, opens a channel,
-// declares and binds the queue and enables publish notifications
-func (ac *AMQPConnector) Connect(exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, <-chan *amqp.Error, error) {
-	// Connect to server
-	conn, channel, err := ac.GetConn()
+// Exchange declares an exchange, opens a channel declares and binds the queue and enables publish notifications using the existing RabbitMQ connection.
+func (ac *AMQPConnector) Exchange(exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
+	channel, err := ac.Channel()
 	if err != nil {
-		return nil, amqp.Queue{}, nil, nil, err
+		return nil, amqp.Queue{}, nil, err
 	}
 
 	if exchange != "" {
@@ -41,7 +39,7 @@ func (ac *AMQPConnector) Connect(exchange, exchangeType, queueName string, queue
 		)
 		if err != nil {
 			channel.Close()
-			return nil, amqp.Queue{}, nil, nil, fmt.Errorf("Exchange declare error: %s", err)
+			return nil, amqp.Queue{}, nil, fmt.Errorf("Exchange declare error: %s", err)
 		}
 	}
 
@@ -58,7 +56,7 @@ func (ac *AMQPConnector) Connect(exchange, exchangeType, queueName string, queue
 		)
 		if err != nil {
 			channel.Close()
-			return nil, amqp.Queue{}, nil, nil, fmt.Errorf("Queue declare error: %s", err)
+			return nil, amqp.Queue{}, nil, fmt.Errorf("Queue declare error: %s", err)
 		}
 
 		// Bind the queue
@@ -71,17 +69,17 @@ func (ac *AMQPConnector) Connect(exchange, exchangeType, queueName string, queue
 		)
 		if err != nil {
 			channel.Close()
-			return nil, amqp.Queue{}, nil, nil, fmt.Errorf("Queue bind error: %s", err)
+			return nil, amqp.Queue{}, nil, fmt.Errorf("Queue bind error: %s", err)
 		}
 	}
 
 	// Enable publish confirmations
 	if err := channel.Confirm(false); err != nil {
 		channel.Close()
-		return nil, amqp.Queue{}, nil, nil, fmt.Errorf("Channel could not be put into confirm mode: %s", err)
+		return nil, amqp.Queue{}, nil, fmt.Errorf("Channel could not be put into confirm mode: %s", err)
 	}
 
-	return channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), conn.NotifyClose(make(chan *amqp.Error, 1)), nil
+	return channel, queue, channel.NotifyPublish(make(chan amqp.Confirmation, 1)), nil
 }
 
 // DeleteQueue deletes a queue by name
@@ -106,76 +104,91 @@ func (*AMQPConnector) InspectQueue(channel *amqp.Channel, queueName string) (*am
 	return &queueState, nil
 }
 
-func (ac *AMQPConnector) GetConn() (*amqp.Connection, *amqp.Channel, error) {
-	return ac.connManager.getConn()
-}
-
-func (ac *AMQPConnector) Close(channel *amqp.Channel, conn *amqp.Connection) error {
-	if channel != nil {
-		if err := channel.Close(); err != nil {
-			return fmt.Errorf("Close channel error: %s", err)
-		}
+func (ac *AMQPConnector) Channel() (*amqp.Channel, error) {
+	conn, err := ac.connManager.get()
+	if err != nil {
+		return nil, err
 	}
-
-	if conn != nil {
-		if err := conn.Close(); err != nil {
-			return fmt.Errorf("Close connection error: %s", err)
-		}
+	channel, err := conn.Channel()
+	if err != nil {
+		return nil, fmt.Errorf("Open channel error: %s", err)
 	}
-
-	return nil
+	return channel, nil
 }
 
-type amqpConnManager struct {
-	url       string
-	tlsConfig *tls.Config
-	conn      *amqp.Connection
-	connID    int
-	closeChan chan *amqp.Error
-	mu        *sync.Mutex
+func (ac *AMQPConnector) ErrChan() chan error {
+	return ac.connManager.errChan
 }
 
-func newAMQPConnManager(url string, tlsConfig *tls.Config) *amqpConnManager {
-	closeChan := make(chan *amqp.Error, 1)
-	closeChan <- amqp.ErrClosed // get ready for the first getConn
-	return &amqpConnManager{
-		url:       url,
-		tlsConfig: tlsConfig,
-		closeChan: closeChan,
-		mu:        &sync.Mutex{},
+type amqpConnectionManager struct {
+	url         string
+	tlsConfig   *tls.Config
+	conn        *amqp.Connection
+	newConnChan chan struct{}
+	errChan     chan error
+	mu          *sync.RWMutex
+}
+
+func newAMQPConnectionManager(url string, tlsConfig *tls.Config) *amqpConnectionManager {
+	return &amqpConnectionManager{
+		url:         url,
+		tlsConfig:   tlsConfig,
+		errChan:     make(chan error),
+		mu:          &sync.RWMutex{},
+		newConnChan: make(chan struct{}),
 	}
 }
 
-func (m *amqpConnManager) getConn() (*amqp.Connection, *amqp.Channel, error) {
+func (m *amqpConnectionManager) get() (*amqp.Connection, error) {
+	m.mu.RLock()
+
+	if m.conn == nil {
+		m.mu.RUnlock()
+		return m.makeConnection()
+	}
+
+	select {
+	case <-m.newConnChan:
+		m.mu.RUnlock()
+		return m.makeConnection()
+	default:
+		m.mu.RUnlock()
+		return m.conn, nil
+	}
+}
+
+func (m *amqpConnectionManager) makeConnection() (*amqp.Connection, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	select {
-	case <-m.closeChan:
-		err := m.makeConn()
-		if err != nil {
-			return nil, nil, err
-		}
-	default:
-	}
-
-	channel, err := m.conn.Channel()
-	if err != nil {
-		return nil, nil, fmt.Errorf("Open channel error: %s", err)
-	}
-
-	return m.conn, channel, nil
-}
-
-func (m *amqpConnManager) makeConn() error {
 	if m.conn != nil {
 		m.conn.Close() // this is most likely useless, but just to be sure
 	}
+
 	conn, err := amqp.DialTLS(m.url, m.tlsConfig)
 	if err != nil {
-		return err
+		m.conn = nil // try again to create the connection the next time
+		return nil, err
 	}
-	m.closeChan = conn.NotifyClose(make(chan *amqp.Error, 1))
+
+	// set the new connection and listen for closes
 	m.conn = conn
-	return nil
+	m.waitForConnectionClose()
+
+	return m.conn, nil
+}
+
+// waitForConnectionClose adds a close listener on the current connection.
+// when the listener triggers, a goroutine sends the obtained error
+// to the potential consumers listening on m.errChan, and sends a message the newConnChan
+// channel so to trigger the generation of a new connection.
+func (m *amqpConnectionManager) waitForConnectionClose() {
+	connErrChan := m.conn.NotifyClose(make(chan *amqp.Error, 1))
+	go func() {
+		connErr := <-connErrChan
+		go func() {
+			m.errChan <- connErr
+		}()
+		m.newConnChan <- struct{}{}
+	}()
 }
