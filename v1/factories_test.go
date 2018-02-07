@@ -89,11 +89,7 @@ func TestBackendFactory(t *testing.T) {
 	actual, err := machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
 		expected := backends.NewAMQPBackend(&cnf)
-		assert.True(
-			t,
-			reflect.DeepEqual(actual, expected),
-			fmt.Sprintf("conn = %v, want %v", actual, expected),
-		)
+		assert.IsType(t, expected, actual)
 	}
 
 	// 2) Memcache backend test
