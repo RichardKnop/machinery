@@ -22,16 +22,17 @@ type AMQPBroker struct {
 
 // NewAMQPBroker creates new AMQPBroker instance
 func NewAMQPBroker(cnf *config.Config) Interface {
-	return &AMQPBroker{Broker: New(cnf), AMQPConnector: common.NewAMQPConnector()}
+	return &AMQPBroker{
+		Broker:        New(cnf),
+		AMQPConnector: common.NewAMQPConnector(cnf.Broker, cnf.TLSConfig),
+	}
 }
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *AMQPBroker) StartConsuming(consumerTag string, concurrency int, taskProcessor TaskProcessor) (bool, error) {
 	b.startConsuming(consumerTag, taskProcessor)
 
-	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
-		b.cnf.Broker,
-		b.cnf.TLSConfig,
+	channel, queue, _, err := b.Exchange(
 		b.cnf.AMQP.Exchange,     // exchange name
 		b.cnf.AMQP.ExchangeType, // exchange type
 		b.cnf.DefaultQueue,      // queue name
@@ -46,7 +47,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, concurrency int, taskPro
 		b.retryFunc(b.retryStopChan)
 		return b.retry, err
 	}
-	defer b.Close(channel, conn)
+	defer channel.Close()
 
 	if err = channel.Qos(
 		b.cnf.AMQP.PrefetchCount,
@@ -71,7 +72,7 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, concurrency int, taskPro
 
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
-	if err := b.consume(deliveries, concurrency, taskProcessor, amqpCloseChan); err != nil {
+	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
 		return b.retry, err
 	}
 
@@ -104,9 +105,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
-	_, channel, _, confirmsChan, _, err := b.ConnectKeepAlive(
-		b.cnf.Broker,
-		b.cnf.TLSConfig,
+	channel, _, confirmsChan, err := b.Exchange(
 		b.cnf.AMQP.Exchange,     // exchange name
 		b.cnf.AMQP.ExchangeType, // exchange type
 		b.cnf.DefaultQueue,      // queue name
@@ -148,7 +147,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskProcessor TaskProcessor, amqpCloseChan <-chan *amqp.Error) error {
+func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskProcessor TaskProcessor) error {
 	pool := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
@@ -166,7 +165,7 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, t
 
 	for {
 		select {
-		case amqpErr := <-amqpCloseChan:
+		case amqpErr := <-b.AMQPConnector.ErrChan():
 			return amqpErr
 		case err := <-errorsChan:
 			return err
@@ -262,9 +261,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 		// Time after that the queue will be deleted.
 		"x-expires": delayMs * 2,
 	}
-	conn, channel, _, _, _, err := b.Connect(
-		b.cnf.Broker,
-		b.cnf.TLSConfig,
+	channel, _, _, err := b.Exchange(
 		b.cnf.AMQP.Exchange,                     // exchange name
 		b.cnf.AMQP.ExchangeType,                 // exchange type
 		queueName,                               // queue name
@@ -278,7 +275,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 	if err != nil {
 		return err
 	}
-	defer b.Close(channel, conn)
+	defer channel.Close()
 
 	if err := channel.Publish(
 		b.cnf.AMQP.Exchange, // exchange
