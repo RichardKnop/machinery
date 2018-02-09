@@ -210,9 +210,9 @@ func (b *MongodbBackend) lockGroupMeta(groupUUID string) error {
 		Update:    bson.M{
 			"$set": 
 			bson.M{
-				"lock": true
-				},
+				"lock": true,
 			},
+		},
 		ReturnNew: false,
 	}
 	_, err := b.groupMetasCollection.
