@@ -2,3 +2,4 @@ coverage*
 _vendor-*
 .idea/*
 
+.DS_Store
