@@ -101,6 +101,11 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 		return false, err
 	}
 	defer b.unlockGroupMeta(groupUUID)
+	
+	// Check if chord has been triggered after unlock acquired, return false (should not trigger again)
+	if groupMeta.ChordTriggered {
+		return false, nil
+	}
 
 	// Update the group meta data
 	update := bson.M{"$set": bson.M{"chord_triggered": true}}
