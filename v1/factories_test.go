@@ -265,8 +265,12 @@ func TestParseRedisURL(t *testing.T) {
 	assert.Error(t, err, "invalid redis scheme")
 
 	url = "redis:/"
-	_, _, _, err = machinery.ParseRedisURL(url)
-	assert.Error(t, err, "invalid redis url scheme")
+	host, pwd, db, err = machinery.ParseRedisURL(url)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "", host)
+		assert.Equal(t, "", pwd)
+		assert.Equal(t, 0, db)
+	}
 
 	url = "redis://127.0.0.1:5672"
 	host, pwd, db, err = machinery.ParseRedisURL(url)
@@ -277,7 +281,7 @@ func TestParseRedisURL(t *testing.T) {
 	}
 
 	url = "redis://pwd@127.0.0.1:5672"
-	host, pwd, db, _ = machinery.ParseRedisURL(url)
+	host, pwd, db, err = machinery.ParseRedisURL(url)
 	if assert.NoError(t, err) {
 		assert.Equal(t, "127.0.0.1:5672", host)
 		assert.Equal(t, "pwd", pwd)

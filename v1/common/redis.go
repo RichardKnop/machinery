@@ -22,11 +22,11 @@ func (rc *RedisConnector) NewPool(socketPath, host, password string, db int) *re
 
 			if db != 0 {
 				_, err = c.Do("SELECT", db)
+				if err != nil {
+					return nil, err
+				}
 			}
 
-			if err != nil {
-				return nil, err
-			}
 			return c, err
 		},
 		// PINGs connections that have been idle more than 10 seconds
