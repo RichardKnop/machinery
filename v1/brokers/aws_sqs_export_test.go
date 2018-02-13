@@ -62,9 +62,9 @@ func (e *ErrorSQS) DeleteMessage(*sqs.DeleteMessageInput) (*sqs.DeleteMessageOut
 
 func init() {
 	redisURL := os.Getenv("REDIS_URL")
-	brokerUrl := "https://sqs.foo.amazonaws.com.cn"
+	brokerURL := "https://sqs.foo.amazonaws.com.cn"
 	TestConf = &config.Config{
-		Broker:        brokerUrl,
+		Broker:        brokerURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: redisURL,
 	}
