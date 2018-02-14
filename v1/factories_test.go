@@ -1,6 +1,7 @@
 package machinery_test
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -256,40 +257,69 @@ func TestBackendFactoryError(t *testing.T) {
 }
 
 func TestParseRedisURL(t *testing.T) {
-	var host, pwd, url string
-	var db int
-	var err error
-
-	url = "non_redis://127.0.0.1:5672"
-	_, _, _, err = machinery.ParseRedisURL(url)
-	assert.Error(t, err, "invalid redis scheme")
-
-	url = "redis:/"
-	_, _, _, err = machinery.ParseRedisURL(url)
-	assert.Error(t, err, "invalid redis url scheme")
-
-	url = "redis://127.0.0.1:5672"
-	host, pwd, db, err = machinery.ParseRedisURL(url)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "127.0.0.1:5672", host)
-		assert.Equal(t, "", pwd)
-		assert.Equal(t, 0, db)
+	testCases := []struct {
+		url       string
+		host, pwd string
+		db        int
+		err       error
+	}{
+		{
+			url: "non_redis://127.0.0.1:5672",
+			err: errors.New("invalid redis scheme"),
+		},
+		{
+			url: "redis:/",
+			err: errors.New("invalid redis url scheme"),
+		},
+		{
+			url:  "redis://127.0.0.1:5672",
+			host: "127.0.0.1:5672",
+		},
+		{
+			url:  "redis://pwd@127.0.0.1:5672",
+			host: "127.0.0.1:5672",
+			pwd:  "pwd",
+		},
+		{
+			url:  "redis://pwd@127.0.0.1:5672/2",
+			host: "127.0.0.1:5672",
+			pwd:  "pwd",
+			db:   2,
+		},
+		{
+			url:  "redis://user:pwd@127.0.0.1:5672",
+			host: "127.0.0.1:5672",
+			pwd:  "pwd",
+		},
+		{
+			url:  "redis://user:pwd:with:colon@127.0.0.1:5672",
+			host: "127.0.0.1:5672",
+			pwd:  "pwd:with:colon",
+		},
+		{
+			url:  "redis://user:@127.0.0.1:5672",
+			host: "127.0.0.1:5672",
+			pwd:  "",
+		},
+		{
+			url:  "redis://:pwd@127.0.0.1:5672",
+			host: "127.0.0.1:5672",
+			pwd:  "pwd",
+		},
 	}
 
-	url = "redis://pwd@127.0.0.1:5672"
-	host, pwd, db, _ = machinery.ParseRedisURL(url)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "127.0.0.1:5672", host)
-		assert.Equal(t, "pwd", pwd)
-		assert.Equal(t, 0, db)
-	}
+	for _, tc := range testCases {
+		host, pwd, db, err := machinery.ParseRedisURL(tc.url)
+		if tc.err != nil {
+			assert.Error(t, err, tc.err)
+			continue
+		}
 
-	url = "redis://pwd@127.0.0.1:5672/2"
-	host, pwd, db, err = machinery.ParseRedisURL(url)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "127.0.0.1:5672", host)
-		assert.Equal(t, "pwd", pwd)
-		assert.Equal(t, 2, db)
+		if assert.NoError(t, err) {
+			assert.Equal(t, tc.host, host)
+			assert.Equal(t, tc.pwd, pwd)
+			assert.Equal(t, tc.db, db)
+		}
 	}
 }
 

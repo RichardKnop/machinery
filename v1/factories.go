@@ -129,6 +129,16 @@ func ParseRedisURL(url string) (host, password string, db int, err error) {
 	if len(parts) == 2 {
 		//[pwd, host/db]
 		password = parts[0]
+
+		// Proper URL has format redis://user:password@host/...
+		// Redis doesn't have concept of users, but some Redis providers like Heroku pass
+		// user in URL to make properly formatted URL.
+		// We must ignore user part of URL. See https://github.com/RichardKnop/machinery/issues/214
+		passwordParts := strings.Split(password, ":")
+		if len(passwordParts) >= 2 {
+			password = strings.TrimLeft(password, passwordParts[0]+":")
+		}
+
 		hostAndDB = parts[1]
 	} else {
 		hostAndDB = parts[0]
