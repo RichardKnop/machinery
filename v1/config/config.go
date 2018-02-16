@@ -20,6 +20,10 @@ var (
 			BindingKey:    "machinery_task",
 			PrefetchCount: 3,
 		},
+		DynamoDB: &DynamoDBConfig{
+			TaskStatesTable: "task_states",
+			GroupMetasTable: "group_metas",
+		},
 	}
 
 	reloadDelay = time.Second * 10
@@ -34,7 +38,8 @@ type Config struct {
 	AMQP            *AMQPConfig `yaml:"amqp"`
 	TLSConfig       *tls.Config
 	//NoUnixSignals when set disables signal handling in machinery
-	NoUnixSignals bool `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
+	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
+	DynamoDB      *DynamoDBConfig `yaml:"dynamodb"`
 }
 
 // QueueBindingArgs arguments which are used when binding to the exchange
@@ -47,6 +52,11 @@ type AMQPConfig struct {
 	QueueBindingArgs QueueBindingArgs `yaml:"queue_binding_args" envconfig:"AMQP_QUEUE_BINDING_ARGS"`
 	BindingKey       string           `yaml:"binding_key" envconfig:"AMQP_BINDING_KEY"`
 	PrefetchCount    int              `yaml:"prefetch_count" envconfig:"AMQP_PREFETCH_COUNT"`
+}
+
+type DynamoDBConfig struct {
+	TaskStatesTable string `yaml:"task_states_table" envconfig:"Task_States_Table"`
+	GroupMetasTable string `yaml:"group_metas_table" envconfig:"Group_Metas_Table"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

@@ -24,6 +24,7 @@ services:
       REDIS_URL: 'redis:6379'
       MEMCACHE_URL: 'memcached:11211'
       MONGODB_URL: 'mongo:27017'
+      AWS_REGION: 'us-west-2'
 
   rabbitmq:
     container_name: machinery_sut_rabbitmq
