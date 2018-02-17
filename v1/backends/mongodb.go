@@ -207,9 +207,8 @@ func (b *MongodbBackend) lockGroupMeta(groupUUID string) error {
 		"lock": false,
 	}
 	change := mgo.Change{
-		Update:    bson.M{
-			"$set": 
-			bson.M{
+		Update: bson.M{
+			"$set": bson.M{
 				"lock": true,
 			},
 		},
