@@ -77,38 +77,28 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 	if err := b.connect(); err != nil {
 		return false, err
 	}
-
-	// Get the group meta data
-	groupMeta, err := b.getGroupMeta(groupUUID)
+	query := bson.M{
+		"_id":             groupUUID,
+		"chord_triggered": false,
+	}
+	change := mgo.Change{
+		Update: bson.M{
+			"$set": bson.M{
+				"chord_triggered": true,
+			},
+		},
+		ReturnNew: false,
+	}
+	_, err := b.groupMetasCollection.
+		Find(query).
+		Apply(change, nil)
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			log.WARNING.Printf("Chord already triggered for group %s", groupUUID)
+			return false, nil
+		}
 		return false, err
 	}
-
-	// Chord has already been triggered, return false (should not trigger again)
-	if groupMeta.ChordTriggered {
-		return false, nil
-	}
-
-	// If group meta is locked, wait until it's unlocked
-	for groupMeta.Lock {
-		groupMeta, _ = b.getGroupMeta(groupUUID)
-		log.WARNING.Print("Group meta locked, waiting")
-		<-time.After(time.Millisecond * 5)
-	}
-
-	// Acquire lock
-	if err = b.lockGroupMeta(groupUUID); err != nil {
-		return false, err
-	}
-	defer b.unlockGroupMeta(groupUUID)
-
-	// Update the group meta data
-	update := bson.M{"$set": bson.M{"chord_triggered": true}}
-	_, err = b.groupMetasCollection.UpsertId(groupUUID, update)
-	if err != nil {
-		return false, err
-	}
-
 	return true, nil
 }
 
@@ -212,8 +202,22 @@ func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
 
 // lockGroupMeta acquires lock on groupUUID document
 func (b *MongodbBackend) lockGroupMeta(groupUUID string) error {
-	update := bson.M{"$set": bson.M{"lock": true}}
-	_, err := b.groupMetasCollection.UpsertId(groupUUID, update)
+	query := bson.M{
+		"_id":  groupUUID,
+		"lock": false,
+	}
+	change := mgo.Change{
+		Update:    bson.M{
+			"$set": 
+			bson.M{
+				"lock": true,
+			},
+		},
+		ReturnNew: false,
+	}
+	_, err := b.groupMetasCollection.
+		Find(query).
+		Apply(change, nil)
 	return err
 }
 
