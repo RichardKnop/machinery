@@ -9,7 +9,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestReflectArgs(t *testing.T) {
+	t.Parallel()
+
+	task := new(tasks.Task)
+	args := []tasks.Arg{
+		{
+			Type:  "[]int64",
+			Value: []interface{}{int64(1), int64(2)},
+		},
+	}
+
+	err := task.ReflectArgs(args)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(task.Args))
+	assert.Equal(t, "[]int64", task.Args[0].Type().String())
+}
+
 func TestInvalidArgRobustness(t *testing.T) {
+	t.Parallel()
+
 	// Create a test task function
 	f := func(x int) error { return nil }
 
@@ -28,6 +47,8 @@ func TestInvalidArgRobustness(t *testing.T) {
 }
 
 func TestInterfaceValuedResult(t *testing.T) {
+	t.Parallel()
+
 	// Create a test task function
 	f := func() (interface{}, error) { return math.Pi, nil }
 
@@ -41,6 +62,8 @@ func TestInterfaceValuedResult(t *testing.T) {
 }
 
 func TestTaskHasContext(t *testing.T) {
+	t.Parallel()
+
 	f := func(c context.Context) (interface{}, error) {
 		assert.NotNil(t, c)
 		return math.Pi, nil
