@@ -89,20 +89,15 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 		},
 		ReturnNew: false,
 	}
-	var groupMeta tasks.GroupMeta
 	_, err := b.groupMetasCollection.
 		Find(query).
-		Apply(change, &groupMeta)
+		Apply(change, nil)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			log.WARNING.Printf("Chord already triggered for group %s", groupUUID)
 			return false, nil
 		}
 		return false, err
-	}
-	if groupMeta.ChordTriggered {
-		log.WARNING.Printf("Chord already triggered for group %s", groupUUID)
-		return false, nil
 	}
 	return true, nil
 }
