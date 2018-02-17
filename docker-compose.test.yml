@@ -19,6 +19,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile.test
+    env_file:
+        - .env
     environment:
       AMQP_URL: 'amqp://guest:guest@rabbitmq:5672/'
       REDIS_URL: 'redis:6379'
@@ -51,3 +53,5 @@ services:
     image: mongo
     logging:
       driver: none
+    ports:
+      - "27017:27017"
