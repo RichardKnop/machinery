@@ -43,7 +43,7 @@ func NewAWSSQSBroker(cnf *config.Config) Interface {
 		}))
 		b.service = sqs.New(b.sess)
 	}
-	
+
 	return b
 }
 
