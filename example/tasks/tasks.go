@@ -25,6 +25,33 @@ func Multiply(args ...int64) (int64, error) {
 	return sum, nil
 }
 
+// SumInts ...
+func SumInts(numbers []int64) (int64, error) {
+	var sum int64
+	for _, num := range numbers {
+		sum += num
+	}
+	return sum, nil
+}
+
+// SumFloats ...
+func SumFloats(numbers []float64) (float64, error) {
+	var sum float64
+	for _, num := range numbers {
+		sum += num
+	}
+	return sum, nil
+}
+
+// Concat ...
+func Concat(strs []string) (string, error) {
+	var res string
+	for _, s := range strs {
+		res += s
+	}
+	return res, nil
+}
+
 // PanicTask ...
 func PanicTask() (string, error) {
 	panic(errors.New("oops"))

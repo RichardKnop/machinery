@@ -1,12 +1,11 @@
 package tasks
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"runtime/debug"
-
-	"context"
 
 	"github.com/RichardKnop/machinery/v1/log"
 )
