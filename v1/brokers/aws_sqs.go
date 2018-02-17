@@ -192,8 +192,8 @@ func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProces
 		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
 		return err
 	}
-	// If the task is not registered, we requeue it,
-	// there might be different workers for processing specific tasks
+	// If the task is not registered return an error
+	// and leave the message in the queue
 	if !b.IsTaskRegistered(sig.Name) {
 		return fmt.Errorf("task %s is not registered", sig.Name)
 	}
