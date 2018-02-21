@@ -104,7 +104,7 @@ func TestPrivateFunc_consumeOne(t *testing.T) {
 	}
 	wk := server1.NewWorker("sms_worker", 0)
 	err = testAWSSQSBroker.ConsumeOneForTest(receiveMessageOutput, wk)
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
 
 	outputCopy := *receiveMessageOutput
 	outputCopy.Messages = []*sqs.Message{}
