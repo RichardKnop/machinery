@@ -31,13 +31,18 @@ type AWSSQSBroker struct {
 // NewAWSSQSBroker creates new Broker instance
 func NewAWSSQSBroker(cnf *config.Config) Interface {
 	b := &AWSSQSBroker{Broker: New(cnf)}
-	// Initialize a session that the SDK will use to load credentials from the shared credentials file, ~/.aws/credentials.
-	// See details on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
-	// Also, env AWS_REGION is also required
-	b.sess = session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	b.service = sqs.New(b.sess)
+	if cnf.SQS != nil && cnf.SQS.Client != nil {
+		// Use provided *SQS client
+		b.service = cnf.SQS.Client
+	} else {
+		// Initialize a session that the SDK will use to load credentials from the shared credentials file, ~/.aws/credentials.
+		// See details on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
+		// Also, env AWS_REGION is also required
+		b.sess = session.Must(session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		}))
+		b.service = sqs.New(b.sess)
+	}
 
 	return b
 }
@@ -226,6 +231,12 @@ func (b *AWSSQSBroker) defaultQueueURL() *string {
 
 // receiveMessage is a method receives a message from specified queue url
 func (b *AWSSQSBroker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, error) {
+	var waitTimeSeconds int
+	if b.cnf.SQS != nil {
+		waitTimeSeconds = b.cnf.SQS.WaitTimeSeconds
+	} else {
+		waitTimeSeconds = 0
+	}
 	result, err := b.service.ReceiveMessage(&sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
 			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
@@ -236,7 +247,7 @@ func (b *AWSSQSBroker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, 
 		QueueUrl:            qURL,
 		MaxNumberOfMessages: aws.Int64(1),
 		VisibilityTimeout:   aws.Int64(int64(b.cnf.ResultsExpireIn)), // 10 hours
-		WaitTimeSeconds:     aws.Int64(0),
+		WaitTimeSeconds:     aws.Int64(int64(waitTimeSeconds)),
 	})
 	if err != nil {
 		return nil, err

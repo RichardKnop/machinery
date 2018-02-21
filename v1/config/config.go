@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
 var (
@@ -32,6 +34,7 @@ type Config struct {
 	ResultBackend   string      `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
 	ResultsExpireIn int         `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
 	AMQP            *AMQPConfig `yaml:"amqp"`
+	SQS             *SQSConfig  `yaml:"sqs"`
 	TLSConfig       *tls.Config
 	//NoUnixSignals when set disables signal handling in machinery
 	NoUnixSignals bool `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
@@ -47,6 +50,12 @@ type AMQPConfig struct {
 	QueueBindingArgs QueueBindingArgs `yaml:"queue_binding_args" envconfig:"AMQP_QUEUE_BINDING_ARGS"`
 	BindingKey       string           `yaml:"binding_key" envconfig:"AMQP_BINDING_KEY"`
 	PrefetchCount    int              `yaml:"prefetch_count" envconfig:"AMQP_PREFETCH_COUNT"`
+}
+
+// SQSConfig wraps SQS related configuration
+type SQSConfig struct {
+	Client          *sqs.SQS
+	WaitTimeSeconds int `yaml:"receive_wait_time_seconds" envconfig:"SQS_WAIT_TIME_SECONDS"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements
