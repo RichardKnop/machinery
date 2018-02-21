@@ -24,6 +24,10 @@ services:
       REDIS_URL: 'redis:6379'
       MEMCACHE_URL: 'memcached:11211'
       MONGODB_URL: 'mongo:27017'
+      SQS_URL: ${SQS_URL}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
 
   rabbitmq:
     container_name: machinery_sut_rabbitmq
@@ -51,3 +55,5 @@ services:
     image: mongo
     logging:
       driver: none
+    ports:
+      - "27017:27017"
