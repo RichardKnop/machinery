@@ -8,6 +8,8 @@ import (
 )
 
 func TestNewChain(t *testing.T) {
+	t.Parallel()
+
 	task1 := tasks.Signature{
 		Name: "foo",
 		Args: []tasks.Arg{

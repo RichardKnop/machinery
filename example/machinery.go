@@ -91,6 +91,9 @@ func startServer() (*machinery.Server, error) {
 	tasks := map[string]interface{}{
 		"add":               exampletasks.Add,
 		"multiply":          exampletasks.Multiply,
+		"sum_ints":          exampletasks.SumInts,
+		"sum_floats":        exampletasks.SumFloats,
+		"concat":            exampletasks.Concat,
 		"panic_task":        exampletasks.PanicTask,
 		"long_running_task": exampletasks.LongRunningTask,
 	}
@@ -118,10 +121,11 @@ func send() error {
 	}
 
 	var (
-		addTask0, addTask1, addTask2 tasks.Signature
-		multiplyTask0, multiplyTask1 tasks.Signature
-		panicTask                    tasks.Signature
-		longRunningTask              tasks.Signature
+		addTask0, addTask1, addTask2           tasks.Signature
+		multiplyTask0, multiplyTask1           tasks.Signature
+		sumIntsTask, sumFloatsTask, concatTask tasks.Signature
+		panicTask                              tasks.Signature
+		longRunningTask                        tasks.Signature
 	)
 
 	var initTasks = func() {
@@ -181,6 +185,36 @@ func send() error {
 			Name: "multiply",
 		}
 
+		sumIntsTask = tasks.Signature{
+			Name: "sum_ints",
+			Args: []tasks.Arg{
+				{
+					Type:  "[]int64",
+					Value: []int64{1, 2},
+				},
+			},
+		}
+
+		sumFloatsTask = tasks.Signature{
+			Name: "sum_floats",
+			Args: []tasks.Arg{
+				{
+					Type:  "[]float64",
+					Value: []float64{1.5, 2.7},
+				},
+			},
+		}
+
+		concatTask = tasks.Signature{
+			Name: "concat",
+			Args: []tasks.Arg{
+				{
+					Type:  "[]string",
+					Value: []string{"foo", "bar"},
+				},
+			},
+		}
+
 		panicTask = tasks.Signature{
 			Name: "panic_task",
 		}
@@ -206,6 +240,42 @@ func send() error {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
 	log.INFO.Printf("1 + 1 = %v\n", tasks.HumanReadableResults(results))
+
+	/*
+	 * Try couple of tasks with a slice argument
+	 */
+	asyncResult, err = server.SendTask(&sumIntsTask)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("sum([1, 2]) = %v\n", tasks.HumanReadableResults(results))
+
+	asyncResult, err = server.SendTask(&sumFloatsTask)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("sum([1.5, 2.7]) = %v\n", tasks.HumanReadableResults(results))
+
+	asyncResult, err = server.SendTask(&concatTask)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("concat([\"foo\", \"bar\"]) = %v\n", tasks.HumanReadableResults(results))
 
 	/*
 	 * Now let's explore ways of sending multiple tasks

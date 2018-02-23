@@ -88,6 +88,7 @@ func (b *Broker) stopConsuming() {
 	b.stopChan <- 1
 }
 
+// GetRegisteredTaskNames returns registered tasks names
 func (b *Broker) GetRegisteredTaskNames() []string {
 	return b.registeredTaskNames
 }

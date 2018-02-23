@@ -7,115 +7,162 @@ import (
 )
 
 func TestReflectValue(t *testing.T) {
-	value, err := tasks.ReflectValue("bool", interface{}(false))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "bool" {
-		t.Errorf("type is %v, want bool", value.Type().String())
+	t.Parallel()
+
+	testCases := []struct {
+		name     string
+		value    interface{}
+		expected string
+	}{
+		{
+			name:     "bool",
+			value:    false,
+			expected: "bool",
+		},
+		{
+			name:     "int",
+			value:    float64(1),
+			expected: "int",
+		},
+		{
+			name:     "int8",
+			value:    float64(1),
+			expected: "int8",
+		},
+		{
+			name:     "int16",
+			value:    float64(1),
+			expected: "int16",
+		},
+		{
+			name:     "int32",
+			value:    float64(1),
+			expected: "int32",
+		},
+		{
+			name:     "int64",
+			value:    float64(1),
+			expected: "int64",
+		},
+		{
+			name:     "uint",
+			value:    float64(1),
+			expected: "uint",
+		},
+		{
+			name:     "uint8",
+			value:    float64(1),
+			expected: "uint8",
+		},
+		{
+			name:     "uint16",
+			value:    float64(1),
+			expected: "uint16",
+		},
+		{
+			name:     "uint32",
+			value:    float64(1),
+			expected: "uint32",
+		},
+		{
+			name:     "uint64",
+			value:    float64(1),
+			expected: "uint64",
+		},
+		{
+			name:     "float32",
+			value:    float64(0.5),
+			expected: "float32",
+		},
+		{
+			name:     "float64",
+			value:    float64(0.5),
+			expected: "float64",
+		},
+		{
+			name:     "string",
+			value:    "123",
+			expected: "string",
+		},
+		{
+			name:     "[]bool",
+			value:    []interface{}{false, true},
+			expected: "[]bool",
+		},
+		{
+			name:     "[]int",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]int",
+		},
+		{
+			name:     "[]int8",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]int8",
+		},
+		{
+			name:     "[]int16",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]int16",
+		},
+		{
+			name:     "[]int32",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]int32",
+		},
+		{
+			name:     "[]int64",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]int64",
+		},
+		{
+			name:     "[]uint",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]uint",
+		},
+		{
+			name:     "[]uint8",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]uint8",
+		},
+		{
+			name:     "[]uint16",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]uint16",
+		},
+		{
+			name:     "[]uint32",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]uint32",
+		},
+		{
+			name:     "[]uint64",
+			value:    []interface{}{float64(1), float64(2)},
+			expected: "[]uint64",
+		},
+		{
+			name:     "[]float32",
+			value:    []interface{}{float64(0.5), float64(1)},
+			expected: "[]float32",
+		},
+		{
+			name:     "[]float64",
+			value:    []interface{}{float64(1), float64(0.5)},
+			expected: "[]float64",
+		},
+		{
+			name:     "[]string",
+			value:    []interface{}{"foo", "bar"},
+			expected: "[]string",
+		},
 	}
 
-	value, err = tasks.ReflectValue("int", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "int" {
-		t.Errorf("type is %v, want int", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("int8", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "int8" {
-		t.Errorf("type is %v, want int8", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("int16", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "int16" {
-		t.Errorf("type is %v, want int16", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("int32", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "int32" {
-		t.Errorf("type is %v, want int32", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("int64", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "int64" {
-		t.Errorf("type is %v, want int64", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("uint", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "uint" {
-		t.Errorf("type is %v, want uint", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("uint8", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "uint8" {
-		t.Errorf("type is %v, want uint8", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("uint16", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "uint16" {
-		t.Errorf("type is %v, want uint16", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("uint32", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "uint32" {
-		t.Errorf("type is %v, want uint32", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("uint64", interface{}(float64(1)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "uint64" {
-		t.Errorf("type is %v, want uint64", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("float32", interface{}(float64(0.5)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "float32" {
-		t.Errorf("type is %v, want float32", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("float64", interface{}(float64(0.5)))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "float64" {
-		t.Errorf("type is %v, want float64", value.Type().String())
-	}
-
-	value, err = tasks.ReflectValue("string", interface{}("123"))
-	if err != nil {
-		t.Error(err)
-	}
-	if value.Type().String() != "string" {
-		t.Errorf("type is %v, want string", value.Type().String())
+	for _, testCase := range testCases {
+		value, err := tasks.ReflectValue(testCase.name, testCase.value)
+		if err != nil {
+			t.Error(err)
+		}
+		if value.Type().String() != testCase.expected {
+			t.Errorf("type is %v, want %s", value.Type().String(), testCase.expected)
+		}
 	}
 }
