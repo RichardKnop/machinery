@@ -12,8 +12,9 @@ lint:
 
 golint:
 	for pkg in ${PACKAGES}; do \
-		golint $$pkg; \
-	done;
+		golint -set_exit_status $$pkg || GOLINT_FAILED=1; \
+	done; \
+	[ -z "$$GOLINT_FAILED" ]
 
 test:
 	TEST_FAILED= ; \

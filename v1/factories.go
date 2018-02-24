@@ -127,7 +127,11 @@ func ParseRedisURL(url string) (host, password string, db int, err error) {
 	}
 
 	if u.User != nil {
-		password = u.User.String()
+		exist := false
+		password, exist = u.User.Password()
+		if !exist {
+			password = u.User.Username()
+		}
 	}
 
 	host = u.Host

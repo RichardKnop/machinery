@@ -56,6 +56,29 @@ func testSendTask(server *machinery.Server, t *testing.T) {
 			results[0].Interface(),
 		)
 	}
+
+	sumTask := newSumTask([]int64{1, 2})
+	asyncResult, err = server.SendTask(sumTask)
+	if err != nil {
+		t.Error(err)
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+	}
+
+	if results[0].Interface() != int64(3) {
+		t.Errorf(
+			"result = %v(%v), want int64(3)",
+			results[0].Type().String(),
+			results[0].Interface(),
+		)
+	}
 }
 
 func testSendGroup(server *machinery.Server, t *testing.T, sendConcurrency int) {
@@ -303,6 +326,13 @@ func testSetup(cnf *config.Config) *machinery.Server {
 			}
 			return sum, nil
 		},
+		"sum": func(numbers []int64) (int64, error) {
+			var sum int64
+			for _, num := range numbers {
+				sum += num
+			}
+			return sum, nil
+		},
 		"return_just_error": func(msg string, fail bool) (err error) {
 			if fail {
 				err = errors.New(msg)
@@ -357,6 +387,18 @@ func newMultipleTask(nums ...int) *tasks.Signature {
 	return &tasks.Signature{
 		Name: "multiply",
 		Args: args,
+	}
+}
+
+func newSumTask(nums []int64) *tasks.Signature {
+	return &tasks.Signature{
+		Name: "sum",
+		Args: []tasks.Arg{
+			{
+				Type:  "[]int64",
+				Value: nums,
+			},
+		},
 	}
 }
 
