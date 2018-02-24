@@ -8,6 +8,8 @@ import (
 )
 
 func TestTaskStateIsCompleted(t *testing.T) {
+	t.Parallel()
+
 	taskState := &tasks.TaskState{
 		TaskUUID: "taskUUID",
 		State:    tasks.StatePending,

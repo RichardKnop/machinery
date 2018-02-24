@@ -8,6 +8,8 @@ import (
 )
 
 func TestValidateTask(t *testing.T) {
+	t.Parallel()
+
 	type someStruct struct{}
 	var (
 		taskOfWrongType                   = new(someStruct)

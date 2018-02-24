@@ -11,6 +11,9 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 [![godoc for RichardKnop/machinery](https://godoc.org/github.com/nathany/looper?status.svg)](http://godoc.org/github.com/RichardKnop/machinery/v1)
 [![codecov for RichardKnop/machinery](https://codecov.io/gh/RichardKnop/machinery/branch/master/graph/badge.svg)](https://codecov.io/gh/RichardKnop/machinery)
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/RichardKnop/machinery)](https://goreportcard.com/report/github.com/RichardKnop/machinery)
+[![GolangCI](https://golangci.com/badges/github.com/RichardKnop/machinery.svg)](https://golangci.com)
+
 [![Sourcegraph for RichardKnop/machinery](https://sourcegraph.com/github.com/RichardKnop/machinery/-/badge.svg)](https://sourcegraph.com/github.com/RichardKnop/machinery?badge)
 [![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://richardknop.github.io/donate/)
 
@@ -459,6 +462,20 @@ Machinery encodes tasks to JSON before sending them to the broker. Task results 
 * `float32`
 * `float64`
 * `string`
+* `[]bool`
+* `[]int`
+* `[]int8`
+* `[]int16`
+* `[]int32`
+* `[]int64`
+* `[]uint`
+* `[]uint8`
+* `[]uint16`
+* `[]uint32`
+* `[]uint64`
+* `[]float32`
+* `[]float64`
+* `[]string`
 
 #### Sending Tasks
 
@@ -890,10 +907,6 @@ If the environment variables are not exported, `make test` will only run unit te
 
 ### Supporting the project
 
-Become a patreon:
-
-[![http://patreon.com/richardknop][3]](http://patreon.com/richardknop)
-
-Or donate BTC to my wallet: `12iFVjQ5n3Qdmiai4Mp9EG93NSvDipyRKV`
+Donate BTC to my wallet if you find this project useful: `12iFVjQ5n3Qdmiai4Mp9EG93NSvDipyRKV`
 
 ![Donate BTC][4]
