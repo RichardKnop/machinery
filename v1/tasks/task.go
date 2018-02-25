@@ -7,6 +7,10 @@ import (
 	"reflect"
 	"runtime/debug"
 
+	opentracing "github.com/opentracing/opentracing-go"
+	opentracing_ext "github.com/opentracing/opentracing-go/ext"
+	opentracing_log "github.com/opentracing/opentracing-go/log"
+
 	"github.com/RichardKnop/machinery/v1/log"
 )
 
@@ -52,6 +56,11 @@ func New(taskFunc interface{}, args []Arg) (*Task, error) {
 //    argument list).
 // 2. The task func itself returns a non-nil error.
 func (t *Task) Call() (taskResults []*TaskResult, err error) {
+	// retrieve the span from the task's context and finish it as soon as this function returns
+	if span := opentracing.SpanFromContext(t.Context); span != nil {
+		defer span.Finish()
+	}
+
 	defer func() {
 		// Recover from panic and set err.
 		if e := recover(); e != nil {
@@ -63,6 +72,16 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 			case string:
 				err = errors.New(e)
 			}
+
+			// mark the span as failed and dump the error and stack trace to the span
+			if span := opentracing.SpanFromContext(t.Context); span != nil {
+				opentracing_ext.Error.Set(span, true)
+				span.LogFields(
+					opentracing_log.Error(err),
+					opentracing_log.Object("stack", string(debug.Stack())),
+				)
+			}
+
 			// Print stack trace
 			log.ERROR.Printf("%s", debug.Stack())
 		}
