@@ -18,6 +18,7 @@ var ErrTaskPanicked = errors.New("Invoking task caused a panic")
 type Task struct {
 	TaskFunc   reflect.Value
 	UseContext bool
+	Context    context.Context
 	Args       []reflect.Value
 }
 
@@ -26,6 +27,7 @@ type Task struct {
 func New(taskFunc interface{}, args []Arg) (*Task, error) {
 	task := &Task{
 		TaskFunc: reflect.ValueOf(taskFunc),
+		Context:  context.Background(),
 	}
 
 	taskFuncType := reflect.TypeOf(taskFunc)
@@ -69,8 +71,7 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 	args := t.Args
 
 	if t.UseContext {
-		ctx := context.Background()
-		ctxValue := reflect.ValueOf(ctx)
+		ctxValue := reflect.ValueOf(t.Context)
 		args = append([]reflect.Value{ctxValue}, args...)
 	}
 
