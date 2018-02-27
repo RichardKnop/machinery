@@ -33,12 +33,8 @@ func (ac *AMQPConnector) Exchange(exchange, exchangeType, queueName string, queu
 		channel, queue, confirmChan, err := ac.exchange(exchange, exchangeType, queueName, queueDurable, queueDelete, queueBindingKey, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs)
 		if err != nil {
 			lastErr = err
-			_, connErr := err.(amqpConnError)
-			if connErr || err == amqp.ErrClosed {
-				time.Sleep(ac.exchangeRetryTimeout)
-				continue
-			}
-			return nil, amqp.Queue{}, nil, err
+			time.Sleep(ac.exchangeRetryTimeout)
+			continue
 		}
 		return channel, queue, confirmChan, nil
 	}
@@ -188,10 +184,6 @@ func (m *amqpConnectionManager) get() (*amqp.Connection, error) {
 	}
 }
 
-type amqpConnError struct {
-	error
-}
-
 func (m *amqpConnectionManager) makeConnection() (*amqp.Connection, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -207,7 +199,7 @@ func (m *amqpConnectionManager) makeConnection() (*amqp.Connection, error) {
 		conn, err := amqp.DialTLS(m.url, m.tlsConfig)
 		if err != nil {
 			if retries >= m.connectionMaxRetries {
-				return nil, amqpConnError{err}
+				return nil, err
 			}
 			time.Sleep(m.connectionRetryTimeout)
 			continue // TODO log warning here?
