@@ -224,7 +224,7 @@ func (m *amqpConnectionManager) makeConnection() (*amqp.Connection, error) {
 		conn, err := amqp.DialTLS(m.url, m.tlsConfig)
 		if err != nil {
 			if retries >= m.connectionMaxRetries {
-				return nil, err
+				return nil, wrapError("too many retries", err)
 			}
 			time.Sleep(m.connectionRetryTimeout)
 			continue // TODO log warning here?
