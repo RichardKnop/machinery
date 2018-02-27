@@ -59,7 +59,7 @@ func (worker *Worker) Launch() error {
 
 	go func() {
 		err := fmt.Errorf("Signal received: %v. Quitting the worker", <-sig)
-		log.WARNING.Print(err.Error())
+		log.INFO.Print(err.Error())
 		worker.Quit()
 		errorsChan <- err
 	}()
