@@ -35,6 +35,7 @@ func (ac *AMQPConnector) Exchange(exchange, exchangeType, queueName string, queu
 			lastErr = err
 			_, connErr := err.(amqpConnError)
 			if connErr || err == amqp.ErrClosed {
+				time.Sleep(ac.exchangeRetryTimeout)
 				continue
 			}
 			return nil, amqp.Queue{}, nil, err
