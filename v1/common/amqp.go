@@ -12,16 +12,39 @@ import (
 // AMQPConnector ...
 type AMQPConnector struct {
 	connManager *amqpConnectionManager
+
+	exchangeMaxRetries   int
+	exchangeRetryTimeout time.Duration
 }
 
 func NewAMQPConnector(url string, tlsConfig *tls.Config) *AMQPConnector {
 	return &AMQPConnector{
 		connManager: newAMQPConnectionManager(url, tlsConfig),
+
+		exchangeMaxRetries:   3,
+		exchangeRetryTimeout: time.Second,
 	}
 }
 
 // Exchange declares an exchange, opens a channel declares and binds the queue and enables publish notifications using the existing RabbitMQ connection.
 func (ac *AMQPConnector) Exchange(exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
+	var lastErr error
+	for retry := 0; retry < ac.exchangeMaxRetries; retry++ {
+		channel, queue, confirmChan, err := ac.exchange(exchange, exchangeType, queueName, queueDurable, queueDelete, queueBindingKey, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs)
+		if err != nil {
+			lastErr = err
+			_, connErr := err.(amqpConnError)
+			if connErr || err == amqp.ErrClosed {
+				continue
+			}
+			return nil, amqp.Queue{}, nil, err
+		}
+		return channel, queue, confirmChan, nil
+	}
+	return nil, amqp.Queue{}, nil, fmt.Errorf("%s (too many retries)", lastErr)
+}
+
+func (ac *AMQPConnector) exchange(exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, error) {
 	channel, err := ac.Channel()
 	if err != nil {
 		return nil, amqp.Queue{}, nil, err
@@ -164,6 +187,10 @@ func (m *amqpConnectionManager) get() (*amqp.Connection, error) {
 	}
 }
 
+type amqpConnError struct {
+	error
+}
+
 func (m *amqpConnectionManager) makeConnection() (*amqp.Connection, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -179,7 +206,7 @@ func (m *amqpConnectionManager) makeConnection() (*amqp.Connection, error) {
 		conn, err := amqp.DialTLS(m.url, m.tlsConfig)
 		if err != nil {
 			if retries >= m.connectionMaxRetries {
-				return nil, err
+				return nil, amqpConnError{err}
 			}
 			time.Sleep(m.connectionRetryTimeout)
 			continue // TODO log warning here?
