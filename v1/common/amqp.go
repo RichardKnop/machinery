@@ -17,13 +17,43 @@ type AMQPConnector struct {
 	exchangeRetryTimeout time.Duration
 }
 
-func NewAMQPConnector(url string, tlsConfig *tls.Config) *AMQPConnector {
-	return &AMQPConnector{
+type AMQPConnectorOption func(c *AMQPConnector)
+
+func WithAMQPExchangeMaxRetries(retries int) AMQPConnectorOption {
+	return func(c *AMQPConnector) {
+		c.exchangeMaxRetries = retries
+	}
+}
+
+func WithAMQPExchangeRetryTimeout(timeout time.Duration) AMQPConnectorOption {
+	return func(c *AMQPConnector) {
+		c.exchangeRetryTimeout = timeout
+	}
+}
+
+func WithAMQPConnectionMaxRetries(retries int) AMQPConnectorOption {
+	return func(c *AMQPConnector) {
+		c.connManager.connectionMaxRetries = retries
+	}
+}
+
+func WithAMQPConnectionRetryTimeout(timeout time.Duration) AMQPConnectorOption {
+	return func(c *AMQPConnector) {
+		c.connManager.connectionRetryTimeout = timeout
+	}
+}
+
+func NewAMQPConnector(url string, tlsConfig *tls.Config, opts ...AMQPConnectorOption) *AMQPConnector {
+	c := &AMQPConnector{
 		connManager: newAMQPConnectionManager(url, tlsConfig),
 
 		exchangeMaxRetries:   3,
 		exchangeRetryTimeout: time.Second,
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 type wrappedError struct {
