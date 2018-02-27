@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/streadway/amqp"
 )
@@ -127,6 +128,9 @@ type amqpConnectionManager struct {
 	newConnChan chan struct{}
 	errChan     chan error
 	mu          *sync.RWMutex
+
+	connectionRetryTimeout time.Duration
+	connectionMaxRetries   int
 }
 
 func newAMQPConnectionManager(url string, tlsConfig *tls.Config) *amqpConnectionManager {
@@ -136,6 +140,9 @@ func newAMQPConnectionManager(url string, tlsConfig *tls.Config) *amqpConnection
 		errChan:     make(chan error),
 		mu:          &sync.RWMutex{},
 		newConnChan: make(chan struct{}),
+
+		connectionRetryTimeout: 5 * time.Second,
+		connectionMaxRetries:   3,
 	}
 }
 
@@ -163,16 +170,24 @@ func (m *amqpConnectionManager) makeConnection() (*amqp.Connection, error) {
 
 	if m.conn != nil {
 		m.conn.Close() // this is most likely useless, but just to be sure
+		m.conn = nil
 	}
 
-	conn, err := amqp.DialTLS(m.url, m.tlsConfig)
-	if err != nil {
-		m.conn = nil // try again to create the connection the next time
-		return nil, err
+	retries := 0
+	for m.conn == nil {
+		retries++
+		conn, err := amqp.DialTLS(m.url, m.tlsConfig)
+		if err != nil {
+			if retries >= m.connectionMaxRetries {
+				return nil, err
+			}
+			time.Sleep(m.connectionRetryTimeout)
+			continue // TODO log warning here?
+		}
+		m.conn = conn
 	}
 
 	// set the new connection and listen for closes
-	m.conn = conn
 	m.waitForConnectionClose()
 
 	return m.conn, nil
