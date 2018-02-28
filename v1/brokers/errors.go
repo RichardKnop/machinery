@@ -15,7 +15,7 @@ func (e ErrCouldNotUnmarshaTaskSignature) Error() string {
 	return fmt.Sprintf("Could not unmarshal '%s' into a task signature: %v", e.msg, e.reason)
 }
 
-// NewErrCouldNotUnmarshaTaskSignature returns new NewErrCouldNotUnmarshaTaskSignature instance
+// NewErrCouldNotUnmarshaTaskSignature returns new ErrCouldNotUnmarshaTaskSignature instance
 func NewErrCouldNotUnmarshaTaskSignature(msg []byte, err error) ErrCouldNotUnmarshaTaskSignature {
 	return ErrCouldNotUnmarshaTaskSignature{msg: msg, reason: err.Error()}
 }

@@ -132,7 +132,15 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 	// Call the task
 	results, err := task.Call()
 	if err != nil {
-		// Let's retry the task
+		// If a tasks.ErrRetryTaskLater was returned from the task,
+		// retry the task after specified duration
+		retriableErr, ok := interface{}(err).(tasks.ErrRetryTaskLater)
+		if ok {
+			return worker.retryTaskIn(signature, retriableErr.RetryIn())
+		}
+
+		// Otherwise, execute default retry logic based on signature.RetryCount
+		// and signature.RetryTimeout values
 		if signature.RetryCount > 0 {
 			return worker.taskRetry(signature)
 		}
@@ -160,7 +168,25 @@ func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 	eta := time.Now().UTC().Add(time.Second * time.Duration(signature.RetryTimeout))
 	signature.ETA = &eta
 
-	log.WARNING.Printf("Task %s failed. Going to retry in %ds.", signature.UUID, signature.RetryTimeout)
+	log.WARNING.Printf("Task %s failed. Going to retry in %d seconds.", signature.UUID, signature.RetryTimeout)
+
+	// Send the task back to the queue
+	_, err := worker.server.SendTask(signature)
+	return err
+}
+
+// taskRetryIn republishes the task to the queue with ETA of now + retryIn.Seconds()
+func (worker *Worker) retryTaskIn(signature *tasks.Signature, retryIn time.Duration) error {
+	// Update task state to RETRY
+	if err := worker.server.GetBackend().SetStateRetry(signature); err != nil {
+		return fmt.Errorf("Set state retry error: %s", err)
+	}
+
+	// Delay task by retryIn duration
+	eta := time.Now().UTC().Add(retryIn)
+	signature.ETA = &eta
+
+	log.WARNING.Printf("Task %s failed. Going to retry in %.0f seconds.", signature.UUID, retryIn.Seconds())
 
 	// Send the task back to the queue
 	_, err := worker.server.SendTask(signature)
