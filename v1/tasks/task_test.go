@@ -2,14 +2,45 @@ package tasks_test
 
 import (
 	"context"
+	"errors"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReflectArgs(t *testing.T) {
+func TestTaskCallErrorTest(t *testing.T) {
+	t.Parallel()
+
+	// Create test task that returns tasks.ErrRetryTaskLater error
+	retriable := func() error { return tasks.NewErrRetryTaskLater("some error", 4*time.Hour) }
+
+	task, err := tasks.New(retriable, []tasks.Arg{})
+	assert.NoError(t, err)
+
+	// Invoke TryCall and validate that returned error can be cast to tasks.ErrRetryTaskLater
+	results, err := task.Call()
+	assert.Nil(t, results)
+	assert.NotNil(t, err)
+	_, ok := interface{}(err).(tasks.ErrRetryTaskLater)
+	assert.True(t, ok, "Error should be castable to tasks.ErrRetryTaskLater")
+
+	// Create test task that returns a standard error
+	standard := func() error { return errors.New("some error") }
+
+	task, err = tasks.New(standard, []tasks.Arg{})
+	assert.NoError(t, err)
+
+	// Invoke TryCall and validate that returned error is standard
+	results, err = task.Call()
+	assert.Nil(t, results)
+	assert.NotNil(t, err)
+	assert.Equal(t, "some error", err.Error())
+}
+
+func TestTaskReflectArgs(t *testing.T) {
 	t.Parallel()
 
 	task := new(tasks.Task)
@@ -26,7 +57,7 @@ func TestReflectArgs(t *testing.T) {
 	assert.Equal(t, "[]int64", task.Args[0].Type().String())
 }
 
-func TestInvalidArgRobustness(t *testing.T) {
+func TestTaskCallInvalidArgRobustnessError(t *testing.T) {
 	t.Parallel()
 
 	// Create a test task function
@@ -46,7 +77,7 @@ func TestInvalidArgRobustness(t *testing.T) {
 	assert.Nil(t, results)
 }
 
-func TestInterfaceValuedResult(t *testing.T) {
+func TestTaskCallInterfaceValuedResult(t *testing.T) {
 	t.Parallel()
 
 	// Create a test task function
@@ -61,7 +92,7 @@ func TestInterfaceValuedResult(t *testing.T) {
 	assert.Equal(t, math.Pi, taskResults[0].Value)
 }
 
-func TestTaskHasContext(t *testing.T) {
+func TestTaskCallWithContext(t *testing.T) {
 	t.Parallel()
 
 	f := func(c context.Context) (interface{}, error) {
