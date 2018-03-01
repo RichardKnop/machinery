@@ -1,6 +1,7 @@
 package backends_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/RichardKnop/machinery/v1/backends"
@@ -231,7 +232,7 @@ func (s *EagerBackendTestSuite) TestSetStateSuccess() {
 		taskResults := []*tasks.TaskResult{
 			{
 				Type:  "float64",
-				Value: float64(300.0),
+				Value: json.Number("300.0"),
 			},
 		}
 		s.backend.SetStateSuccess(t, taskResults)

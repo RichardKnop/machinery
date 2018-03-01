@@ -85,15 +85,15 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 		s.True(asyncResult.GetState().IsSuccess())
 
 		results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
-		s.Nil(err)
+		if s.NoError(err) {
+			if len(results) != 1 {
+				s.T().Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+			}
 
-		if len(results) != 1 {
-			s.T().Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
-		}
-
-		s.Equal(reflect.Float64, results[0].Kind())
-		if results[0].Kind() == reflect.Float64 {
-			s.Equal(200.0, results[0].Float())
+			s.Equal(reflect.Float64, results[0].Kind())
+			if results[0].Kind() == reflect.Float64 {
+				s.Equal(200.0, results[0].Float())
+			}
 		}
 	}
 
@@ -116,15 +116,15 @@ func (s *EagerIntegrationTestSuite) TestSuccessResult() {
 		s.True(asyncResult.GetState().IsSuccess())
 
 		results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
-		s.Nil(err)
+		if s.NoError(err) {
+			if len(results) != 1 {
+				s.T().Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+			}
 
-		if len(results) != 1 {
-			s.T().Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
-		}
-
-		s.Equal(reflect.Int64, results[0].Kind())
-		if results[0].Kind() == reflect.Int64 {
-			s.Equal(int64(200), results[0].Int())
+			s.Equal(reflect.Int64, results[0].Kind())
+			if results[0].Kind() == reflect.Int64 {
+				s.Equal(int64(200), results[0].Int())
+			}
 		}
 	}
 }
