@@ -15,6 +15,7 @@ package backends
 // It is important to consume the queue exclusively to avoid race conditions.
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -95,8 +96,9 @@ func (b *AMQPBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*
 		d := <-deliveries
 
 		state := new(tasks.TaskState)
-
-		if err := json.Unmarshal([]byte(d.Body), state); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader([]byte(d.Body)))
+		decoder.UseNumber()
+		if err := decoder.Decode(state); err != nil {
 			d.Nack(false, false) // multiple, requeue
 			return nil, err
 		}
@@ -224,7 +226,9 @@ func (b *AMQPBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	d.Ack(false)
 
 	state := new(tasks.TaskState)
-	if err := json.Unmarshal([]byte(d.Body), state); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader([]byte(d.Body)))
+	decoder.UseNumber()
+	if err := decoder.Decode(state); err != nil {
 		log.ERROR.Printf("Failed to unmarshal task state: %s", string(d.Body))
 		log.ERROR.Print(err)
 		return nil, err

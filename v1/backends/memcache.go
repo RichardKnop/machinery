@@ -1,6 +1,7 @@
 package backends
 
 import (
+	"bytes"
 	"encoding/json"
 	"time"
 
@@ -165,7 +166,9 @@ func (b *MemcacheBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	}
 
 	state := new(tasks.TaskState)
-	if err := json.Unmarshal(item.Value, state); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(item.Value))
+	decoder.UseNumber()
+	if err := decoder.Decode(state); err != nil {
 		return nil, err
 	}
 
@@ -234,7 +237,9 @@ func (b *MemcacheBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, erro
 	}
 
 	groupMeta := new(tasks.GroupMeta)
-	if err := json.Unmarshal(item.Value, groupMeta); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(item.Value))
+	decoder.UseNumber()
+	if err := decoder.Decode(groupMeta); err != nil {
 		return nil, err
 	}
 
@@ -252,7 +257,9 @@ func (b *MemcacheBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, er
 		}
 
 		state := new(tasks.TaskState)
-		if err := json.Unmarshal(item.Value, state); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(item.Value))
+		decoder.UseNumber()
+		if err := decoder.Decode(state); err != nil {
 			return nil, err
 		}
 

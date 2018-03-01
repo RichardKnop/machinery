@@ -1,6 +1,7 @@
 package brokers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -111,7 +112,9 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 				}
 
 				signature := new(tasks.Signature)
-				if err := json.Unmarshal(task, signature); err != nil {
+				decoder := json.NewDecoder(bytes.NewReader(task))
+				decoder.UseNumber()
+				if err := decoder.Decode(signature); err != nil {
 					log.ERROR.Print(NewErrCouldNotUnmarshaTaskSignature(task, err))
 				}
 
@@ -187,11 +190,11 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) 
 	if queue == "" {
 		queue = b.cnf.DefaultQueue
 	}
-	bytes, err := conn.Do("LRANGE", queue, 0, 10)
+	dataBytes, err := conn.Do("LRANGE", queue, 0, 10)
 	if err != nil {
 		return nil, err
 	}
-	results, err := redis.ByteSlices(bytes, err)
+	results, err := redis.ByteSlices(dataBytes, err)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +202,9 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) 
 	taskSignatures := make([]*tasks.Signature, len(results))
 	for i, result := range results {
 		signature := new(tasks.Signature)
-		if err := json.Unmarshal(result, signature); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(result))
+		decoder.UseNumber()
+		if err := decoder.Decode(signature); err != nil {
 			return nil, err
 		}
 		taskSignatures[i] = signature
@@ -256,7 +261,9 @@ func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskPro
 // consumeOne processes a single message using TaskProcessor
 func (b *RedisBroker) consumeOne(delivery []byte, taskProcessor TaskProcessor) error {
 	signature := new(tasks.Signature)
-	if err := json.Unmarshal(delivery, signature); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(delivery))
+	decoder.UseNumber()
+	if err := decoder.Decode(signature); err != nil {
 		return NewErrCouldNotUnmarshaTaskSignature(delivery, err)
 	}
 

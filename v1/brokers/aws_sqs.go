@@ -1,6 +1,7 @@
 package brokers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -193,7 +194,9 @@ func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProces
 		return errors.New("received empty message, the delivery is " + delivery.GoString())
 	}
 	msg := delivery.Messages[0].Body
-	if err := json.Unmarshal([]byte(*msg), sig); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader([]byte(*msg)))
+	decoder.UseNumber()
+	if err := decoder.Decode(sig); err != nil {
 		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
 		return err
 	}
