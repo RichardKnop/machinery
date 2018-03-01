@@ -187,26 +187,31 @@ func (b *AWSSQSBroker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, conc
 
 // consumeOne is a method consumes a delivery. If a delivery was consumed successfully, it will be deleted from AWS SQS
 func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor TaskProcessor) error {
-	sig := new(tasks.Signature)
 	if len(delivery.Messages) == 0 {
 		log.ERROR.Printf("received an empty message, the delivery was %v", delivery)
 		return errors.New("received empty message, the delivery is " + delivery.GoString())
 	}
-	msg := delivery.Messages[0].Body
-	if err := json.Unmarshal([]byte(*msg), sig); err != nil {
+
+	sig := new(tasks.Signature)
+	decoder := json.NewDecoder(strings.NewReader(*delivery.Messages[0].Body))
+	decoder.UseNumber()
+	if err := decoder.Decode(sig); err != nil {
 		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
 		return err
 	}
+
 	// If the task is not registered return an error
 	// and leave the message in the queue
 	if !b.IsTaskRegistered(sig.Name) {
 		return fmt.Errorf("task %s is not registered", sig.Name)
 	}
+
 	// Delete message after consuming successfully
 	err := b.deleteOne(delivery)
 	if err != nil {
 		log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
 	}
+
 	return taskProcessor.Process(sig)
 }
 

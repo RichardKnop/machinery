@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -241,16 +242,16 @@ func getBoolValue(theType string, value interface{}) (bool, error) {
 }
 
 func getIntValue(theType string, value interface{}) (int64, error) {
-	if strings.HasPrefix(fmt.Sprintf("%T", value), "float") {
-		// Any numbers from unmarshalled JSON will be float64 by default
-		// So we first need to do a type conversion to float64
-		n, ok := value.(float64)
+	// We use https://golang.org/pkg/encoding/json/#Decoder.UseNumber when unmarshaling signatures.
+	// This is because JSON only supports 64-bit floating point numbers and we could lose precision
+	// when converting from float64 to signed integer
+	if strings.HasPrefix(fmt.Sprintf("%T", value), "json.Number") {
+		n, ok := value.(json.Number)
 		if !ok {
 			return 0, typeConversionError(value, typesMap[theType].String())
 		}
 
-		// Now we can cast the float64 to int64
-		return int64(n), nil
+		return n.Int64()
 	}
 
 	n, ok := value.(int64)
@@ -262,16 +263,21 @@ func getIntValue(theType string, value interface{}) (int64, error) {
 }
 
 func getUintValue(theType string, value interface{}) (uint64, error) {
-	if strings.HasPrefix(fmt.Sprintf("%T", value), "float") {
-		// Any numbers from unmarshalled JSON will be float64 by default
-		// So we first need to do a type conversion to float64
-		n, ok := value.(float64)
+	// We use https://golang.org/pkg/encoding/json/#Decoder.UseNumber when unmarshaling signatures.
+	// This is because JSON only supports 64-bit floating point numbers and we could lose precision
+	// when converting from float64 to unsigned integer
+	if strings.HasPrefix(fmt.Sprintf("%T", value), "json.Number") {
+		n, ok := value.(json.Number)
 		if !ok {
 			return 0, typeConversionError(value, typesMap[theType].String())
 		}
 
-		// Now we can cast the float64 to uint64
-		return uint64(n), nil
+		intVal, err := n.Int64()
+		if err != nil {
+			return 0, err
+		}
+
+		return uint64(intVal), nil
 	}
 
 	n, ok := value.(uint64)
@@ -283,6 +289,17 @@ func getUintValue(theType string, value interface{}) (uint64, error) {
 }
 
 func getFloatValue(theType string, value interface{}) (float64, error) {
+	// We use https://golang.org/pkg/encoding/json/#Decoder.UseNumber when unmarshaling signatures.
+	// This is because JSON only supports 64-bit floating point numbers and we could lose precision
+	if strings.HasPrefix(fmt.Sprintf("%T", value), "json.Number") {
+		n, ok := value.(json.Number)
+		if !ok {
+			return 0, typeConversionError(value, typesMap[theType].String())
+		}
+
+		return n.Float64()
+	}
+
 	f, ok := value.(float64)
 	if !ok {
 		return 0, typeConversionError(value, typesMap[theType].String())

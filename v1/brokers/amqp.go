@@ -1,6 +1,7 @@
 package brokers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -203,9 +204,9 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, t
 }
 
 // consumeOne processes a single message using TaskProcessor
-func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) error {
-	if len(d.Body) == 0 {
-		d.Nack(true, false)                            // multiple, requeue
+func (b *AMQPBroker) consumeOne(delivery amqp.Delivery, taskProcessor TaskProcessor) error {
+	if len(delivery.Body) == 0 {
+		delivery.Nack(true, false)                     // multiple, requeue
 		return errors.New("Received an empty message") // RabbitMQ down?
 	}
 
@@ -213,26 +214,28 @@ func (b *AMQPBroker) consumeOne(d amqp.Delivery, taskProcessor TaskProcessor) er
 
 	// Unmarshal message body into signature struct
 	signature := new(tasks.Signature)
-	if err := json.Unmarshal(d.Body, signature); err != nil {
-		d.Nack(multiple, requeue)
-		return NewErrCouldNotUnmarshaTaskSignature(d.Body, err)
+	decoder := json.NewDecoder(bytes.NewReader(delivery.Body))
+	decoder.UseNumber()
+	if err := decoder.Decode(signature); err != nil {
+		delivery.Nack(multiple, requeue)
+		return NewErrCouldNotUnmarshaTaskSignature(delivery.Body, err)
 	}
 
 	// If the task is not registered, we nack it and requeue,
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(signature.Name) {
-		if !d.Redelivered {
+		if !delivery.Redelivered {
 			requeue = true
-			log.INFO.Printf("Requeing message: %s", d.Body)
+			log.INFO.Printf("Requeing message: %s", delivery.Body)
 		}
-		d.Nack(multiple, requeue)
+		delivery.Nack(multiple, requeue)
 		return nil
 	}
 
-	log.INFO.Printf("Received new message: %s", d.Body)
+	log.INFO.Printf("Received new message: %s", delivery.Body)
 
 	err := taskProcessor.Process(signature)
-	d.Ack(multiple)
+	delivery.Ack(multiple)
 	return err
 }
 

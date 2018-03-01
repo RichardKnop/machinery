@@ -1,6 +1,7 @@
 package backends
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -157,7 +158,9 @@ func (b *EagerBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	}
 
 	state := new(tasks.TaskState)
-	if err := json.Unmarshal(tasktStateBytes, state); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(tasktStateBytes))
+	decoder.UseNumber()
+	if err := decoder.Decode(state); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal task state %v", b)
 	}
 
