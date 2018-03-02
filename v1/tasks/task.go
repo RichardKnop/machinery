@@ -109,9 +109,11 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 	// Convert reflect values to task results
 	taskResults = make([]*TaskResult, len(results)-1)
 	for i := 0; i < len(results)-1; i++ {
+		val := results[i].Interface()
+		typeStr := reflect.TypeOf(val).String()
 		taskResults[i] = &TaskResult{
-			Type:  reflect.TypeOf(results[i].Interface()).String(),
-			Value: results[i].Interface(),
+			Type:  typeStr,
+			Value: val,
 		}
 	}
 

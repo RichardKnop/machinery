@@ -94,6 +94,7 @@ func startServer() (*machinery.Server, error) {
 		"sum_ints":          exampletasks.SumInts,
 		"sum_floats":        exampletasks.SumFloats,
 		"concat":            exampletasks.Concat,
+		"split":             exampletasks.Split,
 		"panic_task":        exampletasks.PanicTask,
 		"long_running_task": exampletasks.LongRunningTask,
 	}
@@ -121,11 +122,11 @@ func send() error {
 	}
 
 	var (
-		addTask0, addTask1, addTask2           tasks.Signature
-		multiplyTask0, multiplyTask1           tasks.Signature
-		sumIntsTask, sumFloatsTask, concatTask tasks.Signature
-		panicTask                              tasks.Signature
-		longRunningTask                        tasks.Signature
+		addTask0, addTask1, addTask2                      tasks.Signature
+		multiplyTask0, multiplyTask1                      tasks.Signature
+		sumIntsTask, sumFloatsTask, concatTask, splitTask tasks.Signature
+		panicTask                                         tasks.Signature
+		longRunningTask                                   tasks.Signature
 	)
 
 	var initTasks = func() {
@@ -215,6 +216,16 @@ func send() error {
 			},
 		}
 
+		splitTask = tasks.Signature{
+			Name: "split",
+			Args: []tasks.Arg{
+				{
+					Type:  "string",
+					Value: "foo",
+				},
+			},
+		}
+
 		panicTask = tasks.Signature{
 			Name: "panic_task",
 		}
@@ -242,7 +253,7 @@ func send() error {
 	log.INFO.Printf("1 + 1 = %v\n", tasks.HumanReadableResults(results))
 
 	/*
-	 * Try couple of tasks with a slice argument
+	 * Try couple of tasks with a slice argument and slice return value
 	 */
 	asyncResult, err = server.SendTask(&sumIntsTask)
 	if err != nil {
@@ -276,6 +287,17 @@ func send() error {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
 	log.INFO.Printf("concat([\"foo\", \"bar\"]) = %v\n", tasks.HumanReadableResults(results))
+
+	asyncResult, err = server.SendTask(&splitTask)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("split([\"foo\"]) = %v\n", tasks.HumanReadableResults(results))
 
 	/*
 	 * Now let's explore ways of sending multiple tasks
