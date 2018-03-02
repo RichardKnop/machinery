@@ -47,7 +47,7 @@ func TestTaskReflectArgs(t *testing.T) {
 	args := []tasks.Arg{
 		{
 			Type:  "[]int64",
-			Value: []interface{}{int64(1), int64(2)},
+			Value: []int64{1, 2},
 		},
 	}
 
