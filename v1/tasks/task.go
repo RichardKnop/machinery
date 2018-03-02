@@ -109,11 +109,20 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 	// is not the case, return error message, otherwise propagate the task error
 	// to the caller
 	if !lastResult.IsNil() {
+		// If the result implements Retriable interface, return instance of Retriable
+		retriableErrorInterface := reflect.TypeOf((*Retriable)(nil)).Elem()
+		if lastResult.Type().Implements(retriableErrorInterface) {
+			return nil, lastResult.Interface().(ErrRetryTaskLater)
+		}
+
+		// Otherwise, check that the result implements the standard error interface,
+		// if not, return ErrLastReturnValueMustBeError error
 		errorInterface := reflect.TypeOf((*error)(nil)).Elem()
 		if !lastResult.Type().Implements(errorInterface) {
 			return nil, ErrLastReturnValueMustBeError
 		}
 
+		// Return the standard error
 		return nil, lastResult.Interface().(error)
 	}
 

@@ -514,6 +514,12 @@ You can set a number of retry attempts before declaring task as failed. Fibonacc
 signature.RetryCount = 3
 ```
 
+Alternatively, you can return `tasks.ErrRetryTaskLater` from your task and specify duration after which the task should be retried, e.g.:
+
+```go
+return tasks.NewErrRetryTaskLater("some error", 4 * time.Hour)
+```
+
 #### Get Pending Tasks
 
 Tasks currently waiting in the queue to be consumed by workers can be inspected, e.g.:
