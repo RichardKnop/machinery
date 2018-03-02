@@ -149,21 +149,18 @@ func reflectValues(valueType string, value interface{}) (reflect.Value, error) {
 	}
 	var theValue reflect.Value
 
-	values, ok := value.([]interface{})
-	if !ok {
-		return reflect.Value{}, typeConversionError(value, theType.String())
-	}
-
 	// Booleans
 	if theType.String() == "[]bool" {
-		bools, err := getBoolValues(strings.Split(theType.String(), "[]")[1], values)
-		if err != nil {
-			return reflect.Value{}, err
-		}
+		bools := reflect.ValueOf(value)
 
-		theValue = reflect.MakeSlice(theType, len(bools), len(bools))
-		for i, v := range bools {
-			theValue.Index(i).SetBool(v)
+		theValue = reflect.MakeSlice(theType, bools.Len(), bools.Len())
+		for i := 0; i < bools.Len(); i++ {
+			boolValue, err := getBoolValue(strings.Split(theType.String(), "[]")[1], bools.Index(i).Interface())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+
+			theValue.Index(i).SetBool(boolValue)
 		}
 
 		return theValue, nil
@@ -171,14 +168,16 @@ func reflectValues(valueType string, value interface{}) (reflect.Value, error) {
 
 	// Integers
 	if strings.HasPrefix(theType.String(), "[]int") {
-		ints, err := getIntValues(strings.Split(theType.String(), "[]")[1], values)
-		if err != nil {
-			return reflect.Value{}, err
-		}
+		ints := reflect.ValueOf(value)
 
-		theValue = reflect.MakeSlice(theType, len(ints), len(ints))
-		for i, v := range ints {
-			theValue.Index(i).SetInt(v)
+		theValue = reflect.MakeSlice(theType, ints.Len(), ints.Len())
+		for i := 0; i < ints.Len(); i++ {
+			intValue, err := getIntValue(strings.Split(theType.String(), "[]")[1], ints.Index(i).Interface())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+
+			theValue.Index(i).SetInt(intValue)
 		}
 
 		return theValue, nil
@@ -186,14 +185,16 @@ func reflectValues(valueType string, value interface{}) (reflect.Value, error) {
 
 	// Unsigned integers
 	if strings.HasPrefix(theType.String(), "[]uint") {
-		uints, err := getUintValues(strings.Split(theType.String(), "[]")[1], values)
-		if err != nil {
-			return reflect.Value{}, err
-		}
+		uints := reflect.ValueOf(value)
 
-		theValue = reflect.MakeSlice(theType, len(uints), len(uints))
-		for i, v := range uints {
-			theValue.Index(i).SetUint(v)
+		theValue = reflect.MakeSlice(theType, uints.Len(), uints.Len())
+		for i := 0; i < uints.Len(); i++ {
+			uintValue, err := getUintValue(strings.Split(theType.String(), "[]")[1], uints.Index(i).Interface())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+
+			theValue.Index(i).SetUint(uintValue)
 		}
 
 		return theValue, nil
@@ -201,14 +202,16 @@ func reflectValues(valueType string, value interface{}) (reflect.Value, error) {
 
 	// Floating point numbers
 	if strings.HasPrefix(theType.String(), "[]float") {
-		floats, err := getFloatValues(strings.Split(theType.String(), "[]")[1], values)
-		if err != nil {
-			return reflect.Value{}, err
-		}
+		floats := reflect.ValueOf(value)
 
-		theValue = reflect.MakeSlice(theType, len(floats), len(floats))
-		for i, v := range floats {
-			theValue.Index(i).SetFloat(v)
+		theValue = reflect.MakeSlice(theType, floats.Len(), floats.Len())
+		for i := 0; i < floats.Len(); i++ {
+			floatValue, err := getFloatValue(strings.Split(theType.String(), "[]")[1], floats.Index(i).Interface())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+
+			theValue.Index(i).SetFloat(floatValue)
 		}
 
 		return theValue, nil
@@ -216,14 +219,16 @@ func reflectValues(valueType string, value interface{}) (reflect.Value, error) {
 
 	// Strings
 	if theType.String() == "[]string" {
-		strs, err := getStringValues(strings.Split(theType.String(), "[]")[1], values)
-		if err != nil {
-			return reflect.Value{}, err
-		}
+		strs := reflect.ValueOf(value)
 
-		theValue = reflect.MakeSlice(theType, len(strs), len(strs))
-		for i, v := range strs {
-			theValue.Index(i).SetString(v)
+		theValue = reflect.MakeSlice(theType, strs.Len(), strs.Len())
+		for i := 0; i < strs.Len(); i++ {
+			strValue, err := getStringValue(strings.Split(theType.String(), "[]")[1], strs.Index(i).Interface())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+
+			theValue.Index(i).SetString(strValue)
 		}
 
 		return theValue, nil
@@ -315,71 +320,6 @@ func getStringValue(theType string, value interface{}) (string, error) {
 	}
 
 	return s, nil
-}
-
-func getBoolValues(theType string, values []interface{}) ([]bool, error) {
-	bools := make([]bool, len(values))
-	for i, v := range values {
-		boolValue, err := getBoolValue(theType, v)
-		if err != nil {
-			return []bool{}, err
-		}
-		bools[i] = boolValue
-	}
-
-	return bools, nil
-}
-
-func getIntValues(theType string, values []interface{}) ([]int64, error) {
-	ints := make([]int64, len(values))
-	for i, v := range values {
-		intValue, err := getIntValue(theType, v)
-		if err != nil {
-			return []int64{}, err
-		}
-		ints[i] = intValue
-	}
-
-	return ints, nil
-}
-
-func getUintValues(theType string, values []interface{}) ([]uint64, error) {
-	uints := make([]uint64, len(values))
-	for i, v := range values {
-		uintValue, err := getUintValue(theType, v)
-		if err != nil {
-			return []uint64{}, err
-		}
-		uints[i] = uintValue
-	}
-
-	return uints, nil
-}
-
-func getFloatValues(theType string, values []interface{}) ([]float64, error) {
-	floats := make([]float64, len(values))
-	for i, v := range values {
-		floatValue, err := getFloatValue(theType, v)
-		if err != nil {
-			return []float64{}, err
-		}
-		floats[i] = floatValue
-	}
-
-	return floats, nil
-}
-
-func getStringValues(theType string, values []interface{}) ([]string, error) {
-	strs := make([]string, len(values))
-	for i, v := range values {
-		stringValue, err := getStringValue(theType, v)
-		if err != nil {
-			return []string{}, err
-		}
-		strs[i] = stringValue
-	}
-
-	return strs, nil
 }
 
 // IsContextType checks to see if the type is a context.Context
