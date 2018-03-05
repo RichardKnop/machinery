@@ -323,7 +323,7 @@ func send() error {
 	}
 	log.INFO.Printf("concat([\"foo\", \"bar\"]) = %v\n", tasks.HumanReadableResults(results))
 
-	asyncResult, err = server.SendTask(&splitTask)
+	asyncResult, err = server.SendTaskWithContext(ctx, &splitTask)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
