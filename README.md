@@ -656,7 +656,7 @@ signature2 := tasks.Signature{
   },
 }
 
-group := tasks.NewGroup(&signature1, &signature2)
+group, _ := tasks.NewGroup(&signature1, &signature2)
 asyncResults, err := server.SendGroup(group)
 if err != nil {
   // failed to send the group
@@ -722,7 +722,7 @@ signature3 := tasks.Signature{
 }
 
 group := tasks.NewGroup(&signature1, &signature2)
-chord := tasks.NewChord(group, &signature3)
+chord, _ := tasks.NewChord(group, &signature3)
 chordAsyncResult, err := server.SendChord(chord)
 if err != nil {
   // failed to send the chord
@@ -803,7 +803,7 @@ signature3 := tasks.Signature{
   },
 }
 
-chain := tasks.NewChain(&signature1, &signature2, &signature3)
+chain, _ := tasks.NewChain(&signature1, &signature2, &signature3)
 chainAsyncResult, err := server.SendChain(chain)
 if err != nil {
   // failed to send the chain
