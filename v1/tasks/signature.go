@@ -59,10 +59,17 @@ type Signature struct {
 }
 
 // NewSignature creates a new task signature
-func NewSignature(name string, args []Arg) *Signature {
+func NewSignature(name string, args []Arg) (*Signature, error) {
+
+	signatureID, err := uuid.NewV4()
+
+	if err != nil {
+		return nil, fmt.Errorf("Error generating signature id: %s", err.Error())
+	}
+
 	return &Signature{
-		UUID: fmt.Sprintf("task_%v", uuid.NewV4()),
+		UUID: fmt.Sprintf("task_%v", signatureID),
 		Name: name,
 		Args: args,
-	}
+	}, nil
 }

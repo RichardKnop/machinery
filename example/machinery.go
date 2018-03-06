@@ -264,7 +264,13 @@ func send() error {
 	span, ctx := opentracing.StartSpanFromContext(context.Background(), "send")
 	defer span.Finish()
 
-	batchID := uuid.NewV4().String()
+	batchUUID, err := uuid.NewV4()
+
+	if err != nil {
+		return fmt.Errorf("Error generating batch id: %s", err.Error())
+	}
+
+	batchID := batchUUID.String()
 	span.SetBaggageItem("batch.id", batchID)
 	span.LogFields(opentracing_log.String("batch.id", batchID))
 
@@ -342,7 +348,11 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Group of tasks (parallel execution):")
 
-	group := tasks.NewGroup(&addTask0, &addTask1, &addTask2)
+	group, err := tasks.NewGroup(&addTask0, &addTask1, &addTask2)
+	if err != nil {
+		return fmt.Errorf("Error creating group: %s", err.Error())
+	}
+
 	asyncResults, err := server.SendGroupWithContext(ctx, group, 10)
 	if err != nil {
 		return fmt.Errorf("Could not send group: %s", err.Error())
@@ -365,8 +375,16 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Group of tasks with a callback (chord):")
 
-	group = tasks.NewGroup(&addTask0, &addTask1, &addTask2)
-	chord := tasks.NewChord(group, &multiplyTask1)
+	group, err = tasks.NewGroup(&addTask0, &addTask1, &addTask2)
+	if err != nil {
+		return fmt.Errorf("Error creating group: %s", err.Error())
+	}
+
+	chord, err := tasks.NewChord(group, &multiplyTask1)
+	if err != nil {
+		return fmt.Errorf("Error creating chord: %s", err)
+	}
+
 	chordAsyncResult, err := server.SendChordWithContext(ctx, chord, 10)
 	if err != nil {
 		return fmt.Errorf("Could not send chord: %s", err.Error())
@@ -382,7 +400,11 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Chain of tasks:")
 
-	chain := tasks.NewChain(&addTask0, &addTask1, &addTask2, &multiplyTask0)
+	chain, err := tasks.NewChain(&addTask0, &addTask1, &addTask2, &multiplyTask0)
+	if err != nil {
+		return fmt.Errorf("Error creating chain: %s", err)
+	}
+
 	chainAsyncResult, err := server.SendChainWithContext(ctx, chain)
 	if err != nil {
 		return fmt.Errorf("Could not send chain: %s", err.Error())
