@@ -2,6 +2,7 @@ package exampletasks
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/log"
@@ -50,6 +51,11 @@ func Concat(strs []string) (string, error) {
 		res += s
 	}
 	return res, nil
+}
+
+// Split ...
+func Split(str string) ([]string, error) {
+	return strings.Split(str, ""), nil
 }
 
 // PanicTask ...

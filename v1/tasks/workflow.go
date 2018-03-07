@@ -35,11 +35,18 @@ func (group *Group) GetUUIDs() []string {
 
 // NewChain creates a new chain of tasks to be processed one by one, passing
 // results unless task signatures are set to be immutable
-func NewChain(signatures ...*Signature) *Chain {
+func NewChain(signatures ...*Signature) (*Chain, error) {
 	// Auto generate task UUIDs if needed
 	for _, signature := range signatures {
 		if signature.UUID == "" {
-			signature.UUID = fmt.Sprintf("task_%v", uuid.NewV4())
+
+			signatureID, err := uuid.NewV4()
+
+			if err != nil {
+				return nil, fmt.Errorf("Error generating signature id: %s", err.Error())
+			}
+
+			signature.UUID = fmt.Sprintf("task_%v", signatureID)
 		}
 	}
 
@@ -51,39 +58,58 @@ func NewChain(signatures ...*Signature) *Chain {
 
 	chain := &Chain{Tasks: signatures}
 
-	return chain
+	return chain, nil
 }
 
 // NewGroup creates a new group of tasks to be processed in parallel
-func NewGroup(signatures ...*Signature) *Group {
+func NewGroup(signatures ...*Signature) (*Group, error) {
 	// Generate a group UUID
-	groupUUID := fmt.Sprintf("group_%v", uuid.NewV4())
+	groupUUID, err := uuid.NewV4()
+
+	if err != nil {
+		return nil, fmt.Errorf("Error generating group uuid: %s", err.Error())
+	}
+
+	groupID := fmt.Sprintf("group_%v", groupUUID)
 
 	// Auto generate task UUIDs if needed, group tasks by common group UUID
 	for _, signature := range signatures {
 		if signature.UUID == "" {
-			signature.UUID = fmt.Sprintf("task_%v", uuid.NewV4())
+
+			signatureID, err := uuid.NewV4()
+
+			if err != nil {
+				return nil, fmt.Errorf("Error generating signature id: %s", err.Error())
+			}
+
+			signature.UUID = fmt.Sprintf("task_%v", signatureID)
 		}
-		signature.GroupUUID = groupUUID
+		signature.GroupUUID = groupID
 		signature.GroupTaskCount = len(signatures)
 	}
 
 	return &Group{
-		GroupUUID: groupUUID,
+		GroupUUID: groupID,
 		Tasks:     signatures,
-	}
+	}, nil
 }
 
 // NewChord creates a new chord (a group of tasks with a single callback
 // to be executed after all tasks in the group has completed)
-func NewChord(group *Group, callback *Signature) *Chord {
+func NewChord(group *Group, callback *Signature) (*Chord, error) {
 	// Generate a UUID for the chord callback
-	callback.UUID = fmt.Sprintf("chord_%v", uuid.NewV4())
+	callbackID, err := uuid.NewV4()
+
+	if err != nil {
+		return nil, fmt.Errorf("Error generating callback id: %s", err.Error())
+	}
+
+	callback.UUID = fmt.Sprintf("chord_%v", callbackID)
 
 	// Add a chord callback to all tasks
 	for _, signature := range group.Tasks {
 		signature.ChordCallback = callback
 	}
 
-	return &Chord{Group: group, Callback: callback}
+	return &Chord{Group: group, Callback: callback}, nil
 }

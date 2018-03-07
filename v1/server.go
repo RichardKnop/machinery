@@ -1,15 +1,20 @@
 package machinery
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
+
+	opentracing "github.com/opentracing/opentracing-go"
+
+	"github.com/satori/go.uuid"
 
 	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/satori/go.uuid"
+	"github.com/RichardKnop/machinery/v1/tracing"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -125,6 +130,18 @@ func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
 	return taskFunc, nil
 }
 
+// SendTaskWithContext will inject the trace context in the signature headers before publishing it
+func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.Signature) (*backends.AsyncResult, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "SendTask", tracing.ProducerOption(), tracing.MachineryTag)
+	defer span.Finish()
+
+	// tag the span with some info about the signature
+	signature.Headers = tracing.HeadersWithSpan(signature.Headers, span)
+
+	// Send it on to SendTask as normal
+	return server.SendTask(signature)
+}
+
 // SendTask publishes a task to the default queue
 func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResult, error) {
 	// Make sure result backend is defined
@@ -134,7 +151,14 @@ func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResul
 
 	// Auto generate a UUID if not set already
 	if signature.UUID == "" {
-		signature.UUID = fmt.Sprintf("task_%v", uuid.NewV4())
+
+		taskID, err := uuid.NewV4()
+
+		if err != nil {
+			return nil, fmt.Errorf("Error generating task id: %s", err.Error())
+		}
+
+		signature.UUID = fmt.Sprintf("task_%v", taskID)
 	}
 
 	// Set initial task state to PENDING
@@ -149,6 +173,16 @@ func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResul
 	return backends.NewAsyncResult(signature, server.backend), nil
 }
 
+// SendChainWithContext will inject the trace context in all the signature headers before publishing it
+func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain) (*backends.ChainAsyncResult, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "SendChain", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChainTag)
+	defer span.Finish()
+
+	tracing.AnnotateSpanWithChainInfo(span, chain)
+
+	return server.SendChain(chain)
+}
+
 // SendChain triggers a chain of tasks
 func (server *Server) SendChain(chain *tasks.Chain) (*backends.ChainAsyncResult, error) {
 	_, err := server.SendTask(chain.Tasks[0])
@@ -157,6 +191,16 @@ func (server *Server) SendChain(chain *tasks.Chain) (*backends.ChainAsyncResult,
 	}
 
 	return backends.NewChainAsyncResult(chain.Tasks, server.backend), nil
+}
+
+// SendGroupWithContext will inject the trace context in all the signature headers before publishing it
+func (server *Server) SendGroupWithContext(ctx context.Context, group *tasks.Group, sendConcurrency int) ([]*backends.AsyncResult, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "SendGroup", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowGroupTag)
+	defer span.Finish()
+
+	tracing.AnnotateSpanWithGroupInfo(span, group, sendConcurrency)
+
+	return server.SendGroup(group, sendConcurrency)
 }
 
 // SendGroup triggers a group of parallel tasks
@@ -228,6 +272,16 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*bac
 	case <-done:
 		return asyncResults, nil
 	}
+}
+
+// SendChordWithContext will inject the trace context in all the signature headers before publishing it
+func (server *Server) SendChordWithContext(ctx context.Context, chord *tasks.Chord, sendConcurrency int) (*backends.ChordAsyncResult, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "SendChord", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChordTag)
+	defer span.Finish()
+
+	tracing.AnnotateSpanWithChordInfo(span, chord, sendConcurrency)
+
+	return server.SendChord(chord, sendConcurrency)
 }
 
 // SendChord triggers a group of parallel tasks with a callback
