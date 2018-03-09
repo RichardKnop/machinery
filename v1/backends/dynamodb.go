@@ -388,6 +388,9 @@ func (b *DynamoDBBackend) initTaskState(taskState *tasks.TaskState) error {
 		Item:      av,
 		TableName: aws.String(b.cnf.DynamoDB.TaskStatesTable),
 	}
+	if err != nil {
+		return err
+	}
 	_, err = b.client.PutItem(input)
 
 	if err != nil {
