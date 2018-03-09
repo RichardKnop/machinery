@@ -13,6 +13,7 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/RichardKnop/machinery)](https://goreportcard.com/report/github.com/RichardKnop/machinery)
 [![GolangCI](https://golangci.com/badges/github.com/RichardKnop/machinery.svg)](https://golangci.com)
+[![OpenTracing Badge](https://img.shields.io/badge/OpenTracing-enabled-blue.svg)](http://opentracing.io)
 
 [![Sourcegraph for RichardKnop/machinery](https://sourcegraph.com/github.com/RichardKnop/machinery/-/badge.svg)](https://sourcegraph.com/github.com/RichardKnop/machinery?badge)
 [![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://richardknop.github.io/donate/)
@@ -526,6 +527,12 @@ You can set a number of retry attempts before declaring task as failed. Fibonacc
 signature.RetryCount = 3
 ```
 
+Alternatively, you can return `tasks.ErrRetryTaskLater` from your task and specify duration after which the task should be retried, e.g.:
+
+```go
+return tasks.NewErrRetryTaskLater("some error", 4 * time.Hour)
+```
+
 #### Get Pending Tasks
 
 Tasks currently waiting in the queue to be consumed by workers can be inspected, e.g.:
@@ -662,7 +669,7 @@ signature2 := tasks.Signature{
   },
 }
 
-group := tasks.NewGroup(&signature1, &signature2)
+group, _ := tasks.NewGroup(&signature1, &signature2)
 asyncResults, err := server.SendGroup(group)
 if err != nil {
   // failed to send the group
@@ -728,7 +735,7 @@ signature3 := tasks.Signature{
 }
 
 group := tasks.NewGroup(&signature1, &signature2)
-chord := tasks.NewChord(group, &signature3)
+chord, _ := tasks.NewChord(group, &signature3)
 chordAsyncResult, err := server.SendChord(chord)
 if err != nil {
   // failed to send the chord
@@ -809,7 +816,7 @@ signature3 := tasks.Signature{
   },
 }
 
-chain := tasks.NewChain(&signature1, &signature2, &signature3)
+chain, _ := tasks.NewChain(&signature1, &signature2, &signature3)
 chainAsyncResult, err := server.SendChain(chain)
 if err != nil {
   // failed to send the chain

@@ -1,6 +1,7 @@
 package backends
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -181,7 +182,9 @@ func (b *RedisBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	}
 
 	state := new(tasks.TaskState)
-	if err := json.Unmarshal(item, state); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(item))
+	decoder.UseNumber()
+	if err := decoder.Decode(state); err != nil {
 		return nil, err
 	}
 
@@ -225,7 +228,9 @@ func (b *RedisBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) 
 	}
 
 	groupMeta := new(tasks.GroupMeta)
-	if err := json.Unmarshal(item, groupMeta); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(item))
+	decoder.UseNumber()
+	if err := decoder.Decode(groupMeta); err != nil {
 		return nil, err
 	}
 
@@ -251,13 +256,15 @@ func (b *RedisBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error
 	}
 
 	for i, value := range reply {
-		bytes, ok := value.([]byte)
+		stateBytes, ok := value.([]byte)
 		if !ok {
 			return taskStates, fmt.Errorf("Expected byte array, instead got: %v", value)
 		}
 
 		taskState := new(tasks.TaskState)
-		if err := json.Unmarshal(bytes, taskState); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(stateBytes))
+		decoder.UseNumber()
+		if err := decoder.Decode(taskState); err != nil {
 			log.ERROR.Print(err)
 			return taskStates, err
 		}

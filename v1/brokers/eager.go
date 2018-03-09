@@ -1,6 +1,7 @@
 package brokers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,8 +49,9 @@ func (eagerBroker *EagerBroker) Publish(task *tasks.Signature) error {
 	}
 
 	signature := new(tasks.Signature)
-	err = json.Unmarshal(message, &signature)
-	if err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(message))
+	decoder.UseNumber()
+	if err := decoder.Decode(signature); err != nil {
 		return fmt.Errorf("JSON unmarshal error: %s", err)
 	}
 

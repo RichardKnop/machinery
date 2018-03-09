@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"time"
+
+	opentracing "github.com/opentracing/opentracing-go"
+	opentracing_log "github.com/opentracing/opentracing-go/log"
+
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -13,6 +19,7 @@ import (
 	"github.com/urfave/cli"
 
 	exampletasks "github.com/RichardKnop/machinery/example/tasks"
+	tracers "github.com/RichardKnop/machinery/example/tracers"
 )
 
 var (
@@ -94,6 +101,7 @@ func startServer() (*machinery.Server, error) {
 		"sum_ints":          exampletasks.SumInts,
 		"sum_floats":        exampletasks.SumFloats,
 		"concat":            exampletasks.Concat,
+		"split":             exampletasks.Split,
 		"panic_task":        exampletasks.PanicTask,
 		"long_running_task": exampletasks.LongRunningTask,
 	}
@@ -102,6 +110,14 @@ func startServer() (*machinery.Server, error) {
 }
 
 func worker() error {
+	consumerTag := "machinery_worker"
+
+	cleanup, err := tracers.SetupTracer(consumerTag)
+	if err != nil {
+		log.FATAL.Fatalln("Unable to instantiate a tracer:", err)
+	}
+	defer cleanup()
+
 	server, err := startServer()
 	if err != nil {
 		return err
@@ -109,23 +125,29 @@ func worker() error {
 
 	// The second argument is a consumer tag
 	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
-	worker := server.NewWorker("machinery_worker", 0)
+	worker := server.NewWorker(consumerTag, 0)
 
 	return worker.Launch()
 }
 
 func send() error {
+	cleanup, err := tracers.SetupTracer("sender")
+	if err != nil {
+		log.FATAL.Fatalln("Unable to instantiate a tracer:", err)
+	}
+	defer cleanup()
+
 	server, err := startServer()
 	if err != nil {
 		return err
 	}
 
 	var (
-		addTask0, addTask1, addTask2           tasks.Signature
-		multiplyTask0, multiplyTask1           tasks.Signature
-		sumIntsTask, sumFloatsTask, concatTask tasks.Signature
-		panicTask                              tasks.Signature
-		longRunningTask                        tasks.Signature
+		addTask0, addTask1, addTask2                      tasks.Signature
+		multiplyTask0, multiplyTask1                      tasks.Signature
+		sumIntsTask, sumFloatsTask, concatTask, splitTask tasks.Signature
+		panicTask                                         tasks.Signature
+		longRunningTask                                   tasks.Signature
 	)
 
 	var initTasks = func() {
@@ -215,6 +237,16 @@ func send() error {
 			},
 		}
 
+		splitTask = tasks.Signature{
+			Name: "split",
+			Args: []tasks.Arg{
+				{
+					Type:  "string",
+					Value: "foo",
+				},
+			},
+		}
+
 		panicTask = tasks.Signature{
 			Name: "panic_task",
 		}
@@ -225,12 +257,32 @@ func send() error {
 	}
 
 	/*
+	 * Lets start a span representing this run of the `send` command and
+	 * set a batch id as baggage so it can travel all the way into
+	 * the worker functions.
+	 */
+	span, ctx := opentracing.StartSpanFromContext(context.Background(), "send")
+	defer span.Finish()
+
+	batchUUID, err := uuid.NewV4()
+
+	if err != nil {
+		return fmt.Errorf("Error generating batch id: %s", err.Error())
+	}
+
+	batchID := batchUUID.String()
+	span.SetBaggageItem("batch.id", batchID)
+	span.LogFields(opentracing_log.String("batch.id", batchID))
+
+	log.INFO.Println("Starting batch:", batchID)
+	/*
 	 * First, let's try sending a single task
 	 */
 	initTasks()
+
 	log.INFO.Println("Single task:")
 
-	asyncResult, err := server.SendTask(&addTask0)
+	asyncResult, err := server.SendTaskWithContext(ctx, &addTask0)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
@@ -242,9 +294,9 @@ func send() error {
 	log.INFO.Printf("1 + 1 = %v\n", tasks.HumanReadableResults(results))
 
 	/*
-	 * Try couple of tasks with a slice argument
+	 * Try couple of tasks with a slice argument and slice return value
 	 */
-	asyncResult, err = server.SendTask(&sumIntsTask)
+	asyncResult, err = server.SendTaskWithContext(ctx, &sumIntsTask)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
@@ -255,7 +307,7 @@ func send() error {
 	}
 	log.INFO.Printf("sum([1, 2]) = %v\n", tasks.HumanReadableResults(results))
 
-	asyncResult, err = server.SendTask(&sumFloatsTask)
+	asyncResult, err = server.SendTaskWithContext(ctx, &sumFloatsTask)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
@@ -266,7 +318,7 @@ func send() error {
 	}
 	log.INFO.Printf("sum([1.5, 2.7]) = %v\n", tasks.HumanReadableResults(results))
 
-	asyncResult, err = server.SendTask(&concatTask)
+	asyncResult, err = server.SendTaskWithContext(ctx, &concatTask)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
@@ -277,6 +329,17 @@ func send() error {
 	}
 	log.INFO.Printf("concat([\"foo\", \"bar\"]) = %v\n", tasks.HumanReadableResults(results))
 
+	asyncResult, err = server.SendTaskWithContext(ctx, &splitTask)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("split([\"foo\"]) = %v\n", tasks.HumanReadableResults(results))
+
 	/*
 	 * Now let's explore ways of sending multiple tasks
 	 */
@@ -285,8 +348,12 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Group of tasks (parallel execution):")
 
-	group := tasks.NewGroup(&addTask0, &addTask1, &addTask2)
-	asyncResults, err := server.SendGroup(group, 10)
+	group, err := tasks.NewGroup(&addTask0, &addTask1, &addTask2)
+	if err != nil {
+		return fmt.Errorf("Error creating group: %s", err.Error())
+	}
+
+	asyncResults, err := server.SendGroupWithContext(ctx, group, 10)
 	if err != nil {
 		return fmt.Errorf("Could not send group: %s", err.Error())
 	}
@@ -308,9 +375,17 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Group of tasks with a callback (chord):")
 
-	group = tasks.NewGroup(&addTask0, &addTask1, &addTask2)
-	chord := tasks.NewChord(group, &multiplyTask1)
-	chordAsyncResult, err := server.SendChord(chord, 10)
+	group, err = tasks.NewGroup(&addTask0, &addTask1, &addTask2)
+	if err != nil {
+		return fmt.Errorf("Error creating group: %s", err.Error())
+	}
+
+	chord, err := tasks.NewChord(group, &multiplyTask1)
+	if err != nil {
+		return fmt.Errorf("Error creating chord: %s", err)
+	}
+
+	chordAsyncResult, err := server.SendChordWithContext(ctx, chord, 10)
 	if err != nil {
 		return fmt.Errorf("Could not send chord: %s", err.Error())
 	}
@@ -325,8 +400,12 @@ func send() error {
 	initTasks()
 	log.INFO.Println("Chain of tasks:")
 
-	chain := tasks.NewChain(&addTask0, &addTask1, &addTask2, &multiplyTask0)
-	chainAsyncResult, err := server.SendChain(chain)
+	chain, err := tasks.NewChain(&addTask0, &addTask1, &addTask2, &multiplyTask0)
+	if err != nil {
+		return fmt.Errorf("Error creating chain: %s", err)
+	}
+
+	chainAsyncResult, err := server.SendChainWithContext(ctx, chain)
 	if err != nil {
 		return fmt.Errorf("Could not send chain: %s", err.Error())
 	}
@@ -339,7 +418,7 @@ func send() error {
 
 	// Let's try a task which throws panic to make sure stack trace is not lost
 	initTasks()
-	asyncResult, err = server.SendTask(&panicTask)
+	asyncResult, err = server.SendTaskWithContext(ctx, &panicTask)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
@@ -352,7 +431,7 @@ func send() error {
 
 	// Let's try a long running task
 	initTasks()
-	asyncResult, err = server.SendTask(&longRunningTask)
+	asyncResult, err = server.SendTaskWithContext(ctx, &longRunningTask)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
