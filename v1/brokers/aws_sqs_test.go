@@ -166,7 +166,7 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	concurrency := 0
 	pool := make(chan struct{}, concurrency)
 	errorsChan := make(chan error)
-	deliveries := make(chan *sqs.ReceiveMessageOutput, 1)
+	deliveries := make(chan *sqs.ReceiveMessageOutput, 0)
 	server1, err := machinery.NewServer(cnf)
 	if err != nil {
 		t.Fatal(err)
@@ -197,13 +197,9 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	assert.Nil(t, err)
 
 	go func() { deliveries <- receiveMessageOutput }()
-	for {
-		time.Sleep(5 * time.Second)
-		if len(deliveries) > 0 {
-			go func() { pool <- struct{}{} }()
-			break
-		}
-	}
+	// wait for a while to fix racing problem
+	time.Sleep(5 * time.Second)
+	go func() { pool <- struct{}{} }()
 	whetherContinue, err = testAWSSQSBroker.ConsumeDeliveriesForTest(deliveries, concurrency, wk, pool, errorsChan)
 	p := <-pool
 	assert.True(t, whetherContinue)
