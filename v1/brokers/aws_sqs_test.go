@@ -166,7 +166,7 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	concurrency := 0
 	pool := make(chan struct{}, concurrency)
 	errorsChan := make(chan error)
-	deliveries := make(chan *sqs.ReceiveMessageOutput, 0)
+	deliveries := make(chan *sqs.ReceiveMessageOutput)
 	server1, err := machinery.NewServer(cnf)
 	if err != nil {
 		t.Fatal(err)
