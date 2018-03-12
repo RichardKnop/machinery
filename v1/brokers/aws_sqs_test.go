@@ -1,10 +1,7 @@
 package brokers_test
 
 import (
-	"testing"
-
 	"errors"
-
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -12,6 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
 var (
@@ -167,7 +166,7 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	concurrency := 0
 	pool := make(chan struct{}, concurrency)
 	errorsChan := make(chan error)
-	deliveries := make(chan *sqs.ReceiveMessageOutput)
+	deliveries := make(chan *sqs.ReceiveMessageOutput, 1)
 	server1, err := machinery.NewServer(cnf)
 	if err != nil {
 		t.Fatal(err)
@@ -197,8 +196,14 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	assert.NotNil(t, e)
 	assert.Nil(t, err)
 
-	go func() { pool <- struct{}{} }()
 	go func() { deliveries <- receiveMessageOutput }()
+	for {
+		time.Sleep(5 * time.Second)
+		if len(deliveries) > 0 {
+			go func() { pool <- struct{}{} }()
+			break
+		}
+	}
 	whetherContinue, err = testAWSSQSBroker.ConsumeDeliveriesForTest(deliveries, concurrency, wk, pool, errorsChan)
 	p := <-pool
 	assert.True(t, whetherContinue)
