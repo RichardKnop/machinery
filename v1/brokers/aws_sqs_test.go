@@ -202,6 +202,7 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	nextStep := make(chan bool, 1)
 	go func() {
 		defer wg.Done()
+		// nextStep <- true runs after defer wg.Done(), to make sure the next go routine runs after this go routine
 		nextStep <- true
 		deliveries <- receiveMessageOutput
 	}()
