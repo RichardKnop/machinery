@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
-	"time"
 )
 
 var (
@@ -196,11 +196,21 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	assert.NotNil(t, e)
 	assert.Nil(t, err)
 
-	go func() { deliveries <- receiveMessageOutput }()
-	// wait for a while to fix racing problem
-	time.Sleep(5 * time.Second)
-	go func() { pool <- struct{}{} }()
+	// using a wait group and a channel to fix the racing problem
+	var wg sync.WaitGroup
+	wg.Add(1)
+	nextStep := make(chan bool, 1)
+	go func() {
+		defer wg.Done()
+		nextStep <- true
+		deliveries <- receiveMessageOutput
+	}()
+	if <-nextStep {
+		// <-pool will block the routine in the following steps, so pool <- struct{}{} will be executed for sure
+		go func() { wg.Wait(); pool <- struct{}{} }()
+	}
 	whetherContinue, err = testAWSSQSBroker.ConsumeDeliveriesForTest(deliveries, concurrency, wk, pool, errorsChan)
+	// the pool shouldn't be consumed
 	p := <-pool
 	assert.True(t, whetherContinue)
 	assert.NotNil(t, p)
