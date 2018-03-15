@@ -2,6 +2,9 @@ package brokers_test
 
 import (
 	"errors"
+	"sync"
+	"testing"
+
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -9,8 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/assert"
-	"sync"
-	"testing"
 )
 
 var (
