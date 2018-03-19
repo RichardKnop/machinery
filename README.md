@@ -131,6 +131,25 @@ https://sqs.us-east-2.amazonaws.com/123456789012
 See [AWS SQS docs](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html) for more information.
 Also, configuring `AWS_REGION` is required, or an error would be thrown.
 
+To use a manually configured SQS Client:
+
+```go
+var sqsClient = sqs.New(session.Must(session.NewSession(&aws.Config{
+  Region:         aws.String("YOUR_AWS_REGION"),
+  Credentials:    credentials.NewStaticCredentials("YOUR_AWS_ACCESS_KEY", "YOUR_AWS_ACCESS_SECRET", ""),
+  HTTPClient:     &http.Client{
+    Timeout: time.Second * 120,
+  },
+})))
+var cnf = &config.Config{
+  Broker:          "YOUR_SQS_URL"
+  DefaultQueue:    "machinery_tasks",
+  SQS: &config.SQSConfig{
+    Client: sqsClient,
+  },
+}
+```
+
 #### DefaultQueue
 
 Default queue name, e.g. `machinery_tasks`.
@@ -889,6 +908,15 @@ export AMQP_URL=amqp://guest:guest@localhost:5672/
 export REDIS_URL=127.0.0.1:6379
 export MEMCACHE_URL=127.0.0.1:11211
 export MONGODB_URL=127.0.0.1:27017
+```
+
+To run integration tests against an SQS instance, you will need to create a "test_queue" in SQS and export these environment variables:
+
+```sh
+export SQS_URL=https://YOUR_SQS_URL
+export AWS_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
+export AWS_DEFAULT_REGION=YOUR_AWS_DEFAULT_REGION
 ```
 
 Then just run:
