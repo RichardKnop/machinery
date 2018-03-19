@@ -317,7 +317,7 @@ func DummyTask(arg string) error {
 }
 
 // You can also return multiple results from the task
-func DummyTask2(arg1, arg2 string) (string, string error) {
+func DummyTask2(arg1, arg2 string) (string, string, error) {
   return arg1, arg2, nil
 }
 ```
