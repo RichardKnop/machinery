@@ -1,5 +1,7 @@
 package tasks
 
+import "time"
+
 const (
 	// StatePending - initial state of a task
 	StatePending = "PENDING"
@@ -17,27 +19,30 @@ const (
 
 // TaskState represents a state of a task
 type TaskState struct {
-	TaskUUID string        `bson:"_id"`
-	State    string        `bson:"state"`
-	Results  []*TaskResult `bson:"results"`
-	Error    string        `bson:"error"`
+	TaskUUID  string        `bson:"_id"`
+	State     string        `bson:"state"`
+	Results   []*TaskResult `bson:"results"`
+	Error     string        `bson:"error"`
+	CreatedAt time.Time     `bson:"created_at"`
 }
 
 // GroupMeta stores useful metadata about tasks within the same group
 // E.g. UUIDs of all tasks which are used in order to check if all tasks
 // completed successfully or not and thus whether to trigger chord callback
 type GroupMeta struct {
-	GroupUUID      string   `bson:"_id"`
-	TaskUUIDs      []string `bson:"task_uuids"`
-	ChordTriggered bool     `bson:"chord_triggered"`
-	Lock           bool     `bson:"lock"`
+	GroupUUID      string    `bson:"_id"`
+	TaskUUIDs      []string  `bson:"task_uuids"`
+	ChordTriggered bool      `bson:"chord_triggered"`
+	Lock           bool      `bson:"lock"`
+	CreatedAt      time.Time `bson:"created_at"`
 }
 
 // NewPendingTaskState ...
 func NewPendingTaskState(signature *Signature) *TaskState {
 	return &TaskState{
-		TaskUUID: signature.UUID,
-		State:    StatePending,
+		TaskUUID:  signature.UUID,
+		State:     StatePending,
+		CreatedAt: time.Now().UTC(),
 	}
 }
 

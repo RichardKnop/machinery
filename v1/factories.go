@@ -108,6 +108,10 @@ func BackendFactory(cnf *config.Config) (backends.Interface, error) {
 		return backends.NewEagerBackend(), nil
 	}
 
+	if strings.HasPrefix(cnf.ResultBackend, "https://dynamodb") {
+		return backends.NewDynamoDBBackend(cnf), nil
+	}
+
 	return nil, fmt.Errorf("Factory failed with result backend: %v", cnf.ResultBackend)
 }
 

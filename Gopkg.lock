@@ -29,10 +29,15 @@
     "aws/signer/v4",
     "internal/shareddefaults",
     "private/protocol",
+    "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
     "private/protocol/xml/xmlutil",
+    "service/dynamodb",
+    "service/dynamodb/dynamodbattribute",
+    "service/dynamodb/dynamodbiface",
     "service/sqs",
     "service/sqs/sqsiface",
     "service/sts"
@@ -154,6 +159,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "44936d56489d5394a1549447c81d2d839e28802f1e21234156a65df40d090aa8"
+  inputs-digest = "a1ba5945ed703366fc640d5e8f7c31c1efb52d15e1ddad2774130ca198fecfac"
   solver-name = "gps-cdcl"
   solver-version = 1
