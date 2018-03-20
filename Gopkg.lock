@@ -9,6 +9,11 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/RichardKnop/redsync"
+  packages = ["."]
+  revision = "54b27db64c180751e7049321a2e109ff220ccdcc"
+
+[[projects]]
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -27,6 +32,8 @@
     "aws/request",
     "aws/session",
     "aws/signer/v4",
+    "internal/sdkio",
+    "internal/sdkrand",
     "internal/shareddefaults",
     "private/protocol",
     "private/protocol/json/jsonutil",
@@ -42,7 +49,8 @@
     "service/sqs/sqsiface",
     "service/sts"
   ]
-  revision = "c8a63b5774a90dab70f0dc6fddc7e7925416d90a"
+  revision = "f0872da8a448f8cb10f4f0c95c2100e4f7356448"
+  version = "v1.13.16"
 
 [[projects]]
   branch = "master"
@@ -57,19 +65,19 @@
   version = "v1.1.0"
 
 [[projects]]
-  name = "github.com/garyburd/redigo"
+  name = "github.com/go-ini/ini"
+  packages = ["."]
+  revision = "6333e38ac20b8949a8dd68baa3650f4dee8f39f0"
+  version = "v1.33.0"
+
+[[projects]]
+  name = "github.com/gomodule/redigo"
   packages = [
     "internal",
     "redis"
   ]
-  revision = "d1ed5c67e5794de818ea85e6b522fda02623a484"
-  version = "v1.4.0"
-
-[[projects]]
-  name = "github.com/go-ini/ini"
-  packages = ["."]
-  revision = "32e4c1e6bc4e7d0d8451aa6b75200d19e37a536a"
-  version = "v1.32.0"
+  revision = "9c11da706d9b7902c6da69c592f75637793fe121"
+  version = "v2.0.0"
 
 [[projects]]
   name = "github.com/jmespath/go-jmespath"
@@ -77,10 +85,10 @@
   revision = "0b12d6b5"
 
 [[projects]]
-  branch = "master"
   name = "github.com/kelseyhightower/envconfig"
   packages = ["."]
-  revision = "462fda1f11d8cad3660e52737b8beefd27acfb3f"
+  revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/opentracing/opentracing-go"
@@ -108,7 +116,7 @@
   branch = "master"
   name = "github.com/streadway/amqp"
   packages = ["."]
-  revision = "a354ab84f102bc6eb31c9be006ca89446cf5b372"
+  revision = "8e4aba63da9fc5571e01c6a45dc809a58cbc5a68"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -117,20 +125,20 @@
     "require",
     "suite"
   ]
-  revision = "b91bfb9ebec76498946beb6af7c0230c7cc7ba6c"
-  version = "v1.2.0"
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/urfave/cli"
   packages = ["."]
-  revision = "75104e932ac2ddb944a6ea19d9f9f26316ff1145"
+  revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
+  version = "v1.20.0"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
+  revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
 
 [[projects]]
   branch = "v2"
@@ -145,20 +153,14 @@
   revision = "3f83fa5005286a7fe593b055f0d7771a7dce4655"
 
 [[projects]]
-  name = "gopkg.in/redsync.v1"
-  packages = ["."]
-  revision = "98dabdf1c8574561bf976911c14ff652c47b1ddf"
-  version = "v1.0.1"
-
-[[projects]]
-  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
+  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
+  version = "v2.1.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a1ba5945ed703366fc640d5e8f7c31c1efb52d15e1ddad2774130ca198fecfac"
+  inputs-digest = "e64200dd4c2b3609df0e67006e1fa40d50d9721a23305afe7ca361aac80b5ea9"
   solver-name = "gps-cdcl"
   solver-version = 1

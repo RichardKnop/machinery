@@ -10,8 +10,8 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/garyburd/redigo/redis"
-	"gopkg.in/redsync.v1"
+	"github.com/RichardKnop/redsync"
+	"github.com/gomodule/redigo/redis"
 )
 
 // RedisBackend represents a Memcache result backend
