@@ -343,7 +343,7 @@ func (b *DynamoDBBackend) setTaskState(taskState *tasks.TaskState) error {
 		}
 		exp += ", #C = :c"
 	}
-	if taskState.Results != nil {
+	if taskState.Results != nil && len(taskState.Results) != 0 {
 		expAttributeNames["#R"] = aws.String("Results")
 		var results []*dynamodb.AttributeValue
 		for _, r := range taskState.Results {
