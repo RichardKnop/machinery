@@ -97,11 +97,13 @@ func NewGroup(signatures ...*Signature) (*Group, error) {
 // NewChord creates a new chord (a group of tasks with a single callback
 // to be executed after all tasks in the group has completed)
 func NewChord(group *Group, callback *Signature) (*Chord, error) {
-	// Generate a UUID for the chord callback
-	callbackID, err := uuid.NewV4()
+	if callback.UUID == "" {
+		// Generate a UUID for the chord callback
+		callbackID, err := uuid.NewV4()
 
-	if err != nil {
-		return nil, fmt.Errorf("Error generating callback id: %s", err.Error())
+		if err != nil {
+			return nil, fmt.Errorf("Error generating callback id: %s", err.Error())
+		}
 	}
 
 	callback.UUID = fmt.Sprintf("chord_%v", callbackID)
