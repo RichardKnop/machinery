@@ -74,7 +74,7 @@ func (b *Broker) startConsuming(consumerTag string, taskProcessor TaskProcessor)
 	b.retryStopChan = make(chan int)
 }
 
-// startConsuming is a common part of StopConsuming
+// stopConsuming is a common part of StopConsuming
 func (b *Broker) stopConsuming() {
 	// Do not retry from now on
 	b.retry = false

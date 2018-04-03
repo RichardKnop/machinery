@@ -31,6 +31,7 @@ func (b *MemcacheBackend) InitGroup(groupUUID string, taskUUIDs []string) error 
 	groupMeta := &tasks.GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
+		CreatedAt: time.Now().UTC(),
 	}
 
 	encoded, err := json.Marshal(&groupMeta)

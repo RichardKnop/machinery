@@ -1,9 +1,9 @@
 package brokers_test
 
 import (
-	"testing"
-
 	"errors"
+	"sync"
+	"testing"
 
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/brokers"
@@ -197,9 +197,22 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	assert.NotNil(t, e)
 	assert.Nil(t, err)
 
-	go func() { pool <- struct{}{} }()
-	go func() { deliveries <- receiveMessageOutput }()
+	// using a wait group and a channel to fix the racing problem
+	var wg sync.WaitGroup
+	wg.Add(1)
+	nextStep := make(chan bool, 1)
+	go func() {
+		defer wg.Done()
+		// nextStep <- true runs after defer wg.Done(), to make sure the next go routine runs after this go routine
+		nextStep <- true
+		deliveries <- receiveMessageOutput
+	}()
+	if <-nextStep {
+		// <-pool will block the routine in the following steps, so pool <- struct{}{} will be executed for sure
+		go func() { wg.Wait(); pool <- struct{}{} }()
+	}
 	whetherContinue, err = testAWSSQSBroker.ConsumeDeliveriesForTest(deliveries, concurrency, wk, pool, errorsChan)
+	// the pool shouldn't be consumed
 	p := <-pool
 	assert.True(t, whetherContinue)
 	assert.NotNil(t, p)

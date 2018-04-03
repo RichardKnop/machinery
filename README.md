@@ -13,6 +13,7 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/RichardKnop/machinery)](https://goreportcard.com/report/github.com/RichardKnop/machinery)
 [![GolangCI](https://golangci.com/badges/github.com/RichardKnop/machinery.svg)](https://golangci.com)
+[![OpenTracing Badge](https://img.shields.io/badge/OpenTracing-enabled-blue.svg)](http://opentracing.io)
 
 [![Sourcegraph for RichardKnop/machinery](https://sourcegraph.com/github.com/RichardKnop/machinery/-/badge.svg)](https://sourcegraph.com/github.com/RichardKnop/machinery?badge)
 [![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://richardknop.github.io/donate/)
@@ -130,6 +131,25 @@ https://sqs.us-east-2.amazonaws.com/123456789012
 See [AWS SQS docs](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html) for more information.
 Also, configuring `AWS_REGION` is required, or an error would be thrown.
 
+To use a manually configured SQS Client:
+
+```go
+var sqsClient = sqs.New(session.Must(session.NewSession(&aws.Config{
+  Region:         aws.String("YOUR_AWS_REGION"),
+  Credentials:    credentials.NewStaticCredentials("YOUR_AWS_ACCESS_KEY", "YOUR_AWS_ACCESS_SECRET", ""),
+  HTTPClient:     &http.Client{
+    Timeout: time.Second * 120,
+  },
+})))
+var cnf = &config.Config{
+  Broker:          "YOUR_SQS_URL"
+  DefaultQueue:    "machinery_tasks",
+  SQS: &config.SQSConfig{
+    Client: sqsClient,
+  },
+}
+```
+
 #### DefaultQueue
 
 Default queue name, e.g. `machinery_tasks`.
@@ -209,6 +229,19 @@ RabbitMQ related configuration. Not neccessarry if you are using other broker/ba
 * `QueueBindingArguments`: an optional map of additional arguments used when binding to an AMQP queue
 * `BindingKey`: The queue is bind to the exchange with this key, e.g. `machinery_task`
 * `PrefetchCount`: How many tasks to prefetch (set to `1` if you have long running tasks)
+
+#### Dynamodb
+Dynamodb related configuration. Not neccessarry if you are using other backend.
+* `task_states_table`: Custom table name for saving task states. Default one is `task_states`, and make sure to create this table in your AWS admin first, using `TaskUUID` as table's primary key.
+* `group_metas_table`: Custom table name for saving group metas. Default one is `group_metas`, and make sure to create this table in your AWS admin first, using `GroupUUID` as table's primary key.
+For example:
+
+```
+dynamodb:
+  task_states_table: 'task_states'
+  group_metas_table: 'group_metas'
+```
+If these tables are not found, an fatal error would be thrown.
 
 ### Custom Logger
 
@@ -316,7 +349,7 @@ func DummyTask(arg string) error {
 }
 
 // You can also return multiple results from the task
-func DummyTask2(arg1, arg2 string) (string, string error) {
+func DummyTask2(arg1, arg2 string) (string, string, error) {
   return arg1, arg2, nil
 }
 ```
@@ -655,7 +688,7 @@ signature2 := tasks.Signature{
   },
 }
 
-group := tasks.NewGroup(&signature1, &signature2)
+group, _ := tasks.NewGroup(&signature1, &signature2)
 asyncResults, err := server.SendGroup(group)
 if err != nil {
   // failed to send the group
@@ -721,7 +754,7 @@ signature3 := tasks.Signature{
 }
 
 group := tasks.NewGroup(&signature1, &signature2)
-chord := tasks.NewChord(group, &signature3)
+chord, _ := tasks.NewChord(group, &signature3)
 chordAsyncResult, err := server.SendChord(chord)
 if err != nil {
   // failed to send the chord
@@ -802,7 +835,7 @@ signature3 := tasks.Signature{
   },
 }
 
-chain := tasks.NewChain(&signature1, &signature2, &signature3)
+chain, _ := tasks.NewChain(&signature1, &signature2, &signature3)
 chainAsyncResult, err := server.SendChain(chain)
 if err != nil {
   // failed to send the chain
@@ -888,6 +921,15 @@ export AMQP_URL=amqp://guest:guest@localhost:5672/
 export REDIS_URL=127.0.0.1:6379
 export MEMCACHE_URL=127.0.0.1:11211
 export MONGODB_URL=127.0.0.1:27017
+```
+
+To run integration tests against an SQS instance, you will need to create a "test_queue" in SQS and export these environment variables:
+
+```sh
+export SQS_URL=https://YOUR_SQS_URL
+export AWS_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
+export AWS_DEFAULT_REGION=YOUR_AWS_DEFAULT_REGION
 ```
 
 Then just run:

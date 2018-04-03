@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"flag"
-	"os"
 	"reflect"
 	"strings"
 	"syscall"
@@ -74,7 +73,7 @@ func (c *Context) IsSet(name string) bool {
 		// change in version 2 to add `IsSet` to the Flag interface to push the
 		// responsibility closer to where the information required to determine
 		// whether a flag is set by non-standard means such as environment
-		// variables is available.
+		// variables is avaliable.
 		//
 		// See https://github.com/urfave/cli/issues/294 for additional discussion
 		flags := c.Command.Flags
@@ -94,26 +93,18 @@ func (c *Context) IsSet(name string) bool {
 					val = val.Elem()
 				}
 
-				filePathValue := val.FieldByName("FilePath")
-				if filePathValue.IsValid() {
-					eachName(filePathValue.String(), func(filePath string) {
-						if _, err := os.Stat(filePath); err == nil {
-							c.setFlags[name] = true
-							return
-						}
-					})
+				envVarValue := val.FieldByName("EnvVar")
+				if !envVarValue.IsValid() {
+					return
 				}
 
-				envVarValue := val.FieldByName("EnvVar")
-				if envVarValue.IsValid() {
-					eachName(envVarValue.String(), func(envVar string) {
-						envVar = strings.TrimSpace(envVar)
-						if _, ok := syscall.Getenv(envVar); ok {
-							c.setFlags[name] = true
-							return
-						}
-					})
-				}
+				eachName(envVarValue.String(), func(envVar string) {
+					envVar = strings.TrimSpace(envVar)
+					if _, ok := syscall.Getenv(envVar); ok {
+						c.setFlags[name] = true
+						return
+					}
+				})
 			})
 		}
 	}

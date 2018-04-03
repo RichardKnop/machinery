@@ -142,7 +142,6 @@ def _write_cli_flag_types(outfile, types):
             Name string
             Usage string
             EnvVar string
-            FilePath string
             Hidden bool
         """.format(**typedef))
 

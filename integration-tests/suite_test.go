@@ -84,7 +84,11 @@ func testSendTask(server *machinery.Server, t *testing.T) {
 func testSendGroup(server *machinery.Server, t *testing.T, sendConcurrency int) {
 	t1, t2, t3 := newAddTask(1, 1), newAddTask(2, 2), newAddTask(5, 6)
 
-	group := tasks.NewGroup(t1, t2, t3)
+	group, err := tasks.NewGroup(t1, t2, t3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	asyncResults, err := server.SendGroup(group, sendConcurrency)
 	if err != nil {
 		t.Error(err)
@@ -125,7 +129,11 @@ func testSendGroup(server *machinery.Server, t *testing.T, sendConcurrency int) 
 func testSendChain(server *machinery.Server, t *testing.T) {
 	t1, t2, t3 := newAddTask(2, 2), newAddTask(5, 6), newMultipleTask(4)
 
-	chain := tasks.NewChain(t1, t2, t3)
+	chain, err := tasks.NewChain(t1, t2, t3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	chainAsyncResult, err := server.SendChain(chain)
 	if err != nil {
 		t.Error(err)
@@ -152,8 +160,16 @@ func testSendChain(server *machinery.Server, t *testing.T) {
 func testSendChord(server *machinery.Server, t *testing.T) {
 	t1, t2, t3, t4 := newAddTask(1, 1), newAddTask(2, 2), newAddTask(5, 6), newMultipleTask()
 
-	group := tasks.NewGroup(t1, t2, t3)
-	chord := tasks.NewChord(group, t4)
+	group, err := tasks.NewGroup(t1, t2, t3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	chord, err := tasks.NewChord(group, t4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	chordAsyncResult, err := server.SendChord(chord, 10)
 	if err != nil {
 		t.Error(err)

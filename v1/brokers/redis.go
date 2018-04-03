@@ -11,8 +11,8 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/garyburd/redigo/redis"
-	"gopkg.in/redsync.v1"
+	"github.com/RichardKnop/redsync"
+	"github.com/gomodule/redigo/redis"
 )
 
 var redisDelayedTasksKey = "delayed_tasks"
@@ -304,7 +304,7 @@ func (b *RedisBroker) nextTask(queue string) (result []byte, err error) {
 }
 
 // nextDelayedTask pops a value from the ZSET key using WATCH/MULTI/EXEC commands.
-// https://github.com/garyburd/redigo/blob/master/redis/zpop_example_test.go
+// https://github.com/gomodule/redigo/blob/master/redis/zpop_example_test.go
 func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
 	conn := b.open()
 	defer conn.Close()
