@@ -95,7 +95,7 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 			default:
 				// If concurrency is limited, limit the tasks being pulled off the queue
 				// until a pool is available
-				if concurrency == 0 || (len(pool) - len(deliveries) > 0) {
+				if concurrency == 0 || (len(pool)-len(deliveries) > 0) {
 					task, err := b.nextTask(b.cnf.DefaultQueue)
 					if err != nil {
 						continue
