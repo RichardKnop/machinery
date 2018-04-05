@@ -70,6 +70,14 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 
 	// Channel to which we will push tasks ready for processing by worker
 	deliveries := make(chan []byte)
+	pool := make(chan struct{}, concurrency)
+
+	// initialize worker pool with maxWorkers workers
+	go func() {
+		for i := 0; i < concurrency; i++ {
+			pool <- struct{}{}
+		}
+	}()
 
 	// A receivig goroutine keeps popping messages from the queue by BLPOP
 	// If the message is valid and can be unmarshaled into a proper structure
@@ -85,12 +93,16 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 			case <-b.stopReceivingChan:
 				return
 			default:
-				task, err := b.nextTask(b.cnf.DefaultQueue)
-				if err != nil {
-					continue
-				}
+				// If concurrency is limited, limit the tasks being pulled off the queue
+				// until a pool is available
+				if concurrency == 0 || (len(pool) - len(deliveries) > 0) {
+					task, err := b.nextTask(b.cnf.DefaultQueue)
+					if err != nil {
+						continue
+					}
 
-				deliveries <- task
+					deliveries <- task
+				}
 			}
 		}
 	}()
@@ -125,7 +137,7 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 		}
 	}()
 
-	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
+	if err := b.consume(deliveries, pool, concurrency, taskProcessor); err != nil {
 		return b.retry, err
 	}
 
@@ -214,16 +226,7 @@ func (b *RedisBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) 
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *RedisBroker) consume(deliveries <-chan []byte, concurrency int, taskProcessor TaskProcessor) error {
-	pool := make(chan struct{}, concurrency)
-
-	// initialize worker pool with maxWorkers workers
-	go func() {
-		for i := 0; i < concurrency; i++ {
-			pool <- struct{}{}
-		}
-	}()
-
+func (b *RedisBroker) consume(deliveries <-chan []byte, pool chan struct{}, concurrency int, taskProcessor TaskProcessor) error {
 	errorsChan := make(chan error, concurrency*2)
 
 	for {
