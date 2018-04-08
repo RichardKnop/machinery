@@ -79,6 +79,8 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 		}
 	}()
 
+    // Timer is added otherwise when the pools were all active it will spin the for loop
+	timer := time.NewTimer(time.Second)
 	// A receivig goroutine keeps popping messages from the queue by BLPOP
 	// If the message is valid and can be unmarshaled into a proper structure
 	// we send it to the deliveries channel
@@ -92,17 +94,19 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.stopReceivingChan:
 				return
-			default:
+			case <-timer.C:
 				// If concurrency is limited, limit the tasks being pulled off the queue
 				// until a pool is available
 				if concurrency == 0 || (len(pool)-len(deliveries) > 0) {
 					task, err := b.nextTask(b.cnf.DefaultQueue)
 					if err != nil {
+						timer.Reset(time.Second)
 						continue
 					}
 
 					deliveries <- task
 				}
+				timer.Reset(time.Second)
 			}
 		}
 	}()
