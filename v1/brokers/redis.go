@@ -79,7 +79,7 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 		}
 	}()
 
-    // Timer is added otherwise when the pools were all active it will spin the for loop
+	// Timer is added otherwise when the pools were all active it will spin the for loop
 	timer := time.NewTimer(time.Second)
 	// A receivig goroutine keeps popping messages from the queue by BLPOP
 	// If the message is valid and can be unmarshaled into a proper structure
