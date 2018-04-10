@@ -79,8 +79,17 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 		}
 	}()
 
+	// Helper function to return true if parallel task processing slots still available,
+	// false when we are already executing maximum allowed concurrent tasks
+	var concurrencyAvailable = func() bool {
+		return concurrency == 0 || (len(pool)-len(deliveries) > 0)
+	}
+
 	// Timer is added otherwise when the pools were all active it will spin the for loop
-	timer := time.NewTimer(time.Second)
+	var (
+		timerDuration = time.Duration(100000000 * time.Nanosecond) // 100 miliseconds
+		timer         = time.NewTimer(0)
+	)
 	// A receivig goroutine keeps popping messages from the queue by BLPOP
 	// If the message is valid and can be unmarshaled into a proper structure
 	// we send it to the deliveries channel
@@ -97,16 +106,23 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 			case <-timer.C:
 				// If concurrency is limited, limit the tasks being pulled off the queue
 				// until a pool is available
-				if concurrency == 0 || (len(pool)-len(deliveries) > 0) {
+				if concurrencyAvailable() {
 					task, err := b.nextTask(b.cnf.DefaultQueue)
 					if err != nil {
-						timer.Reset(time.Second)
+						// something went wrong, wait a bit before continuing the loop
+						timer.Reset(timerDuration)
 						continue
 					}
 
 					deliveries <- task
 				}
-				timer.Reset(time.Second)
+				if concurrencyAvailable() {
+					// parallel task processing slots still available, continue loop immediately
+					timer.Reset(0)
+				} else {
+					// using all parallel task processing slots, wait a bit before continuing the loop
+					timer.Reset(timerDuration)
+				}
 			}
 		}
 	}()
