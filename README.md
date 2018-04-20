@@ -83,7 +83,7 @@ cnf, err := config.NewFromEnvironment(true)
 Or load from YAML file:
 
 ```go
-cnf := config.NewFromFile("config.yml", true)
+cnf, err := config.NewFromYaml("config.yml", true)
 ```
 
 Second boolean flag enables live reloading of configuration every 10 seconds. Use `false` to disable live reloading.
