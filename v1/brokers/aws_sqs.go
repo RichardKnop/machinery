@@ -206,13 +206,14 @@ func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProces
 		return fmt.Errorf("task %s is not registered", sig.Name)
 	}
 
-	// Delete message after consuming successfully
-	err := b.deleteOne(delivery)
+	err := taskProcessor.Process(sig)
 	if err != nil {
-		log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
+		// Delete message after successfully consuming and processing the message
+		if err := b.deleteOne(delivery); err != nil {
+			log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
+		}
 	}
-
-	return taskProcessor.Process(sig)
+	return err
 }
 
 // deleteOne is a method delete a delivery from AWS SQS
