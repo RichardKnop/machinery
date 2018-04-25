@@ -207,11 +207,12 @@ func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProces
 	}
 
 	err := taskProcessor.Process(sig)
-	if err == nil {
-		// Delete message after successfully consuming and processing the message
-		if err := b.deleteOne(delivery); err != nil {
-			log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
-		}
+	if err != nil {
+		return err
+	}
+	// Delete message after successfully consuming and processing the message
+	if err = b.deleteOne(delivery); err != nil {
+		log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
 	}
 	return err
 }
