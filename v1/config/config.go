@@ -67,6 +67,9 @@ type DynamoDBConfig struct {
 type SQSConfig struct {
 	Client          *sqs.SQS
 	WaitTimeSeconds int `yaml:"receive_wait_time_seconds" envconfig:"SQS_WAIT_TIME_SECONDS"`
+	// https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
+	// visiblity timeout should default to nil to use the overall visibility timeout for the queue
+	VisibilityTimeout *int `yaml:"receive_visibility_timeout" envconfig:"SQS_VISIBILITY_TIMEOUT"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

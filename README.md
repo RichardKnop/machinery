@@ -141,11 +141,17 @@ var sqsClient = sqs.New(session.Must(session.NewSession(&aws.Config{
     Timeout: time.Second * 120,
   },
 })))
+var visibilityTimeout = 20
 var cnf = &config.Config{
   Broker:          "YOUR_SQS_URL"
   DefaultQueue:    "machinery_tasks",
+  ResultBackend:   "YOUR_BACKEND_URL",
   SQS: &config.SQSConfig{
     Client: sqsClient,
+    // if VisibilityTimeout is nil default to the overall visibility timeout setting for the queue
+    // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
+    VisibilityTimeout: &visibilityTimeout,
+    WaitTimeSeconds: 30,
   },
 }
 ```

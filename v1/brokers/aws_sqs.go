@@ -238,12 +238,14 @@ func (b *AWSSQSBroker) defaultQueueURL() *string {
 // receiveMessage is a method receives a message from specified queue url
 func (b *AWSSQSBroker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, error) {
 	var waitTimeSeconds int
+	var visibilityTimeout *int
 	if b.cnf.SQS != nil {
 		waitTimeSeconds = b.cnf.SQS.WaitTimeSeconds
+		visibilityTimeout = b.cnf.SQS.VisibilityTimeout
 	} else {
 		waitTimeSeconds = 0
 	}
-	result, err := b.service.ReceiveMessage(&sqs.ReceiveMessageInput{
+	input := &sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
 			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
 		},
@@ -252,9 +254,12 @@ func (b *AWSSQSBroker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, 
 		},
 		QueueUrl:            qURL,
 		MaxNumberOfMessages: aws.Int64(1),
-		VisibilityTimeout:   aws.Int64(int64(b.cnf.ResultsExpireIn)), // 10 hours
 		WaitTimeSeconds:     aws.Int64(int64(waitTimeSeconds)),
-	})
+	}
+	if visibilityTimeout != nil {
+		input.VisibilityTimeout = aws.Int64(int64(*visibilityTimeout))
+	}
+	result, err := b.service.ReceiveMessage(input)
 	if err != nil {
 		return nil, err
 	}
