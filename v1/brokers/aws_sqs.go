@@ -17,6 +17,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 )
 
+const (
+	maxAWSSQSDelay = time.Minute * 15 // Max supported SQS delay is 15 min: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html
+)
+
 // AWSSQSBroker represents a AWS SQS broker
 // There are examples on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/sqs-example-create-queue.html
 type AWSSQSBroker struct {
@@ -145,9 +149,12 @@ func (b *AWSSQSBroker) Publish(signature *tasks.Signature) error {
 	// and is not a fifo queue, set a delay in seconds for the task.
 	if signature.ETA != nil && !strings.HasSuffix(signature.RoutingKey, ".fifo") {
 		now := time.Now().UTC()
-
-		if signature.ETA.After(now) {
-			MsgInput.DelaySeconds = aws.Int64(signature.ETA.Unix() - now.Unix())
+		delay := signature.ETA.Sub(now)
+		if delay > 0 {
+			if delay > maxAWSSQSDelay {
+				return errors.New("Max AWS SQS delay exceeded")
+			}
+			MsgInput.DelaySeconds = aws.Int64(int64(delay.Seconds()))
 		}
 	}
 
