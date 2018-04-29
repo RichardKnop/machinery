@@ -226,7 +226,7 @@ func (b *AMQPBroker) consumeOne(delivery amqp.Delivery, taskProcessor TaskProces
 	if !b.IsTaskRegistered(signature.Name) {
 		if !delivery.Redelivered {
 			requeue = true
-			log.INFO.Printf("Requeing message: %s", delivery.Body)
+			log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery.Body)
 		}
 		delivery.Nack(multiple, requeue)
 		return nil
