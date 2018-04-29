@@ -269,7 +269,6 @@ func TestParseRedisURL(t *testing.T) {
 		},
 		{
 			url: "redis:/",
-			err: errors.New("invalid redis url scheme"),
 		},
 		{
 			url:  "redis://127.0.0.1:5672",
