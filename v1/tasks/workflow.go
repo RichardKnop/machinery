@@ -104,9 +104,9 @@ func NewChord(group *Group, callback *Signature) (*Chord, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Error generating callback id: %s", err.Error())
 		}
+		
+		callback.UUID = fmt.Sprintf("chord_%v", callbackID)
 	}
-
-	callback.UUID = fmt.Sprintf("chord_%v", callbackID)
 
 	// Add a chord callback to all tasks
 	for _, signature := range group.Tasks {
