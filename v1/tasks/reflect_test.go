@@ -8,15 +8,14 @@ import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
-func TestReflectValue(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
+var (
+	reflectValuesTestCases = []struct {
 		name          string
 		value         interface{}
 		expectedType  string
 		expectedValue interface{}
 	}{
+		// basic types
 		{
 			name:         "bool",
 			value:        false,
@@ -100,6 +99,7 @@ func TestReflectValue(t *testing.T) {
 			expectedType:  "string",
 			expectedValue: "123",
 		},
+		// slices
 		{
 			name:          "[]bool",
 			value:         []interface{}{false, true},
@@ -184,20 +184,60 @@ func TestReflectValue(t *testing.T) {
 			expectedType:  "[]string",
 			expectedValue: []string{"foo", "bar"},
 		},
+		// empty slices from NULL
+		{
+			name:          "[]bool",
+			value:         nil,
+			expectedType:  "[]bool",
+			expectedValue: []bool{},
+		},
+		{
+			name:          "[]int64",
+			value:         nil,
+			expectedType:  "[]int64",
+			expectedValue: []int64{},
+		},
+		{
+			name:          "[]uint64",
+			value:         nil,
+			expectedType:  "[]uint64",
+			expectedValue: []uint64{},
+		},
+		{
+			name:          "[]float64",
+			value:         nil,
+			expectedType:  "[]float64",
+			expectedValue: []float64{},
+		},
+		{
+			name:          "[]string",
+			value:         nil,
+			expectedType:  "[]string",
+			expectedValue: []string{},
+		},
 	}
+)
 
-	for _, testCase := range testCases {
-		value, err := tasks.ReflectValue(testCase.name, testCase.value)
-		if err != nil {
-			t.Error(err)
-		}
-		if value.Type().String() != testCase.expectedType {
-			t.Errorf("type is %v, want %s", value.Type().String(), testCase.expectedType)
-		}
-		if testCase.expectedValue != nil {
-			if !reflect.DeepEqual(value.Interface(), testCase.expectedValue) {
-				t.Errorf("value is %v, want %v", value.Interface(), testCase.expectedValue)
+func TestReflectValue(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range reflectValuesTestCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			value, err := tasks.ReflectValue(tc.name, tc.value)
+			if err != nil {
+				t.Error(err)
 			}
-		}
+			if value.Type().String() != tc.expectedType {
+				t.Errorf("type is %v, want %s", value.Type().String(), tc.expectedType)
+			}
+			if tc.expectedValue != nil {
+				if !reflect.DeepEqual(value.Interface(), tc.expectedValue) {
+					t.Errorf("value is %v, want %v", value.Interface(), tc.expectedValue)
+				}
+			}
+		})
 	}
 }

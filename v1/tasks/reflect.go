@@ -147,6 +147,12 @@ func reflectValues(valueType string, value interface{}) (reflect.Value, error) {
 	if !ok {
 		return reflect.Value{}, NewErrUnsupportedType(valueType)
 	}
+
+	// For NULL we return an empty slice
+	if value == nil {
+		return reflect.MakeSlice(theType, 0, 0), nil
+	}
+
 	var theValue reflect.Value
 
 	// Booleans

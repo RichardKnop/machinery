@@ -9,6 +9,8 @@ import (
 )
 
 func TestRegisterTasks(t *testing.T) {
+	t.Parallel()
+
 	server := getTestServer(t)
 	err := server.RegisterTasks(map[string]interface{}{
 		"test_task": func() error { return nil },
@@ -20,6 +22,8 @@ func TestRegisterTasks(t *testing.T) {
 }
 
 func TestRegisterTask(t *testing.T) {
+	t.Parallel()
+
 	server := getTestServer(t)
 	err := server.RegisterTask("test_task", func() error { return nil })
 	assert.NoError(t, err)
@@ -29,12 +33,16 @@ func TestRegisterTask(t *testing.T) {
 }
 
 func TestGetRegisteredTask(t *testing.T) {
+	t.Parallel()
+
 	server := getTestServer(t)
 	_, err := server.GetRegisteredTask("test_task")
 	assert.Error(t, err, "test_task is registered but it should not be")
 }
 
 func TestGetRegisteredTaskNames(t *testing.T) {
+	t.Parallel()
+
 	server := getTestServer(t)
 
 	taskName := "test_task"
