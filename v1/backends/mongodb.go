@@ -143,7 +143,7 @@ func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*
 	return b.updateState(signature, update)
 }
 
-// decodeResults detect & decode json string TaskResults into a new TaskResult slice
+// decodeResults detects & decodes json strings in TaskResult.Value and returns a new slice
 func (b *MongodbBackend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult {
 	l := len(results)
 	jsonResults := make([]*tasks.TaskResult, l, l)
