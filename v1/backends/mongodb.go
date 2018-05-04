@@ -1,7 +1,9 @@
 package backends
 
 import (
+	"encoding/json"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
@@ -105,7 +107,11 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 
 // SetStatePending updates task state to PENDING
 func (b *MongodbBackend) SetStatePending(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.StatePending, "created_at": time.Now().UTC()}
+	update := bson.M{
+		"state":      tasks.StatePending,
+		"task_name":  signature.Name,
+		"created_at": time.Now().UTC(),
+	}
 	return b.updateState(signature, update)
 }
 
@@ -129,39 +135,34 @@ func (b *MongodbBackend) SetStateRetry(signature *tasks.Signature) error {
 
 // SetStateSuccess updates task state to SUCCESS
 func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
-	//edited by surendra tiwari
-	var err error
-	bsonResults := make([]bson.M, len(results))
-	for i, result := range results {
-		//to hold the json result
-		bsonResult := new(bson.M)
-		resultType := reflect.TypeOf(result.Value).Kind()
-		if resultType == reflect.String {
-			//convert type to json
-			err = bson.UnmarshalJSON([]byte(result.Value.(string)), bsonResult)
-			if err == nil {
-				bsonResults[i] = bson.M{
-					"type":  "Json",
-					"value": bsonResult,
-				}
-			} else {
-				bsonResults[i] = bson.M{
-					"type":  result.Type,
-					"value": result.Value,
-				}
-			}
-		} else {
-			bsonResults[i] = bson.M{
-				"type":  result.Type,
-				"value": result.Value,
-			}
-		}
-	}
+	decodedResults := b.decodeResults(results)
 	update := bson.M{
 		"state":   tasks.StateSuccess,
-		"results": bsonResults,
+		"results": decodedResults,
 	}
 	return b.updateState(signature, update)
+}
+
+// decodeResults detects & decodes json strings in TaskResult.Value and returns a new slice
+func (b *MongodbBackend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult {
+	l := len(results)
+	jsonResults := make([]*tasks.TaskResult, l, l)
+	for i, result := range results {
+		jsonResult := new(bson.M)
+		resultType := reflect.TypeOf(result.Value).Kind()
+		if resultType == reflect.String {
+			err := json.NewDecoder(strings.NewReader(result.Value.(string))).Decode(&jsonResult)
+			if err == nil {
+				jsonResults[i] = &tasks.TaskResult{
+					Type:  "json",
+					Value: jsonResult,
+				}
+				continue
+			}
+		}
+		jsonResults[i] = result
+	}
+	return jsonResults
 }
 
 // SetStateFailure updates task state to FAILURE

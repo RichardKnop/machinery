@@ -20,6 +20,7 @@ const (
 // TaskState represents a state of a task
 type TaskState struct {
 	TaskUUID  string        `bson:"_id"`
+	TaskName  string        `bson:"task_name"`
 	State     string        `bson:"state"`
 	Results   []*TaskResult `bson:"results"`
 	Error     string        `bson:"error"`
@@ -41,6 +42,7 @@ type GroupMeta struct {
 func NewPendingTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID:  signature.UUID,
+		TaskName:  signature.Name,
 		State:     StatePending,
 		CreatedAt: time.Now().UTC(),
 	}
