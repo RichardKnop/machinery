@@ -652,6 +652,17 @@ for _, result := range results {
 }
 ```
 
+#### Error Handling
+
+When a task returns with an error, the default behavior is to log it.
+To customize this, you can set a custom error handler on the worker
+
+```go
+worker.ErrorHandler(func (err error) {
+  customHandler(err)
+})
+```
+
 ### Workflows
 
 Running a single asynchronous task is fine but often you will want to design a workflow of tasks to be executed in an orchestrated way. There are couple of useful functions to help you design workflows.
