@@ -65,7 +65,8 @@ type DynamoDBConfig struct {
 
 // SQSConfig wraps SQS related configuration
 type SQSConfig struct {
-	Client               *sqs.SQS
+	Client *sqs.SQS
+	// Delay in seconds for broker consumption errors
 	ThrottleConsumeError int `yaml:"throttle_consume_error" envconfig:"SQS_THROTTLE_CONSUME_ERROR"`
 	WaitTimeSeconds      int `yaml:"receive_wait_time_seconds" envconfig:"SQS_WAIT_TIME_SECONDS"`
 	// https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
