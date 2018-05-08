@@ -40,7 +40,7 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 	cnf := worker.server.GetConfig()
 	broker := worker.server.GetBroker()
 
-	// Log some useful information about woorker configuration
+	// Log some useful information about worker configuration
 	log.INFO.Printf("Launching a worker with the following settings:")
 	log.INFO.Printf("- Broker: %s", cnf.Broker)
 	log.INFO.Printf("- DefaultQueue: %s", cnf.DefaultQueue)

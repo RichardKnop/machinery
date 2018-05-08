@@ -24,7 +24,6 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 	}
 
 	if strings.HasPrefix(cnf.Broker, "redis://") {
-
 		parts := strings.Split(cnf.Broker, "redis://")
 		if len(parts) != 2 {
 			return nil, fmt.Errorf(
