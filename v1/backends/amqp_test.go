@@ -36,7 +36,7 @@ func init() {
 
 func TestGroupCompletedAMQP(t *testing.T) {
 	if os.Getenv("AMQP_URL") == "" {
-		return
+		t.Skip("AMQP_URL is not defined")
 	}
 
 	groupUUID := "testGroupUUID"
@@ -89,7 +89,7 @@ func TestGroupCompletedAMQP(t *testing.T) {
 
 func TestGetStateAMQP(t *testing.T) {
 	if os.Getenv("AMQP_URL") == "" {
-		return
+		t.Skip("AMQP_URL is not defined")
 	}
 
 	signature := &tasks.Signature{
@@ -100,11 +100,11 @@ func TestGetStateAMQP(t *testing.T) {
 	go func() {
 		backend := backends.NewAMQPBackend(amqpConfig)
 		backend.SetStatePending(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 		backend.SetStateReceived(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 		backend.SetStateStarted(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 
 		taskResults := []*tasks.TaskResult{
 			{
@@ -137,7 +137,7 @@ func TestGetStateAMQP(t *testing.T) {
 
 func TestPurgeStateAMQP(t *testing.T) {
 	if os.Getenv("AMQP_URL") == "" {
-		return
+		t.Skip("AMQP_URL is not defined")
 	}
 
 	signature := &tasks.Signature{

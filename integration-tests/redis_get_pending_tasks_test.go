@@ -11,7 +11,7 @@ import (
 func TestRedisGetPendingTasks(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
-		return
+		t.Skip("REDIS_URL is not defined")
 	}
 
 	// Redis broker, Redis result backend

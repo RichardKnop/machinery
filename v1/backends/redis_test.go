@@ -15,7 +15,7 @@ func TestGroupCompletedRedis(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 	if redisURL == "" {
-		return
+		t.Skip("REDIS_URL is not defined")
 	}
 
 	groupUUID := "testGroupUUID"
@@ -87,11 +87,11 @@ func TestGetStateRedis(t *testing.T) {
 
 	go func() {
 		backend.SetStatePending(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 		backend.SetStateReceived(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 		backend.SetStateStarted(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 		taskResults := []*tasks.TaskResult{
 			{
 				Type:  "float64",

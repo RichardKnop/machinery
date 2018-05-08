@@ -35,7 +35,7 @@ func initTestMongodbBackend() (backends.Interface, error) {
 
 func TestNewMongodbBackend(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
-		return
+		t.Skip("MONGODB_URL is not defined")
 	}
 
 	backend, err := initTestMongodbBackend()
@@ -46,7 +46,7 @@ func TestNewMongodbBackend(t *testing.T) {
 
 func TestSetStatePending(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
-		return
+		t.Skip("MONGODB_URL is not defined")
 	}
 
 	backend, err := initTestMongodbBackend()
@@ -67,7 +67,7 @@ func TestSetStatePending(t *testing.T) {
 
 func TestSetStateReceived(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
-		return
+		t.Skip("MONGODB_URL is not defined")
 	}
 
 	backend, err := initTestMongodbBackend()
@@ -88,7 +88,7 @@ func TestSetStateReceived(t *testing.T) {
 
 func TestSetStateStarted(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
-		return
+		t.Skip("MONGODB_URL is not defined")
 	}
 
 	backend, err := initTestMongodbBackend()
@@ -109,7 +109,7 @@ func TestSetStateStarted(t *testing.T) {
 
 func TestSetStateSuccess(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
-		return
+		t.Skip("MONGODB_URL is not defined")
 	}
 
 	resultType := "float64"
@@ -141,10 +141,10 @@ func TestSetStateSuccess(t *testing.T) {
 
 func TestSetStateFailure(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
-		return
+		t.Skip("MONGODB_URL is not defined")
 	}
 
-	failStrig := "Fail is ok"
+	failString := "Fail is ok"
 
 	backend, err := initTestMongodbBackend()
 	if err != nil {
@@ -154,18 +154,18 @@ func TestSetStateFailure(t *testing.T) {
 	signature := &tasks.Signature{
 		UUID: taskUUIDs[0],
 	}
-	err = backend.SetStateFailure(signature, failStrig)
+	err = backend.SetStateFailure(signature, failString)
 	assert.NoError(t, err)
 
 	taskState, err := backend.GetState(taskUUIDs[0])
 	assert.NoError(t, err)
 	assert.Equal(t, tasks.StateFailure, taskState.State, "Not StateSuccess")
-	assert.Equal(t, failStrig, taskState.Error, "Wrong fail error")
+	assert.Equal(t, failString, taskState.Error, "Wrong fail error")
 }
 
 func TestGroupCompleted(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
-		return
+		t.Skip("MONGODB_URL is not defined")
 	}
 
 	backend, err := initTestMongodbBackend()
@@ -227,7 +227,7 @@ func TestGroupCompleted(t *testing.T) {
 
 func TestGroupStates(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
-		return
+		t.Skip("MONGODB_URL is not defined")
 	}
 
 	backend, err := initTestMongodbBackend()

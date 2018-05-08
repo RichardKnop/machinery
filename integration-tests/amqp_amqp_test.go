@@ -10,7 +10,7 @@ import (
 func TestAmqpAmqp(t *testing.T) {
 	amqpURL := os.Getenv("AMQP_URL")
 	if amqpURL == "" {
-		return
+		t.Skip("AMQP_URL is not defined")
 	}
 
 	// AMQP broker, AMQP result backend

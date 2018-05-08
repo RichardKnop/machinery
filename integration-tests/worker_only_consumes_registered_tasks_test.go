@@ -16,7 +16,7 @@ import (
 func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 	amqpURL := os.Getenv("AMQP_URL")
 	if amqpURL == "" {
-		return
+		t.Skip("AMQP_URL is not defined")
 	}
 
 	cnf := config.Config{
@@ -137,7 +137,7 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
-		return
+		t.Skip("REDIS_URL is not defined")
 	}
 
 	cnf := config.Config{
