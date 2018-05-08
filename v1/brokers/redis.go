@@ -348,7 +348,7 @@ func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
 	for {
 		// Space out queries to ZSET to 20ms intervals so we don't bombard redis
 		// server with relentless ZRANGEBYSCOREs
-		<-time.After(20 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 
 		if _, err = conn.Do("WATCH", key); err != nil {
 			return
