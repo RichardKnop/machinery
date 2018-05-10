@@ -11,8 +11,11 @@ import (
 func TestAmqpMemcache(t *testing.T) {
 	amqpURL := os.Getenv("AMQP_URL")
 	memcacheURL := os.Getenv("MEMCACHE_URL")
-	if amqpURL == "" || memcacheURL == "" {
-		return
+	if amqpURL == "" {
+		t.Skip("AMQP_URL is not defined")
+	}
+	if memcacheURL == "" {
+		t.Skip("MEMCACHE_URL is not defined")
 	}
 
 	// AMQP broker, Memcache result backend

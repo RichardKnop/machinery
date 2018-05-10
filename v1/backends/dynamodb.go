@@ -105,7 +105,7 @@ func (b *DynamoDBBackend) TriggerChord(groupUUID string) (bool, error) {
 	for groupMeta.Lock {
 		groupMeta, _ = b.getGroupMeta(groupUUID)
 		log.WARNING.Print("Group meta locked, waiting")
-		<-time.After(time.Millisecond * 5)
+		time.Sleep(time.Millisecond * 5)
 	}
 
 	// Acquire lock

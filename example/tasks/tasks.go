@@ -68,7 +68,7 @@ func LongRunningTask() error {
 	log.INFO.Print("Long running task started")
 	for i := 0; i < 10; i++ {
 		log.INFO.Print(10 - i)
-		<-time.After(1 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 	log.INFO.Print("Long running task finished")
 	return nil

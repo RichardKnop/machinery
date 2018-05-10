@@ -57,7 +57,7 @@ First, you will need to define some tasks. Look at sample tasks in `example/task
 Second, you will need to launch a worker process:
 
 ```sh
-go run example/machinery.go worker
+go run example/machinery.go -c example/config.yml worker
 ```
 
 ![Example worker][1]
@@ -65,7 +65,7 @@ go run example/machinery.go worker
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
 ```sh
-go run example/machinery.go send
+go run example/machinery.go -c example/config.yml send
 ```
 
 You will be able to see the tasks being processed asynchronously by the worker:
@@ -117,7 +117,7 @@ redis+socket://[password@]/path/to/file.sock[:/db_num]
 
 For example:
 
-1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
+1. `redis://localhost:6379`, or with password `redis://password@localhost:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
 
 ##### AWS SQS
@@ -177,7 +177,7 @@ redis+socket://[password@]/path/to/file.sock[:/db_num]
 
 For example:
 
-1. `redis://127.0.0.1:6379`, or with password `redis://password@127.0.0.1:6379`
+1. `redis://localhost:6379`, or with password `redis://password@localhost:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
 
 ##### Memcache
@@ -190,7 +190,7 @@ memcache://host1[:port1][,host2[:port2],...[,hostN[:portN]]]
 
 For example:
 
-1. `memcache://127.0.0.1:11211` for a single instance, or
+1. `memcache://localhost:11211` for a single instance, or
 2. `memcache://10.0.0.1:11211,10.0.0.2:11211` for a cluster
 
 ##### AMQP
@@ -217,18 +217,18 @@ mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][
 
 For example:
 
-1. `mongodb://127.0.0.1:27017/taskresults`
+1. `mongodb://localhost:27017/taskresults`
 
 See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/) for more information.
 
 
 #### ResultsExpireIn
 
-How long to store task results for in seconds. Defaults to `3600` (1 hour).
+How long to store task results for in seconds. Defaults to `3600000` (1 hour).
 
 #### AMQP
 
-RabbitMQ related configuration. Not neccessarry if you are using other broker/backend.
+RabbitMQ related configuration. Not necessary if you are using other broker/backend.
 
 * `Exchange`: exchange name, e.g. `machinery_exchange`
 * `ExchangeType`: exchange type, e.g. `direct`
@@ -237,7 +237,7 @@ RabbitMQ related configuration. Not neccessarry if you are using other broker/ba
 * `PrefetchCount`: How many tasks to prefetch (set to `1` if you have long running tasks)
 
 #### Dynamodb
-Dynamodb related configuration. Not neccessarry if you are using other backend.
+Dynamodb related configuration. Not necessary if you are using other backend.
 * `task_states_table`: Custom table name for saving task states. Default one is `task_states`, and make sure to create this table in your AWS admin first, using `TaskUUID` as table's primary key.
 * `group_metas_table`: Custom table name for saving group metas. Default one is `group_metas`, and make sure to create this table in your AWS admin first, using `GroupUUID` as table's primary key.
 For example:
@@ -891,7 +891,7 @@ for _, result := range results {
 #### Requirements
 
 * Go
-* RabbitMQ
+* RabbitMQ (optional)
 * Redis (optional)
 * Memcached (optional)
 * MongoDB (optional)
@@ -905,6 +905,17 @@ brew install redis
 brew install memcached
 brew install mongodb
 ```
+
+Or optionally use the corresponding [Docker](http://docker.io/) containers:
+
+```
+docker run -d -p 5672:5672 rabbitmq
+docker run -d -p 6379:6379 redis
+docker run -d -p 11211:11211 memcached
+docker run -d -p 27017:27017 mongo
+docker run -d -p 6831:6831/udp -p 16686:16686 jaegertracing/all-in-one:latest
+```
+
 
 #### Dependencies
 
@@ -936,9 +947,9 @@ In order to enable integration tests, you will need to install all required serv
 
 ```sh
 export AMQP_URL=amqp://guest:guest@localhost:5672/
-export REDIS_URL=127.0.0.1:6379
-export MEMCACHE_URL=127.0.0.1:11211
-export MONGODB_URL=127.0.0.1:27017
+export REDIS_URL=localhost:6379
+export MEMCACHE_URL=localhost:11211
+export MONGODB_URL=localhost:27017
 ```
 
 To run integration tests against an SQS instance, you will need to create a "test_queue" in SQS and export these environment variables:

@@ -99,7 +99,7 @@ func (asyncResult *AsyncResult) Get(sleepDuration time.Duration) ([]reflect.Valu
 		results, err := asyncResult.Touch()
 
 		if results == nil && err == nil {
-			<-time.After(sleepDuration)
+			time.Sleep(sleepDuration)
 		} else {
 			return results, err
 		}
@@ -118,7 +118,7 @@ func (asyncResult *AsyncResult) GetWithTimeout(timeoutDuration, sleepDuration ti
 			results, err := asyncResult.Touch()
 
 			if results == nil && err == nil {
-				<-time.After(sleepDuration)
+				time.Sleep(sleepDuration)
 			} else {
 				return results, err
 			}
@@ -213,7 +213,7 @@ func (chainAsyncResult *ChainAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 			if results != nil {
 				return results, err
 			}
-			<-time.After(sleepDuration)
+			time.Sleep(sleepDuration)
 		}
 	}
 }
@@ -249,7 +249,7 @@ func (chordAsyncResult *ChordAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 			if results != nil {
 				return results, err
 			}
-			<-time.After(sleepDuration)
+			time.Sleep(sleepDuration)
 		}
 	}
 }

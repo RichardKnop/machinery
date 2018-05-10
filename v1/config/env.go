@@ -21,7 +21,7 @@ func NewFromEnvironment(keepReloading bool) (*Config, error) {
 		go func() {
 			for {
 				// Delay after each request
-				<-time.After(reloadDelay)
+				time.Sleep(reloadDelay)
 
 				// Attempt to reload the config
 				newCnf, newErr := fromEnvironment()

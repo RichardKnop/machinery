@@ -14,7 +14,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-// RedisBackend represents a Memcache result backend
+// RedisBackend represents a Redis result backend
 type RedisBackend struct {
 	Backend
 	host     string

@@ -1,8 +1,14 @@
 ---
 broker: 'amqp://guest:guest@localhost:5672/'
+#broker: 'redis://localhost:6379'
+#broker: 'https://sqs.us-west-2.amazonaws.com/123456789012'
 default_queue: machinery_tasks
-result_backend: 'redis://127.0.0.1:6379'
+
+result_backend: 'redis://localhost:6379'
+#result_backend: 'memcache://localhost:11211'
+#result_backend: 'mongodb://localhost:27017'
 results_expire_in: 3600000
+
 amqp:
   binding_key: machinery_task
   exchange: machinery_exchange

@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewDynamoDBBackend(t *testing.T) {
+	// should call t.Skip if not connected to internet
 	backend := backends.NewDynamoDBBackend(backends.TestCnf)
 	assert.IsType(t, &backends.DynamoDBBackend{}, backend)
 }
@@ -28,7 +29,6 @@ func TestInitGroup(t *testing.T) {
 }
 
 func TestDynamoDBGroupCompleted(t *testing.T) {
-
 	task1 := map[string]*dynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),

@@ -11,8 +11,11 @@ import (
 func TestRedisMemcache(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
 	memcacheURL := os.Getenv("MEMCACHE_URL")
-	if redisURL == "" || memcacheURL == "" {
-		return
+	if redisURL == "" {
+		t.Skip("REDIS_URL is not defined")
+	}
+	if memcacheURL == "" {
+		t.Skip("MEMCACHE_URL is not defined")
 	}
 
 	// Redis broker, Redis result backend

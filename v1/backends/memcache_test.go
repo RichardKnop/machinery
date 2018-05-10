@@ -14,7 +14,7 @@ import (
 func TestGroupCompletedMemcache(t *testing.T) {
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 	if memcacheURL == "" {
-		return
+		t.Skip("MEMCACHE_URL is not defined")
 	}
 
 	groupUUID := "testGroupUUID"
@@ -73,7 +73,7 @@ func TestGroupCompletedMemcache(t *testing.T) {
 func TestGetStateMemcache(t *testing.T) {
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 	if memcacheURL == "" {
-		return
+		t.Skip("MEMCACHE_URL is not defined")
 	}
 
 	signature := &tasks.Signature{
@@ -85,11 +85,11 @@ func TestGetStateMemcache(t *testing.T) {
 
 	go func() {
 		backend.SetStatePending(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 		backend.SetStateReceived(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 		backend.SetStateStarted(signature)
-		<-time.After(2 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 		taskResults := []*tasks.TaskResult{
 			{
 				Type:  "float64",
@@ -120,7 +120,7 @@ func TestGetStateMemcache(t *testing.T) {
 func TestPurgeStateMemcache(t *testing.T) {
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 	if memcacheURL == "" {
-		return
+		t.Skip("MEMCACHE_URL is not defined")
 	}
 
 	signature := &tasks.Signature{

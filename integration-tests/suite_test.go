@@ -286,14 +286,14 @@ func testPanic(server *machinery.Server, t *testing.T) {
 
 func testDelay(server *machinery.Server, t *testing.T) {
 	now := time.Now().UTC()
-	eta := now.Add(100 * (time.Millisecond))
+	eta := now.Add(100 * time.Millisecond)
 	task := newDelayTask(eta)
 	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		t.Error(err)
 	}
 
-	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err := asyncResult.Get(time.Duration(5 * time.Millisecond))
 	if err != nil {
 		t.Error(err)
 	}
