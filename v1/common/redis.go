@@ -3,19 +3,35 @@ package common
 import (
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/gomodule/redigo/redis"
+)
+
+var (
+	defaultConfig = &config.RedisConfig{
+		MaxIdle:        3,
+		IdleTimeout:    240,
+		ReadTimeout:    15,
+		WriteTimeout:   15,
+		ConnectTimeout: 15,
+	}
 )
 
 // RedisConnector ...
 type RedisConnector struct{}
 
 // NewPool returns a new pool of Redis connections
-func (rc *RedisConnector) NewPool(socketPath, host, password string, db int) *redis.Pool {
+func (rc *RedisConnector) NewPool(socketPath, host, password string, db int, cnf *config.RedisConfig) *redis.Pool {
+	if cnf == nil {
+		cnf = defaultConfig
+	}
 	return &redis.Pool{
-		MaxIdle:     3,
-		IdleTimeout: 240 * time.Second,
+		MaxIdle:     cnf.MaxIdle,
+		IdleTimeout: time.Duration(cnf.IdleTimeout) * time.Second,
+		MaxActive:   cnf.MaxActive,
+		Wait:        cnf.Wait,
 		Dial: func() (redis.Conn, error) {
-			c, err := rc.open(socketPath, host, password, db)
+			c, err := rc.open(socketPath, host, password, db, cnf)
 			if err != nil {
 				return nil, err
 			}
@@ -41,12 +57,12 @@ func (rc *RedisConnector) NewPool(socketPath, host, password string, db int) *re
 }
 
 // Open a new Redis connection
-func (rc *RedisConnector) open(socketPath, host, password string, db int) (redis.Conn, error) {
+func (rc *RedisConnector) open(socketPath, host, password string, db int, cnf *config.RedisConfig) (redis.Conn, error) {
 	var opts = []redis.DialOption{
 		redis.DialDatabase(db),
-		redis.DialReadTimeout(15 * time.Second),
-		redis.DialWriteTimeout(15 * time.Second),
-		redis.DialConnectTimeout(15 * time.Second),
+		redis.DialReadTimeout(time.Duration(cnf.ReadTimeout) * time.Second),
+		redis.DialWriteTimeout(time.Duration(cnf.WriteTimeout) * time.Second),
+		redis.DialConnectTimeout(time.Duration(cnf.ConnectTimeout) * time.Second),
 	}
 
 	if password != "" {

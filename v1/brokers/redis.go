@@ -393,7 +393,7 @@ func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
 // open returns or creates instance of Redis connection
 func (b *RedisBroker) open() redis.Conn {
 	if b.pool == nil {
-		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db)
+		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.cnf.Redis)
 	}
 	if b.redsync == nil {
 		var pools = []redsync.Pool{b.pool}
