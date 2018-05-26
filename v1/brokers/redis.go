@@ -345,11 +345,15 @@ func (b *RedisBroker) nextDelayedTask(key string) (result []byte, err error) {
 		reply interface{}
 	)
 
-	for {
-		// Space out queries to ZSET to 20ms intervals so we don't bombard redis
-		// server with relentless ZRANGEBYSCOREs
-		time.Sleep(20 * time.Millisecond)
+	var pollPeriod = 20 // default poll period for delayed tasks
+	if b.cnf != nil && b.cnf.Redis != nil {
+		pollPeriod = b.cnf.Redis.DelayedTasksPollPeriod
+	}
 
+	for {
+		// Space out queries to ZSET so we don't bombard redis
+		// server with relentless ZRANGEBYSCOREs
+		time.Sleep(time.Duration(pollPeriod) * time.Millisecond)
 		if _, err = conn.Do("WATCH", key); err != nil {
 			return
 		}

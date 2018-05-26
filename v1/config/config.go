@@ -27,11 +27,12 @@ var (
 			GroupMetasTable: "group_metas",
 		},
 		Redis: &RedisConfig{
-			MaxIdle:        3,
-			IdleTimeout:    240,
-			ReadTimeout:    15,
-			WriteTimeout:   15,
-			ConnectTimeout: 15,
+			MaxIdle:                3,
+			IdleTimeout:            240,
+			ReadTimeout:            15,
+			WriteTimeout:           15,
+			ConnectTimeout:         15,
+			DelayedTasksPollPeriod: 20,
 		},
 	}
 
@@ -106,6 +107,9 @@ type RedisConfig struct {
 	// ConnectTimeout specifies the timeout in seconds for connecting to the Redis server when
 	// no DialNetDial option is specified.
 	ConnectTimeout int `yaml:"connect_timeout" envconfig:"REDIS_CONNECT_TIMEOUT"`
+
+	// DelayedTasksPollPeriod specifies the period in milliseconds when polling redis for delayed tasks
+	DelayedTasksPollPeriod int
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements
