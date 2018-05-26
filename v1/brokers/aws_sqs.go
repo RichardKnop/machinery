@@ -78,7 +78,14 @@ func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskP
 			default:
 				output, err := b.receiveMessage(qURL)
 				if err != nil {
-					log.ERROR.Printf("Queue consume error: %s", err)
+					// an optional throttle between consumption errors
+					if b.Broker.cnf != nil && b.Broker.cnf.SQS != nil && b.Broker.cnf.SQS.ThrottleConsumeError > 0 {
+						delay := time.Duration(b.Broker.cnf.SQS.ThrottleConsumeError) * time.Second
+						log.ERROR.Printf("Queue consume error, retrying in %v seconds: %s", delay, err)
+						time.Sleep(delay)
+					} else {
+						log.ERROR.Printf("Queue consume error: %s", err)
+					}
 					continue
 				}
 				if len(output.Messages) == 0 {
