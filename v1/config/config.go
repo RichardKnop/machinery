@@ -49,7 +49,7 @@ type Config struct {
 	SQS             *SQSConfig   `yaml:"sqs"`
 	Redis           *RedisConfig `yaml:"redis"`
 	TLSConfig       *tls.Config
-	//NoUnixSignals when set disables signal handling in machinery
+	// NoUnixSignals - when set disables signal handling in machinery
 	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
 	DynamoDB      *DynamoDBConfig `yaml:"dynamodb"`
 }
@@ -109,7 +109,7 @@ type RedisConfig struct {
 	ConnectTimeout int `yaml:"connect_timeout" envconfig:"REDIS_CONNECT_TIMEOUT"`
 
 	// DelayedTasksPollPeriod specifies the period in milliseconds when polling redis for delayed tasks
-	DelayedTasksPollPeriod int
+	DelayedTasksPollPeriod int `yaml:"delayed_tasks_poll_period" envconfig:"REDIS_DELAYED_TASKS_POLL_PERIOD"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements
