@@ -21,7 +21,10 @@ type Broker struct {
 
 // New creates new Broker instance
 func New(cnf *config.Config) Broker {
-	return Broker{cnf: cnf, retry: true}
+	b := Broker{cnf: cnf, retry: true}
+	b.stopChan = make(chan int)
+	b.retryStopChan = make(chan int)
+	return b
 }
 
 // GetConfig returns config
@@ -69,9 +72,6 @@ func (b *Broker) startConsuming(consumerTag string, taskProcessor TaskProcessor)
 	if b.retryFunc == nil {
 		b.retryFunc = retry.Closure()
 	}
-
-	b.stopChan = make(chan int)
-	b.retryStopChan = make(chan int)
 }
 
 // stopConsuming is a common part of StopConsuming

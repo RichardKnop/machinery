@@ -42,6 +42,9 @@ func NewRedisBroker(cnf *config.Config, host, password, socketPath string, db in
 	b.db = db
 	b.password = password
 	b.socketPath = socketPath
+	// Channels used to properly close down goroutines
+	b.stopReceivingChan = make(chan int)
+	b.stopDelayedChan = make(chan int)
 
 	return b
 }
@@ -62,9 +65,7 @@ func (b *RedisBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 		return b.retry, err
 	}
 
-	// Channels and wait groups used to properly close down goroutines
-	b.stopReceivingChan = make(chan int)
-	b.stopDelayedChan = make(chan int)
+	// Wait groups used to properly close down goroutines
 	b.receivingWG.Add(1)
 	b.delayedWG.Add(1)
 

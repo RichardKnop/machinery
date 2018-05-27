@@ -47,6 +47,8 @@ func NewAWSSQSBroker(cnf *config.Config) Interface {
 		}))
 		b.service = sqs.New(b.sess)
 	}
+	// Channel used to properly close down goroutines
+	b.stopReceivingChan = make(chan int)
 
 	return b
 }
@@ -62,7 +64,6 @@ func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskP
 	qURL := b.defaultQueueURL()
 	deliveries := make(chan *sqs.ReceiveMessageOutput)
 
-	b.stopReceivingChan = make(chan int)
 	b.receivingWG.Add(1)
 
 	go func() {
@@ -107,15 +108,17 @@ func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskP
 
 // StopConsuming quits the loop
 func (b *AWSSQSBroker) StopConsuming() {
-	b.stopConsuming()
-
+	// Stop receiving goroutine
 	b.stopReceiving()
-
-	// Waiting for any tasks being processed to finish
-	b.processingWG.Wait()
 
 	// Waiting for the receiving goroutine to have stopped
 	b.receivingWG.Wait()
+
+	// Stop consuming goroutine
+	b.stopConsuming()
+
+	// Waiting for any tasks being processed to finish
+	b.processingWG.Wait()
 }
 
 // Publish places a new message on the default queue
