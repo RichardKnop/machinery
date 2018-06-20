@@ -1,4 +1,4 @@
-package brokers
+package amqp
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/brokers/iface"
+	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -15,47 +17,47 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// AMQPBroker represents an AMQP broker
-type AMQPBroker struct {
-	Broker
+// Broker represents an AMQP broker
+type Broker struct {
+	common.Broker
 	common.AMQPConnector
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
 }
 
-// NewAMQPBroker creates new AMQPBroker instance
-func NewAMQPBroker(cnf *config.Config) Interface {
-	return &AMQPBroker{Broker: New(cnf), AMQPConnector: common.AMQPConnector{}}
+// New creates new Broker instance
+func New(cnf *config.Config) iface.Broker {
+	return &Broker{Broker: common.NewBroker(cnf), AMQPConnector: common.AMQPConnector{}}
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *AMQPBroker) StartConsuming(consumerTag string, concurrency int, taskProcessor TaskProcessor) (bool, error) {
-	b.startConsuming(consumerTag, taskProcessor)
+func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
+	b.StartConsuming(consumerTag, concurrency, taskProcessor)
 
 	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
-		b.cnf.Broker,
-		b.cnf.TLSConfig,
-		b.cnf.AMQP.Exchange,     // exchange name
-		b.cnf.AMQP.ExchangeType, // exchange type
-		b.cnf.DefaultQueue,      // queue name
+		b.GetConfig().Broker,
+		b.GetConfig().TLSConfig,
+		b.GetConfig().AMQP.Exchange,     // exchange name
+		b.GetConfig().AMQP.ExchangeType, // exchange type
+		b.GetConfig().DefaultQueue,      // queue name
 		true,                    // queue durable
 		false,                   // queue delete when unused
-		b.cnf.AMQP.BindingKey, // queue binding key
+		b.GetConfig().AMQP.BindingKey, // queue binding key
 		nil, // exchange declare args
 		nil, // queue declare args
-		amqp.Table(b.cnf.AMQP.QueueBindingArgs), // queue binding args
+		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
-		b.retryFunc(b.retryStopChan)
-		return b.retry, err
+		b.GetRetryFunc()(b.GetRetryStopChan())
+		return b.GetRetry(), err
 	}
 	defer b.Close(channel, conn)
 
 	if err = channel.Qos(
-		b.cnf.AMQP.PrefetchCount,
+		b.GetConfig().AMQP.PrefetchCount,
 		0,     // prefetch size
 		false, // global
 	); err != nil {
-		return b.retry, fmt.Errorf("Channel qos error: %s", err)
+		return b.GetRetry(), fmt.Errorf("Channel qos error: %s", err)
 	}
 
 	deliveries, err := channel.Consume(
@@ -68,33 +70,33 @@ func (b *AMQPBroker) StartConsuming(consumerTag string, concurrency int, taskPro
 		nil,         // arguments
 	)
 	if err != nil {
-		return b.retry, fmt.Errorf("Queue consume error: %s", err)
+		return b.GetRetry(), fmt.Errorf("Queue consume error: %s", err)
 	}
 
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
 	if err := b.consume(deliveries, concurrency, taskProcessor, amqpCloseChan); err != nil {
-		return b.retry, err
+		return b.GetRetry(), err
 	}
 
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()
 
-	return b.retry, nil
+	return b.GetRetry(), nil
 }
 
 // StopConsuming quits the loop
-func (b *AMQPBroker) StopConsuming() {
-	b.stopConsuming()
+func (b *Broker) StopConsuming() {
+	b.StopConsuming()
 
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()
 }
 
 // Publish places a new message on the default queue
-func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
+func (b *Broker) Publish(signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
-	AdjustRoutingKey(b, signature)
+	b.AdjustRoutingKey(signature)
 
 	msg, err := json.Marshal(signature)
 	if err != nil {
@@ -114,17 +116,17 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 	}
 
 	conn, channel, _, confirmsChan, _, err := b.Connect(
-		b.cnf.Broker,
-		b.cnf.TLSConfig,
-		b.cnf.AMQP.Exchange,     // exchange name
-		b.cnf.AMQP.ExchangeType, // exchange type
+		b.GetConfig().Broker,
+		b.GetConfig().TLSConfig,
+		b.GetConfig().AMQP.Exchange,     // exchange name
+		b.GetConfig().AMQP.ExchangeType, // exchange type
 		signature.RoutingKey,    // queue name
 		true,                    // queue durable
 		false,                   // queue delete when unused
-		b.cnf.AMQP.BindingKey, // queue binding key
+		b.GetConfig().AMQP.BindingKey, // queue binding key
 		nil, // exchange declare args
 		nil, // queue declare args
-		amqp.Table(b.cnf.AMQP.QueueBindingArgs), // queue binding args
+		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
 		return err
@@ -132,7 +134,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 	defer b.Close(channel, conn)
 
 	if err := channel.Publish(
-		b.cnf.AMQP.Exchange,  // exchange name
+		b.GetConfig().AMQP.Exchange,  // exchange name
 		signature.RoutingKey, // routing key
 		false,                // mandatory
 		false,                // immediate
@@ -157,7 +159,7 @@ func (b *AMQPBroker) Publish(signature *tasks.Signature) error {
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskProcessor TaskProcessor, amqpCloseChan <-chan *amqp.Error) error {
+func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskProcessor iface.TaskProcessor, amqpCloseChan <-chan *amqp.Error) error {
 	pool := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
@@ -197,14 +199,14 @@ func (b *AMQPBroker) consume(deliveries <-chan amqp.Delivery, concurrency int, t
 					pool <- struct{}{}
 				}
 			}()
-		case <-b.stopChan:
+		case <-b.GetStopChan():
 			return nil
 		}
 	}
 }
 
 // consumeOne processes a single message using TaskProcessor
-func (b *AMQPBroker) consumeOne(delivery amqp.Delivery, taskProcessor TaskProcessor) error {
+func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProcessor) error {
 	if len(delivery.Body) == 0 {
 		delivery.Nack(true, false)                     // multiple, requeue
 		return errors.New("Received an empty message") // RabbitMQ down?
@@ -218,7 +220,7 @@ func (b *AMQPBroker) consumeOne(delivery amqp.Delivery, taskProcessor TaskProces
 	decoder.UseNumber()
 	if err := decoder.Decode(signature); err != nil {
 		delivery.Nack(multiple, requeue)
-		return NewErrCouldNotUnmarshaTaskSignature(delivery.Body, err)
+		return errs.NewErrCouldNotUnmarshaTaskSignature(delivery.Body, err)
 	}
 
 	// If the task is not registered, we nack it and requeue,
@@ -243,7 +245,7 @@ func (b *AMQPBroker) consumeOne(delivery amqp.Delivery, taskProcessor TaskProces
 // is created without any consumers, the message is then published to this queue
 // with appropriate ttl expiration headers, after the expiration, it is sent to
 // the proper queue with consumers
-func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
+func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 	if delayMs <= 0 {
 		return errors.New("Cannot delay task by 0ms")
 	}
@@ -257,14 +259,14 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 	queueName := fmt.Sprintf(
 		"delay.%d.%s.%s",
 		delayMs, // delay duration in mileseconds
-		b.cnf.AMQP.Exchange,
-		b.cnf.AMQP.BindingKey, // routing key
+		b.GetConfig().AMQP.Exchange,
+		b.GetConfig().AMQP.BindingKey, // routing key
 	)
 	declareQueueArgs := amqp.Table{
 		// Exchange where to send messages after TTL expiration.
-		"x-dead-letter-exchange": b.cnf.AMQP.Exchange,
+		"x-dead-letter-exchange": b.GetConfig().AMQP.Exchange,
 		// Routing key which use when resending expired messages.
-		"x-dead-letter-routing-key": b.cnf.AMQP.BindingKey,
+		"x-dead-letter-routing-key": b.GetConfig().AMQP.BindingKey,
 		// Time in milliseconds
 		// after that message will expire and be sent to destination.
 		"x-message-ttl": delayMs,
@@ -272,17 +274,17 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 		"x-expires": delayMs * 2,
 	}
 	conn, channel, _, _, _, err := b.Connect(
-		b.cnf.Broker,
-		b.cnf.TLSConfig,
-		b.cnf.AMQP.Exchange,                     // exchange name
-		b.cnf.AMQP.ExchangeType,                 // exchange type
+		b.GetConfig().Broker,
+		b.GetConfig().TLSConfig,
+		b.GetConfig().AMQP.Exchange,                     // exchange name
+		b.GetConfig().AMQP.ExchangeType,                 // exchange type
 		queueName,                               // queue name
 		true,                                    // queue durable
 		false,                                   // queue delete when unused
 		queueName,                               // queue binding key
 		nil,                                     // exchange declare args
 		declareQueueArgs,                        // queue declare args
-		amqp.Table(b.cnf.AMQP.QueueBindingArgs), // queue binding args
+		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
 		return err
@@ -290,7 +292,7 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 	defer b.Close(channel, conn)
 
 	if err := channel.Publish(
-		b.cnf.AMQP.Exchange, // exchange
+		b.GetConfig().AMQP.Exchange, // exchange
 		queueName,           // routing key
 		false,               // mandatory
 		false,               // immediate
@@ -305,4 +307,23 @@ func (b *AMQPBroker) delay(signature *tasks.Signature, delayMs int64) error {
 	}
 
 	return nil
+}
+
+// AdjustRoutingKey makes sure the routing key is correct.
+// If the routing key is an empty string:
+// a) set it to binding key for direct exchange type
+// b) set it to default queue name
+func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
+	if s.RoutingKey != "" {
+		return
+	}
+
+	if b.GetConfig().AMQP != nil && b.GetConfig().AMQP.ExchangeType == "direct" {
+		// The routing algorithm behind a direct exchange is simple - a message goes
+		// to the queues whose binding key exactly matches the routing key of the message.
+		s.RoutingKey = b.GetConfig().AMQP.BindingKey
+		return
+	}
+
+	s.RoutingKey = b.GetConfig().DefaultQueue
 }

@@ -1,4 +1,4 @@
-package brokers
+package eager
 
 import (
 	"bytes"
@@ -6,37 +6,39 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/RichardKnop/machinery/v1/common"
+		"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
-// EagerBroker represents an "eager" in-memory broker
-type EagerBroker struct {
-	worker TaskProcessor
-	Broker
+// Broker represents an "eager" in-memory broker
+type Broker struct {
+	worker iface.TaskProcessor
+	common.Broker
 }
 
-// NewEagerBroker creates new EagerBroker instance
-func NewEagerBroker() Interface {
+// New creates new Broker instance
+func New() iface.Broker {
 	return new(EagerBroker)
 }
 
 // EagerMode interface with methods specific for this broker
 type EagerMode interface {
-	AssignWorker(p TaskProcessor)
+	AssignWorker(p iface.TaskProcessor)
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (eagerBroker *EagerBroker) StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error) {
+func (eagerBroker *Broker) StartConsuming(consumerTag string, concurrency int, p iface.TaskProcessor) (bool, error) {
 	return true, nil
 }
 
 // StopConsuming quits the loop
-func (eagerBroker *EagerBroker) StopConsuming() {
+func (eagerBroker *Broker) StopConsuming() {
 	// do nothing
 }
 
 // Publish places a new message on the default queue
-func (eagerBroker *EagerBroker) Publish(task *tasks.Signature) error {
+func (eagerBroker *Broker) Publish(task *tasks.Signature) error {
 	if eagerBroker.worker == nil {
 		return errors.New("worker is not assigned in eager-mode")
 	}
@@ -60,11 +62,11 @@ func (eagerBroker *EagerBroker) Publish(task *tasks.Signature) error {
 }
 
 // GetPendingTasks returns a slice of task.Signatures waiting in the queue
-func (eagerBroker *EagerBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
+func (eagerBroker *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return []*tasks.Signature{}, errors.New("Not implemented")
 }
 
 // AssignWorker assigns a worker to the eager broker
-func (eagerBroker *EagerBroker) AssignWorker(w TaskProcessor) {
+func (eagerBroker *Broker) AssignWorker(w iface.TaskProcessor) {
 	eagerBroker.worker = w
 }

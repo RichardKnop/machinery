@@ -1,8 +1,9 @@
-package brokers
+package common
 
 import (
 	"errors"
 
+	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
@@ -19,8 +20,8 @@ type Broker struct {
 	stopChan            chan int
 }
 
-// New creates new Broker instance
-func New(cnf *config.Config) Broker {
+// NewBroker creates new Broker instance
+func NewBroker(cnf *config.Config) Broker {
 	return Broker{cnf: cnf, retry: true}
 }
 
@@ -29,19 +30,29 @@ func (b *Broker) GetConfig() *config.Config {
 	return b.cnf
 }
 
-// StartConsuming enters a loop and waits for incoming messages
-func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor TaskProcessor) (bool, error) {
-	return false, errors.New("Not implemented")
+// GetRetry ...
+func (b *Broker) GetRetry() bool {
+	return b.retry
+}
+
+// GetRetryFunc ...
+func (b *Broker) GetRetryFunc() func(chan int) {
+	return b.retryFunc
+}
+
+// GetRetryStopChan ...
+func (b *Broker) GetRetryStopChan() chan int {
+	return b.retryStopChan
+}
+
+// GetStopChan ...
+func (b *Broker) GetStopChan() chan int {
+	return b.stopChan
 }
 
 // Publish places a new message on the default queue
 func (b *Broker) Publish(signature *tasks.Signature) error {
 	return errors.New("Not implemented")
-}
-
-// StopConsuming quits the loop
-func (b *Broker) StopConsuming() {
-	//
 }
 
 // SetRegisteredTaskNames sets registered task names
@@ -64,8 +75,8 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return nil, errors.New("Not implemented")
 }
 
-// startConsuming is a common part of StartConsuming method
-func (b *Broker) startConsuming(consumerTag string, taskProcessor TaskProcessor) {
+// StartConsuming is a common part of StartConsuming method
+func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) {
 	if b.retryFunc == nil {
 		b.retryFunc = retry.Closure()
 	}
@@ -74,8 +85,8 @@ func (b *Broker) startConsuming(consumerTag string, taskProcessor TaskProcessor)
 	b.retryStopChan = make(chan int)
 }
 
-// stopConsuming is a common part of StopConsuming
-func (b *Broker) stopConsuming() {
+// StopConsuming is a common part of StopConsuming
+func (b *Broker) StopConsuming() {
 	// Do not retry from now on
 	b.retry = false
 	// Stop the retry closure earlier
@@ -97,23 +108,10 @@ func (b *Broker) GetRegisteredTaskNames() []string {
 // If the routing key is an empty string:
 // a) set it to binding key for direct exchange type
 // b) set it to default queue name
-func AdjustRoutingKey(b Interface, s *tasks.Signature) {
+func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
 	if s.RoutingKey != "" {
 		return
 	}
 
-	if IsAMQP(b) && b.GetConfig().AMQP != nil && b.GetConfig().AMQP.ExchangeType == "direct" {
-		// The routing algorithm behind a direct exchange is simple - a message goes
-		// to the queues whose binding key exactly matches the routing key of the message.
-		s.RoutingKey = b.GetConfig().AMQP.BindingKey
-		return
-	}
-
 	s.RoutingKey = b.GetConfig().DefaultQueue
-}
-
-// IsAMQP returns true if the broker is AMQP
-func IsAMQP(b Interface) bool {
-	_, isAMQPBroker := b.(*AMQPBroker)
-	return isAMQPBroker
 }

@@ -1,4 +1,4 @@
-package brokers
+package sqs
 
 import (
 	"encoding/json"
@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/common"
+	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
@@ -14,8 +16,8 @@ import (
 )
 
 var (
-	TestAWSSQSBroker     *AWSSQSBroker
-	ErrAWSSQSBroker      *AWSSQSBroker
+	TestAWSSQSBroker     iface.Broker
+	ErrAWSSQSBroker      iface.Broker
 	ReceiveMessageOutput *sqs.ReceiveMessageOutput
 	TestConf             *config.Config
 )
@@ -72,8 +74,8 @@ func init() {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 	svc := new(FakeSQS)
-	TestAWSSQSBroker = &AWSSQSBroker{
-		Broker:            New(TestConf),
+	TestAWSSQSBroker = &Broker{
+		Broker:            common.NewBroker(TestConf),
 		sess:              sess,
 		service:           svc,
 		processingWG:      sync.WaitGroup{},
@@ -82,8 +84,8 @@ func init() {
 	}
 
 	errSvc := new(ErrorSQS)
-	ErrAWSSQSBroker = &AWSSQSBroker{
-		Broker:            New(TestConf),
+	ErrAWSSQSBroker = &Broker{
+		Broker:            common.NewBroker(TestConf),
 		sess:              sess,
 		service:           errSvc,
 		processingWG:      sync.WaitGroup{},
@@ -123,58 +125,58 @@ func init() {
 	}
 }
 
-func (b *AWSSQSBroker) ConsumeForTest(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor) error {
+func (b *Broker) ConsumeForTest(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor) error {
 	return b.consume(deliveries, concurrency, taskProcessor)
 }
 
-func (b *AWSSQSBroker) ConsumeOneForTest(delivery *sqs.ReceiveMessageOutput, taskProcessor TaskProcessor) error {
+func (b *Broker) ConsumeOneForTest(delivery *sqs.ReceiveMessageOutput, taskProcessor iface.TaskProcessor) error {
 	return b.consumeOne(delivery, taskProcessor)
 }
 
-func (b *AWSSQSBroker) DeleteOneForTest(delivery *sqs.ReceiveMessageOutput) error {
+func (b *Broker) DeleteOneForTest(delivery *sqs.ReceiveMessageOutput) error {
 	return b.deleteOne(delivery)
 }
 
-func (b *AWSSQSBroker) DefaultQueueURLForTest() *string {
+func (b *Broker) DefaultQueueURLForTest() *string {
 	return b.defaultQueueURL()
 }
 
-func (b *AWSSQSBroker) ReceiveMessageForTest(qURL *string) (*sqs.ReceiveMessageOutput, error) {
+func (b *Broker) ReceiveMessageForTest(qURL *string) (*sqs.ReceiveMessageOutput, error) {
 	return b.receiveMessage(qURL)
 }
 
-func (b *AWSSQSBroker) InitializePoolForTest(pool chan struct{}, concurrency int) {
+func (b *Broker) InitializePoolForTest(pool chan struct{}, concurrency int) {
 	b.initializePool(pool, concurrency)
 }
 
-func (b *AWSSQSBroker) ConsumeDeliveriesForTest(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
+func (b *Broker) ConsumeDeliveriesForTest(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
 	return b.consumeDeliveries(deliveries, concurrency, taskProcessor, pool, errorsChan)
 }
 
-func (b *AWSSQSBroker) ContinueReceivingMessagesForTest(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
+func (b *Broker) ContinueReceivingMessagesForTest(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
 	return b.continueReceivingMessages(qURL, deliveries)
 }
 
-func (b *AWSSQSBroker) StopReceivingForTest() {
+func (b *Broker) StopReceivingForTest() {
 	b.stopReceiving()
 }
 
-func (b *AWSSQSBroker) GetStopReceivingChanForTest() chan int {
+func (b *Broker) GetStopReceivingChanForTest() chan int {
 	return b.stopReceivingChan
 }
 
-func (b *Broker) StartConsumingForTest(consumerTag string, taskProcessor TaskProcessor) {
-	b.startConsuming(consumerTag, taskProcessor)
+func (b *Broker) StartConsumingForTest(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) {
+	b.StartConsuming(consumerTag, concurrency, taskProcessor)
 }
 
 func (b *Broker) GetRetryFuncForTest() func(chan int) {
-	return b.retryFunc
+	return b.GetRetryFunc()
 }
 
 func (b *Broker) GetStopChanForTest() chan int {
-	return b.stopChan
+	return b.GetStopChan()
 }
 
 func (b *Broker) GetRetryStopChanForTest() chan int {
-	return b.retryStopChan
+	return b.GetRetryStopChan()
 }

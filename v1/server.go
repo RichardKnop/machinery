@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"sync"
 
-	opentracing "github.com/opentracing/opentracing-go"
-
 	"github.com/satori/go.uuid"
-
-	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
+	
+	backends "github.com/RichardKnop/machinery/v1/backends/iface"
+	brokers "github.com/RichardKnop/machinery/v1/brokers/iface"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -22,8 +21,8 @@ import (
 type Server struct {
 	config          *config.Config
 	registeredTasks map[string]interface{}
-	broker          brokers.Interface
-	backend         backends.Interface
+	broker          brokers.Broker
+	backend         backends.Backend
 }
 
 // NewServer creates Server instance

@@ -1,4 +1,4 @@
-package brokers_test
+package sqs_test
 
 import (
 	"errors"
@@ -6,28 +6,30 @@ import (
 	"testing"
 
 	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/brokers"
+	"github.com/RichardKnop/machinery/v1/brokers/iface"
+	"github.com/RichardKnop/machinery/v1/brokers/sqs"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/assert"
+
+	awssqs "github.com/aws/aws-sdk-go/service/sqs"
 )
 
 var (
-	testBroker           brokers.Interface
-	testAWSSQSBroker     *brokers.AWSSQSBroker
-	errAWSSQSBroker      *brokers.AWSSQSBroker
+	testBroker           iface.Broker
+	testAWSSQSBroker     *sqs.Broker
+	errAWSSQSBroker      *sqs.Broker
 	cnf                  *config.Config
-	receiveMessageOutput *sqs.ReceiveMessageOutput
+	receiveMessageOutput *awssqs.ReceiveMessageOutput
 )
 
 func init() {
-	testAWSSQSBroker = brokers.TestAWSSQSBroker
-	errAWSSQSBroker = brokers.ErrAWSSQSBroker
-	cnf = brokers.TestConf
-	receiveMessageOutput = brokers.ReceiveMessageOutput
-	testBroker = brokers.NewAWSSQSBroker(cnf)
+	testAWSSQSBroker = sqs.TestAWSSQSBroker
+	errAWSSQSBroker = sqs.ErrAWSSQSBroker
+	cnf = sqs.TestConf
+	receiveMessageOutput = new(awssqs.ReceiveMessageOutput)
+	testBroker = sqs.New(cnf)
 }
 
 func TestNewAWSSQSBroker(t *testing.T) {
@@ -36,7 +38,7 @@ func TestNewAWSSQSBroker(t *testing.T) {
 
 func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 	qURL := testAWSSQSBroker.DefaultQueueURLForTest()
-	deliveries := make(chan *sqs.ReceiveMessageOutput)
+	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	firstStep := make(chan int)
 	nextStep := make(chan int)
 	go func() {
@@ -71,7 +73,7 @@ func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 
 	// Test when there is no message
 	outputCopy := *receiveMessageOutput
-	receiveMessageOutput.Messages = []*sqs.Message{}
+	receiveMessageOutput.Messages = []*awssqs.Message{}
 	whetherContinue, err = testAWSSQSBroker.ContinueReceivingMessagesForTest(qURL, deliveries)
 	assert.True(t, whetherContinue)
 	assert.Nil(t, err)
@@ -86,9 +88,9 @@ func TestPrivateFunc_consume(t *testing.T) {
 		t.Fatal(err)
 	}
 	wk := server1.NewWorker("sms_worker", 0)
-	deliveries := make(chan *sqs.ReceiveMessageOutput)
+	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	outputCopy := *receiveMessageOutput
-	outputCopy.Messages = []*sqs.Message{}
+	outputCopy.Messages = []*awssqs.Message{}
 	go func() { deliveries <- &outputCopy }()
 
 	// an infinite loop will be executed only when there is no error
@@ -107,11 +109,11 @@ func TestPrivateFunc_consumeOne(t *testing.T) {
 	assert.NotNil(t, err)
 
 	outputCopy := *receiveMessageOutput
-	outputCopy.Messages = []*sqs.Message{}
+	outputCopy.Messages = []*awssqs.Message{}
 	err = testAWSSQSBroker.ConsumeOneForTest(&outputCopy, wk)
 	assert.NotNil(t, err)
 
-	outputCopy.Messages = []*sqs.Message{
+	outputCopy.Messages = []*awssqs.Message{
 		{
 			Body: aws.String("foo message"),
 		},
@@ -138,7 +140,7 @@ func TestPrivateFunc_startConsuming(t *testing.T) {
 	stopChan := testAWSSQSBroker.GetStopChanForTest()
 	retryStopChan := testAWSSQSBroker.GetRetryStopChanForTest()
 	assert.Nil(t, retryFunc)
-	testAWSSQSBroker.StartConsumingForTest("fooTag", wk)
+	testAWSSQSBroker.StartConsumingForTest("fooTag", 1, wk)
 	assert.IsType(t, retryFunc, retry.Closure())
 	assert.Equal(t, len(stopChan), 0)
 	assert.Equal(t, len(retryStopChan), 0)
@@ -167,7 +169,7 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	concurrency := 0
 	pool := make(chan struct{}, concurrency)
 	errorsChan := make(chan error)
-	deliveries := make(chan *sqs.ReceiveMessageOutput)
+	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	server1, err := machinery.NewServer(cnf)
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +191,7 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	assert.Nil(t, err)
 
 	outputCopy := *receiveMessageOutput
-	outputCopy.Messages = []*sqs.Message{}
+	outputCopy.Messages = []*awssqs.Message{}
 	go func() { deliveries <- &outputCopy }()
 	whetherContinue, err = testAWSSQSBroker.ConsumeDeliveriesForTest(deliveries, concurrency, wk, pool, errorsChan)
 	e := <-errorsChan

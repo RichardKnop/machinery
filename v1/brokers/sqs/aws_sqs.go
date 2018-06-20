@@ -1,4 +1,4 @@
-package brokers
+package sqs
 
 import (
 	"encoding/json"
@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/common"
+	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -21,10 +23,10 @@ const (
 	maxAWSSQSDelay = time.Minute * 15 // Max supported SQS delay is 15 min: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html
 )
 
-// AWSSQSBroker represents a AWS SQS broker
+// Broker represents a AWS SQS broker
 // There are examples on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/sqs-example-create-queue.html
-type AWSSQSBroker struct {
-	Broker
+type Broker struct {
+	common.Broker
 	processingWG      sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
 	receivingWG       sync.WaitGroup
 	stopReceivingChan chan int
@@ -32,9 +34,9 @@ type AWSSQSBroker struct {
 	service           sqsiface.SQSAPI
 }
 
-// NewAWSSQSBroker creates new Broker instance
-func NewAWSSQSBroker(cnf *config.Config) Interface {
-	b := &AWSSQSBroker{Broker: New(cnf)}
+// New creates new Broker instance
+func New(cnf *config.Config) iface.Broker {
+	b := &Broker{Broker: common.NewBroker(cnf)}
 	if cnf.SQS != nil && cnf.SQS.Client != nil {
 		// Use provided *SQS client
 		b.service = cnf.SQS.Client
@@ -52,13 +54,13 @@ func NewAWSSQSBroker(cnf *config.Config) Interface {
 }
 
 // GetPendingTasks returns a slice of task.Signatures waiting in the queue
-func (b *AWSSQSBroker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
+func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return nil, errors.New("Not implemented")
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskProcessor TaskProcessor) (bool, error) {
-	b.startConsuming(consumerTag, taskProcessor)
+func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
+	b.StartConsuming(consumerTag, concurrency, taskProcessor)
 	qURL := b.defaultQueueURL()
 	deliveries := make(chan *sqs.ReceiveMessageOutput)
 
@@ -99,15 +101,15 @@ func (b *AWSSQSBroker) StartConsuming(consumerTag string, concurrency int, taskP
 	}()
 
 	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
-		return b.retry, err
+		return b.GetRetry(), err
 	}
 
-	return b.retry, nil
+	return b.GetRetry(), nil
 }
 
 // StopConsuming quits the loop
-func (b *AWSSQSBroker) StopConsuming() {
-	b.stopConsuming()
+func (b *Broker) StopConsuming() {
+	b.StopConsuming()
 
 	b.stopReceiving()
 
@@ -119,7 +121,7 @@ func (b *AWSSQSBroker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *AWSSQSBroker) Publish(signature *tasks.Signature) error {
+func (b *Broker) Publish(signature *tasks.Signature) error {
 
 	msg, err := json.Marshal(signature)
 	if err != nil {
@@ -127,11 +129,11 @@ func (b *AWSSQSBroker) Publish(signature *tasks.Signature) error {
 	}
 
 	// Check that signature.RoutingKey is set, if not switch to DefaultQueue
-	AdjustRoutingKey(b, signature)
+	b.AdjustRoutingKey(signature)
 
 	MsgInput := &sqs.SendMessageInput{
 		MessageBody: aws.String(string(msg)),
-		QueueUrl:    aws.String(b.cnf.Broker + "/" + signature.RoutingKey),
+		QueueUrl:    aws.String(b.GetConfig().Broker + "/" + signature.RoutingKey),
 	}
 
 	// if this is a fifo queue, there needs to be some additional parameters.
@@ -171,7 +173,7 @@ func (b *AWSSQSBroker) Publish(signature *tasks.Signature) error {
 }
 
 // consume is a method which keeps consuming deliveries from a channel, until there is an error or a stop signal
-func (b *AWSSQSBroker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor) error {
+func (b *Broker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor) error {
 	pool := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
@@ -193,7 +195,7 @@ func (b *AWSSQSBroker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, conc
 }
 
 // consumeOne is a method consumes a delivery. If a delivery was consumed successfully, it will be deleted from AWS SQS
-func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor TaskProcessor) error {
+func (b *Broker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor iface.TaskProcessor) error {
 	if len(delivery.Messages) == 0 {
 		log.ERROR.Printf("received an empty message, the delivery was %v", delivery)
 		return errors.New("received empty message, the delivery is " + delivery.GoString())
@@ -225,7 +227,7 @@ func (b *AWSSQSBroker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProces
 }
 
 // deleteOne is a method delete a delivery from AWS SQS
-func (b *AWSSQSBroker) deleteOne(delivery *sqs.ReceiveMessageOutput) error {
+func (b *Broker) deleteOne(delivery *sqs.ReceiveMessageOutput) error {
 	qURL := b.defaultQueueURL()
 	_, err := b.service.DeleteMessage(&sqs.DeleteMessageInput{
 		QueueUrl:      qURL,
@@ -239,17 +241,17 @@ func (b *AWSSQSBroker) deleteOne(delivery *sqs.ReceiveMessageOutput) error {
 }
 
 // defaultQueueURL is a method returns the default queue url
-func (b *AWSSQSBroker) defaultQueueURL() *string {
-	return aws.String(b.cnf.Broker + "/" + b.cnf.DefaultQueue)
+func (b *Broker) defaultQueueURL() *string {
+	return aws.String(b.GetConfig().Broker + "/" + b.GetConfig().DefaultQueue)
 }
 
 // receiveMessage is a method receives a message from specified queue url
-func (b *AWSSQSBroker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, error) {
+func (b *Broker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, error) {
 	var waitTimeSeconds int
 	var visibilityTimeout *int
-	if b.cnf.SQS != nil {
-		waitTimeSeconds = b.cnf.SQS.WaitTimeSeconds
-		visibilityTimeout = b.cnf.SQS.VisibilityTimeout
+	if b.GetConfig().SQS != nil {
+		waitTimeSeconds = b.GetConfig().SQS.WaitTimeSeconds
+		visibilityTimeout = b.GetConfig().SQS.VisibilityTimeout
 	} else {
 		waitTimeSeconds = 0
 	}
@@ -275,14 +277,14 @@ func (b *AWSSQSBroker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, 
 }
 
 // initializePool is a method which initializes concurrency pool
-func (b *AWSSQSBroker) initializePool(pool chan struct{}, concurrency int) {
+func (b *Broker) initializePool(pool chan struct{}, concurrency int) {
 	for i := 0; i < concurrency; i++ {
 		pool <- struct{}{}
 	}
 }
 
 // consumeDeliveries is a method consuming deliveries from deliveries channel
-func (b *AWSSQSBroker) consumeDeliveries(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
+func (b *Broker) consumeDeliveries(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
 	select {
 	case err := <-errorsChan:
 		return false, err
@@ -309,14 +311,14 @@ func (b *AWSSQSBroker) consumeDeliveries(deliveries <-chan *sqs.ReceiveMessageOu
 				pool <- struct{}{}
 			}
 		}()
-	case <-b.stopChan:
+	case <-b.GetStopChan():
 		return false, nil
 	}
 	return true, nil
 }
 
 // continueReceivingMessages is a method returns a continue signal
-func (b *AWSSQSBroker) continueReceivingMessages(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
+func (b *Broker) continueReceivingMessages(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
 	select {
 	// A way to stop this goroutine from b.StopConsuming
 	case <-b.stopReceivingChan:
@@ -335,7 +337,7 @@ func (b *AWSSQSBroker) continueReceivingMessages(qURL *string, deliveries chan *
 }
 
 // stopReceiving is a method sending a signal to stopReceivingChan
-func (b *AWSSQSBroker) stopReceiving() {
+func (b *Broker) stopReceiving() {
 	// Stop the receiving goroutine
 	b.stopReceivingChan <- 1
 }

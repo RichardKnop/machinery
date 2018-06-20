@@ -3,24 +3,28 @@ package machinery
 import (
 	"errors"
 	"fmt"
-	neturl "net/url"
 	"strconv"
 	"strings"
+	neturl "net/url"
 
 	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
+
+	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
+	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
+	eagerbroker "github.com/RichardKnop/machinery/v1/brokers/eager"
+	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
 )
 
 // BrokerFactory creates a new object of brokers.Interface
 // Currently only AMQP/S broker is supported
 func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 	if strings.HasPrefix(cnf.Broker, "amqp://") {
-		return brokers.NewAMQPBroker(cnf), nil
+		return amqpbroker.New(cnf), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "amqps://") {
-		return brokers.NewAMQPBroker(cnf), nil
+		return amqpbroker.New(cnf), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "redis://") {
@@ -36,7 +40,7 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 		if err != nil {
 			return nil, err
 		}
-		return brokers.NewRedisBroker(cnf, redisHost, redisPassword, "", redisDB), nil
+		return redisbroker.New(cnf, redisHost, redisPassword, "", redisDB), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "redis+socket://") {
@@ -45,15 +49,15 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 			return nil, err
 		}
 
-		return brokers.NewRedisBroker(cnf, "", redisPassword, redisSocket, redisDB), nil
+		return redisbroker.New(cnf, "", redisPassword, redisSocket, redisDB), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "eager") {
-		return brokers.NewEagerBroker(), nil
+		return eagerbroker.New(), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "https://sqs") {
-		return brokers.NewAWSSQSBroker(cnf), nil
+		return sqsbroker.New(cnf), nil
 	}
 
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
