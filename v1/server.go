@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"sync"
 
-	opentracing "github.com/opentracing/opentracing-go"
-
-	"github.com/satori/go.uuid"
-
-	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/brokers"
+	"github.com/RichardKnop/machinery/v1/backends/result"
+	"github.com/RichardKnop/machinery/v1/brokers/eager"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
+	"github.com/satori/go.uuid"
+
+	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
+	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -22,8 +23,8 @@ import (
 type Server struct {
 	config          *config.Config
 	registeredTasks map[string]interface{}
-	broker          brokers.Interface
-	backend         backends.Interface
+	broker          brokersiface.Broker
+	backend         backendsiface.Backend
 }
 
 // NewServer creates Server instance
@@ -44,7 +45,7 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	}
 
 	// init for eager-mode
-	eager, ok := broker.(brokers.EagerMode)
+	eager, ok := broker.(eager.EagerMode)
 	if ok {
 		// we don't have to call worker.Launch in eager mode
 		eager.AssignWorker(srv.NewWorker("eager", 0))
@@ -63,22 +64,22 @@ func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
 }
 
 // GetBroker returns broker
-func (server *Server) GetBroker() brokers.Interface {
+func (server *Server) GetBroker() brokersiface.Broker {
 	return server.broker
 }
 
 // SetBroker sets broker
-func (server *Server) SetBroker(broker brokers.Interface) {
+func (server *Server) SetBroker(broker brokersiface.Broker) {
 	server.broker = broker
 }
 
 // GetBackend returns backend
-func (server *Server) GetBackend() backends.Interface {
+func (server *Server) GetBackend() backendsiface.Backend {
 	return server.backend
 }
 
 // SetBackend sets backend
-func (server *Server) SetBackend(backend backends.Interface) {
+func (server *Server) SetBackend(backend backendsiface.Backend) {
 	server.backend = backend
 }
 
@@ -130,7 +131,7 @@ func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
 }
 
 // SendTaskWithContext will inject the trace context in the signature headers before publishing it
-func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.Signature) (*backends.AsyncResult, error) {
+func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.Signature) (*result.AsyncResult, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "SendTask", tracing.ProducerOption(), tracing.MachineryTag)
 	defer span.Finish()
 
@@ -142,7 +143,7 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 }
 
 // SendTask publishes a task to the default queue
-func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResult, error) {
+func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult, error) {
 	// Make sure result backend is defined
 	if server.backend == nil {
 		return nil, errors.New("Result backend required")
@@ -169,11 +170,11 @@ func (server *Server) SendTask(signature *tasks.Signature) (*backends.AsyncResul
 		return nil, fmt.Errorf("Publish message error: %s", err)
 	}
 
-	return backends.NewAsyncResult(signature, server.backend), nil
+	return result.NewAsyncResult(signature, server.backend), nil
 }
 
 // SendChainWithContext will inject the trace context in all the signature headers before publishing it
-func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain) (*backends.ChainAsyncResult, error) {
+func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain) (*result.ChainAsyncResult, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "SendChain", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChainTag)
 	defer span.Finish()
 
@@ -183,17 +184,17 @@ func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Cha
 }
 
 // SendChain triggers a chain of tasks
-func (server *Server) SendChain(chain *tasks.Chain) (*backends.ChainAsyncResult, error) {
+func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, error) {
 	_, err := server.SendTask(chain.Tasks[0])
 	if err != nil {
 		return nil, err
 	}
 
-	return backends.NewChainAsyncResult(chain.Tasks, server.backend), nil
+	return result.NewChainAsyncResult(chain.Tasks, server.backend), nil
 }
 
 // SendGroupWithContext will inject the trace context in all the signature headers before publishing it
-func (server *Server) SendGroupWithContext(ctx context.Context, group *tasks.Group, sendConcurrency int) ([]*backends.AsyncResult, error) {
+func (server *Server) SendGroupWithContext(ctx context.Context, group *tasks.Group, sendConcurrency int) ([]*result.AsyncResult, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "SendGroup", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowGroupTag)
 	defer span.Finish()
 
@@ -203,13 +204,13 @@ func (server *Server) SendGroupWithContext(ctx context.Context, group *tasks.Gro
 }
 
 // SendGroup triggers a group of parallel tasks
-func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*backends.AsyncResult, error) {
+func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*result.AsyncResult, error) {
 	// Make sure result backend is defined
 	if server.backend == nil {
 		return nil, errors.New("Result backend required")
 	}
 
-	asyncResults := make([]*backends.AsyncResult, len(group.Tasks))
+	asyncResults := make([]*result.AsyncResult, len(group.Tasks))
 
 	var wg sync.WaitGroup
 	wg.Add(len(group.Tasks))
@@ -255,7 +256,7 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*bac
 				return
 			}
 
-			asyncResults[index] = backends.NewAsyncResult(s, server.backend)
+			asyncResults[index] = result.NewAsyncResult(s, server.backend)
 		}(signature, i)
 	}
 
@@ -274,7 +275,7 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*bac
 }
 
 // SendChordWithContext will inject the trace context in all the signature headers before publishing it
-func (server *Server) SendChordWithContext(ctx context.Context, chord *tasks.Chord, sendConcurrency int) (*backends.ChordAsyncResult, error) {
+func (server *Server) SendChordWithContext(ctx context.Context, chord *tasks.Chord, sendConcurrency int) (*result.ChordAsyncResult, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "SendChord", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChordTag)
 	defer span.Finish()
 
@@ -284,13 +285,13 @@ func (server *Server) SendChordWithContext(ctx context.Context, chord *tasks.Cho
 }
 
 // SendChord triggers a group of parallel tasks with a callback
-func (server *Server) SendChord(chord *tasks.Chord, sendConcurrency int) (*backends.ChordAsyncResult, error) {
+func (server *Server) SendChord(chord *tasks.Chord, sendConcurrency int) (*result.ChordAsyncResult, error) {
 	_, err := server.SendGroup(chord.Group, sendConcurrency)
 	if err != nil {
 		return nil, err
 	}
 
-	return backends.NewChordAsyncResult(
+	return result.NewChordAsyncResult(
 		chord.Group.Tasks,
 		chord.Callback,
 		server.backend,

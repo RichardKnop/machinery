@@ -8,13 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
+	"github.com/opentracing/opentracing-go"
 )
 
 // Worker represents a single worker process
@@ -346,7 +345,7 @@ func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) erro
 
 // Returns true if the worker uses AMQP backend
 func (worker *Worker) hasAMQPBackend() bool {
-	_, ok := worker.server.GetBackend().(*backends.AMQPBackend)
+	_, ok := worker.server.GetBackend().(*amqp.Backend)
 	return ok
 }
 
