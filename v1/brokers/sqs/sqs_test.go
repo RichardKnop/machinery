@@ -28,11 +28,11 @@ func init() {
 	testAWSSQSBroker = sqs.TestAWSSQSBroker
 	errAWSSQSBroker = sqs.ErrAWSSQSBroker
 	cnf = sqs.TestConf
-	receiveMessageOutput = new(awssqs.ReceiveMessageOutput)
+	receiveMessageOutput = sqs.ReceiveMessageOutput
 	testBroker = sqs.New(cnf)
 }
 
-func TestNew(t *testing.T) {
+func TestNewAWSSQSBroker(t *testing.T) {
 	assert.IsType(t, testAWSSQSBroker, testBroker)
 }
 

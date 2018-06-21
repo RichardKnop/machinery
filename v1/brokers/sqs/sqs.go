@@ -123,7 +123,6 @@ func (b *Broker) StopConsuming() {
 
 // Publish places a new message on the default queue
 func (b *Broker) Publish(signature *tasks.Signature) error {
-
 	msg, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)

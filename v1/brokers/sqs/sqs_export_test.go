@@ -167,7 +167,7 @@ func (b *Broker) GetStopReceivingChanForTest() chan int {
 }
 
 func (b *Broker) StartConsumingForTest(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) {
-	b.StartConsuming(consumerTag, concurrency, taskProcessor)
+	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
 }
 
 func (b *Broker) GetRetryFuncForTest() func(chan int) {
