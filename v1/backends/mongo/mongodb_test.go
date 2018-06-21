@@ -3,7 +3,7 @@ package mongo_test
 import (
 	"os"
 	"testing"
-	
+
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/backends/mongo"
 	"github.com/RichardKnop/machinery/v1/config"

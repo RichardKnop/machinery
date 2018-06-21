@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
+	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -39,8 +39,8 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
 		b.GetConfig().DefaultQueue,      // queue name
-		true,                    // queue durable
-		false,                   // queue delete when unused
+		true,  // queue durable
+		false, // queue delete when unused
 		b.GetConfig().AMQP.BindingKey, // queue binding key
 		nil, // exchange declare args
 		nil, // queue declare args
@@ -120,9 +120,9 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
-		signature.RoutingKey,    // queue name
-		true,                    // queue durable
-		false,                   // queue delete when unused
+		signature.RoutingKey,            // queue name
+		true,                            // queue durable
+		false,                           // queue delete when unused
 		b.GetConfig().AMQP.BindingKey, // queue binding key
 		nil, // exchange declare args
 		nil, // queue declare args
@@ -134,10 +134,10 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 	defer b.Close(channel, conn)
 
 	if err := channel.Publish(
-		b.GetConfig().AMQP.Exchange,  // exchange name
-		signature.RoutingKey, // routing key
-		false,                // mandatory
-		false,                // immediate
+		b.GetConfig().AMQP.Exchange, // exchange name
+		signature.RoutingKey,        // routing key
+		false,                       // mandatory
+		false,                       // immediate
 		amqp.Publishing{
 			Headers:      amqp.Table(signature.Headers),
 			ContentType:  "application/json",
@@ -278,12 +278,12 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,                     // exchange name
 		b.GetConfig().AMQP.ExchangeType,                 // exchange type
-		queueName,                               // queue name
-		true,                                    // queue durable
-		false,                                   // queue delete when unused
-		queueName,                               // queue binding key
-		nil,                                     // exchange declare args
-		declareQueueArgs,                        // queue declare args
+		queueName,                                       // queue name
+		true,                                            // queue durable
+		false,                                           // queue delete when unused
+		queueName,                                       // queue binding key
+		nil,                                             // exchange declare args
+		declareQueueArgs,                                // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
@@ -293,9 +293,9 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 
 	if err := channel.Publish(
 		b.GetConfig().AMQP.Exchange, // exchange
-		queueName,           // routing key
-		false,               // mandatory
-		false,               // immediate
+		queueName,                   // routing key
+		false,                       // mandatory
+		false,                       // immediate
 		amqp.Publishing{
 			Headers:      amqp.Table(signature.Headers),
 			ContentType:  "application/json",
