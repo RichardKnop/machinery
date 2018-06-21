@@ -1,4 +1,4 @@
-package backends
+package mongo
 
 import (
 	"crypto/tls"
@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/backends/iface"
+	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -15,15 +17,15 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// MongodbBackend represents a MongoDB result backend
-type MongodbBackend struct {
-	Backend
+// Backend represents a MongoDB result backend
+type Backend struct {
+	common.Backend
 	session *mgo.Session
 }
 
-// NewMongodbBackend creates MongodbBackend instance
-func NewMongodbBackend(cnf *config.Config) Interface {
-	return &MongodbBackend{Backend: New(cnf)}
+// New creates Backend instance
+func New(cnf *config.Config) iface.Backend {
+	return &Backend{Backend: common.NewBackend(cnf)}
 }
 
 // Op represents a mongo operation using a copied session
@@ -41,7 +43,7 @@ func (op *Op) Do(f func() error) error {
 
 // newOp returns an Op pointer w/ copied session
 // and task & groupMetas collections
-func (b *MongodbBackend) newOp() *Op {
+func (b *Backend) newOp() *Op {
 	session := b.session.Copy()
 	return &Op{
 		session:              session,
@@ -51,7 +53,7 @@ func (b *MongodbBackend) newOp() *Op {
 }
 
 // InitGroup creates and saves a group meta data object
-func (b *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
+func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	op, err := b.connect()
 	if err != nil {
 		return err
@@ -67,7 +69,7 @@ func (b *MongodbBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 }
 
 // GroupCompleted returns true if all tasks in a group finished
-func (b *MongodbBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
+func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
 		return false, err
@@ -89,7 +91,7 @@ func (b *MongodbBackend) GroupCompleted(groupUUID string, groupTaskCount int) (b
 }
 
 // GroupTaskStates returns states of all tasks in the group
-func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
+func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
 		return []*tasks.TaskState{}, err
@@ -102,7 +104,7 @@ func (b *MongodbBackend) GroupTaskStates(groupUUID string, groupTaskCount int) (
 // chord is never triggered multiple times. Returns a boolean flag to indicate
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
-func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
+func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	op, err := b.connect()
 	if err != nil {
 		return false, err
@@ -136,7 +138,7 @@ func (b *MongodbBackend) TriggerChord(groupUUID string) (bool, error) {
 }
 
 // SetStatePending updates task state to PENDING
-func (b *MongodbBackend) SetStatePending(signature *tasks.Signature) error {
+func (b *Backend) SetStatePending(signature *tasks.Signature) error {
 	update := bson.M{
 		"state":      tasks.StatePending,
 		"task_name":  signature.Name,
@@ -146,25 +148,25 @@ func (b *MongodbBackend) SetStatePending(signature *tasks.Signature) error {
 }
 
 // SetStateReceived updates task state to RECEIVED
-func (b *MongodbBackend) SetStateReceived(signature *tasks.Signature) error {
+func (b *Backend) SetStateReceived(signature *tasks.Signature) error {
 	update := bson.M{"state": tasks.StateReceived}
 	return b.updateState(signature, update)
 }
 
 // SetStateStarted updates task state to STARTED
-func (b *MongodbBackend) SetStateStarted(signature *tasks.Signature) error {
+func (b *Backend) SetStateStarted(signature *tasks.Signature) error {
 	update := bson.M{"state": tasks.StateStarted}
 	return b.updateState(signature, update)
 }
 
 // SetStateRetry updates task state to RETRY
-func (b *MongodbBackend) SetStateRetry(signature *tasks.Signature) error {
+func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 	update := bson.M{"state": tasks.StateRetry}
 	return b.updateState(signature, update)
 }
 
 // SetStateSuccess updates task state to SUCCESS
-func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
+func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	decodedResults := b.decodeResults(results)
 	update := bson.M{
 		"state":   tasks.StateSuccess,
@@ -174,7 +176,7 @@ func (b *MongodbBackend) SetStateSuccess(signature *tasks.Signature, results []*
 }
 
 // decodeResults detects & decodes json strings in TaskResult.Value and returns a new slice
-func (b *MongodbBackend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult {
+func (b *Backend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult {
 	l := len(results)
 	jsonResults := make([]*tasks.TaskResult, l, l)
 	for i, result := range results {
@@ -196,13 +198,13 @@ func (b *MongodbBackend) decodeResults(results []*tasks.TaskResult) []*tasks.Tas
 }
 
 // SetStateFailure updates task state to FAILURE
-func (b *MongodbBackend) SetStateFailure(signature *tasks.Signature, err string) error {
+func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
 	update := bson.M{"state": tasks.StateFailure, "error": err}
 	return b.updateState(signature, update)
 }
 
 // GetState returns the latest task state
-func (b *MongodbBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
+func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	op, err := b.connect()
 	if err != nil {
 		return nil, err
@@ -218,7 +220,7 @@ func (b *MongodbBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 }
 
 // PurgeState deletes stored task state
-func (b *MongodbBackend) PurgeState(taskUUID string) error {
+func (b *Backend) PurgeState(taskUUID string) error {
 	op, err := b.connect()
 	if err != nil {
 		return err
@@ -229,7 +231,7 @@ func (b *MongodbBackend) PurgeState(taskUUID string) error {
 }
 
 // PurgeGroupMeta deletes stored group meta data
-func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
+func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 	op, err := b.connect()
 	if err != nil {
 		return err
@@ -240,7 +242,7 @@ func (b *MongodbBackend) PurgeGroupMeta(groupUUID string) error {
 }
 
 // lockGroupMeta acquires lock on groupUUID document
-func (b *MongodbBackend) lockGroupMeta(groupUUID string) error {
+func (b *Backend) lockGroupMeta(groupUUID string) error {
 	op, err := b.connect()
 	if err != nil {
 		return err
@@ -267,7 +269,7 @@ func (b *MongodbBackend) lockGroupMeta(groupUUID string) error {
 }
 
 // unlockGroupMeta releases lock on groupUUID document
-func (b *MongodbBackend) unlockGroupMeta(groupUUID string) error {
+func (b *Backend) unlockGroupMeta(groupUUID string) error {
 	op, err := b.connect()
 	if err != nil {
 		return err
@@ -280,7 +282,7 @@ func (b *MongodbBackend) unlockGroupMeta(groupUUID string) error {
 }
 
 // getGroupMeta retrieves group meta data, convenience function to avoid repetition
-func (b *MongodbBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
+func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 	op, err := b.connect()
 	if err != nil {
 		return nil, err
@@ -297,7 +299,7 @@ func (b *MongodbBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error
 }
 
 // getStates returns multiple task states
-func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
+func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	op, err := b.connect()
 	if err != nil {
 		return nil, err
@@ -317,7 +319,7 @@ func (b *MongodbBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, err
 }
 
 // updateState saves current task state
-func (b *MongodbBackend) updateState(signature *tasks.Signature, update bson.M) error {
+func (b *Backend) updateState(signature *tasks.Signature, update bson.M) error {
 	op, err := b.connect()
 	if err != nil {
 		return err
@@ -332,7 +334,7 @@ func (b *MongodbBackend) updateState(signature *tasks.Signature, update bson.M) 
 // connect creates the underlying mgo session if it doesn't exist
 // creates required indexes for our collections
 // and returns a a new Op
-func (b *MongodbBackend) connect() (*Op, error) {
+func (b *Backend) connect() (*Op, error) {
 	if b.session != nil {
 		b.session.Refresh()
 		return b.newOp(), nil
@@ -351,23 +353,23 @@ func (b *MongodbBackend) connect() (*Op, error) {
 
 // dial connects to mongo with TLSConfig if provided
 // else connects via ResultBackend uri
-func (b *MongodbBackend) dial() (*mgo.Session, error) {
-	if b.cnf.TLSConfig == nil {
-		return mgo.Dial(b.cnf.ResultBackend)
+func (b *Backend) dial() (*mgo.Session, error) {
+	if b.GetConfig().TLSConfig == nil {
+		return mgo.Dial(b.GetConfig().ResultBackend)
 	}
-	dialInfo, err := mgo.ParseURL(b.cnf.ResultBackend)
+	dialInfo, err := mgo.ParseURL(b.GetConfig().ResultBackend)
 	if err != nil {
 		return nil, err
 	}
 	dialInfo.Timeout = 5 * time.Second
 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-		return tls.Dial("tcp", addr.String(), b.cnf.TLSConfig)
+		return tls.Dial("tcp", addr.String(), b.GetConfig().TLSConfig)
 	}
 	return mgo.DialWithInfo(dialInfo)
 }
 
 // createMongoIndexes ensures all indexes are in place
-func (b *MongodbBackend) createMongoIndexes() error {
+func (b *Backend) createMongoIndexes() error {
 	op, err := b.connect()
 	if err != nil {
 		return err
@@ -377,12 +379,12 @@ func (b *MongodbBackend) createMongoIndexes() error {
 			{
 				Key:         []string{"state"},
 				Background:  true, // can be used while index is being built
-				ExpireAfter: time.Duration(b.cnf.ResultsExpireIn) * time.Second,
+				ExpireAfter: time.Duration(b.GetConfig().ResultsExpireIn) * time.Second,
 			},
 			{
 				Key:         []string{"lock"},
 				Background:  true, // can be used while index is being built
-				ExpireAfter: time.Duration(b.cnf.ResultsExpireIn) * time.Second,
+				ExpireAfter: time.Duration(b.GetConfig().ResultsExpireIn) * time.Second,
 			},
 		}
 

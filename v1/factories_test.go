@@ -7,10 +7,17 @@ import (
 	"testing"
 
 	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/backends"
-	"github.com/RichardKnop/machinery/v1/brokers"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/stretchr/testify/assert"
+
+	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
+	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
+	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
+
+	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
+	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
+	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
+	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
 )
 
 var (
@@ -95,13 +102,13 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err := machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
-		_, isAMQPBroker := actual.(*brokers.AMQPBroker)
+		_, isAMQPBroker := actual.(*amqpbroker.Broker)
 		assert.True(
 			t,
 			isAMQPBroker,
 			"Broker should be instance of *brokers.AMQPBroker",
 		)
-		expected := brokers.NewAMQPBroker(&cnf)
+		expected := amqpbroker.New(&cnf)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -119,13 +126,13 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err = machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
-		_, isRedisBroker := actual.(*brokers.RedisBroker)
+		_, isRedisBroker := actual.(*redisbroker.Broker)
 		assert.True(
 			t,
 			isRedisBroker,
 			"Broker should be instance of *brokers.RedisBroker",
 		)
-		expected := brokers.NewRedisBroker(&cnf, "localhost:6379", "password", "", 0)
+		expected := redisbroker.New(&cnf, "localhost:6379", "password", "", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -141,13 +148,13 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err = machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
-		_, isRedisBroker := actual.(*brokers.RedisBroker)
+		_, isRedisBroker := actual.(*redisbroker.Broker)
 		assert.True(
 			t,
 			isRedisBroker,
 			"Broker should be instance of *brokers.RedisBroker",
 		)
-		expected := brokers.NewRedisBroker(&cnf, "localhost:6379", "", "", 0)
+		expected := redisbroker.New(&cnf, "localhost:6379", "", "", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -163,13 +170,13 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err = machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
-		_, isRedisBroker := actual.(*brokers.RedisBroker)
+		_, isRedisBroker := actual.(*redisbroker.Broker)
 		assert.True(
 			t,
 			isRedisBroker,
 			"Broker should be instance of *brokers.RedisBroker",
 		)
-		expected := brokers.NewRedisBroker(&cnf, "", "", "/tmp/redis.sock", 0)
+		expected := redisbroker.New(&cnf, "", "", "/tmp/redis.sock", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -185,7 +192,7 @@ func TestBrokerFactory(t *testing.T) {
 
 	actual, err = machinery.BrokerFactory(&cnf)
 	if assert.NoError(t, err) {
-		_, isAWSSQSBroker := actual.(*brokers.AWSSQSBroker)
+		_, isAWSSQSBroker := actual.(*sqsbroker.Broker)
 		assert.True(
 			t,
 			isAWSSQSBroker,
@@ -219,7 +226,7 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err := machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := backends.NewAMQPBackend(&cnf)
+		expected := amqpbackend.New(&cnf)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -236,7 +243,7 @@ func TestBackendFactory(t *testing.T) {
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
 		servers := []string{"10.0.0.1:11211", "10.0.0.2:11211"}
-		expected := backends.NewMemcacheBackend(&cnf, servers)
+		expected := memcachebackend.New(&cnf, servers)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -253,7 +260,7 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := backends.NewRedisBackend(&cnf, "localhost:6379", "password", "", 0)
+		expected := redisbackend.New(&cnf, "localhost:6379", "password", "", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -268,7 +275,7 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := backends.NewRedisBackend(&cnf, "localhost:6379", "", "", 0)
+		expected := redisbackend.New(&cnf, "localhost:6379", "", "", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -283,7 +290,7 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := backends.NewRedisBackend(&cnf, "", "", "/tmp/redis.sock", 0)
+		expected := redisbackend.New(&cnf, "", "", "/tmp/redis.sock", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -299,7 +306,7 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := backends.NewMongodbBackend(&cnf)
+		expected := mongobackend.New(&cnf)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),

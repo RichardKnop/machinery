@@ -1,17 +1,17 @@
-package backends_test
+package memcache_test
 
 import (
 	"os"
 	"testing"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/backends/memcache"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGroupCompletedMemcache(t *testing.T) {
+func TestGroupCompleted(t *testing.T) {
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 	if memcacheURL == "" {
 		t.Skip("MEMCACHE_URL is not defined")
@@ -27,7 +27,7 @@ func TestGroupCompletedMemcache(t *testing.T) {
 		GroupUUID: groupUUID,
 	}
 
-	backend := backends.NewMemcacheBackend(new(config.Config), []string{memcacheURL})
+	backend := memcache.New(new(config.Config), []string{memcacheURL})
 
 	// Cleanup before the test
 	backend.PurgeState(task1.UUID)
@@ -70,7 +70,7 @@ func TestGroupCompletedMemcache(t *testing.T) {
 	}
 }
 
-func TestGetStateMemcache(t *testing.T) {
+func TestGetState(t *testing.T) {
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 	if memcacheURL == "" {
 		t.Skip("MEMCACHE_URL is not defined")
@@ -81,7 +81,7 @@ func TestGetStateMemcache(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-	backend := backends.NewMemcacheBackend(new(config.Config), []string{memcacheURL})
+	backend := memcache.New(new(config.Config), []string{memcacheURL})
 
 	go func() {
 		backend.SetStatePending(signature)
@@ -117,7 +117,7 @@ func TestGetStateMemcache(t *testing.T) {
 	}
 }
 
-func TestPurgeStateMemcache(t *testing.T) {
+func TestPurgeState(t *testing.T) {
 	memcacheURL := os.Getenv("MEMCACHE_URL")
 	if memcacheURL == "" {
 		t.Skip("MEMCACHE_URL is not defined")
@@ -128,7 +128,7 @@ func TestPurgeStateMemcache(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-	backend := backends.NewMemcacheBackend(new(config.Config), []string{memcacheURL})
+	backend := memcache.New(new(config.Config), []string{memcacheURL})
 
 	backend.SetStatePending(signature)
 	taskState, err := backend.GetState(signature.UUID)

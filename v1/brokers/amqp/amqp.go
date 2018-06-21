@@ -31,7 +31,7 @@ func New(cnf *config.Config) iface.Broker {
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
-	b.StartConsuming(consumerTag, concurrency, taskProcessor)
+	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
 
 	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
 		b.GetConfig().Broker,
@@ -87,7 +87,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 // StopConsuming quits the loop
 func (b *Broker) StopConsuming() {
-	b.StopConsuming()
+	b.Broker.StopConsuming()
 
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()

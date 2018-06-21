@@ -1,4 +1,4 @@
-package backends
+package dynamodb
 
 import (
 	"errors"
@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	TestDynamoDBBackend    *DynamoDBBackend
-	TestErrDynamoDBBackend *DynamoDBBackend
+	TestDynamoDBBackend    *Backend
+	TestErrDynamoDBBackend *Backend
 	TestCnf                *config.Config
 	TestSession            *session.Session
 	TestDBClient           dynamodbiface.DynamoDBAPI
@@ -161,10 +161,10 @@ func init() {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 	TestDBClient = new(TestDynamoDBClient)
-	TestDynamoDBBackend = &DynamoDBBackend{cnf: TestCnf, client: TestDBClient, session: TestSession}
+	TestDynamoDBBackend = &Backend{cnf: TestCnf, client: TestDBClient, session: TestSession}
 
 	TestErrDBClient = new(TestErrDynamoDBClient)
-	TestErrDynamoDBBackend = &DynamoDBBackend{cnf: TestCnf, client: TestErrDBClient, session: TestSession}
+	TestErrDynamoDBBackend = &Backend{cnf: TestCnf, client: TestErrDBClient, session: TestSession}
 
 	TestGroupMeta = &tasks.GroupMeta{
 		GroupUUID: "testGroupUUID",
@@ -172,62 +172,62 @@ func init() {
 	}
 }
 
-func (b *DynamoDBBackend) GetConfig() *config.Config {
+func (b *Backend) GetConfig() *config.Config {
 	return b.cnf
 }
 
-func (b *DynamoDBBackend) GetClient() dynamodbiface.DynamoDBAPI {
+func (b *Backend) GetClient() dynamodbiface.DynamoDBAPI {
 	return b.client
 }
 
-func (b *DynamoDBBackend) GetSession() *session.Session {
+func (b *Backend) GetSession() *session.Session {
 	return b.session
 }
 
-func (b *DynamoDBBackend) GetGroupMetaForTest(groupUUID string) (*tasks.GroupMeta, error) {
+func (b *Backend) GetGroupMetaForTest(groupUUID string) (*tasks.GroupMeta, error) {
 	return b.getGroupMeta(groupUUID)
 }
 
-func (b *DynamoDBBackend) UnmarshalGroupMetaGetItemResultForTest(result *dynamodb.GetItemOutput) (*tasks.GroupMeta, error) {
+func (b *Backend) UnmarshalGroupMetaGetItemResultForTest(result *dynamodb.GetItemOutput) (*tasks.GroupMeta, error) {
 	return b.unmarshalGroupMetaGetItemResult(result)
 }
 
-func (b *DynamoDBBackend) UnmarshalTaskStateGetItemResultForTest(result *dynamodb.GetItemOutput) (*tasks.TaskState, error) {
+func (b *Backend) UnmarshalTaskStateGetItemResultForTest(result *dynamodb.GetItemOutput) (*tasks.TaskState, error) {
 	return b.unmarshalTaskStateGetItemResult(result)
 }
 
-func (b *DynamoDBBackend) SetTaskStateForTest(taskState *tasks.TaskState) error {
+func (b *Backend) SetTaskStateForTest(taskState *tasks.TaskState) error {
 	return b.setTaskState(taskState)
 }
 
-func (b *DynamoDBBackend) ChordTriggeredForTest(groupUUID string) error {
+func (b *Backend) ChordTriggeredForTest(groupUUID string) error {
 	return b.chordTriggered(groupUUID)
 }
 
-func (b *DynamoDBBackend) UpdateGroupMetaLockForTest(groupUUID string, status bool) error {
+func (b *Backend) UpdateGroupMetaLockForTest(groupUUID string, status bool) error {
 	return b.updateGroupMetaLock(groupUUID, status)
 }
 
-func (b *DynamoDBBackend) UnlockGroupMetaForTest(groupUUID string) error {
+func (b *Backend) UnlockGroupMetaForTest(groupUUID string) error {
 	return b.unlockGroupMeta(groupUUID)
 }
 
-func (b *DynamoDBBackend) LockGroupMetaForTest(groupUUID string) error {
+func (b *Backend) LockGroupMetaForTest(groupUUID string) error {
 	return b.lockGroupMeta(groupUUID)
 }
 
-func (b *DynamoDBBackend) GetStatesForTest(taskUUIDs ...string) ([]*tasks.TaskState, error) {
+func (b *Backend) GetStatesForTest(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	return b.getStates(taskUUIDs...)
 }
 
-func (b *DynamoDBBackend) UpdateToFailureStateWithErrorForTest(taskState *tasks.TaskState) error {
+func (b *Backend) UpdateToFailureStateWithErrorForTest(taskState *tasks.TaskState) error {
 	return b.updateToFailureStateWithError(taskState)
 }
 
-func (b *DynamoDBBackend) TableExistsForTest(tableName string, tableNames []*string) bool {
+func (b *Backend) TableExistsForTest(tableName string, tableNames []*string) bool {
 	return b.tableExists(tableName, tableNames)
 }
 
-func (b *DynamoDBBackend) CheckRequiredTablesIfExistForTest() error {
+func (b *Backend) CheckRequiredTablesIfExistForTest() error {
 	return b.checkRequiredTablesIfExist()
 }

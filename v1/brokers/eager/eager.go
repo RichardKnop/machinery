@@ -19,7 +19,7 @@ type Broker struct {
 
 // New creates new Broker instance
 func New() iface.Broker {
-	return new(EagerBroker)
+	return new(Broker)
 }
 
 // EagerMode interface with methods specific for this broker

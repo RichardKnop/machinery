@@ -1,10 +1,11 @@
-package backends
+package result
 
 import (
 	"errors"
 	"reflect"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
@@ -19,24 +20,24 @@ var (
 type AsyncResult struct {
 	Signature *tasks.Signature
 	taskState *tasks.TaskState
-	backend   Interface
+	backend   iface.Backend
 }
 
 // ChordAsyncResult represents a result of a chord
 type ChordAsyncResult struct {
 	groupAsyncResults []*AsyncResult
 	chordAsyncResult  *AsyncResult
-	backend           Interface
+	backend           iface.Backend
 }
 
 // ChainAsyncResult represents a result of a chain of tasks
 type ChainAsyncResult struct {
 	asyncResults []*AsyncResult
-	backend      Interface
+	backend      iface.Backend
 }
 
 // NewAsyncResult creates AsyncResult instance
-func NewAsyncResult(signature *tasks.Signature, backend Interface) *AsyncResult {
+func NewAsyncResult(signature *tasks.Signature, backend iface.Backend) *AsyncResult {
 	return &AsyncResult{
 		Signature: signature,
 		taskState: new(tasks.TaskState),
@@ -45,7 +46,7 @@ func NewAsyncResult(signature *tasks.Signature, backend Interface) *AsyncResult 
 }
 
 // NewChordAsyncResult creates ChordAsyncResult instance
-func NewChordAsyncResult(groupTasks []*tasks.Signature, chordCallback *tasks.Signature, backend Interface) *ChordAsyncResult {
+func NewChordAsyncResult(groupTasks []*tasks.Signature, chordCallback *tasks.Signature, backend iface.Backend) *ChordAsyncResult {
 	asyncResults := make([]*AsyncResult, len(groupTasks))
 	for i, task := range groupTasks {
 		asyncResults[i] = NewAsyncResult(task, backend)
@@ -58,7 +59,7 @@ func NewChordAsyncResult(groupTasks []*tasks.Signature, chordCallback *tasks.Sig
 }
 
 // NewChainAsyncResult creates ChainAsyncResult instance
-func NewChainAsyncResult(tasks []*tasks.Signature, backend Interface) *ChainAsyncResult {
+func NewChainAsyncResult(tasks []*tasks.Signature, backend iface.Backend) *ChainAsyncResult {
 	asyncResults := make([]*AsyncResult, len(tasks))
 	for i, task := range tasks {
 		asyncResults[i] = NewAsyncResult(task, backend)
@@ -78,7 +79,7 @@ func (asyncResult *AsyncResult) Touch() ([]reflect.Value, error) {
 	asyncResult.GetState()
 
 	// Purge state if we are using AMQP backend
-	if IsAMQP(asyncResult.backend) && asyncResult.taskState.IsCompleted() {
+	if asyncResult.backend.IsAMQP() && asyncResult.taskState.IsCompleted() {
 		asyncResult.backend.PurgeState(asyncResult.taskState.TaskUUID)
 	}
 

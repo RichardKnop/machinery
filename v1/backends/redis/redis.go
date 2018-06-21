@@ -1,4 +1,4 @@
-package backends
+package redis
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -14,9 +15,9 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-// RedisBackend represents a Redis result backend
-type RedisBackend struct {
-	Backend
+// Backend represents a Redis result backend
+type Backend struct {
+	common.Backend
 	host     string
 	password string
 	db       int
@@ -27,10 +28,10 @@ type RedisBackend struct {
 	common.RedisConnector
 }
 
-// NewRedisBackend creates RedisBackend instance
-func NewRedisBackend(cnf *config.Config, host, password, socketPath string, db int) Interface {
-	return &RedisBackend{
-		Backend:    New(cnf),
+// New creates Backend instance
+func New(cnf *config.Config, host, password, socketPath string, db int) iface.Backend {
+	return &Backend{
+		Backend:    common.NewBackend(cnf),
 		host:       host,
 		db:         db,
 		password:   password,
@@ -39,7 +40,7 @@ func NewRedisBackend(cnf *config.Config, host, password, socketPath string, db i
 }
 
 // InitGroup creates and saves a group meta data object
-func (b *RedisBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
+func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	groupMeta := &tasks.GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
@@ -63,7 +64,7 @@ func (b *RedisBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
 }
 
 // GroupCompleted returns true if all tasks in a group finished
-func (b *RedisBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
+func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
 		return false, err
@@ -85,7 +86,7 @@ func (b *RedisBackend) GroupCompleted(groupUUID string, groupTaskCount int) (boo
 }
 
 // GroupTaskStates returns states of all tasks in the group
-func (b *RedisBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
+func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
 		return []*tasks.TaskState{}, err
@@ -98,7 +99,7 @@ func (b *RedisBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]
 // chord is never trigerred multiple times. Returns a boolean flag to indicate
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
-func (b *RedisBackend) TriggerChord(groupUUID string) (bool, error) {
+func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	conn := b.open()
 	defer conn.Close()
 
@@ -136,43 +137,43 @@ func (b *RedisBackend) TriggerChord(groupUUID string) (bool, error) {
 }
 
 // SetStatePending updates task state to PENDING
-func (b *RedisBackend) SetStatePending(signature *tasks.Signature) error {
+func (b *Backend) SetStatePending(signature *tasks.Signature) error {
 	taskState := tasks.NewPendingTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateReceived updates task state to RECEIVED
-func (b *RedisBackend) SetStateReceived(signature *tasks.Signature) error {
+func (b *Backend) SetStateReceived(signature *tasks.Signature) error {
 	taskState := tasks.NewReceivedTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateStarted updates task state to STARTED
-func (b *RedisBackend) SetStateStarted(signature *tasks.Signature) error {
+func (b *Backend) SetStateStarted(signature *tasks.Signature) error {
 	taskState := tasks.NewStartedTaskState(signature)
 	return b.updateState(taskState)
 }
 
 // SetStateRetry updates task state to RETRY
-func (b *RedisBackend) SetStateRetry(signature *tasks.Signature) error {
+func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 	state := tasks.NewRetryTaskState(signature)
 	return b.updateState(state)
 }
 
 // SetStateSuccess updates task state to SUCCESS
-func (b *RedisBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
+func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	taskState := tasks.NewSuccessTaskState(signature, results)
 	return b.updateState(taskState)
 }
 
 // SetStateFailure updates task state to FAILURE
-func (b *RedisBackend) SetStateFailure(signature *tasks.Signature, err string) error {
+func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
 	taskState := tasks.NewFailureTaskState(signature, err)
 	return b.updateState(taskState)
 }
 
 // GetState returns the latest task state
-func (b *RedisBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
+func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	conn := b.open()
 	defer conn.Close()
 
@@ -192,7 +193,7 @@ func (b *RedisBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 }
 
 // PurgeState deletes stored task state
-func (b *RedisBackend) PurgeState(taskUUID string) error {
+func (b *Backend) PurgeState(taskUUID string) error {
 	conn := b.open()
 	defer conn.Close()
 
@@ -205,7 +206,7 @@ func (b *RedisBackend) PurgeState(taskUUID string) error {
 }
 
 // PurgeGroupMeta deletes stored group meta data
-func (b *RedisBackend) PurgeGroupMeta(groupUUID string) error {
+func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 	conn := b.open()
 	defer conn.Close()
 
@@ -218,7 +219,7 @@ func (b *RedisBackend) PurgeGroupMeta(groupUUID string) error {
 }
 
 // getGroupMeta retrieves group meta data, convenience function to avoid repetition
-func (b *RedisBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
+func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 	conn := b.open()
 	defer conn.Close()
 
@@ -238,7 +239,7 @@ func (b *RedisBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) 
 }
 
 // getStates returns multiple task states
-func (b *RedisBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
+func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	taskStates := make([]*tasks.TaskState, len(taskUUIDs))
 
 	conn := b.open()
@@ -276,7 +277,7 @@ func (b *RedisBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error
 }
 
 // updateState saves current task state
-func (b *RedisBackend) updateState(taskState *tasks.TaskState) error {
+func (b *Backend) updateState(taskState *tasks.TaskState) error {
 	conn := b.open()
 	defer conn.Close()
 
@@ -294,8 +295,8 @@ func (b *RedisBackend) updateState(taskState *tasks.TaskState) error {
 }
 
 // setExpirationTime sets expiration timestamp on a stored task state
-func (b *RedisBackend) setExpirationTime(key string) error {
-	expiresIn := b.cnf.ResultsExpireIn
+func (b *Backend) setExpirationTime(key string) error {
+	expiresIn := b.GetConfig().ResultsExpireIn
 	if expiresIn == 0 {
 		// // expire results after 1 hour by default
 		expiresIn = 3600
@@ -314,9 +315,9 @@ func (b *RedisBackend) setExpirationTime(key string) error {
 }
 
 // open returns or creates instance of Redis connection
-func (b *RedisBackend) open() redis.Conn {
+func (b *Backend) open() redis.Conn {
 	if b.pool == nil {
-		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.cnf.Redis)
+		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.GetConfig().Redis)
 	}
 	if b.redsync == nil {
 		var pools = []redsync.Pool{b.pool}

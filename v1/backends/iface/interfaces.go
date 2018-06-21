@@ -1,11 +1,11 @@
-package backends
+package iface
 
 import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
-// Interface - a common interface for all result backends
-type Interface interface {
+// Backend - a common interface for all result backends
+type Backend interface {
 	// Group related functions
 	InitGroup(groupUUID string, taskUUIDs []string) error
 	GroupCompleted(groupUUID string, groupTaskCount int) (bool, error)
@@ -22,6 +22,7 @@ type Interface interface {
 	GetState(taskUUID string) (*tasks.TaskState, error)
 
 	// Purging stored stored tasks states and group meta data
+	IsAMQP() bool
 	PurgeState(taskUUID string) error
 	PurgeGroupMeta(groupUUID string) error
 }

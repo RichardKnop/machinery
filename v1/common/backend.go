@@ -9,7 +9,16 @@ type Backend struct {
 	cnf *config.Config
 }
 
-// New creates new Backend instance
-func New(cnf *config.Config) Backend {
+// NewBackend creates new Backend instance
+func NewBackend(cnf *config.Config) Backend {
 	return Backend{cnf: cnf}
+}
+
+// GetConfig returns config
+func (b *Backend) GetConfig() *config.Config {
+	return b.cnf
+}
+
+func (b *Backend) IsAMQP() bool {
+	return false
 }

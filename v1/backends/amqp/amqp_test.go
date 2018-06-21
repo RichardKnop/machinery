@@ -1,11 +1,11 @@
-package backends_test
+package amqp_test
 
 import (
 	"os"
 	"testing"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +34,7 @@ func init() {
 	}
 }
 
-func TestGroupCompletedAMQP(t *testing.T) {
+func TestGroupCompleted(t *testing.T) {
 	if os.Getenv("AMQP_URL") == "" {
 		t.Skip("AMQP_URL is not defined")
 	}
@@ -52,7 +52,7 @@ func TestGroupCompletedAMQP(t *testing.T) {
 		GroupTaskCount: groupTaskCount,
 	}
 
-	backend := backends.NewAMQPBackend(amqpConfig)
+	backend := amqp.New(amqpConfig)
 
 	// Cleanup before the test
 	backend.PurgeState(task1.UUID)
@@ -87,7 +87,7 @@ func TestGroupCompletedAMQP(t *testing.T) {
 	}
 }
 
-func TestGetStateAMQP(t *testing.T) {
+func TestGetState(t *testing.T) {
 	if os.Getenv("AMQP_URL") == "" {
 		t.Skip("AMQP_URL is not defined")
 	}
@@ -98,7 +98,7 @@ func TestGetStateAMQP(t *testing.T) {
 	}
 
 	go func() {
-		backend := backends.NewAMQPBackend(amqpConfig)
+		backend := amqp.New(amqpConfig)
 		backend.SetStatePending(signature)
 		time.Sleep(2 * time.Millisecond)
 		backend.SetStateReceived(signature)
@@ -115,7 +115,7 @@ func TestGetStateAMQP(t *testing.T) {
 		backend.SetStateSuccess(signature, taskResults)
 	}()
 
-	backend := backends.NewAMQPBackend(amqpConfig)
+	backend := amqp.New(amqpConfig)
 
 	var (
 		taskState *tasks.TaskState
@@ -135,7 +135,7 @@ func TestGetStateAMQP(t *testing.T) {
 	}
 }
 
-func TestPurgeStateAMQP(t *testing.T) {
+func TestPurgeState(t *testing.T) {
 	if os.Getenv("AMQP_URL") == "" {
 		t.Skip("AMQP_URL is not defined")
 	}
@@ -145,7 +145,7 @@ func TestPurgeStateAMQP(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-	backend := backends.NewAMQPBackend(amqpConfig)
+	backend := amqp.New(amqpConfig)
 
 	backend.SetStatePending(signature)
 	backend.SetStateReceived(signature)

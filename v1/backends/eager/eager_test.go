@@ -1,10 +1,11 @@
-package backends_test
+package eager_test
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/backends/eager"
+	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/suite"
 )
@@ -12,7 +13,7 @@ import (
 type EagerBackendTestSuite struct {
 	suite.Suite
 
-	backend backends.Interface
+	backend iface.Backend
 	st      []*tasks.Signature
 	groups  []struct {
 		id    string
@@ -22,7 +23,7 @@ type EagerBackendTestSuite struct {
 
 func (s *EagerBackendTestSuite) SetupSuite() {
 	// prepare common test data
-	s.backend = backends.NewEagerBackend()
+	s.backend = eager.New()
 
 	// 2 non-group state
 	s.st = []*tasks.Signature{

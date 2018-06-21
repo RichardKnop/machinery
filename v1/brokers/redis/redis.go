@@ -50,7 +50,7 @@ func New(cnf *config.Config, host, password, socketPath string, db int) iface.Br
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
-	b.StartConsuming(consumerTag, concurrency, taskProcessor)
+	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
 
 	b.pool = nil
 	conn := b.open()
@@ -181,7 +181,7 @@ func (b *Broker) StopConsuming() {
 	// Waiting for the delayed tasks goroutine to have stopped
 	b.delayedWG.Wait()
 
-	b.StopConsuming()
+	b.Broker.StopConsuming()
 
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()

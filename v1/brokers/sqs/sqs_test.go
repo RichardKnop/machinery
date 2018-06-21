@@ -32,7 +32,7 @@ func init() {
 	testBroker = sqs.New(cnf)
 }
 
-func TestNewAWSSQSBroker(t *testing.T) {
+func TestNew(t *testing.T) {
 	assert.IsType(t, testAWSSQSBroker, testBroker)
 }
 

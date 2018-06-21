@@ -1,10 +1,12 @@
-package backends
+package dynamodb
 
 import (
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/RichardKnop/machinery/v1/backends/iface"
+	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -15,19 +17,21 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
-type DynamoDBBackend struct {
+// Backend ...
+type Backend struct {
+	common.Backend
 	cnf     *config.Config
 	client  dynamodbiface.DynamoDBAPI
 	session *session.Session
 }
 
-// NewDynamoDBBackend creates a DynamoDBBackend instance
-func NewDynamoDBBackend(cnf *config.Config) Interface {
+// New creates a Backend instance
+func New(cnf *config.Config) iface.Backend {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 	dy := dynamodb.New(sess)
-	backend := &DynamoDBBackend{cnf: cnf, client: dy, session: sess}
+	backend := &Backend{Backend: common.NewBackend(cnf), cnf: cnf, client: dy, session: sess}
 	// Check if needed tables exist
 	err := backend.checkRequiredTablesIfExist()
 	if err != nil {
@@ -36,7 +40,7 @@ func NewDynamoDBBackend(cnf *config.Config) Interface {
 	return backend
 }
 
-func (b *DynamoDBBackend) InitGroup(groupUUID string, taskUUIDs []string) error {
+func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	meta := tasks.GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
@@ -60,7 +64,7 @@ func (b *DynamoDBBackend) InitGroup(groupUUID string, taskUUIDs []string) error 
 	return nil
 }
 
-func (b *DynamoDBBackend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
+func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
 		return false, err
@@ -79,7 +83,7 @@ func (b *DynamoDBBackend) GroupCompleted(groupUUID string, groupTaskCount int) (
 	return countSuccessTasks == groupTaskCount, nil
 }
 
-func (b *DynamoDBBackend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
+func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
 		return nil, err
@@ -88,7 +92,7 @@ func (b *DynamoDBBackend) GroupTaskStates(groupUUID string, groupTaskCount int) 
 	return b.getStates(groupMeta.TaskUUIDs...)
 }
 
-func (b *DynamoDBBackend) TriggerChord(groupUUID string) (bool, error) {
+func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	// Get the group meta data
 	groupMeta, err := b.getGroupMeta(groupUUID)
 
@@ -122,38 +126,38 @@ func (b *DynamoDBBackend) TriggerChord(groupUUID string) (bool, error) {
 	return true, err
 }
 
-func (b *DynamoDBBackend) SetStatePending(signature *tasks.Signature) error {
+func (b *Backend) SetStatePending(signature *tasks.Signature) error {
 	taskState := tasks.NewPendingTaskState(signature)
 	// taskUUID is the primary key of the table, so a new task need to be created first, instead of using dynamodb.UpdateItemInput directly
 	return b.initTaskState(taskState)
 }
 
-func (b *DynamoDBBackend) SetStateReceived(signature *tasks.Signature) error {
+func (b *Backend) SetStateReceived(signature *tasks.Signature) error {
 	taskState := tasks.NewReceivedTaskState(signature)
 	return b.setTaskState(taskState)
 }
 
-func (b *DynamoDBBackend) SetStateStarted(signature *tasks.Signature) error {
+func (b *Backend) SetStateStarted(signature *tasks.Signature) error {
 	taskState := tasks.NewStartedTaskState(signature)
 	return b.setTaskState(taskState)
 }
 
-func (b *DynamoDBBackend) SetStateRetry(signature *tasks.Signature) error {
+func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 	taskState := tasks.NewRetryTaskState(signature)
 	return b.setTaskState(taskState)
 }
 
-func (b *DynamoDBBackend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
+func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	taskState := tasks.NewSuccessTaskState(signature, results)
 	return b.setTaskState(taskState)
 }
 
-func (b *DynamoDBBackend) SetStateFailure(signature *tasks.Signature, err string) error {
+func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
 	taskState := tasks.NewFailureTaskState(signature, err)
 	return b.updateToFailureStateWithError(taskState)
 }
 
-func (b *DynamoDBBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
+func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	result, err := b.client.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(b.cnf.DynamoDB.TaskStatesTable),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -168,7 +172,7 @@ func (b *DynamoDBBackend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	return b.unmarshalTaskStateGetItemResult(result)
 }
 
-func (b *DynamoDBBackend) PurgeState(taskUUID string) error {
+func (b *Backend) PurgeState(taskUUID string) error {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"TaskUUID": {
@@ -185,7 +189,7 @@ func (b *DynamoDBBackend) PurgeState(taskUUID string) error {
 	return nil
 }
 
-func (b *DynamoDBBackend) PurgeGroupMeta(groupUUID string) error {
+func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"GroupUUID": {
@@ -202,7 +206,7 @@ func (b *DynamoDBBackend) PurgeGroupMeta(groupUUID string) error {
 	return nil
 }
 
-func (b *DynamoDBBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
+func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 	result, err := b.client.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(b.cnf.DynamoDB.GroupMetasTable),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -224,7 +228,7 @@ func (b *DynamoDBBackend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, erro
 	return item, nil
 }
 
-func (b *DynamoDBBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
+func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	states := make([]*tasks.TaskState, 0)
 	stateChan := make(chan *tasks.TaskState, len(taskUUIDs))
 	errChan := make(chan error)
@@ -249,7 +253,7 @@ func (b *DynamoDBBackend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, er
 	return states, nil
 }
 
-func (b *DynamoDBBackend) lockGroupMeta(groupUUID string) error {
+func (b *Backend) lockGroupMeta(groupUUID string) error {
 	err := b.updateGroupMetaLock(groupUUID, true)
 	if err != nil {
 		return err
@@ -257,7 +261,7 @@ func (b *DynamoDBBackend) lockGroupMeta(groupUUID string) error {
 	return nil
 }
 
-func (b *DynamoDBBackend) unlockGroupMeta(groupUUID string) error {
+func (b *Backend) unlockGroupMeta(groupUUID string) error {
 	err := b.updateGroupMetaLock(groupUUID, false)
 	if err != nil {
 		return err
@@ -265,7 +269,7 @@ func (b *DynamoDBBackend) unlockGroupMeta(groupUUID string) error {
 	return nil
 }
 
-func (b *DynamoDBBackend) updateGroupMetaLock(groupUUID string, status bool) error {
+func (b *Backend) updateGroupMetaLock(groupUUID string, status bool) error {
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#L": aws.String("Lock"),
@@ -293,7 +297,7 @@ func (b *DynamoDBBackend) updateGroupMetaLock(groupUUID string, status bool) err
 	return nil
 }
 
-func (b *DynamoDBBackend) chordTriggered(groupUUID string) error {
+func (b *Backend) chordTriggered(groupUUID string) error {
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#CT": aws.String("ChordTriggered"),
@@ -321,7 +325,7 @@ func (b *DynamoDBBackend) chordTriggered(groupUUID string) error {
 	return nil
 }
 
-func (b *DynamoDBBackend) setTaskState(taskState *tasks.TaskState) error {
+func (b *Backend) setTaskState(taskState *tasks.TaskState) error {
 	expAttributeNames := map[string]*string{
 		"#S": aws.String("State"),
 	}
@@ -382,7 +386,7 @@ func (b *DynamoDBBackend) setTaskState(taskState *tasks.TaskState) error {
 	return nil
 }
 
-func (b *DynamoDBBackend) initTaskState(taskState *tasks.TaskState) error {
+func (b *Backend) initTaskState(taskState *tasks.TaskState) error {
 	av, err := dynamodbattribute.MarshalMap(taskState)
 	input := &dynamodb.PutItemInput{
 		Item:      av,
@@ -399,8 +403,7 @@ func (b *DynamoDBBackend) initTaskState(taskState *tasks.TaskState) error {
 	return nil
 }
 
-func (b *DynamoDBBackend) updateToFailureStateWithError(taskState *tasks.TaskState) error {
-
+func (b *Backend) updateToFailureStateWithError(taskState *tasks.TaskState) error {
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#S": aws.String("State"),
@@ -432,7 +435,7 @@ func (b *DynamoDBBackend) updateToFailureStateWithError(taskState *tasks.TaskSta
 	return nil
 }
 
-func (b *DynamoDBBackend) unmarshalGroupMetaGetItemResult(result *dynamodb.GetItemOutput) (*tasks.GroupMeta, error) {
+func (b *Backend) unmarshalGroupMetaGetItemResult(result *dynamodb.GetItemOutput) (*tasks.GroupMeta, error) {
 	if result == nil {
 		err := errors.New("task state is nil")
 		log.ERROR.Printf("Got error when unmarshal map. Error: %v", err)
@@ -447,7 +450,7 @@ func (b *DynamoDBBackend) unmarshalGroupMetaGetItemResult(result *dynamodb.GetIt
 	return &item, err
 }
 
-func (b *DynamoDBBackend) unmarshalTaskStateGetItemResult(result *dynamodb.GetItemOutput) (*tasks.TaskState, error) {
+func (b *Backend) unmarshalTaskStateGetItemResult(result *dynamodb.GetItemOutput) (*tasks.TaskState, error) {
 	if result == nil {
 		err := errors.New("task state is nil")
 		log.ERROR.Printf("Got error when unmarshal map. Error: %v", err)
@@ -462,7 +465,7 @@ func (b *DynamoDBBackend) unmarshalTaskStateGetItemResult(result *dynamodb.GetIt
 	return &state, nil
 }
 
-func (b *DynamoDBBackend) checkRequiredTablesIfExist() error {
+func (b *Backend) checkRequiredTablesIfExist() error {
 	var (
 		taskTableName  = b.cnf.DynamoDB.TaskStatesTable
 		groupTableName = b.cnf.DynamoDB.GroupMetasTable
@@ -480,7 +483,7 @@ func (b *DynamoDBBackend) checkRequiredTablesIfExist() error {
 	return nil
 }
 
-func (b *DynamoDBBackend) tableExists(tableName string, tableNames []*string) bool {
+func (b *Backend) tableExists(tableName string, tableNames []*string) bool {
 	for _, t := range tableNames {
 		if tableName == *t {
 			return true

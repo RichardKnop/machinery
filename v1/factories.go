@@ -3,22 +3,30 @@ package machinery
 import (
 	"errors"
 	"fmt"
+	neturl "net/url"
 	"strconv"
 	"strings"
-	neturl "net/url"
 
-	"github.com/RichardKnop/machinery/v1/backends"
 	"github.com/RichardKnop/machinery/v1/config"
 
 	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
-	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	eagerbroker "github.com/RichardKnop/machinery/v1/brokers/eager"
+	brokeriface "github.com/RichardKnop/machinery/v1/brokers/iface"
+	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
+
+	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
+	dynamobackend "github.com/RichardKnop/machinery/v1/backends/dynamodb"
+	eagerbackend "github.com/RichardKnop/machinery/v1/backends/eager"
+	backendiface "github.com/RichardKnop/machinery/v1/backends/iface"
+	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
+	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
+	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
 )
 
-// BrokerFactory creates a new object of brokers.Interface
+// BrokerFactory creates a new object of iface.Broker
 // Currently only AMQP/S broker is supported
-func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
+func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 	if strings.HasPrefix(cnf.Broker, "amqp://") {
 		return amqpbroker.New(cnf), nil
 	}
@@ -65,13 +73,13 @@ func BrokerFactory(cnf *config.Config) (brokers.Interface, error) {
 
 // BackendFactory creates a new object of backends.Interface
 // Currently supported backends are AMQP/S and Memcache
-func BackendFactory(cnf *config.Config) (backends.Interface, error) {
+func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 	if strings.HasPrefix(cnf.ResultBackend, "amqp://") {
-		return backends.NewAMQPBackend(cnf), nil
+		return amqpbackend.New(cnf), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "amqps://") {
-		return backends.NewAMQPBackend(cnf), nil
+		return amqpbackend.New(cnf), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "memcache://") {
@@ -83,7 +91,7 @@ func BackendFactory(cnf *config.Config) (backends.Interface, error) {
 			)
 		}
 		servers := strings.Split(parts[1], ",")
-		return backends.NewMemcacheBackend(cnf, servers), nil
+		return memcachebackend.New(cnf, servers), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
@@ -92,7 +100,7 @@ func BackendFactory(cnf *config.Config) (backends.Interface, error) {
 			return nil, err
 		}
 
-		return backends.NewRedisBackend(cnf, redisHost, redisPassword, "", redisDB), nil
+		return redisbackend.New(cnf, redisHost, redisPassword, "", redisDB), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis+socket://") {
@@ -101,19 +109,19 @@ func BackendFactory(cnf *config.Config) (backends.Interface, error) {
 			return nil, err
 		}
 
-		return backends.NewRedisBackend(cnf, "", redisPassword, redisSocket, redisDB), nil
+		return redisbackend.New(cnf, "", redisPassword, redisSocket, redisDB), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "mongodb://") {
-		return backends.NewMongodbBackend(cnf), nil
+		return mongobackend.New(cnf), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "eager") {
-		return backends.NewEagerBackend(), nil
+		return eagerbackend.New(), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "https://dynamodb") {
-		return backends.NewDynamoDBBackend(cnf), nil
+		return dynamobackend.New(cnf), nil
 	}
 
 	return nil, fmt.Errorf("Factory failed with result backend: %v", cnf.ResultBackend)

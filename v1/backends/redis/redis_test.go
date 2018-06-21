@@ -1,17 +1,17 @@
-package backends_test
+package redis_test
 
 import (
 	"os"
 	"testing"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/backends/redis"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGroupCompletedRedis(t *testing.T) {
+func TestGroupCompleted(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 	if redisURL == "" {
@@ -28,7 +28,7 @@ func TestGroupCompletedRedis(t *testing.T) {
 		GroupUUID: groupUUID,
 	}
 
-	backend := backends.NewRedisBackend(new(config.Config), redisURL, redisPassword, "", 0)
+	backend := redis.New(new(config.Config), redisURL, redisPassword, "", 0)
 
 	// Cleanup before the test
 	backend.PurgeState(task1.UUID)
@@ -71,7 +71,7 @@ func TestGroupCompletedRedis(t *testing.T) {
 	}
 }
 
-func TestGetStateRedis(t *testing.T) {
+func TestGetState(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 	if redisURL == "" {
@@ -83,7 +83,7 @@ func TestGetStateRedis(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-	backend := backends.NewRedisBackend(new(config.Config), redisURL, redisPassword, "", 0)
+	backend := redis.New(new(config.Config), redisURL, redisPassword, "", 0)
 
 	go func() {
 		backend.SetStatePending(signature)
@@ -119,7 +119,7 @@ func TestGetStateRedis(t *testing.T) {
 	}
 }
 
-func TestPurgeStateRedis(t *testing.T) {
+func TestPurgeState(t *testing.T) {
 	redisURL := os.Getenv("REDIS_URL")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 	if redisURL == "" {
@@ -131,7 +131,7 @@ func TestPurgeStateRedis(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-	backend := backends.NewRedisBackend(new(config.Config), redisURL, redisPassword, "", 0)
+	backend := redis.New(new(config.Config), redisURL, redisPassword, "", 0)
 
 	backend.SetStatePending(signature)
 	taskState, err := backend.GetState(signature.UUID)

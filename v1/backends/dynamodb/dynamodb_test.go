@@ -1,35 +1,36 @@
-package backends_test
+package dynamodb_test
 
 import (
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/RichardKnop/machinery/v1/backends/dynamodb"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/stretchr/testify/assert"
+
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-func TestNewDynamoDBBackend(t *testing.T) {
+func TestNew(t *testing.T) {
 	// should call t.Skip if not connected to internet
-	backend := backends.NewDynamoDBBackend(backends.TestCnf)
-	assert.IsType(t, &backends.DynamoDBBackend{}, backend)
+	backend := dynamodb.New(dynamodb.TestCnf)
+	assert.IsType(t, new(dynamodb.Backend), backend)
 }
 
 func TestInitGroup(t *testing.T) {
 	groupUUID := "testGroupUUID"
-	taskUUIDs = []string{"testTaskUUID1", "testTaskUUID2", "testTaskUUID3"}
-	log.INFO.Println(backends.TestDynamoDBBackend.GetConfig())
-	err := backends.TestDynamoDBBackend.InitGroup(groupUUID, taskUUIDs)
+	taskUUIDs := []string{"testTaskUUID1", "testTaskUUID2", "testTaskUUID3"}
+	log.INFO.Println(dynamodb.TestDynamoDBBackend.GetConfig())
+	err := dynamodb.TestDynamoDBBackend.InitGroup(groupUUID, taskUUIDs)
 	assert.Nil(t, err)
 
-	err = backends.TestErrDynamoDBBackend.InitGroup(groupUUID, taskUUIDs)
+	err = dynamodb.TestErrDynamoDBBackend.InitGroup(groupUUID, taskUUIDs)
 	assert.NotNil(t, err)
 }
 
-func TestDynamoDBGroupCompleted(t *testing.T) {
-	task1 := map[string]*dynamodb.AttributeValue{
+func TestGroupCompleted(t *testing.T) {
+	task1 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -43,7 +44,7 @@ func TestDynamoDBGroupCompleted(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	task2 := map[string]*dynamodb.AttributeValue{
+	task2 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -57,7 +58,7 @@ func TestDynamoDBGroupCompleted(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	task3 := map[string]*dynamodb.AttributeValue{
+	task3 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -72,30 +73,29 @@ func TestDynamoDBGroupCompleted(t *testing.T) {
 		},
 	}
 
-	backends.TestTask1, backends.TestTask2, backends.TestTask3 = task1, task2, task3
+	dynamodb.TestTask1, dynamodb.TestTask2, dynamodb.TestTask3 = task1, task2, task3
 
 	groupUUID := "testGroupUUID"
-	taskUUIDs = []string{"testTaskUUID1", "testTaskUUID2", "testTaskUUID3"}
-	_, err := backends.TestErrDynamoDBBackend.GroupCompleted(groupUUID, 3)
+	_, err := dynamodb.TestErrDynamoDBBackend.GroupCompleted(groupUUID, 3)
 	assert.NotNil(t, err)
-	completed, err := backends.TestDynamoDBBackend.GroupCompleted(groupUUID, 3)
+	completed, err := dynamodb.TestDynamoDBBackend.GroupCompleted(groupUUID, 3)
 	assert.False(t, completed)
 	assert.Nil(t, err)
 
-	task1["State"] = &dynamodb.AttributeValue{
+	task1["State"] = &awsdynamodb.AttributeValue{
 		S: aws.String(tasks.StateFailure),
 	}
-	task2["State"] = &dynamodb.AttributeValue{
+	task2["State"] = &awsdynamodb.AttributeValue{
 		S: aws.String(tasks.StateSuccess),
 	}
-	completed, err = backends.TestDynamoDBBackend.GroupCompleted(groupUUID, 3)
+	completed, err = dynamodb.TestDynamoDBBackend.GroupCompleted(groupUUID, 3)
 	assert.True(t, completed)
 	assert.Nil(t, err)
 }
 
-func TestDynamoDBPrivateFuncGetGroupMeta(t *testing.T) {
+func TestPrivateFuncGetGroupMeta(t *testing.T) {
 	groupUUID := "testGroupUUID"
-	meta, err := backends.TestDynamoDBBackend.GetGroupMetaForTest(groupUUID)
+	meta, err := dynamodb.TestDynamoDBBackend.GetGroupMetaForTest(groupUUID)
 	item := tasks.GroupMeta{
 		GroupUUID:      "testGroupUUID",
 		Lock:           false,
@@ -108,13 +108,13 @@ func TestDynamoDBPrivateFuncGetGroupMeta(t *testing.T) {
 	}
 	assert.Nil(t, err)
 	assert.EqualValues(t, item, *meta)
-	_, err = backends.TestErrDynamoDBBackend.GetGroupMetaForTest(groupUUID)
+	_, err = dynamodb.TestErrDynamoDBBackend.GetGroupMetaForTest(groupUUID)
 	assert.NotNil(t, err)
 }
 
-func TestDynamoDBPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
-	result := dynamodb.GetItemOutput{
-		Item: map[string]*dynamodb.AttributeValue{
+func TestPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
+	result := awsdynamodb.GetItemOutput{
+		Item: map[string]*awsdynamodb.AttributeValue{
 			"Error": {
 				NULL: aws.Bool(true),
 			},
@@ -130,8 +130,8 @@ func TestDynamoDBPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
 		},
 	}
 
-	invalidResult := dynamodb.GetItemOutput{
-		Item: map[string]*dynamodb.AttributeValue{
+	invalidResult := awsdynamodb.GetItemOutput{
+		Item: map[string]*awsdynamodb.AttributeValue{
 			"Error": {
 				BOOL: aws.Bool(true),
 			},
@@ -153,23 +153,23 @@ func TestDynamoDBPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
 		State:    tasks.StatePending,
 		Error:    "",
 	}
-	state, err := backends.TestErrDynamoDBBackend.UnmarshalTaskStateGetItemResultForTest(&result)
+	state, err := dynamodb.TestErrDynamoDBBackend.UnmarshalTaskStateGetItemResultForTest(&result)
 	assert.Nil(t, err)
 	assert.EqualValues(t, item, *state)
 
-	_, err = backends.TestDynamoDBBackend.UnmarshalTaskStateGetItemResultForTest(nil)
+	_, err = dynamodb.TestDynamoDBBackend.UnmarshalTaskStateGetItemResultForTest(nil)
 	assert.NotNil(t, err)
 
-	_, err = backends.TestDynamoDBBackend.UnmarshalTaskStateGetItemResultForTest(&invalidResult)
+	_, err = dynamodb.TestDynamoDBBackend.UnmarshalTaskStateGetItemResultForTest(&invalidResult)
 	assert.NotNil(t, err)
 
 }
 
-func TestDynamoDBPrivateFuncUnmarshalGroupMetaGetItemResult(t *testing.T) {
-	result := dynamodb.GetItemOutput{
-		Item: map[string]*dynamodb.AttributeValue{
+func TestPrivateFuncUnmarshalGroupMetaGetItemResult(t *testing.T) {
+	result := awsdynamodb.GetItemOutput{
+		Item: map[string]*awsdynamodb.AttributeValue{
 			"TaskUUIDs": {
-				L: []*dynamodb.AttributeValue{
+				L: []*awsdynamodb.AttributeValue{
 					{
 						S: aws.String("testTaskUUID1"),
 					},
@@ -193,10 +193,10 @@ func TestDynamoDBPrivateFuncUnmarshalGroupMetaGetItemResult(t *testing.T) {
 		},
 	}
 
-	invalidResult := dynamodb.GetItemOutput{
-		Item: map[string]*dynamodb.AttributeValue{
+	invalidResult := awsdynamodb.GetItemOutput{
+		Item: map[string]*awsdynamodb.AttributeValue{
 			"TaskUUIDs": {
-				L: []*dynamodb.AttributeValue{
+				L: []*awsdynamodb.AttributeValue{
 					{
 						S: aws.String("testTaskUUID1"),
 					},
@@ -230,18 +230,18 @@ func TestDynamoDBPrivateFuncUnmarshalGroupMetaGetItemResult(t *testing.T) {
 			"testTaskUUID3",
 		},
 	}
-	meta, err := backends.TestErrDynamoDBBackend.UnmarshalGroupMetaGetItemResultForTest(&result)
+	meta, err := dynamodb.TestErrDynamoDBBackend.UnmarshalGroupMetaGetItemResultForTest(&result)
 	assert.Nil(t, err)
 	assert.EqualValues(t, item, *meta)
-	_, err = backends.TestErrDynamoDBBackend.UnmarshalGroupMetaGetItemResultForTest(nil)
+	_, err = dynamodb.TestErrDynamoDBBackend.UnmarshalGroupMetaGetItemResultForTest(nil)
 	assert.NotNil(t, err)
 
-	_, err = backends.TestErrDynamoDBBackend.UnmarshalGroupMetaGetItemResultForTest(&invalidResult)
+	_, err = dynamodb.TestErrDynamoDBBackend.UnmarshalGroupMetaGetItemResultForTest(&invalidResult)
 	assert.NotNil(t, err)
 
 }
 
-func TestDynamoDBPrivateFuncSetTaskState(t *testing.T) {
+func TestPrivateFuncSetTaskState(t *testing.T) {
 	signature := &tasks.Signature{
 		Name: "Test",
 		Args: []tasks.Arg{
@@ -252,14 +252,14 @@ func TestDynamoDBPrivateFuncSetTaskState(t *testing.T) {
 		},
 	}
 	state := tasks.NewPendingTaskState(signature)
-	err := backends.TestErrDynamoDBBackend.SetTaskStateForTest(state)
+	err := dynamodb.TestErrDynamoDBBackend.SetTaskStateForTest(state)
 	assert.NotNil(t, err)
-	err = backends.TestDynamoDBBackend.SetTaskStateForTest(state)
+	err = dynamodb.TestDynamoDBBackend.SetTaskStateForTest(state)
 	assert.Nil(t, err)
 }
 
-func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
-	task1 := map[string]*dynamodb.AttributeValue{
+func TestPrivateFuncGetStates(t *testing.T) {
+	task1 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -273,7 +273,7 @@ func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	task2 := map[string]*dynamodb.AttributeValue{
+	task2 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -287,7 +287,7 @@ func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	task3 := map[string]*dynamodb.AttributeValue{
+	task3 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -301,7 +301,7 @@ func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	backends.TestTask1, backends.TestTask2, backends.TestTask3 = task1, task2, task3
+	dynamodb.TestTask1, dynamodb.TestTask2, dynamodb.TestTask3 = task1, task2, task3
 
 	taskUUIDs := []string{
 		"testTaskUUID1",
@@ -328,7 +328,7 @@ func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 			Error:    "",
 		},
 	}
-	states, err := backends.TestDynamoDBBackend.GetStatesForTest(taskUUIDs...)
+	states, err := dynamodb.TestDynamoDBBackend.GetStatesForTest(taskUUIDs...)
 	assert.Nil(t, err)
 
 	for _, s := range states {
@@ -336,10 +336,10 @@ func TestDynamoDBPrivateFuncGetStates(t *testing.T) {
 	}
 }
 
-func TestDynamoDBGroupTaskStates(t *testing.T) {
+func TestGroupTaskStates(t *testing.T) {
 	groupUUID := "testGroupUUID"
 	count := 3
-	task1 := map[string]*dynamodb.AttributeValue{
+	task1 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -353,7 +353,7 @@ func TestDynamoDBGroupTaskStates(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	task2 := map[string]*dynamodb.AttributeValue{
+	task2 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -367,7 +367,7 @@ func TestDynamoDBGroupTaskStates(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	task3 := map[string]*dynamodb.AttributeValue{
+	task3 := map[string]*awsdynamodb.AttributeValue{
 		"Error": {
 			NULL: aws.Bool(true),
 		},
@@ -381,7 +381,7 @@ func TestDynamoDBGroupTaskStates(t *testing.T) {
 			NULL: aws.Bool(true),
 		},
 	}
-	backends.TestTask1, backends.TestTask2, backends.TestTask3 = task1, task2, task3
+	dynamodb.TestTask1, dynamodb.TestTask2, dynamodb.TestTask3 = task1, task2, task3
 	expectedStates := map[string]*tasks.TaskState{
 		"testTaskUUID1": {
 			TaskUUID: "testTaskUUID1",
@@ -403,21 +403,21 @@ func TestDynamoDBGroupTaskStates(t *testing.T) {
 		},
 	}
 
-	states, err := backends.TestDynamoDBBackend.GroupTaskStates(groupUUID, count)
+	states, err := dynamodb.TestDynamoDBBackend.GroupTaskStates(groupUUID, count)
 	assert.Nil(t, err)
 	for _, s := range states {
 		assert.EqualValues(t, *s, *expectedStates[s.TaskUUID])
 	}
 }
 
-func TestDynamoDBTriggerChord(t *testing.T) {
+func TestTriggerChord(t *testing.T) {
 	groupUUID := "testGroupUUID"
-	triggered, err := backends.TestDynamoDBBackend.TriggerChord(groupUUID)
+	triggered, err := dynamodb.TestDynamoDBBackend.TriggerChord(groupUUID)
 	assert.Nil(t, err)
 	assert.True(t, triggered)
 }
 
-func TestDynamoDBGetState(t *testing.T) {
+func TestGetState(t *testing.T) {
 	taskUUID := "testTaskUUID1"
 	expectedState := &tasks.TaskState{
 		TaskUUID: "testTaskUUID1",
@@ -425,62 +425,62 @@ func TestDynamoDBGetState(t *testing.T) {
 		State:    tasks.StatePending,
 		Error:    "",
 	}
-	state, err := backends.TestDynamoDBBackend.GetState(taskUUID)
+	state, err := dynamodb.TestDynamoDBBackend.GetState(taskUUID)
 	assert.Nil(t, err)
 	assert.EqualValues(t, expectedState, state)
 }
 
-func TestDynamoDBPurgeState(t *testing.T) {
+func TestPurgeState(t *testing.T) {
 	taskUUID := "testTaskUUID1"
-	err := backends.TestDynamoDBBackend.PurgeState(taskUUID)
+	err := dynamodb.TestDynamoDBBackend.PurgeState(taskUUID)
 	assert.Nil(t, err)
 
-	err = backends.TestErrDynamoDBBackend.PurgeState(taskUUID)
+	err = dynamodb.TestErrDynamoDBBackend.PurgeState(taskUUID)
 	assert.NotNil(t, err)
 }
 
-func TestDynamoDBPurgeGroupMeta(t *testing.T) {
+func TestPurgeGroupMeta(t *testing.T) {
 	groupUUID := "GroupUUID"
-	err := backends.TestDynamoDBBackend.PurgeGroupMeta(groupUUID)
+	err := dynamodb.TestDynamoDBBackend.PurgeGroupMeta(groupUUID)
 	assert.Nil(t, err)
 
-	err = backends.TestErrDynamoDBBackend.PurgeGroupMeta(groupUUID)
+	err = dynamodb.TestErrDynamoDBBackend.PurgeGroupMeta(groupUUID)
 	assert.NotNil(t, err)
 }
 
-func TestDynamoDBPrivateFuncLockGroupMeta(t *testing.T) {
+func TestPrivateFuncLockGroupMeta(t *testing.T) {
 	groupUUID := "GroupUUID"
-	err := backends.TestDynamoDBBackend.LockGroupMetaForTest(groupUUID)
+	err := dynamodb.TestDynamoDBBackend.LockGroupMetaForTest(groupUUID)
 	assert.Nil(t, err)
-	err = backends.TestErrDynamoDBBackend.LockGroupMetaForTest(groupUUID)
+	err = dynamodb.TestErrDynamoDBBackend.LockGroupMetaForTest(groupUUID)
 	assert.NotNil(t, err)
 }
 
-func TestDynamoDBPrivateFuncUnLockGroupMeta(t *testing.T) {
+func TestPrivateFuncUnLockGroupMeta(t *testing.T) {
 	groupUUID := "GroupUUID"
-	err := backends.TestDynamoDBBackend.UnlockGroupMetaForTest(groupUUID)
+	err := dynamodb.TestDynamoDBBackend.UnlockGroupMetaForTest(groupUUID)
 	assert.Nil(t, err)
-	err = backends.TestErrDynamoDBBackend.UnlockGroupMetaForTest(groupUUID)
+	err = dynamodb.TestErrDynamoDBBackend.UnlockGroupMetaForTest(groupUUID)
 	assert.NotNil(t, err)
 }
 
-func TestDynamoDBPrivateFuncChordTriggered(t *testing.T) {
+func TestPrivateFuncChordTriggered(t *testing.T) {
 	groupUUID := "GroupUUID"
-	err := backends.TestDynamoDBBackend.ChordTriggeredForTest(groupUUID)
+	err := dynamodb.TestDynamoDBBackend.ChordTriggeredForTest(groupUUID)
 	assert.Nil(t, err)
-	err = backends.TestErrDynamoDBBackend.ChordTriggeredForTest(groupUUID)
+	err = dynamodb.TestErrDynamoDBBackend.ChordTriggeredForTest(groupUUID)
 	assert.NotNil(t, err)
 }
 
 func TestDynamoDBPrivateFuncUpdateGroupMetaLock(t *testing.T) {
 	groupUUID := "GroupUUID"
-	err := backends.TestDynamoDBBackend.UpdateGroupMetaLockForTest(groupUUID, true)
+	err := dynamodb.TestDynamoDBBackend.UpdateGroupMetaLockForTest(groupUUID, true)
 	assert.Nil(t, err)
-	err = backends.TestErrDynamoDBBackend.UpdateGroupMetaLockForTest(groupUUID, true)
+	err = dynamodb.TestErrDynamoDBBackend.UpdateGroupMetaLockForTest(groupUUID, true)
 	assert.NotNil(t, err)
 }
 
-func TestDynamoDBPrivateFuncUpdateToFailureStateWithError(t *testing.T) {
+func TestPrivateFuncUpdateToFailureStateWithError(t *testing.T) {
 	signature := &tasks.Signature{
 		Name: "Test",
 		Args: []tasks.Arg{
@@ -492,30 +492,29 @@ func TestDynamoDBPrivateFuncUpdateToFailureStateWithError(t *testing.T) {
 	}
 
 	state := tasks.NewFailureTaskState(signature, "This is an error")
-	err := backends.TestDynamoDBBackend.UpdateToFailureStateWithErrorForTest(state)
+	err := dynamodb.TestDynamoDBBackend.UpdateToFailureStateWithErrorForTest(state)
 	assert.Nil(t, err)
 }
 
-func TestDynamoDBPrivateFuncTableExistsForTest(t *testing.T) {
+func TestPrivateFuncTableExistsForTest(t *testing.T) {
 	tables := []*string{aws.String("foo")}
-	assert.False(t, backends.TestDynamoDBBackend.TableExistsForTest("bar", tables))
-	assert.True(t, backends.TestDynamoDBBackend.TableExistsForTest("foo", tables))
+	assert.False(t, dynamodb.TestDynamoDBBackend.TableExistsForTest("bar", tables))
+	assert.True(t, dynamodb.TestDynamoDBBackend.TableExistsForTest("foo", tables))
 }
 
-func TestDynamoDBPrivateFuncCheckRequiredTablesIfExistForTest(t *testing.T) {
-	err := backends.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
+func TestPrivateFuncCheckRequiredTablesIfExistForTest(t *testing.T) {
+	err := dynamodb.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
 	assert.Nil(t, err)
-	taskTable := backends.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable
-	groupTable := backends.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable
-	err = backends.TestErrDynamoDBBackend.CheckRequiredTablesIfExistForTest()
+	taskTable := dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable
+	groupTable := dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable
+	err = dynamodb.TestErrDynamoDBBackend.CheckRequiredTablesIfExistForTest()
 	assert.NotNil(t, err)
-	backends.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable = "foo"
-	err = backends.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
+	dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable = "foo"
+	err = dynamodb.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
 	assert.NotNil(t, err)
-	backends.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable = taskTable
-	backends.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable = "foo"
-	err = backends.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
+	dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable = taskTable
+	dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable = "foo"
+	err = dynamodb.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
 	assert.NotNil(t, err)
-	backends.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable = groupTable
-
+	dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable = groupTable
 }

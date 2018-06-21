@@ -1,10 +1,11 @@
-package backends_test
+package mongo_test
 
 import (
 	"os"
 	"testing"
-
-	"github.com/RichardKnop/machinery/v1/backends"
+	
+	"github.com/RichardKnop/machinery/v1/backends/iface"
+	"github.com/RichardKnop/machinery/v1/backends/mongo"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
@@ -15,12 +16,12 @@ var (
 	taskUUIDs = []string{"1", "2", "3"}
 )
 
-func initTestMongodbBackend() (backends.Interface, error) {
+func newBackend() (iface.Backend, error) {
 	cnf := &config.Config{
 		ResultBackend:   os.Getenv("MONGODB_URL"),
 		ResultsExpireIn: 30,
 	}
-	backend := backends.NewMongodbBackend(cnf)
+	backend := mongo.New(cnf)
 
 	backend.PurgeGroupMeta(groupUUID)
 	for _, taskUUID := range taskUUIDs {
@@ -33,12 +34,12 @@ func initTestMongodbBackend() (backends.Interface, error) {
 	return backend, nil
 }
 
-func TestNewMongodbBackend(t *testing.T) {
+func TestNew(t *testing.T) {
 	if os.Getenv("MONGODB_URL") == "" {
 		t.Skip("MONGODB_URL is not defined")
 	}
 
-	backend, err := initTestMongodbBackend()
+	backend, err := newBackend()
 	if assert.NoError(t, err) {
 		assert.NotNil(t, backend)
 	}
@@ -49,7 +50,7 @@ func TestSetStatePending(t *testing.T) {
 		t.Skip("MONGODB_URL is not defined")
 	}
 
-	backend, err := initTestMongodbBackend()
+	backend, err := newBackend()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,7 @@ func TestSetStateReceived(t *testing.T) {
 		t.Skip("MONGODB_URL is not defined")
 	}
 
-	backend, err := initTestMongodbBackend()
+	backend, err := newBackend()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +92,7 @@ func TestSetStateStarted(t *testing.T) {
 		t.Skip("MONGODB_URL is not defined")
 	}
 
-	backend, err := initTestMongodbBackend()
+	backend, err := newBackend()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +116,7 @@ func TestSetStateSuccess(t *testing.T) {
 	resultType := "float64"
 	resultValue := float64(88.5)
 
-	backend, err := initTestMongodbBackend()
+	backend, err := newBackend()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +147,7 @@ func TestSetStateFailure(t *testing.T) {
 
 	failString := "Fail is ok"
 
-	backend, err := initTestMongodbBackend()
+	backend, err := newBackend()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +169,7 @@ func TestGroupCompleted(t *testing.T) {
 		t.Skip("MONGODB_URL is not defined")
 	}
 
-	backend, err := initTestMongodbBackend()
+	backend, err := newBackend()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +231,7 @@ func TestGroupStates(t *testing.T) {
 		t.Skip("MONGODB_URL is not defined")
 	}
 
-	backend, err := initTestMongodbBackend()
+	backend, err := newBackend()
 	if err != nil {
 		t.Fatal(err)
 	}
