@@ -7,6 +7,8 @@ import (
 var (
 	logger = logging.New(nil, nil, new(logging.ColouredFormatter))
 
+	// DEBUG ...
+	DEBUG = logger[logging.DEBUG]
 	// INFO ...
 	INFO = logger[logging.INFO]
 	// WARNING ...
@@ -19,6 +21,7 @@ var (
 
 // Set sets a custom logger
 func Set(l logging.LoggerInterface) {
+	DEBUG = l
 	INFO = l
 	WARNING = l
 	ERROR = l
