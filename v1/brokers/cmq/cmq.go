@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	maxCMQDelay = time.Minute * 60 // Max supported SQS delay is 15 min: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html
+	maxCMQDelay = time.Minute * 60
 )
 
 type TopicSupport interface {
@@ -30,13 +30,11 @@ type Broker struct {
 	receivingWG       sync.WaitGroup
 	stopReceivingChan chan int
 	client            *cmq.Client
-	cmqOpts           *cmq.Options
 }
 
 func New(cnf *config.Config, opt *cmq.Options) iface.Broker {
 	b := &Broker{
-		Broker:  common.NewBroker(cnf),
-		cmqOpts: opt,
+		Broker: common.NewBroker(cnf),
 	}
 
 	if cnf.CMQ != nil && cnf.CMQ.Client != nil {
@@ -56,6 +54,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 	b.Broker.StartConsuming(consumerTag, concurrency, p)
 	b.stopReceivingChan = make(chan int)
 	deliveries := make(chan *models.ReceiveMessageResp)
+	b.receivingWG.Add(1)
 	log.INFO.Print("[*] Waiting for message. To exit press CTRL+C")
 
 	go func() {
@@ -91,6 +90,19 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 	return b.GetRetry(), nil
 
 	return true, nil
+}
+
+// StopConsuming quits the loop
+func (b *Broker) StopConsuming() {
+	b.Broker.StopConsuming()
+
+	b.stopReceiving()
+
+	// Waiting for any tasks being processed to finish
+	b.processingWG.Wait()
+
+	// Waiting for the receiving goroutine to have stopped
+	b.receivingWG.Wait()
 }
 
 func (b *Broker) Publish(signature *tasks.Signature) error {
@@ -170,7 +182,37 @@ func (b *Broker) consume(deliveries chan *models.ReceiveMessageResp, concurrency
 	}
 }
 
-func (b *Broker) consumeDeliveries(deliveries <-chan *models.ReceiveMessageResp, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
+func (b *Broker) consumeOne(delivery *models.ReceiveMessageResp, taskProcessor iface.TaskProcessor) error {
+	sig := new(tasks.Signature)
+	decoder := json.NewDecoder(strings.NewReader(delivery.MsgBody))
+	decoder.UseNumber()
+	if err := decoder.Decode(sig); err != nil {
+		if e := b.deleteOne(delivery); e != nil {
+			log.ERROR.Printf("unmarshal error. the delivery is %v, delete failed:%v", delivery, e)
+		}
+		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
+		return err
+	}
+
+	// If the task is not registered return an error
+	// and leave the message in the queue
+	if !b.IsTaskRegistered(sig.Name) {
+		return fmt.Errorf("task %s is not registered", sig.Name)
+	}
+
+	err := taskProcessor.Process(sig)
+	if err != nil {
+		return err
+	}
+	// Delete message after successfully consuming and processing the message
+	if err = b.deleteOne(delivery); err != nil {
+		log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
+	}
+	return err
+}
+
+func (b *Broker) consumeDeliveries(deliveries <-chan *models.ReceiveMessageResp, concurrency int,
+	taskProcessor iface.TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
 	select {
 	case err := <-errorsChan:
 		return false, err
@@ -202,36 +244,6 @@ func (b *Broker) consumeDeliveries(deliveries <-chan *models.ReceiveMessageResp,
 	}
 	return true, nil
 }
-
-func (b *Broker) consumeOne(delivery *models.ReceiveMessageResp, taskProcessor iface.TaskProcessor) error {
-	sig := new(tasks.Signature)
-	decoder := json.NewDecoder(strings.NewReader(delivery.MsgBody))
-	decoder.UseNumber()
-	if err := decoder.Decode(sig); err != nil {
-		if e := b.deleteOne(delivery); e != nil {
-			log.ERROR.Printf("unmarshal error. the delivery is %v, delete failed:%v", delivery, e)
-		}
-		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
-		return err
-	}
-
-	// If the task is not registered return an error
-	// and leave the message in the queue
-	if !b.IsTaskRegistered(sig.Name) {
-		return fmt.Errorf("task %s is not registered", sig.Name)
-	}
-
-	err := taskProcessor.Process(sig)
-	if err != nil {
-		return err
-	}
-	// Delete message after successfully consuming and processing the message
-	if err = b.deleteOne(delivery); err != nil {
-		log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
-	}
-	return err
-}
-
 func (b *Broker) deleteOne(delivery *models.ReceiveMessageResp) error {
 	input := models.NewDeleteMessageReq(b.GetConfig().DefaultQueue, delivery.ReceiptHandle)
 	output := models.NewDeleteMessageResp()
@@ -282,4 +294,10 @@ func (b *Broker) continueReceivingMessages(deliveries chan *models.ReceiveMessag
 		go func() { deliveries <- output }()
 	}
 	return true, nil
+}
+
+// stopReceiving is a method sending a signal to stopReceivingChan
+func (b *Broker) stopReceiving() {
+	// Stop the receiving goroutine
+	b.stopReceivingChan <- 1
 }
