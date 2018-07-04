@@ -59,15 +59,17 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 	log.INFO.Print("[*] Waiting for message. To exit press CTRL+C")
 
 	go func() {
-		defer b.receivingWG.Done()
 
 		for {
 			select {
 			case <-b.stopReceivingChan:
 				b.stopped = true
+				log.INFO.Printf("receive stop receiving signal")
+				b.receivingWG.Done()
 				return
 			default:
 				if b.stopped {
+					b.receivingWG.Done()
 					return
 				}
 				output, err := b.receiveMessage()
@@ -87,6 +89,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 				log.ERROR.Printf("Error when receiving messages. Error: %v", err)
 			}
 			if whetherContinue == false {
+				b.receivingWG.Done()
 				return
 			}
 		}
