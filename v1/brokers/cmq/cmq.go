@@ -70,9 +70,13 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 					log.ERROR.Printf("Queue consume error: %s", err)
 					continue
 				}
+				if output == nil {
+					continue
+				}
 
 				deliveries <- output
 			}
+
 			whetherContinue, err := b.continueReceivingMessages(deliveries)
 			if err != nil {
 				log.ERROR.Printf("Error when receiving messages. Error: %v", err)
@@ -261,9 +265,11 @@ func (b *Broker) initializePool(pool chan struct{}, concurrency int) {
 	}
 }
 
-func (b *Broker) receiveMessage() (*models.ReceiveMessageResp, error) {
+func (b *Broker) receiveMessage(waitTimeSecondsSlice ...int) (*models.ReceiveMessageResp, error) {
 	var waitTimeSeconds int
-	if b.GetConfig().CMQ != nil {
+	if len(waitTimeSecondsSlice) > 0 {
+		waitTimeSeconds = waitTimeSecondsSlice[0]
+	} else if b.GetConfig().CMQ != nil {
 		waitTimeSeconds = b.GetConfig().CMQ.WaitTimeSeconds
 	} else {
 		waitTimeSeconds = 0
@@ -277,6 +283,11 @@ func (b *Broker) receiveMessage() (*models.ReceiveMessageResp, error) {
 		return nil, err
 	}
 
+	if output.Code == 7000 { // 没有新消息
+		log.INFO.Printf("receive 0 messages, requestId:%s\n", output.RequestId)
+		return nil, nil
+	}
+
 	return output, nil
 }
 
@@ -287,11 +298,13 @@ func (b *Broker) continueReceivingMessages(deliveries chan *models.ReceiveMessag
 	case <-b.stopReceivingChan:
 		return false, nil
 	default:
-		output, err := b.receiveMessage()
+		output, err := b.receiveMessage(0)
 		if err != nil {
 			return true, err
 		}
-		go func() { deliveries <- output }()
+		if output != nil {
+			go func() { deliveries <- output }()
+		}
 	}
 	return true, nil
 }

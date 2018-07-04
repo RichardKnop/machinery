@@ -7,6 +7,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/stretchr/testify/assert"
 	"fmt"
+	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 func TestRegisterTasks(t *testing.T) {
@@ -75,26 +76,28 @@ func getTestServer(t *testing.T) *machinery.Server {
 
 func TestServer_NewCMQServer(t *testing.T) {
 	server, err := machinery.NewServer(&config.Config{
-		Broker:        "cmq://key:id@bj?net_env=wan",
-		DefaultQueue:  "zaiye-bid",
+		Broker:        "cmq://id:key@bj?net_env=wan",
+		DefaultQueue:  "queue_name",
 		ResultBackend: "eager",
 		CMQ: &config.CMQConfig{
-			WaitTimeSeconds: 30,
+			WaitTimeSeconds: 1,
 		},
 	})
 	if err != nil {
 		t.Error(err)
 	}
-	//server.SendTask(&tasks.Signature{
-	//	Name: "test",
-	//	Args: []tasks.Arg{
-	//		tasks.Arg{
-	//			Name:  "f",
-	//			Type:  "uint64",
-	//			Value: 123,
-	//		},
-	//	},
-	//})
+	for i := 0; i < 10; i ++ {
+		server.SendTask(&tasks.Signature{
+			Name: "test",
+			Args: []tasks.Arg{
+				tasks.Arg{
+					Name:  "f",
+					Type:  "uint64",
+					Value: i,
+				},
+			},
+		})
+	}
 
 	//e := server.GetBroker().(cmq.TopicSupport).TopicPublish("order", &tasks.Signature{
 	//	Name: "test",
@@ -102,7 +105,7 @@ func TestServer_NewCMQServer(t *testing.T) {
 	//		tasks.Arg{
 	//			Name:  "f",
 	//			Type:  "uint64",
-	//			Value: 123,
+	//			Value: 456,
 	//		},
 	//	},
 	//	RoutingKey: "order.create",
