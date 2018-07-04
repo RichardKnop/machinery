@@ -30,6 +30,7 @@ type Broker struct {
 	receivingWG       sync.WaitGroup
 	stopReceivingChan chan int
 	client            *cmq.Client
+	stopped           bool
 }
 
 func New(cnf *config.Config, opt *cmq.Options) iface.Broker {
@@ -63,8 +64,12 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 		for {
 			select {
 			case <-b.stopReceivingChan:
+				b.stopped = true
 				return
 			default:
+				if b.stopped {
+					return
+				}
 				output, err := b.receiveMessage()
 				if err != nil {
 					log.ERROR.Printf("Queue consume error: %s", err)
@@ -104,12 +109,12 @@ func (b *Broker) StopConsuming() {
 	b.stopReceiving()
 
 	// Waiting for any tasks being processed to finish
-	log.INFO.Printf("waiting processing waitGroup done")
 	b.processingWG.Wait()
+	log.INFO.Printf("waiting processing waitGroup done")
 
-	log.INFO.Printf("waiting receiging waitGroup done")
 	// Waiting for the receiving goroutine to have stopped
 	b.receivingWG.Wait()
+	log.INFO.Printf("waiting receiving waitGroup done")
 }
 
 func (b *Broker) Publish(signature *tasks.Signature) error {
@@ -247,7 +252,8 @@ func (b *Broker) consumeDeliveries(deliveries <-chan *models.ReceiveMessageResp,
 			}
 		}()
 	case <-b.GetStopChan():
-		log.INFO.Printf("receive stop signal")
+		b.stopped = true
+		log.INFO.Printf("consumer receive stop signal")
 		return false, nil
 	}
 	return true, nil
