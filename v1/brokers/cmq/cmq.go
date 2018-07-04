@@ -98,13 +98,16 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 
 // StopConsuming quits the loop
 func (b *Broker) StopConsuming() {
+	log.INFO.Printf("receive stop signal")
 	b.Broker.StopConsuming()
 
 	b.stopReceiving()
 
 	// Waiting for any tasks being processed to finish
+	log.INFO.Printf("waiting processing waitGroup done")
 	b.processingWG.Wait()
 
+	log.INFO.Printf("waiting receiging waitGroup done")
 	// Waiting for the receiving goroutine to have stopped
 	b.receivingWG.Wait()
 }
@@ -244,6 +247,7 @@ func (b *Broker) consumeDeliveries(deliveries <-chan *models.ReceiveMessageResp,
 			}
 		}()
 	case <-b.GetStopChan():
+		log.INFO.Printf("receive stop signal")
 		return false, nil
 	}
 	return true, nil
