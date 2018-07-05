@@ -327,3 +327,7 @@ func (b *Broker) stopReceiving() {
 	// Stop the receiving goroutine
 	b.stopReceivingChan <- 1
 }
+
+func (b *Broker) GetClient() *cmq.Client {
+	return b.client
+}
