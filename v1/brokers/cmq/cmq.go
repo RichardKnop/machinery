@@ -1,18 +1,18 @@
 package cmq
 
 import (
-	"github.com/RichardKnop/machinery/v1/common"
-	"sync"
-	"github.com/baocaixiong/cmq-golang-sdk"
-	"github.com/RichardKnop/machinery/v1/config"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
-	"github.com/baocaixiong/cmq-golang-sdk/models"
+	"github.com/RichardKnop/machinery/v1/common"
+	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/baocaixiong/cmq-golang-sdk"
+	"github.com/baocaixiong/cmq-golang-sdk/models"
 	"strings"
-	"fmt"
-	"errors"
-	"encoding/json"
+	"sync"
 	"time"
 )
 
@@ -100,8 +100,6 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 	}
 
 	return b.GetRetry(), nil
-
-	return true, nil
 }
 
 // StopConsuming quits the loop

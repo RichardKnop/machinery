@@ -33,9 +33,9 @@ type Request struct {
 	SignatureMethod string `name:"SignatureMethod"`
 	Token           string `name:"Token"`
 
-	params map[string]string `json:"-"`
-	domain string            `json:"-"`
-	t      string            `json:"-"`
+	params map[string]string
+	domain string
+	t      string
 }
 
 func InitReq(a string, t string) *Request {
