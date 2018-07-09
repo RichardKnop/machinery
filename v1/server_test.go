@@ -6,8 +6,6 @@ import (
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/stretchr/testify/assert"
-	"fmt"
-	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
 func TestRegisterTasks(t *testing.T) {
@@ -86,36 +84,4 @@ func TestServer_NewCMQServer(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	for i := 0; i < 10; i ++ {
-		server.SendTask(&tasks.Signature{
-			Name: "test",
-			Args: []tasks.Arg{
-				tasks.Arg{
-					Name:  "f",
-					Type:  "uint64",
-					Value: i,
-				},
-			},
-		})
-	}
-
-	//e := server.GetBroker().(cmq.TopicSupport).TopicPublish("order", &tasks.Signature{
-	//	Name: "test",
-	//	Args: []tasks.Arg{
-	//		tasks.Arg{
-	//			Name:  "f",
-	//			Type:  "uint64",
-	//			Value: 456,
-	//		},
-	//	},
-	//	RoutingKey: "order.create",
-	//})
-	//fmt.Println(e)
-
-	server.RegisterTask("test", func(f uint64) error {
-		fmt.Println(f, "----")
-		return nil
-	})
-
-	server.NewWorker("asf", 1).Launch()
 }
