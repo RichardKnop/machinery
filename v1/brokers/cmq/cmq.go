@@ -151,17 +151,14 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 }
 
 func (b *Broker) TopicPublish(topic string, signature *tasks.Signature, msgTags ...string) error {
-	if len(signature.RoutingKey) == 0 {
-		return fmt.Errorf("msg RoutingKey can not empty")
-	}
-
 	msg, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 	input := models.NewPublishMessageReq(topic, string(msg))
-
-	input.RoutingKey = cmq.StringPtr(signature.RoutingKey)
+	if len(signature.RoutingKey) > 0 {
+		input.RoutingKey = cmq.StringPtr(signature.RoutingKey)
+	}
 	if len(msgTags) > 0 {
 		input.MsgTag = cmq.SliceStringPtr(msgTags)
 	}
