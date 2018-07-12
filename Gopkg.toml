@@ -50,10 +50,6 @@
   version = "1.0.2"
 
 [[constraint]]
-  name = "github.com/satori/go.uuid"
-  branch = "master"
-
-[[constraint]]
   branch = "master"
   name = "github.com/streadway/amqp"
 

@@ -10,12 +10,11 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	opentracing_log "github.com/opentracing/opentracing-go/log"
 
-	uuid "github.com/satori/go.uuid"
-
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/google/uuid"
 	"github.com/urfave/cli"
 
 	exampletasks "github.com/RichardKnop/machinery/example/tasks"
@@ -264,13 +263,7 @@ func send() error {
 	span, ctx := opentracing.StartSpanFromContext(context.Background(), "send")
 	defer span.Finish()
 
-	batchUUID, err := uuid.NewV4()
-
-	if err != nil {
-		return fmt.Errorf("Error generating batch id: %s", err.Error())
-	}
-
-	batchID := batchUUID.String()
+	batchID := uuid.New().String()
 	span.SetBaggageItem("batch.id", batchID)
 	span.LogFields(opentracing_log.String("batch.id", batchID))
 
