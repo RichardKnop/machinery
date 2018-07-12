@@ -3,11 +3,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2d19f68c7127f44734c3a35f34cb068624db9e896991f7f3a5331a2c706f5f51"
+  digest = "1:e7607a6e2cdf80c5e532ccdde7df1e13959c4c2094cfb3dcdb0f98863ee36c1c"
   name = "github.com/RichardKnop/logging"
   packages = ["."]
   pruneopts = "UT"
-  revision = "314bb050fc93e11a2a3862d188c9855bb2f105f1"
+  revision = "66aaaba182584c20ec574b064975974f92f0936a"
 
 [[projects]]
   branch = "master"
@@ -105,6 +105,14 @@
   version = "v2.0.0"
 
 [[projects]]
+  digest = "1:8f8811f9be822914c3a25c6a071e93beb4c805d7b026cbf298bc577bc1cc945b"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
+  version = "0.2"
+
+[[projects]]
   digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
@@ -138,14 +146,6 @@
   pruneopts = "UT"
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:ff6b0586c0621a76832cf783eee58cbb9d9795d2ce8acbc199a4131db11c42a9"
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
 
 [[projects]]
   branch = "master"
@@ -222,11 +222,11 @@
     "github.com/baocaixiong/cmq-golang-sdk/models",
     "github.com/bradfitz/gomemcache/memcache",
     "github.com/gomodule/redigo/redis",
+    "github.com/google/uuid",
     "github.com/kelseyhightower/envconfig",
     "github.com/opentracing/opentracing-go",
     "github.com/opentracing/opentracing-go/ext",
     "github.com/opentracing/opentracing-go/log",
-    "github.com/satori/go.uuid",
     "github.com/streadway/amqp",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/suite",
