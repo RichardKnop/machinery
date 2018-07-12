@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/RichardKnop/logging"
   packages = ["."]
-  revision = "66aaaba182584c20ec574b064975974f92f0936a"
+  revision = "314bb050fc93e11a2a3862d188c9855bb2f105f1"
 
 [[projects]]
   branch = "master"
@@ -51,6 +51,15 @@
   ]
   revision = "f0872da8a448f8cb10f4f0c95c2100e4f7356448"
   version = "v1.13.16"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/baocaixiong/cmq-golang-sdk"
+  packages = [
+    ".",
+    "models"
+  ]
+  revision = "ab1089e1adbb0704a2d1e1b07abe33f33812a851"
 
 [[projects]]
   branch = "master"
@@ -161,6 +170,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e64200dd4c2b3609df0e67006e1fa40d50d9721a23305afe7ca361aac80b5ea9"
+  inputs-digest = "ef1571492c94eaef81ad47de098f7c88ea65bfb0582348a6108ba27a5c210528"
   solver-name = "gps-cdcl"
   solver-version = 1

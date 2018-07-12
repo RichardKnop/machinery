@@ -74,6 +74,10 @@
   branch = "master"
 
 [[constraint]]
+  name = "github.com/baocaixiong/cmq-golang-sdk"
+  branch = "master"
+
+[[constraint]]
   name = "gopkg.in/yaml.v2"
   version = "2.1.1"
 

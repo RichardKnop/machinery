@@ -71,3 +71,17 @@ func getTestServer(t *testing.T) *machinery.Server {
 	}
 	return server
 }
+
+func TestServer_NewCMQServer(t *testing.T) {
+	_, err := machinery.NewServer(&config.Config{
+		Broker:        "cmq://id:key@bj?net_env=wan",
+		DefaultQueue:  "queue_name",
+		ResultBackend: "eager",
+		CMQ: &config.CMQConfig{
+			WaitTimeSeconds: 1,
+		},
+	})
+	if err != nil {
+		t.Error(err)
+	}
+}

@@ -16,6 +16,7 @@ install:
   - go get -u github.com/gordonklaus/ineffassign
   - go get -u golang.org/x/tools/cmd/goimports
   - go get -u github.com/tsenart/deadcode
+  - go get -u github.com/baocaixiong/cmq-golang-sdk
 
 script:
   - make lint
