@@ -314,7 +314,7 @@ if err != nil {
 }
 ```
 
-Each worker will only consume registered tasks. For each task on the queue the Worker.Process() method will will be run
+Each worker will only consume registered tasks. For each task on the queue the Worker.Process() method will be run
 in a goroutine. Use the second parameter of `server.NewWorker` to limit the number of concurrently running Worker.Process()
 calls (per worker). Example: 1 will serialize task execution while 0 makes the number of concurrently executed tasks unlimited (default).
 
