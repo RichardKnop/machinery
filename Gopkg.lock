@@ -71,17 +71,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:aa2601226031838bba2f4f7509cb7ce5e29d31a53d8809a27e83508a558d32b9"
-  name = "github.com/baocaixiong/cmq-golang-sdk"
-  packages = [
-    ".",
-    "models",
-  ]
-  pruneopts = "UT"
-  revision = "ccfed3ca889d49066bc7bde589927ec82a7c46e3"
-
-[[projects]]
-  branch = "master"
   digest = "1:d8f9145c361920507a4f85ffb7f70b96beaedacba2ce8c00aa663adb08689d3e"
   name = "github.com/bradfitz/gomemcache"
   packages = ["memcache"]
