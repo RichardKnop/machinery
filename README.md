@@ -155,6 +155,24 @@ var cnf = &config.Config{
   },
 }
 ```
+##### Tencent Cloud CMQ
+
+```go
+var cnf := &config.Config{
+  Broker:        "cmq://cmq_secret_id:cmq_secret_key@region?net_env=[wan|lan]"
+  DefaultQueue:  "machinery_tasks",
+  ResultBackend: "YOUR_BACKEND_URL",
+  CMQ: &config.CMQConfig{
+    WaitTimeSeconds: 30,
+  },
+}
+server, e := machinery.NewServer(cnf)
+if e != nil {
+    fmt.Println(e)
+} else {
+    s.NewWorker("consumer-tag", 10).Launch()
+}
+```
 
 #### DefaultQueue
 

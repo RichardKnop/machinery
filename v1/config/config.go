@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/baocaixiong/cmq-golang-sdk"
 )
 
 var (
@@ -34,6 +35,9 @@ var (
 			ConnectTimeout:         15,
 			DelayedTasksPollPeriod: 20,
 		},
+		CMQ: &CMQConfig{
+			WaitTimeSeconds: 30,
+		},
 	}
 
 	reloadDelay = time.Second * 10
@@ -52,6 +56,7 @@ type Config struct {
 	// NoUnixSignals - when set disables signal handling in machinery
 	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
 	DynamoDB      *DynamoDBConfig `yaml:"dynamodb"`
+	CMQ           *CMQConfig      `yaml:"cmq"`
 }
 
 // QueueBindingArgs arguments which are used when binding to the exchange
@@ -70,6 +75,11 @@ type AMQPConfig struct {
 type DynamoDBConfig struct {
 	TaskStatesTable string `yaml:"task_states_table" envconfig:"TASK_STATES_TABLE"`
 	GroupMetasTable string `yaml:"group_metas_table" envconfig:"GROUP_METAS_TABLE"`
+}
+
+type CMQConfig struct {
+	Client          *cmq.Client
+	WaitTimeSeconds int `yaml:"receive_wait_time_seconds" envconfig:"CMQ_WAIT_TIME_SECOND"`
 }
 
 // SQSConfig wraps SQS related configuration

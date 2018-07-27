@@ -18,7 +18,7 @@
   revision = "54b27db64c180751e7049321a2e109ff220ccdcc"
 
 [[projects]]
-  digest = "1:7ce74eb008ecdc2b7000bca5a6e3b4c95b116225e614bf7c458053ba09457298"
+  digest = "1:5a126ecf828ac99e26ba1ea70e7d7a5055d275b94a569959f02738f512d9d9dc"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -59,6 +59,17 @@
   version = "v1.13.16"
 
 [[projects]]
+  digest = "1:aa2601226031838bba2f4f7509cb7ce5e29d31a53d8809a27e83508a558d32b9"
+  name = "github.com/baocaixiong/cmq-golang-sdk"
+  packages = [
+    ".",
+    "models",
+  ]
+  pruneopts = "UT"
+  revision = "ccfed3ca889d49066bc7bde589927ec82a7c46e3"
+  version = "v1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:d8f9145c361920507a4f85ffb7f70b96beaedacba2ce8c00aa663adb08689d3e"
   name = "github.com/bradfitz/gomemcache"
@@ -83,7 +94,7 @@
   version = "v1.33.0"
 
 [[projects]]
-  digest = "1:ddf8e2ddc9ad3842eb15d70c60f793d41914a62d2d666171ce0e5ab593637a8f"
+  digest = "1:38ec74012390146c45af1f92d46e5382b50531247929ff3a685d2b2be65155ac"
   name = "github.com/gomodule/redigo"
   packages = [
     "internal",
@@ -117,7 +128,7 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:27af6024faa3c28426a698b8c653be0fd908bc96e25b7d76f2192eb342427db6"
+  digest = "1:450b7623b185031f3a456801155c8320209f75d0d4c4e633c6b1e59d44d6e392"
   name = "github.com/opentracing/opentracing-go"
   packages = [
     ".",
@@ -145,7 +156,7 @@
   revision = "8e4aba63da9fc5571e01c6a45dc809a58cbc5a68"
 
 [[projects]]
-  digest = "1:a2d9ae08610b8291a6af9dc0eded415ce5859181c7756989c5164195dda46253"
+  digest = "1:c52d48fe752736ae45b72959e1e4fc1a5b60d5b56f8fad42c58414daab5f309d"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
@@ -174,7 +185,7 @@
 
 [[projects]]
   branch = "v2"
-  digest = "1:93b088adfa87a2ab63580f473b57e8efa76838f49f1f8574941ef86683194087"
+  digest = "1:5052389c6c809eeced44ec24ff9958bfea70b9859b7a25061c6fd9086c8f8989"
   name = "gopkg.in/mgo.v2"
   packages = [
     ".",
@@ -207,6 +218,8 @@
     "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface",
     "github.com/aws/aws-sdk-go/service/sqs",
     "github.com/aws/aws-sdk-go/service/sqs/sqsiface",
+    "github.com/baocaixiong/cmq-golang-sdk",
+    "github.com/baocaixiong/cmq-golang-sdk/models",
     "github.com/bradfitz/gomemcache/memcache",
     "github.com/gomodule/redigo/redis",
     "github.com/google/uuid",
