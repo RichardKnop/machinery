@@ -1,9 +1,14 @@
 package cmq
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -11,10 +16,6 @@ import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/baocaixiong/cmq-golang-sdk"
 	"github.com/baocaixiong/cmq-golang-sdk/models"
-	"strings"
-	"sync"
-	"time"
-	"context"
 )
 
 const (

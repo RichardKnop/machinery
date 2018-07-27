@@ -10,11 +10,11 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 
 	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
+	cmqbroker "github.com/RichardKnop/machinery/v1/brokers/cmq"
 	eagerbroker "github.com/RichardKnop/machinery/v1/brokers/eager"
 	brokeriface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
-	cmqbroker "github.com/RichardKnop/machinery/v1/brokers/cmq"
 
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	dynamobackend "github.com/RichardKnop/machinery/v1/backends/dynamodb"
