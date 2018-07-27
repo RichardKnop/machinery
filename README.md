@@ -155,19 +155,24 @@ var cnf = &config.Config{
   },
 }
 ```
-##### 腾讯云CMQ
+##### Tencent Cloud CMQ
+
 ```go
 var cnf := &config.Config{
-  Broker:        "cmq://secret_id:secret_key@region?net_env=[wan|lan]"
+  Broker:        "cmq://cmq_secret_id:cmq_secret_key@region?net_env=[wan|lan]"
   DefaultQueue:  "machinery_tasks",
   ResultBackend: "YOUR_BACKEND_URL",
   CMQ: &config.CMQConfig{
     WaitTimeSeconds: 30,
   },
 }
+server, e := machinery.NewServer(cnf)
+if e != nil {
+    fmt.Println(e)
+} else {
+    s.NewWorker("consumer-tag", 10).Launch()
+}
 ```
-
-> 其中Broker中net_env值表示网络环境，wan表示外网环境，lan表示内网环境
 
 #### DefaultQueue
 

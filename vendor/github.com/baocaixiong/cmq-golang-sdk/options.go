@@ -2,6 +2,7 @@ package cmq
 
 import (
 	"strings"
+	"net/http"
 )
 
 const (
@@ -17,11 +18,12 @@ var (
 )
 
 type Options struct {
-	Region     string      `yaml:"region"`
-	Credential *Credential `yaml:"credential"`
-	NetEnv     string      `yaml:"net_env"`
-	queueUrl   string      `yaml:"-"`
-	topicUrl   string      `yaml:"-"`
+	Region     string            `yaml:"region"`
+	Credential *Credential       `yaml:"credential"`
+	NetEnv     string            `yaml:"net_env"`
+	queueUrl   string            `yaml:"-"`
+	topicUrl   string            `yaml:"-"`
+	transport  http.RoundTripper `yaml:"-"`
 }
 
 type Credential struct {
@@ -71,5 +73,11 @@ func NetEnv(e string) Option {
 func SetCredential(c *Credential) Option {
 	return func(opts *Options) {
 		opts.Credential = c
+	}
+}
+
+func Transaction(t *http.Transport) Option {
+	return func(opts *Options) {
+		opts.transport = t
 	}
 }

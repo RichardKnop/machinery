@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"github.com/baocaixiong/cmq-golang-sdk/models"
+	"context"
 )
 
 var UriSec = "/v2/index.php"
@@ -20,7 +21,7 @@ func NewClient(opts ...Option) *Client {
 
 	return &Client{
 		opt:        options,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Transport: options.transport},
 	}
 }
 
@@ -30,7 +31,7 @@ func (c *Client) Init(opts ...Option) {
 	}
 }
 
-func (c *Client) Send(request models.IRequest, response models.IResponse) (err error) {
+func (c *Client) Send(ctx context.Context, request models.IRequest, response models.IResponse) (err error) {
 	if err := models.ContactParams(request); err != nil {
 		return err
 	}
@@ -54,15 +55,7 @@ func (c *Client) Send(request models.IRequest, response models.IResponse) (err e
 	if err != nil {
 		return
 	}
-	//trace := &httptrace.ClientTrace{
-	//	DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
-	//		log.Printf("dns done info: %+v\n", dnsInfo)
-	//	},
-	//	GotConn: func(connInfo httptrace.GotConnInfo) {
-	//		log.Printf("Got Conn: %+v\n", connInfo)
-	//	},
-	//}
-	//httpRequest = httpRequest.WithContext(httptrace.WithClientTrace(httpRequest.Context(), trace))
+	httpRequest = httpRequest.WithContext(ctx)
 	httpRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	httpResponse, err := c.httpClient.Do(httpRequest)

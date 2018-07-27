@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"context"
 )
 
 const (
@@ -26,11 +27,13 @@ type TopicSupport interface {
 
 type Broker struct {
 	common.Broker
-	processingWG      sync.WaitGroup
-	receivingWG       sync.WaitGroup
-	stopReceivingChan chan int
-	client            *cmq.Client
-	stopped           bool
+	processingWG       sync.WaitGroup
+	receivingWG        sync.WaitGroup
+	stopReceivingChan  chan int
+	stopCurrentReqChan chan int
+	client             *cmq.Client
+	stopped            bool
+	context            context.Context
 }
 
 func New(cnf *config.Config, opt *cmq.Options) iface.Broker {
@@ -54,9 +57,21 @@ func New(cnf *config.Config, opt *cmq.Options) iface.Broker {
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.TaskProcessor) (bool, error) {
 	b.Broker.StartConsuming(consumerTag, concurrency, p)
 	b.stopReceivingChan = make(chan int)
+	b.stopCurrentReqChan = make(chan int)
 	deliveries := make(chan *models.ReceiveMessageResp)
 	b.receivingWG.Add(1)
 	log.INFO.Print("[*] Waiting for message. To exit press CTRL+C")
+
+	var cancel context.CancelFunc
+	b.context, cancel = context.WithCancel(context.Background())
+
+	go func() {
+		select {
+		case <-b.stopCurrentReqChan:
+			cancel()
+			log.INFO.Println("cancel request context")
+		}
+	}()
 
 	go func() {
 
@@ -140,7 +155,7 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 	}
 
 	output := models.NewSendMessageResp()
-	err = b.client.Send(input, output)
+	err = b.client.Send(b.context, input, output)
 	if err != nil {
 		log.ERROR.Printf("Error when sending a message: %v", err)
 		return err
@@ -163,7 +178,7 @@ func (b *Broker) TopicPublish(topic string, signature *tasks.Signature, msgTags 
 		input.MsgTag = cmq.SliceStringPtr(msgTags)
 	}
 	output := models.NewPublishMessageResp()
-	err = b.client.Send(input, output)
+	err = b.client.Send(b.context, input, output)
 	if err != nil {
 		log.ERROR.Printf("Error when sending a message to topic: %v", err)
 		return err
@@ -259,7 +274,7 @@ func (b *Broker) consumeDeliveries(deliveries <-chan *models.ReceiveMessageResp,
 func (b *Broker) deleteOne(delivery *models.ReceiveMessageResp) error {
 	input := models.NewDeleteMessageReq(b.GetConfig().DefaultQueue, delivery.ReceiptHandle)
 	output := models.NewDeleteMessageResp()
-	err := b.client.Send(input, output)
+	err := b.client.Send(b.context, input, output)
 	if err != nil {
 		return err
 	}
@@ -286,7 +301,7 @@ func (b *Broker) receiveMessage(waitTimeSecondsSlice ...int) (*models.ReceiveMes
 	input := models.NewReceiveMessageReq(b.GetConfig().DefaultQueue)
 	input.PollingWaitSeconds = cmq.IntPtr(waitTimeSeconds)
 	output := models.NewReceiveMessageResp()
-	err := b.client.Send(input, output)
+	err := b.client.Send(b.context, input, output)
 	if err != nil {
 		return nil, err
 	}
@@ -319,6 +334,7 @@ func (b *Broker) continueReceivingMessages(deliveries chan *models.ReceiveMessag
 
 // stopReceiving is a method sending a signal to stopReceivingChan
 func (b *Broker) stopReceiving() {
+	b.stopCurrentReqChan <- 1
 	// Stop the receiving goroutine
 	b.stopReceivingChan <- 1
 }

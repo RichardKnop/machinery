@@ -33,9 +33,9 @@ type Request struct {
 	SignatureMethod string `name:"SignatureMethod"`
 	Token           string `name:"Token"`
 
-	params map[string]string
-	domain string
-	t      string
+	params map[string]string `json:"-"`
+	domain string            `json:"-"`
+	t      string            `json:"-"`
 }
 
 func InitReq(a string, t string) *Request {
@@ -127,6 +127,9 @@ func flatStructure(value reflect.Value, request IRequest, prefix string) (err er
 			request.GetParams()[key] = strconv.FormatFloat(field.Float(), 'f', 4, 64)
 		} else if kind == reflect.Slice {
 			list := value.Field(i)
+			if list.Kind() == reflect.Ptr {
+				list = list.Elem()
+			}
 			for j := 0; j < list.Len(); j++ {
 				vj := list.Index(j)
 				key := prefix + nameTag + "." + strconv.Itoa(j)
