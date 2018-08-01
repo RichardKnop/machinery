@@ -707,7 +707,7 @@ signature2 := tasks.Signature{
 }
 
 group, _ := tasks.NewGroup(&signature1, &signature2)
-asyncResults, err := server.SendGroup(group)
+asyncResults, err := server.SendGroup(group, 0) //The second parameter specifies the number of concurrent sending tasks. 0 means unlimited.
 if err != nil {
   // failed to send the group
   // do something with the error
@@ -773,7 +773,7 @@ signature3 := tasks.Signature{
 
 group := tasks.NewGroup(&signature1, &signature2)
 chord, _ := tasks.NewChord(group, &signature3)
-chordAsyncResult, err := server.SendChord(chord)
+chordAsyncResult, err := server.SendChord(chord, 0) //The second parameter specifies the number of concurrent sending tasks. 0 means unlimited.
 if err != nil {
   // failed to send the chord
   // do something with the error
