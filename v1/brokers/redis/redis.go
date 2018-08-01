@@ -224,7 +224,7 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	if queue == "" {
 		queue = b.GetConfig().DefaultQueue
 	}
-	dataBytes, err := conn.Do("LRANGE", queue, 0, 10)
+	dataBytes, err := conn.Do("LRANGE", queue, 0, -1)
 	if err != nil {
 		return nil, err
 	}
