@@ -109,7 +109,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				// If concurrency is limited, limit the tasks being pulled off the queue
 				// until a pool is available
 				if concurrencyAvailable() {
-					task, err := b.nextTask(b.GetConfig().DefaultQueue)
+					task, err := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
 					if err != nil {
 						// something went wrong, wait a bit before continuing the loop
 						timer.Reset(timerDuration)
@@ -298,7 +298,7 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 		conn := b.open()
 		defer conn.Close()
 
-		conn.Do("RPUSH", b.GetConfig().DefaultQueue, delivery)
+		conn.Do("RPUSH", getQueue(b.GetConfig(), taskProcessor), delivery)
 		return nil
 	}
 
@@ -406,4 +406,13 @@ func (b *Broker) open() redis.Conn {
 		b.redsync = redsync.New(pools)
 	}
 	return b.pool.Get()
+}
+
+func getQueue(config *config.Config, taskProcessor iface.TaskProcessor) string {
+	customQueue := taskProcessor.CustomQueue()
+	if customQueue == "" {
+		return config.DefaultQueue
+	} else {
+		return customQueue
+	}
 }

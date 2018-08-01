@@ -21,4 +21,5 @@ type Broker interface {
 // This will probably always be a worker instance
 type TaskProcessor interface {
 	Process(signature *tasks.Signature) error
+	CustomQueue() string
 }
