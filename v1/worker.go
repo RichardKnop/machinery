@@ -233,7 +233,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	} else {
 		debugResults = tasks.HumanReadableResults(results)
 	}
-	log.INFO.Printf("Processed task %s. Results = %s", signature.UUID, debugResults)
+	log.DEBUG.Printf("Processed task %s. Results = %s", signature.UUID, debugResults)
 
 	// Trigger success callbacks
 
