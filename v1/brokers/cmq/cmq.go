@@ -39,7 +39,8 @@ type Broker struct {
 
 func New(cnf *config.Config, opt *cmq.Options) iface.Broker {
 	b := &Broker{
-		Broker: common.NewBroker(cnf),
+		Broker:  common.NewBroker(cnf),
+		context: context.Background(),
 	}
 
 	if cnf.CMQ != nil && cnf.CMQ.Client != nil {
@@ -64,7 +65,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, p iface.Tas
 	log.INFO.Print("[*] Waiting for message. To exit press CTRL+C")
 
 	var cancel context.CancelFunc
-	b.context, cancel = context.WithCancel(context.Background())
+	b.context, cancel = context.WithCancel(b.context)
 
 	go func() {
 		select {
@@ -189,6 +190,7 @@ func (b *Broker) TopicPublish(topic string, signature *tasks.Signature, msgTags 
 	return nil
 }
 
+// consume Main Thread Consumer
 func (b *Broker) consume(deliveries chan *models.ReceiveMessageResp, concurrency int, processor iface.TaskProcessor) error {
 	pool := make(chan struct{}, concurrency)
 
@@ -214,9 +216,9 @@ func (b *Broker) consumeOne(delivery *models.ReceiveMessageResp, taskProcessor i
 	decoder.UseNumber()
 	if err := decoder.Decode(sig); err != nil {
 		if e := b.deleteOne(delivery); e != nil {
-			log.ERROR.Printf("unmarshal error. the delivery is %v, delete failed:%v", delivery, e)
+			log.ERROR.Printf("unmarshal error. the delivery is %v, delete failed:%v", delivery.Message, e)
 		}
-		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
+		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery.Message)
 		return err
 	}
 
@@ -232,7 +234,7 @@ func (b *Broker) consumeOne(delivery *models.ReceiveMessageResp, taskProcessor i
 	}
 	// Delete message after successfully consuming and processing the message
 	if err = b.deleteOne(delivery); err != nil {
-		log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery)
+		log.ERROR.Printf("error when deleting the delivery. the delivery is %v", delivery.Message)
 	}
 	return err
 }
