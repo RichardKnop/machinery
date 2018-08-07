@@ -3,7 +3,6 @@ package redis_test
 import (
 	"os"
 	"testing"
-	"time"
 
 	"github.com/RichardKnop/machinery/v1/backends/redis"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -85,38 +84,51 @@ func TestGetState(t *testing.T) {
 
 	backend := redis.New(new(config.Config), redisURL, redisPassword, "", 0)
 
-	go func() {
-		backend.SetStatePending(signature)
-		time.Sleep(2 * time.Millisecond)
-		backend.SetStateReceived(signature)
-		time.Sleep(2 * time.Millisecond)
-		backend.SetStateStarted(signature)
-		time.Sleep(2 * time.Millisecond)
-		taskResults := []*tasks.TaskResult{
-			{
-				Type:  "float64",
-				Value: 2,
-			},
-		}
-		backend.SetStateSuccess(signature, taskResults)
-	}()
+	backend.PurgeState("testTaskUUID")
 
 	var (
 		taskState *tasks.TaskState
 		err       error
 	)
-	for {
-		taskState, err = backend.GetState(signature.UUID)
-		if taskState == nil {
-			assert.Equal(t, "redigo: nil returned", err.Error())
-			continue
-		}
 
-		assert.NoError(t, err)
-		if taskState.IsCompleted() {
-			break
-		}
+	taskState, err = backend.GetState(signature.UUID)
+	assert.Equal(t, "redigo: nil returned", err.Error())
+	assert.Nil(t, taskState)
+
+	//Pending State
+	backend.SetStatePending(signature)
+	taskState, err = backend.GetState(signature.UUID)
+	assert.NoError(t, err)
+	assert.Equal(t, signature.Name, taskState.TaskName)
+	createdAt := taskState.CreatedAt
+
+	//Received State
+	backend.SetStateReceived(signature)
+	taskState, err = backend.GetState(signature.UUID)
+	assert.NoError(t, err)
+	assert.Equal(t, signature.Name, taskState.TaskName)
+	assert.Equal(t, createdAt, taskState.CreatedAt)
+
+	//Started State
+	backend.SetStateStarted(signature)
+	taskState, err = backend.GetState(signature.UUID)
+	assert.NoError(t, err)
+	assert.Equal(t, signature.Name, taskState.TaskName)
+	assert.Equal(t, createdAt, taskState.CreatedAt)
+
+	//Success State
+	taskResults := []*tasks.TaskResult{
+		{
+			Type:  "float64",
+			Value: 2,
+		},
 	}
+	backend.SetStateSuccess(signature, taskResults)
+	taskState, err = backend.GetState(signature.UUID)
+	assert.NoError(t, err)
+	assert.Equal(t, signature.Name, taskState.TaskName)
+	assert.Equal(t, createdAt, taskState.CreatedAt)
+	assert.NotNil(t, taskState.Results)
 }
 
 func TestPurgeState(t *testing.T) {

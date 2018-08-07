@@ -54,6 +54,24 @@ func TestGetRegisteredTaskNames(t *testing.T) {
 	assert.Equal(t, taskName, taskNames[0])
 }
 
+func TestNewWorker(t *testing.T) {
+	t.Parallel()
+
+	server := getTestServer(t)
+
+	server.NewWorker("test_worker", 1)
+	assert.NoError(t, nil)
+}
+
+func TestNewCustomQueueWorker(t *testing.T) {
+	t.Parallel()
+
+	server := getTestServer(t)
+
+	server.NewCustomQueueWorker("test_customqueueworker", 1, "test_queue")
+	assert.NoError(t, nil)
+}
+
 func getTestServer(t *testing.T) *machinery.Server {
 	server, err := machinery.NewServer(&config.Config{
 		Broker:        "amqp://guest:guest@localhost:5672/",
