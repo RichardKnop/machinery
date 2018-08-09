@@ -186,7 +186,8 @@ func (b *Broker) TopicPublish(topic string, signature *tasks.Signature, msgTags 
 		return err
 	}
 
-	log.INFO.Printf("Sending a message to topic successfully, the messageId is %v", output.MsgId)
+	log.INFO.Printf("Sending a message to topic(%s) successfully, messageId(%v), msgTags(%+v), RK(%s)",
+		topic, output.MsgId, msgTags, signature.RoutingKey)
 	return nil
 }
 
