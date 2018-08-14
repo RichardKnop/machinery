@@ -242,7 +242,7 @@ See [MongoDB docs](https://docs.mongodb.org/manual/reference/connection-string/)
 
 #### ResultsExpireIn
 
-How long to store task results for in seconds. Defaults to `3600000` (1 hour).
+How long to store task results for in seconds. Defaults to `3600` (1 hour).
 
 #### AMQP
 
