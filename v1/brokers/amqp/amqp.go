@@ -260,13 +260,13 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 		"delay.%d.%s.%s",
 		delayMs, // delay duration in mileseconds
 		b.GetConfig().AMQP.Exchange,
-		b.GetConfig().AMQP.BindingKey, // routing key
+		signature.RoutingKey, // routing key
 	)
 	declareQueueArgs := amqp.Table{
 		// Exchange where to send messages after TTL expiration.
 		"x-dead-letter-exchange": b.GetConfig().AMQP.Exchange,
 		// Routing key which use when resending expired messages.
-		"x-dead-letter-routing-key": b.GetConfig().AMQP.BindingKey,
+		"x-dead-letter-routing-key": signature.RoutingKey,
 		// Time in milliseconds
 		// after that message will expire and be sent to destination.
 		"x-message-ttl": delayMs,
