@@ -456,8 +456,8 @@ func (ch *Channel) NotifyClose(c chan *Error) chan *Error {
 
 /*
 NotifyFlow registers a listener for basic.flow methods sent by the server.
-When `true` is sent on one of the listener channels, all publishers should
-pause until a `false` is sent.
+When `false` is sent on one of the listener channels, all publishers should
+pause until a `true` is sent.
 
 The server may ask the producer to pause or restart the flow of Publishings
 sent by on a channel. This is a simple flow-control mechanism that a server can
@@ -1447,12 +1447,12 @@ func (ch *Channel) TxRollback() error {
 
 /*
 Flow pauses the delivery of messages to consumers on this channel.  Channels
-are opened with flow control not active, to open a channel with paused
-deliveries immediately call this method with true after calling
+are opened with flow control active, to open a channel with paused
+deliveries immediately call this method with `false` after calling
 Connection.Channel.
 
-When active is true, this method asks the server to temporarily pause deliveries
-until called again with active as false.
+When active is `false`, this method asks the server to temporarily pause deliveries
+until called again with active as `true`.
 
 Channel.Get methods will not be affected by flow control.
 
@@ -1461,7 +1461,7 @@ the number of unacknowledged messages or bytes in flight instead.
 
 The server may also send us flow methods to throttle our publishings.  A well
 behaving publishing client should add a listener with Channel.NotifyFlow and
-pause its publishings when true is sent on that channel.
+pause its publishings when `false` is sent on that channel.
 
 Note: RabbitMQ prefers to use TCP push back to control flow for all channels on
 a connection, so under high volume scenarios, it's wise to open separate
