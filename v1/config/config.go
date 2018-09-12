@@ -3,9 +3,10 @@ package config
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
