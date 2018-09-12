@@ -7,7 +7,6 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
@@ -16,7 +15,6 @@ var (
 	TestDynamoDBBackend    *Backend
 	TestErrDynamoDBBackend *Backend
 	TestCnf                *config.Config
-	TestSession            *session.Session
 	TestDBClient           dynamodbiface.DynamoDBAPI
 	TestErrDBClient        dynamodbiface.DynamoDBAPI
 	TestGroupMeta          *tasks.GroupMeta
@@ -157,14 +155,11 @@ func init() {
 			GroupMetasTable: "group_metas",
 		},
 	}
-	TestSession := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
 	TestDBClient = new(TestDynamoDBClient)
-	TestDynamoDBBackend = &Backend{cnf: TestCnf, client: TestDBClient, session: TestSession}
+	TestDynamoDBBackend = &Backend{cnf: TestCnf, client: TestDBClient}
 
 	TestErrDBClient = new(TestErrDynamoDBClient)
-	TestErrDynamoDBBackend = &Backend{cnf: TestCnf, client: TestErrDBClient, session: TestSession}
+	TestErrDynamoDBBackend = &Backend{cnf: TestCnf, client: TestErrDBClient}
 
 	TestGroupMeta = &tasks.GroupMeta{
 		GroupUUID: "testGroupUUID",
@@ -178,10 +173,6 @@ func (b *Backend) GetConfig() *config.Config {
 
 func (b *Backend) GetClient() dynamodbiface.DynamoDBAPI {
 	return b.client
-}
-
-func (b *Backend) GetSession() *session.Session {
-	return b.session
 }
 
 func (b *Backend) GetGroupMetaForTest(groupUUID string) (*tasks.GroupMeta, error) {
