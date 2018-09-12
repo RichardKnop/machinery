@@ -3,8 +3,9 @@ package dynamodb
 import (
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws/session"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
