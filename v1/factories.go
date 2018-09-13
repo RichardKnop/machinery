@@ -222,8 +222,8 @@ func ParseRedisSocketURL(url string) (path, password string, db int, err error) 
 	return
 }
 
-// ParseGCPPubSubURL ...
-// url: gcppubsub://project_id/subscription_name
+// ParseGCPPubSubURL Parse GCP Pub/Sub URL
+// url: gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME
 func ParseGCPPubSubURL(url string) (string, string, error) {
 	parts := strings.Split(url, "gcppubsub://")
 	if parts[0] != "" {
@@ -231,7 +231,7 @@ func ParseGCPPubSubURL(url string) (string, string, error) {
 	}
 
 	if len(parts) != 2 {
-		return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://project_id/subscription_name, instead got %s", url)
+		return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
 	}
 
 	remainder := parts[1]
@@ -239,13 +239,13 @@ func ParseGCPPubSubURL(url string) (string, string, error) {
 	parts = strings.Split(remainder, "/")
 	if len(parts) == 2 {
 		if len(parts[0]) == 0 {
-			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://project_id/subscription_name, instead got %s", url)
+			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
 		}
 		if len(parts[1]) == 0 {
-			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://project_id/subscription_name, instead got %s", url)
+			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
 		}
 		return parts[0], parts[1], nil
 	}
 
-	return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://project_id/subscription_name, instead got %s", url)
+	return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
 }
