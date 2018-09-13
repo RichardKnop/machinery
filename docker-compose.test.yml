@@ -31,7 +31,8 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       AWS_REGION: 'us-west-2'
-      GCPPUBSUB_URL: 'gcppubsub://example-project/test_queue'
+      GCPPUBSUB_URL: 'gcppubsub://example-project/test_subscription_queue'
+      GCPPUBSUB_TOPIC: 'test_topic_queue'
       PUBSUB_EMULATOR_HOST: 'gcppubsub:8085'
 
   rabbitmq:
