@@ -70,7 +70,7 @@ type AMQPConfig struct {
 
 // DynamoDBConfig wraps DynamoDB related configuration
 type DynamoDBConfig struct {
-	Config          *dynamodb.DynamoDB
+	Client          *dynamodb.DynamoDB
 	TaskStatesTable string `yaml:"task_states_table" envconfig:"TASK_STATES_TABLE"`
 	GroupMetasTable string `yaml:"group_metas_table" envconfig:"GROUP_METAS_TABLE"`
 }

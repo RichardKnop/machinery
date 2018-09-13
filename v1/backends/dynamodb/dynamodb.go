@@ -29,8 +29,8 @@ type Backend struct {
 func New(cnf *config.Config) iface.Backend {
 	backend := &Backend{Backend: common.NewBackend(cnf), cnf: cnf}
 
-	if cnf.DynamoDB != nil && cnf.DynamoDB.Config != nil {
-		backend.client = cnf.DynamoDB.Config
+	if cnf.DynamoDB != nil && cnf.DynamoDB.Client != nil {
+		backend.client = cnf.DynamoDB.Client
 	} else {
 		sess := session.Must(session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable,
