@@ -2,10 +2,9 @@
 
 
 [[projects]]
-  digest = "1:b3aae47efa33aabbcf4650ce6cb69fbdbe6fb91d75c67004e186716ecb01fdbe"
+  digest = "1:870db62ee4067a36e94125109262bfcfba409d546cca941ebd31bf8a0faa8ad8"
   name = "cloud.google.com/go"
   packages = [
-    ".",
     "compute/metadata",
     "iam",
     "internal/optional",
@@ -28,11 +27,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e7607a6e2cdf80c5e532ccdde7df1e13959c4c2094cfb3dcdb0f98863ee36c1c"
+  digest = "1:1e702bef599aa61452590d5218c30b2e14988af12bbf4bd582fcfe6937916763"
   name = "github.com/RichardKnop/logging"
   packages = ["."]
   pruneopts = "UT"
-  revision = "66aaaba182584c20ec574b064975974f92f0936a"
+  revision = "75cec7213f7c943e23933d5b4fa2733a9705f196"
 
 [[projects]]
   branch = "master"
@@ -423,7 +422,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "cloud.google.com/go",
     "cloud.google.com/go/pubsub",
     "github.com/RichardKnop/logging",
     "github.com/RichardKnop/redsync",
