@@ -15,4 +15,4 @@ WORKDIR /go/src/github.com/RichardKnop/machinery
 ADD . /go/src/github.com/RichardKnop/machinery
 
 # Run integration tests as default command
-CMD make test-with-coverage
+CMD /go/src/github.com/RichardKnop/machinery/wait-for-it.sh rabbitmq:5672 -- make test-with-coverage
