@@ -3,6 +3,7 @@ package machinery_test
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"testing"
 
@@ -199,6 +200,26 @@ func TestBrokerFactory(t *testing.T) {
 			"Broker should be instance of *brokers.AWSSQSBroker",
 		)
 	}
+
+	// 4) local SQS config should pass with special env variable
+	// AWS SQS Invalid SQS Check
+	cnf = config.Config{
+		Broker:       "http://localhost:5672/some-queue",
+		DefaultQueue: "machinery_tasks",
+	}
+
+	os.Setenv("DISABLE_STRICT_SQS_CHECK", "yes")
+	actual, err = machinery.BrokerFactory(&cnf)
+	if assert.NoError(t, err) {
+		_, isAWSSQSBroker := actual.(*sqsbroker.Broker)
+		assert.True(
+			t,
+			isAWSSQSBroker,
+			"Broker should be instance of *brokers.AWSSQSBroker",
+		)
+	}
+	os.Unsetenv("DISABLE_STRICT_SQS_CHECK")
+
 }
 
 func TestBrokerFactoryError(t *testing.T) {
@@ -213,6 +234,32 @@ func TestBrokerFactoryError(t *testing.T) {
 		assert.Nil(t, conn)
 		assert.Equal(t, "Factory failed with broker URL: BOGUS", err.Error())
 	}
+
+	// AWS SQS Invalid SQS Check
+	cnf = config.Config{
+		Broker:       "http://localhost:5672/some-queue",
+		DefaultQueue: "machinery_tasks",
+	}
+
+	conn, err = machinery.BrokerFactory(&cnf)
+	if assert.Error(t, err) {
+		assert.Nil(t, conn)
+		assert.Equal(t, "Factory failed with broker URL: http://localhost:5672/some-queue", err.Error())
+	}
+
+	// Non-AWS SQS URL allowed but not invalid http ones
+	os.Setenv("DISABLE_STRICT_SQS_CHECK", "yes")
+	cnf = config.Config{
+		Broker:       "localhost:5672/some-queue",
+		DefaultQueue: "machinery_tasks",
+	}
+
+	conn, err = machinery.BrokerFactory(&cnf)
+	if assert.Error(t, err) {
+		assert.Nil(t, conn)
+		assert.Equal(t, "Factory failed with broker URL: localhost:5672/some-queue", err.Error())
+	}
+	os.Unsetenv("DISABLE_STRICT_SQS_CHECK")
 }
 
 func TestBackendFactory(t *testing.T) {
