@@ -27,6 +27,15 @@ type Server struct {
 	backend         backendsiface.Backend
 }
 
+func InitServer(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
+	return &Server{
+		config:          cnf,
+		registeredTasks: make(map[string]interface{}),
+		broker:          brokerServer,
+		backend:         backendServer,
+	}
+}
+
 // NewServer creates Server instance
 func NewServer(cnf *config.Config) (*Server, error) {
 	broker, err := BrokerFactory(cnf)
@@ -37,12 +46,7 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	// Backend is optional so we ignore the error
 	backend, _ := BackendFactory(cnf)
 
-	srv := &Server{
-		config:          cnf,
-		registeredTasks: make(map[string]interface{}),
-		broker:          broker,
-		backend:         backend,
-	}
+	srv := InitServer(cnf, broker, backend)
 
 	// init for eager-mode
 	eager, ok := broker.(eager.EagerMode)
