@@ -23,6 +23,7 @@ import (
 	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
 	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
+	blankbackend "github.com/eldadvcita/machinery/v1/backends/blank"
 )
 
 // BrokerFactory creates a new object of iface.Broker
@@ -129,6 +130,10 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 
 	if strings.HasPrefix(cnf.ResultBackend, "eager") {
 		return eagerbackend.New(), nil
+	}
+
+	if strings.HasPrefix(cnf.ResultBackend, "blank") {
+		return blankbackend.New(), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "https://dynamodb") {
