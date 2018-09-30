@@ -364,3 +364,8 @@ func (worker *Worker) hasAMQPBackend() bool {
 func (worker *Worker) SetErrorHandler(handler func(err error)) {
 	worker.errorHandler = handler
 }
+
+//GetServer returns server
+func (worker *Worker) GetServer() *Server {
+	return worker.server
+}

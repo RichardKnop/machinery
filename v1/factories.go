@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	neturl "net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -66,8 +67,18 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 		return eagerbroker.New(), nil
 	}
 
-	if strings.HasPrefix(cnf.Broker, "https://sqs") {
-		return sqsbroker.New(cnf), nil
+	if _, ok := os.LookupEnv("DISABLE_STRICT_SQS_CHECK"); ok {
+		//disable SQS name check, so that users can use this with local simulated SQS
+		//where sql broker url might not start with https://sqs
+
+		//even when disabling strict SQS naming check, make sure its still a valid http URL
+		if strings.HasPrefix(cnf.Broker, "https://") || strings.HasPrefix(cnf.Broker, "http://") {
+			return sqsbroker.New(cnf), nil
+		}
+	} else {
+		if strings.HasPrefix(cnf.Broker, "https://sqs") {
+			return sqsbroker.New(cnf), nil
+		}
 	}
 
 	if strings.HasPrefix(cnf.Broker, "cmq://") {
