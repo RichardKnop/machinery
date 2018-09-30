@@ -163,7 +163,7 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 		return err
 
 	}
-	log.INFO.Printf("Sending a message successfully, the messageId is %v", output.MsgId)
+	log.INFO.Printf("Sending a message successfully, msgId:%v, requestId:%v", output.MsgId, output.RequestId)
 	return nil
 }
 
