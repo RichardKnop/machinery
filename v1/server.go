@@ -69,7 +69,7 @@ func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
 	}
 }
 
-// NewWorker creates Worker instance with Custom Queue
+// NewCustomQueueWorker creates Worker instance with Custom Queue
 func (server *Server) NewCustomQueueWorker(consumerTag string, concurrency int, queue string) *Worker {
 	return &Worker{
 		server:      server,
