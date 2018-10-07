@@ -45,7 +45,7 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	}
 
 	// init for eager-mode
-	eager, ok := broker.(eager.EagerMode)
+	eager, ok := broker.(eager.Mode)
 	if ok {
 		// we don't have to call worker.Launch in eager mode
 		eager.AssignWorker(srv.NewWorker("eager", 0))
