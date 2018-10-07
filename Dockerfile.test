@@ -14,5 +14,8 @@ WORKDIR /go/src/github.com/RichardKnop/machinery
 # Copy the local package files to the container's workspace.
 ADD . /go/src/github.com/RichardKnop/machinery
 
+# Set GO111MODULE=on variable to activate module support
+ENV GO111MODULE on
+
 # Run integration tests as default command
 CMD make test-with-coverage
