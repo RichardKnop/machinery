@@ -385,10 +385,10 @@ func (b *Backend) setTaskState(taskState *tasks.TaskState) error {
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames:  expAttributeNames,
 		ExpressionAttributeValues: expAttributeValues,
-		Key:              keyAttributeValues,
-		ReturnValues:     aws.String("UPDATED_NEW"),
-		TableName:        aws.String(b.cnf.DynamoDB.TaskStatesTable),
-		UpdateExpression: aws.String(exp),
+		Key:                       keyAttributeValues,
+		ReturnValues:              aws.String("UPDATED_NEW"),
+		TableName:                 aws.String(b.cnf.DynamoDB.TaskStatesTable),
+		UpdateExpression:          aws.String(exp),
 	}
 
 	_, err := b.client.UpdateItem(input)
