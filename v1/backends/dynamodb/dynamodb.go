@@ -40,6 +40,7 @@ func New(cnf *config.Config) iface.Backend {
 	return backend
 }
 
+// InitGroup ...
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	meta := tasks.GroupMeta{
 		GroupUUID: groupUUID,
@@ -64,6 +65,7 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
+// GroupCompleted ...
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
@@ -83,6 +85,7 @@ func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, er
 	return countSuccessTasks == groupTaskCount, nil
 }
 
+// GroupTaskStates ...
 func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
 	if err != nil {
@@ -92,6 +95,7 @@ func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*task
 	return b.getStates(groupMeta.TaskUUIDs...)
 }
 
+// TriggerChord ...
 func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	// Get the group meta data
 	groupMeta, err := b.getGroupMeta(groupUUID)
@@ -126,37 +130,44 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	return true, err
 }
 
+// SetStatePending ...
 func (b *Backend) SetStatePending(signature *tasks.Signature) error {
 	taskState := tasks.NewPendingTaskState(signature)
 	// taskUUID is the primary key of the table, so a new task need to be created first, instead of using dynamodb.UpdateItemInput directly
 	return b.initTaskState(taskState)
 }
 
+// SetStateReceived ...
 func (b *Backend) SetStateReceived(signature *tasks.Signature) error {
 	taskState := tasks.NewReceivedTaskState(signature)
 	return b.setTaskState(taskState)
 }
 
+// SetStateStarted ...
 func (b *Backend) SetStateStarted(signature *tasks.Signature) error {
 	taskState := tasks.NewStartedTaskState(signature)
 	return b.setTaskState(taskState)
 }
 
+// SetStateRetry ...
 func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 	taskState := tasks.NewRetryTaskState(signature)
 	return b.setTaskState(taskState)
 }
 
+// SetStateSuccess ...
 func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	taskState := tasks.NewSuccessTaskState(signature, results)
 	return b.setTaskState(taskState)
 }
 
+// SetStateFailure ...
 func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
 	taskState := tasks.NewFailureTaskState(signature, err)
 	return b.updateToFailureStateWithError(taskState)
 }
 
+// GetState ...
 func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	result, err := b.client.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(b.cnf.DynamoDB.TaskStatesTable),
@@ -172,6 +183,7 @@ func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	return b.unmarshalTaskStateGetItemResult(result)
 }
 
+// PurgeState ...
 func (b *Backend) PurgeState(taskUUID string) error {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -189,6 +201,7 @@ func (b *Backend) PurgeState(taskUUID string) error {
 	return nil
 }
 
+// PurgeGroupMeta ...
 func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -229,7 +242,7 @@ func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 }
 
 func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
-	states := make([]*tasks.TaskState, 0)
+	var states []*tasks.TaskState
 	stateChan := make(chan *tasks.TaskState, len(taskUUIDs))
 	errChan := make(chan error)
 	// There is no method like querying items by `in` a list of primary keys.

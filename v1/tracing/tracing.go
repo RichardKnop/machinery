@@ -65,6 +65,7 @@ func (c consumerOption) Apply(o *opentracing.StartSpanOptions) {
 	opentracing_ext.SpanKindConsumer.Apply(o)
 }
 
+// ConsumerOption ...
 func ConsumerOption(producer opentracing.SpanContext) opentracing.StartSpanOption {
 	return consumerOption{producer}
 }
@@ -75,10 +76,12 @@ func (p producerOption) Apply(o *opentracing.StartSpanOptions) {
 	opentracing_ext.SpanKindProducer.Apply(o)
 }
 
+// ProducerOption ...
 func ProducerOption() opentracing.StartSpanOption {
 	return producerOption{}
 }
 
+// AnnotateSpanWithSignatureInfo ...
 func AnnotateSpanWithSignatureInfo(span opentracing.Span, signature *tasks.Signature) {
 	// tag the span with some info about the signature
 	span.SetTag("signature.name", signature.Name)
@@ -94,6 +97,7 @@ func AnnotateSpanWithSignatureInfo(span opentracing.Span, signature *tasks.Signa
 	}
 }
 
+// AnnotateSpanWithChainInfo ...
 func AnnotateSpanWithChainInfo(span opentracing.Span, chain *tasks.Chain) {
 	// tag the span with some info about the chain
 	span.SetTag("chain.tasks.length", len(chain.Tasks))
@@ -104,6 +108,7 @@ func AnnotateSpanWithChainInfo(span opentracing.Span, chain *tasks.Chain) {
 	}
 }
 
+// AnnotateSpanWithGroupInfo ...
 func AnnotateSpanWithGroupInfo(span opentracing.Span, group *tasks.Group, sendConcurrency int) {
 	// tag the span with some info about the group
 	span.SetTag("group.uuid", group.GroupUUID)
@@ -123,6 +128,7 @@ func AnnotateSpanWithGroupInfo(span opentracing.Span, group *tasks.Group, sendCo
 	}
 }
 
+// AnnotateSpanWithChordInfo ...
 func AnnotateSpanWithChordInfo(span opentracing.Span, chord *tasks.Chord, sendConcurrency int) {
 	// tag the span with chord specific info
 	span.SetTag("chord.callback.uuid", chord.Callback.UUID)
