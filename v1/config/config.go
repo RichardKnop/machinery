@@ -91,6 +91,7 @@ type SQSConfig struct {
 	VisibilityTimeout *int `yaml:"receive_visibility_timeout" envconfig:"SQS_VISIBILITY_TIMEOUT"`
 }
 
+// RedisConfig ...
 type RedisConfig struct {
 	// Maximum number of idle connections in the pool.
 	MaxIdle int `yaml:"max_idle" envconfig:"REDIS_MAX_IDLE"`

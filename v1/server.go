@@ -50,7 +50,7 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	srv := NewServerWithBrokerBackend(cnf, broker, backend)
 
 	// init for eager-mode
-	eager, ok := broker.(eager.EagerMode)
+	eager, ok := broker.(eager.Mode)
 	if ok {
 		// we don't have to call worker.Launch in eager mode
 		eager.AssignWorker(srv.NewWorker("eager", 0))
@@ -69,7 +69,7 @@ func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
 	}
 }
 
-// NewWorker creates Worker instance with Custom Queue
+// NewCustomQueueWorker creates Worker instance with Custom Queue
 func (server *Server) NewCustomQueueWorker(consumerTag string, concurrency int, queue string) *Worker {
 	return &Worker{
 		server:      server,

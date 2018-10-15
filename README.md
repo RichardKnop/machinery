@@ -934,16 +934,11 @@ docker run -d -p 27017:27017 mongo
 docker run -d -p 6831:6831/udp -p 16686:16686 jaegertracing/all-in-one:latest
 ```
 
-
 #### Dependencies
 
-According to [Go 1.5 Vendor experiment](https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo), all dependencies are stored in the vendor directory. This approach is called `vendoring` and is the best practice for Go projects to lock versions of dependencies in order to achieve reproducible builds.
+Since Go 1.11, a new recommended dependency management system is via [modules](https://github.com/golang/go/wiki/Modules).
 
-This project uses [dep](https://github.com/golang/dep) for dependency management. To update dependencies during development:
-
-```sh
-dep ensure
-```
+This is one of slight weaknesses of Go as dependency management is not a solved problem. Previously Go was officially recommending to use the [dep tool](https://github.com/golang/dep) but that has been abandoned now in favor of modules.
 
 #### Testing
 

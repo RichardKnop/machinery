@@ -2,28 +2,25 @@
 language: go
 
 go:
-  - 1.9.*
+  - 1.11
+
+env:
+  - GO111MODULE=on
 
 services:
   - docker
 
-install:
-  - go get -u github.com/golang/lint/golint
-  - go get -u github.com/FiloSottile/vendorcheck
-  # Install gometalinter and certain linters
-  - go get -u github.com/alecthomas/gometalinter
-  - go get -u github.com/client9/misspell/cmd/misspell
-  - go get -u github.com/gordonklaus/ineffassign
-  - go get -u golang.org/x/tools/cmd/goimports
-  - go get -u github.com/tsenart/deadcode
+# install:
+#   - go get -u github.com/golang/lint/golint
+#   # Install gometalinter and certain linters
+#   - go get -u github.com/alecthomas/gometalinter
+#   - go get -u github.com/client9/misspell/cmd/misspell
+#   - go get -u github.com/gordonklaus/ineffassign
+#   - go get -u golang.org/x/tools/cmd/goimports
+#   - go get -u github.com/tsenart/deadcode
 
 script:
-  - make lint
-  - vendorcheck ./...
   - make ci
-
-after_script:
-  - make golint
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
