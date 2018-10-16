@@ -171,7 +171,6 @@ func (b *Broker) CloseConnections() error {
 func (b *Broker) Publish(signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
 	b.AdjustRoutingKey(signature)
-	log.INFO.Printf("Publishing: %v", signature)
 
 	msg, err := json.Marshal(signature)
 	if err != nil {
@@ -344,34 +343,16 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 		"x-expires": delayMs * 2,
 	}
 	connection, err := b.GetOrOpenConnection(queueName,
-		queueName,        //queue binding key
+		queueName,        // queue binding key
 		nil,              // exchange declare args
 		declareQueueArgs, // queue declare arghs
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
-
 	)
 	if err != nil {
 		return err
 	}
 
 	channel := connection.channel
-	conn, channel, _, _, _, err := b.Connect(
-		b.GetConfig().Broker,
-		b.GetConfig().TLSConfig,
-		b.GetConfig().AMQP.Exchange,     // exchange name
-		b.GetConfig().AMQP.ExchangeType, // exchange type
-		queueName,                       // queue name
-		true,                            // queue durable
-		false,                           // queue delete when unused
-		queueName,                       // queue binding key
-		nil,                             // exchange declare args
-		declareQueueArgs,                // queue declare args
-		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
-	)
-	if err != nil {
-		return err
-	}
-	defer b.Close(channel, conn)
 
 	if err := channel.Publish(
 		b.GetConfig().AMQP.Exchange, // exchange
