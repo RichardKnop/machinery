@@ -157,12 +157,16 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 }
 
 func (b *Broker) CloseConnections() error {
-	for _, conn := range b.connections {
+	b.connectionsMutex.Lock()
+	defer b.connectionsMutex.Unlock()
+
+	for key, conn := range b.connections {
 		if err := b.Close(conn.channel, conn.connection); err != nil {
 			log.ERROR.Print("Failed to close channel")
 			return nil
 		}
 		close(conn.cleanup)
+		delete(b.connections, key)
 	}
 	return nil
 }
