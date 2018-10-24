@@ -27,6 +27,16 @@ type Server struct {
 	backend         backendsiface.Backend
 }
 
+// NewServerWithBrokerBackend ...
+func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
+	return &Server{
+		config:          cnf,
+		registeredTasks: make(map[string]interface{}),
+		broker:          brokerServer,
+		backend:         backendServer,
+	}
+}
+
 // NewServer creates Server instance
 func NewServer(cnf *config.Config) (*Server, error) {
 	broker, err := BrokerFactory(cnf)
@@ -37,15 +47,10 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	// Backend is optional so we ignore the error
 	backend, _ := BackendFactory(cnf)
 
-	srv := &Server{
-		config:          cnf,
-		registeredTasks: make(map[string]interface{}),
-		broker:          broker,
-		backend:         backend,
-	}
+	srv := NewServerWithBrokerBackend(cnf, broker, backend)
 
 	// init for eager-mode
-	eager, ok := broker.(eager.EagerMode)
+	eager, ok := broker.(eager.Mode)
 	if ok {
 		// we don't have to call worker.Launch in eager mode
 		eager.AssignWorker(srv.NewWorker("eager", 0))
@@ -64,7 +69,7 @@ func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
 	}
 }
 
-// NewWorker creates Worker instance with Custom Queue
+// NewCustomQueueWorker creates Worker instance with Custom Queue
 func (server *Server) NewCustomQueueWorker(consumerTag string, concurrency int, queue string) *Worker {
 	return &Worker{
 		server:      server,

@@ -22,8 +22,8 @@ func New() iface.Broker {
 	return new(Broker)
 }
 
-// EagerMode interface with methods specific for this broker
-type EagerMode interface {
+// Mode interface with methods specific for this broker
+type Mode interface {
 	AssignWorker(p iface.TaskProcessor)
 }
 

@@ -104,7 +104,7 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 	}
 }
 
-// Returns Custom Queue of the running worker process
+// CustomQueue returns Custom Queue of the running worker process
 func (worker *Worker) CustomQueue() string {
 	return worker.Queue
 }
