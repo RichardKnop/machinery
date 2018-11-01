@@ -96,7 +96,11 @@ func (b *Broker) StopConsuming() {
 	default:
 	}
 	// Notifying the stop channel stops consuming of messages
-	b.stopChan <- 1
+	select {
+	case b.stopChan <- 1:
+		log.WARNING.Print("Stop channel")
+	default:
+	}
 }
 
 // GetRegisteredTaskNames returns registered tasks names
