@@ -156,6 +156,33 @@ var cnf = &config.Config{
 }
 ```
 
+##### GCP Pub/Sub
+
+Use GCP Pub/Sub URL in the format:
+
+```
+gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME
+```
+
+To use a manually configured Pub/Sub Client:
+
+```go
+pubsubClient, err := pubsub.NewClient(
+    context.Background(),
+    "YOUR_GCP_PROJECT_ID",
+    option.WithServiceAccountFile("YOUR_GCP_SERVICE_ACCOUNT_FILE"),
+)
+
+cnf := &config.Config{
+  Broker:          "gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME"
+  DefaultQueue:    "YOUR_PUBSUB_TOPIC_NAME",
+  ResultBackend:   "YOUR_BACKEND_URL",
+  GCPPubSub: config.GCPPubSubConfig{
+    Client: pubsubClient,
+  },
+}
+```
+
 #### DefaultQueue
 
 Default queue name, e.g. `machinery_tasks`.
