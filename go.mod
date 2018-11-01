@@ -4,6 +4,7 @@ require (
 	github.com/RichardKnop/logging v0.0.0-20180729160517-75cec7213f7c
 	github.com/RichardKnop/redsync v1.2.0
 	github.com/aws/aws-sdk-go v1.15.49
+	github.com/baocaixiong/cmq-golang-sdk v0.0.0-20180727070147-ccfed3ca889d
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/garyburd/redigo v2.0.0+incompatible // indirect

@@ -4,6 +4,8 @@ github.com/RichardKnop/redsync v1.2.0 h1:gK35hR3zZkQigHKm8wOGb9MpJ9BsrW6MzxezwjT
 github.com/RichardKnop/redsync v1.2.0/go.mod h1:9b8nBGAX3bE2uCfJGSnsDvF23mKyHTZzmvmj5FH3Tp0=
 github.com/aws/aws-sdk-go v1.15.49 h1:KpQb+K3rqHcAZ44NT5c3pfHiyM8mqGEHuhobn0ZMyYQ=
 github.com/aws/aws-sdk-go v1.15.49/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
+github.com/baocaixiong/cmq-golang-sdk v0.0.0-20180727070147-ccfed3ca889d h1:KnQVtYhuUFc/foYM/37W8cOD60ZGoslA4kpCI1Ur4mY=
+github.com/baocaixiong/cmq-golang-sdk v0.0.0-20180727070147-ccfed3ca889d/go.mod h1:N3FyiIIrp8RaeSIZcQmjChOD63+SRvlxZkRU7k9ULwg=
 github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737 h1:rRISKWyXfVxvoa702s91Zl5oREZTrR3yv+tXrrX7G/g=
 github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737/go.mod h1:PmM6Mmwb0LSuEubjR8N7PtNe1KxZLtOUHtbeikc5h60=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
