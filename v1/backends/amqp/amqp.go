@@ -322,7 +322,7 @@ func (b *Backend) getExpiresIn() int {
 	resultsExpireIn := b.GetConfig().ResultsExpireIn * 1000
 	if resultsExpireIn == 0 {
 		// // expire results after 1 hour by default
-		resultsExpireIn = 3600 * 1000
+		resultsExpireIn = config.DefaultResultsExpireIn * 1000
 	}
 	return resultsExpireIn
 }

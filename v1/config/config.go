@@ -11,13 +11,18 @@ import (
 	"github.com/baocaixiong/cmq-golang-sdk"
 )
 
+const (
+	// DefaultResultsExpireIn is a default time used to expire task states and group metadata from the backend
+	DefaultResultsExpireIn = 24 * 3600
+)
+
 var (
 	// Start with sensible default values
 	defaultCnf = &Config{
 		Broker:          "amqp://guest:guest@localhost:5672/",
 		DefaultQueue:    "machinery_tasks",
 		ResultBackend:   "amqp://guest:guest@localhost:5672/",
-		ResultsExpireIn: 3600,
+		ResultsExpireIn: DefaultResultsExpireIn,
 		AMQP: &AMQPConfig{
 			Exchange:      "machinery_exchange",
 			ExchangeType:  "direct",

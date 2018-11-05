@@ -311,7 +311,7 @@ func (b *Backend) setExpirationTime(key string) error {
 	expiresIn := b.GetConfig().ResultsExpireIn
 	if expiresIn == 0 {
 		// // expire results after 1 hour by default
-		expiresIn = 3600
+		expiresIn = config.DefaultResultsExpireIn
 	}
 	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
 
