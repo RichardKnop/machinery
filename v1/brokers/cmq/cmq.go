@@ -167,7 +167,11 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 		return err
 
 	}
-	log.INFO.Printf("Sending a message successfully, msgId:%v, requestId:%v", output.MsgId, output.RequestId)
+	if output.Code == 0 {
+		log.INFO.Printf("Sending a message successfully, msgId:%v, requestId:%v", output.MsgId, output.RequestId)
+	} else {
+		log.INFO.Printf("Sending a message failed, requestId:%v, msg:%s", output.RequestId, output.Message)
+	}
 	return nil
 }
 func (b *Broker) BatchPublish(signatures []*tasks.Signature) error {
@@ -224,8 +228,13 @@ func (b *Broker) TopicPublish(topic string, signature *tasks.Signature, msgTags 
 		return err
 	}
 
-	log.INFO.Printf("Sending a message to topic(%s) successfully, messageId(%v), msgTags(%+v), RK(%s)",
-		topic, output.MsgId, msgTags, signature.RoutingKey)
+	if output.Code == 0 {
+		log.INFO.Printf("Sending a message to topic(%s) successfully, msgId:%v, msgTags:%+v, RK:%s",
+			topic, output.MsgId, msgTags, signature.RoutingKey)
+	} else {
+		log.INFO.Printf("Sending a message to topic(%s) failed, msgId:%v, msgTags:%+v, RK:%s",
+			topic, output.MsgId, msgTags, signature.RoutingKey)
+	}
 	return nil
 }
 
