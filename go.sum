@@ -6,10 +6,10 @@ github.com/RichardKnop/logging v0.0.0-20180729160517-75cec7213f7c h1:F617MLa8qKT
 github.com/RichardKnop/logging v0.0.0-20180729160517-75cec7213f7c/go.mod h1:GN1ovZ77t2jiz0kTaWhgtQe271GODCgheqxlxGt7wIo=
 github.com/RichardKnop/redsync v1.2.0 h1:gK35hR3zZkQigHKm8wOGb9MpJ9BsrW6MzxezwjTcHP0=
 github.com/RichardKnop/redsync v1.2.0/go.mod h1:9b8nBGAX3bE2uCfJGSnsDvF23mKyHTZzmvmj5FH3Tp0=
-github.com/baocaixiong/cmq-golang-sdk v0.0.0-20180727070147-ccfed3ca889d h1:KnQVtYhuUFc/foYM/37W8cOD60ZGoslA4kpCI1Ur4mY=
-github.com/baocaixiong/cmq-golang-sdk v0.0.0-20180727070147-ccfed3ca889d/go.mod h1:N3FyiIIrp8RaeSIZcQmjChOD63+SRvlxZkRU7k9ULwg=
 github.com/aws/aws-sdk-go v1.15.66 h1:c2ScQzjFUoD1pK+6GQzX8yMXwppIjP5Oy8ljMRr2cbo=
 github.com/aws/aws-sdk-go v1.15.66/go.mod h1:E3/ieXAlvM0XWO57iftYVDLLvQ824smPP3ATZkfNZeM=
+github.com/baocaixiong/cmq-golang-sdk v0.0.0-20180727070147-ccfed3ca889d h1:KnQVtYhuUFc/foYM/37W8cOD60ZGoslA4kpCI1Ur4mY=
+github.com/baocaixiong/cmq-golang-sdk v0.0.0-20180727070147-ccfed3ca889d/go.mod h1:N3FyiIIrp8RaeSIZcQmjChOD63+SRvlxZkRU7k9ULwg=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737 h1:rRISKWyXfVxvoa702s91Zl5oREZTrR3yv+tXrrX7G/g=
 github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737/go.mod h1:PmM6Mmwb0LSuEubjR8N7PtNe1KxZLtOUHtbeikc5h60=

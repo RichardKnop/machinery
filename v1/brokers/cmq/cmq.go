@@ -26,6 +26,10 @@ type TopicSupport interface {
 	TopicPublish(string, *tasks.Signature, ...string) error
 }
 
+type BatchSupport interface {
+	BatchPublish([]*tasks.Signature) error
+}
+
 type Broker struct {
 	common.Broker
 	processingWG       sync.WaitGroup
@@ -164,6 +168,41 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 
 	}
 	log.INFO.Printf("Sending a message successfully, msgId:%v, requestId:%v", output.MsgId, output.RequestId)
+	return nil
+}
+func (b *Broker) BatchPublish(signatures []*tasks.Signature) error {
+	if len(signatures) > 16 {
+		return errors.New("max signature Length: 16")
+	}
+	input := models.NewBatchSendMessageReq(b.GetConfig().DefaultQueue)
+	input.MsgBody = make([]string, len(signatures))
+	msgBodyLen := 0
+
+	for i := range signatures {
+		if v, e := json.Marshal(signatures[i]); e != nil {
+			return fmt.Errorf("JSON marshal error: %s", e)
+		} else {
+			input.MsgBody[i] = string(v)
+			msgBodyLen += len(v)
+		}
+	}
+	fmt.Println(msgBodyLen, 64*1024)
+
+	if msgBodyLen > 64*1024 {
+		return errors.New("max msgBody length: 64K")
+	}
+
+	output := models.NewBatchSendMessageResp()
+	err := b.client.Send(b.context, input, output)
+	if err != nil {
+		log.ERROR.Printf("Error when sending batch message: %v", err)
+		return err
+	}
+	if output.Code == 0 {
+		log.INFO.Printf("Sending batch message successfully, msgId:%v, requestId:%v", output.MsgList, output.RequestId)
+	} else {
+		log.INFO.Printf("Sending batch message failed, requestId:%v, msg:%v", output.RequestId, output.Message)
+	}
 	return nil
 }
 

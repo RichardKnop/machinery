@@ -233,7 +233,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	} else {
 		debugResults = tasks.HumanReadableResults(results)
 	}
-	log.DEBUG.Printf("Processed task %s. Results = %s", signature.UUID, debugResults)
+	log.DEBUG.Printf("Processed task(%s) %s. Results = %s", signature.Name, signature.UUID, debugResults)
 
 	// Trigger success callbacks
 
@@ -365,7 +365,7 @@ func (worker *Worker) SetErrorHandler(handler func(err error)) {
 	worker.errorHandler = handler
 }
 
-//GetServer returns server
+// GetServer returns server
 func (worker *Worker) GetServer() *Server {
 	return worker.server
 }
