@@ -186,7 +186,6 @@ func (b *Broker) BatchPublish(signatures []*tasks.Signature) error {
 			msgBodyLen += len(v)
 		}
 	}
-	fmt.Println(msgBodyLen, 64*1024)
 
 	if msgBodyLen > 64*1024 {
 		return errors.New("max msgBody length: 64K")
