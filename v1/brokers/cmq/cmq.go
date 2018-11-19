@@ -358,7 +358,6 @@ func (b *Broker) receiveMessage(waitTimeSecondsSlice ...int) (*models.ReceiveMes
 	}
 
 	if output.Code == 7000 { // 没有新消息
-		log.INFO.Printf("receive 0 messages, requestId:%s", output.RequestId)
 		return nil, nil
 	}
 
