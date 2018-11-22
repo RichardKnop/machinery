@@ -18,11 +18,13 @@ import (
 
 // Worker represents a single worker process
 type Worker struct {
-	server       *Server
-	ConsumerTag  string
-	Concurrency  int
-	Queue        string
-	errorHandler func(err error)
+	server          *Server
+	ConsumerTag     string
+	Concurrency     int
+	Queue           string
+	errorHandler    func(err error)
+	preTaskHandler  func(*tasks.Signature)
+	postTaskHandler func(*tasks.Signature)
 }
 
 // Launch starts a new worker process. The worker subscribes
@@ -151,6 +153,16 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 	// Update task state to STARTED
 	if err = worker.server.GetBackend().SetStateStarted(signature); err != nil {
 		return fmt.Errorf("Set state to 'started' for task %s returned error: %s", signature.UUID, err)
+	}
+
+	//Run handler before the task is called
+	if worker.preTaskHandler != nil {
+		worker.preTaskHandler(signature)
+	}
+
+	//Defer run handler for the end of the task
+	if worker.postTaskHandler != nil {
+		defer worker.postTaskHandler(signature)
 	}
 
 	// Call the task
@@ -363,6 +375,16 @@ func (worker *Worker) hasAMQPBackend() bool {
 // A default behavior is just to log the error after all the retry attempts fail
 func (worker *Worker) SetErrorHandler(handler func(err error)) {
 	worker.errorHandler = handler
+}
+
+//SetPreTaskHandler sets a custom handler func before a job is started
+func (worker *Worker) SetPreTaskHandler(handler func(*tasks.Signature)) {
+	worker.preTaskHandler = handler
+}
+
+//SetPostTaskHandler sets a custom handler for the end of a job
+func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
+	worker.postTaskHandler = handler
 }
 
 //GetServer returns server
