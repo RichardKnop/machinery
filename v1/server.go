@@ -21,10 +21,11 @@ import (
 // Server is the main Machinery object and stores all configuration
 // All the tasks workers process are registered against the server
 type Server struct {
-	config          *config.Config
-	registeredTasks map[string]interface{}
-	broker          brokersiface.Broker
-	backend         backendsiface.Backend
+	config            *config.Config
+	registeredTasks   map[string]interface{}
+	broker            brokersiface.Broker
+	backend           backendsiface.Backend
+	prePublishHandler func(*tasks.Signature)
 }
 
 // NewServerWithBrokerBackend ...
@@ -109,6 +110,11 @@ func (server *Server) SetConfig(cnf *config.Config) {
 	server.config = cnf
 }
 
+// SetPreTaskHandler Sets pre publish handler
+func (server *Server) SetPreTaskHandler(handler func(*tasks.Signature)) {
+	server.prePublishHandler = handler
+}
+
 // RegisterTasks registers all tasks at once
 func (server *Server) RegisterTasks(namedTaskFuncs map[string]interface{}) error {
 	for _, task := range namedTaskFuncs {
@@ -174,6 +180,10 @@ func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult,
 	// Set initial task state to PENDING
 	if err := server.backend.SetStatePending(signature); err != nil {
 		return nil, fmt.Errorf("Set state pending error: %s", err)
+	}
+
+	if server.prePublishHandler != nil {
+		server.prePublishHandler(signature)
 	}
 
 	if err := server.broker.Publish(signature); err != nil {
