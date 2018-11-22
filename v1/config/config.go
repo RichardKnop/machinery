@@ -16,6 +16,11 @@ const (
 	DefaultResultsExpireIn = 24 * 3600
 )
 
+const (
+	// DefaultResultsExpireIn is a default time used to expire task states and group metadata from the backend
+	DefaultResultsExpireIn = 24 * 3600
+)
+
 var (
 	// Start with sensible default values
 	defaultCnf = &Config{

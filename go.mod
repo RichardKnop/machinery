@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go v1.15.66
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/garyburd/redigo v2.0.0+incompatible // indirect
+	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.0.0
 	github.com/googleapis/gax-go v2.0.0+incompatible // indirect
