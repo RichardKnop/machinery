@@ -143,7 +143,10 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 		MsgInput.MessageDeduplicationId = aws.String(MsgDedupID)
 
 		// Use Machinery's signature Group UUID as SQS Message Group ID.
-		MsgGroupID := signature.GroupUUID
+		MsgGroupID := signature.BrokerMessageGroupId
+		if MsgGroupID == "" {
+			return fmt.Errorf("please specify BrokerMessageGroupId attribute for task Signature when submitting a task to FIFO queue")
+		}
 		MsgInput.MessageGroupId = aws.String(MsgGroupID)
 	}
 

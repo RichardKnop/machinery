@@ -57,6 +57,8 @@ type Signature struct {
 	OnSuccess      []*Signature
 	OnError        []*Signature
 	ChordCallback  *Signature
+	//MessageGroupId for Broker, e.g. SQS
+	BrokerMessageGroupId string
 }
 
 // NewSignature creates a new task signature
