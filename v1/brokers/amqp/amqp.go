@@ -17,33 +17,51 @@ import (
 	"github.com/streadway/amqp"
 )
 
+type AMQPConnection struct {
+	queueName    string
+	connection   *amqp.Connection
+	channel      *amqp.Channel
+	queue        amqp.Queue
+	confirmation <-chan amqp.Confirmation
+	errorchan    <-chan *amqp.Error
+	cleanup      chan struct{}
+}
+
 // Broker represents an AMQP broker
 type Broker struct {
 	common.Broker
 	common.AMQPConnector
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
+
+	connections      map[string]*AMQPConnection
+	connectionsMutex sync.RWMutex
 }
 
 // New creates new Broker instance
 func New(cnf *config.Config) iface.Broker {
-	return &Broker{Broker: common.NewBroker(cnf), AMQPConnector: common.AMQPConnector{}}
+	return &Broker{Broker: common.NewBroker(cnf), AMQPConnector: common.AMQPConnector{}, connections: make(map[string]*AMQPConnection)}
 }
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
 
+	queueName := taskProcessor.CustomQueue()
+	if queueName == "" {
+		queueName = b.GetConfig().DefaultQueue
+	}
+
 	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
 		b.GetConfig().Broker,
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
-		b.GetConfig().DefaultQueue,      // queue name
-		true,  // queue durable
-		false, // queue delete when unused
-		b.GetConfig().AMQP.BindingKey, // queue binding key
-		nil, // exchange declare args
-		nil, // queue declare args
+		queueName,                       // queue name
+		true,                            // queue durable
+		false,                           // queue delete when unused
+		b.GetConfig().AMQP.BindingKey,   // queue binding key
+		nil,                             // exchange declare args
+		nil,                             // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
@@ -93,6 +111,71 @@ func (b *Broker) StopConsuming() {
 	b.processingWG.Wait()
 }
 
+// GetOrOpenConnection will return a connection on a particular queue name. Open connections
+// are saved to avoid having to reopen connection for multiple queues
+func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*AMQPConnection, error) {
+	var err error
+
+	b.connectionsMutex.Lock()
+	defer b.connectionsMutex.Unlock()
+
+	conn, ok := b.connections[queueName]
+	if !ok {
+		conn = &AMQPConnection{
+			queueName: queueName,
+			cleanup:   make(chan struct{}),
+		}
+		conn.connection, conn.channel, conn.queue, conn.confirmation, conn.errorchan, err = b.Connect(
+			b.GetConfig().Broker,
+			b.GetConfig().TLSConfig,
+			b.GetConfig().AMQP.Exchange,     // exchange name
+			b.GetConfig().AMQP.ExchangeType, // exchange type
+			queueName,                       // queue name
+			true,                            // queue durable
+			false,                           // queue delete when unused
+			queueBindingKey,                 // queue binding key
+			exchangeDeclareArgs,             // exchange declare args
+			queueDeclareArgs,                // queue declare args
+			queueBindingArgs,                // queue binding args
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Reconnect to the channel if it disconnects/errors out
+		go func() {
+			select {
+			case err = <-conn.errorchan:
+				log.INFO.Printf("Error occured on queue: %s. Reconnecting", queueName)
+				_, err := b.GetOrOpenConnection(queueName, queueBindingKey, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs)
+				if err != nil {
+					log.ERROR.Printf("Failed to reopen queue: %s.", queueName)
+				}
+			case <-conn.cleanup:
+				return
+			}
+			return
+		}()
+		b.connections[queueName] = conn
+	}
+	return conn, nil
+}
+
+func (b *Broker) CloseConnections() error {
+	b.connectionsMutex.Lock()
+	defer b.connectionsMutex.Unlock()
+
+	for key, conn := range b.connections {
+		if err := b.Close(conn.channel, conn.connection); err != nil {
+			log.ERROR.Print("Failed to close channel")
+			return nil
+		}
+		close(conn.cleanup)
+		delete(b.connections, key)
+	}
+	return nil
+}
+
 // Publish places a new message on the default queue
 func (b *Broker) Publish(signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
@@ -115,23 +198,18 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 		}
 	}
 
-	conn, channel, _, confirmsChan, _, err := b.Connect(
-		b.GetConfig().Broker,
-		b.GetConfig().TLSConfig,
-		b.GetConfig().AMQP.Exchange,     // exchange name
-		b.GetConfig().AMQP.ExchangeType, // exchange type
-		signature.RoutingKey,            // queue name
-		true,                            // queue durable
-		false,                           // queue delete when unused
+	connection, err := b.GetOrOpenConnection(signature.RoutingKey,
 		b.GetConfig().AMQP.BindingKey, // queue binding key
-		nil, // exchange declare args
-		nil, // queue declare args
+		nil,                           // exchange declare args
+		nil,                           // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
 		return err
 	}
-	defer b.Close(channel, conn)
+
+	channel := connection.channel
+	confirmsChan := connection.confirmation
 
 	if err := channel.Publish(
 		b.GetConfig().AMQP.Exchange, // exchange name
@@ -276,19 +354,20 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 	conn, channel, _, _, _, err := b.Connect(
 		b.GetConfig().Broker,
 		b.GetConfig().TLSConfig,
-		b.GetConfig().AMQP.Exchange,                     // exchange name
-		b.GetConfig().AMQP.ExchangeType,                 // exchange type
-		queueName,                                       // queue name
-		true,                                            // queue durable
-		false,                                           // queue delete when unused
-		queueName,                                       // queue binding key
-		nil,                                             // exchange declare args
-		declareQueueArgs,                                // queue declare args
+		b.GetConfig().AMQP.Exchange,     // exchange name
+		b.GetConfig().AMQP.ExchangeType, // exchange type
+		queueName,                       // queue name
+		true,                            // queue durable
+		false,                           // queue delete when unused
+		queueName,                       // queue binding key
+		nil,                             // exchange declare args
+		declareQueueArgs,                // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
 		return err
 	}
+
 	defer b.Close(channel, conn)
 
 	if err := channel.Publish(

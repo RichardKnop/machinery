@@ -8,7 +8,13 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 
+	"cloud.google.com/go/pubsub"
 	"github.com/aws/aws-sdk-go/service/sqs"
+)
+
+const (
+	// DefaultResultsExpireIn is a default time used to expire task states and group metadata from the backend
+	DefaultResultsExpireIn = 24 * 3600
 )
 
 var (
@@ -17,7 +23,7 @@ var (
 		Broker:          "amqp://guest:guest@localhost:5672/",
 		DefaultQueue:    "machinery_tasks",
 		ResultBackend:   "amqp://guest:guest@localhost:5672/",
-		ResultsExpireIn: 3600,
+		ResultsExpireIn: DefaultResultsExpireIn,
 		AMQP: &AMQPConfig{
 			Exchange:      "machinery_exchange",
 			ExchangeType:  "direct",
@@ -36,6 +42,9 @@ var (
 			ConnectTimeout:         15,
 			DelayedTasksPollPeriod: 20,
 		},
+		GCPPubSub: &GCPPubSubConfig{
+			Client: nil,
+		},
 	}
 
 	reloadDelay = time.Second * 10
@@ -43,13 +52,14 @@ var (
 
 // Config holds all configuration for our program
 type Config struct {
-	Broker          string       `yaml:"broker" envconfig:"BROKER"`
-	DefaultQueue    string       `yaml:"default_queue" envconfig:"DEFAULT_QUEUE"`
-	ResultBackend   string       `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
-	ResultsExpireIn int          `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
-	AMQP            *AMQPConfig  `yaml:"amqp"`
-	SQS             *SQSConfig   `yaml:"sqs"`
-	Redis           *RedisConfig `yaml:"redis"`
+	Broker          string           `yaml:"broker" envconfig:"BROKER"`
+	DefaultQueue    string           `yaml:"default_queue" envconfig:"DEFAULT_QUEUE"`
+	ResultBackend   string           `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
+	ResultsExpireIn int              `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
+	AMQP            *AMQPConfig      `yaml:"amqp"`
+	SQS             *SQSConfig       `yaml:"sqs"`
+	Redis           *RedisConfig     `yaml:"redis"`
+	GCPPubSub       *GCPPubSubConfig `yaml:"-" ignored:"true"`
 	TLSConfig       *tls.Config
 	// NoUnixSignals - when set disables signal handling in machinery
 	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
@@ -84,6 +94,7 @@ type SQSConfig struct {
 	VisibilityTimeout *int `yaml:"receive_visibility_timeout" envconfig:"SQS_VISIBILITY_TIMEOUT"`
 }
 
+// RedisConfig ...
 type RedisConfig struct {
 	// Maximum number of idle connections in the pool.
 	MaxIdle int `yaml:"max_idle" envconfig:"REDIS_MAX_IDLE"`
@@ -113,6 +124,11 @@ type RedisConfig struct {
 
 	// DelayedTasksPollPeriod specifies the period in milliseconds when polling redis for delayed tasks
 	DelayedTasksPollPeriod int `yaml:"delayed_tasks_poll_period" envconfig:"REDIS_DELAYED_TASKS_POLL_PERIOD"`
+}
+
+// GCPPubSubConfig wraps GCP PubSub related configuration
+type GCPPubSubConfig struct {
+	Client *pubsub.Client
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

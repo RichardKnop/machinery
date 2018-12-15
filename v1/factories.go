@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	neturl "net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 
 	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
 	eagerbroker "github.com/RichardKnop/machinery/v1/brokers/eager"
+	gcppubsubbroker "github.com/RichardKnop/machinery/v1/brokers/gcppubsub"
 	brokeriface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
@@ -64,8 +66,26 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 		return eagerbroker.New(), nil
 	}
 
-	if strings.HasPrefix(cnf.Broker, "https://sqs") {
-		return sqsbroker.New(cnf), nil
+	if _, ok := os.LookupEnv("DISABLE_STRICT_SQS_CHECK"); ok {
+		//disable SQS name check, so that users can use this with local simulated SQS
+		//where sql broker url might not start with https://sqs
+
+		//even when disabling strict SQS naming check, make sure its still a valid http URL
+		if strings.HasPrefix(cnf.Broker, "https://") || strings.HasPrefix(cnf.Broker, "http://") {
+			return sqsbroker.New(cnf), nil
+		}
+	} else {
+		if strings.HasPrefix(cnf.Broker, "https://sqs") {
+			return sqsbroker.New(cnf), nil
+		}
+	}
+
+	if strings.HasPrefix(cnf.Broker, "gcppubsub://") {
+		projectID, subscriptionName, err := ParseGCPPubSubURL(cnf.Broker)
+		if err != nil {
+			return nil, err
+		}
+		return gcppubsubbroker.New(cnf, projectID, subscriptionName)
 	}
 
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
@@ -211,4 +231,32 @@ func ParseRedisSocketURL(url string) (path, password string, db int, err error) 
 	}
 
 	return
+}
+
+// ParseGCPPubSubURL Parse GCP Pub/Sub URL
+// url: gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME
+func ParseGCPPubSubURL(url string) (string, string, error) {
+	parts := strings.Split(url, "gcppubsub://")
+	if parts[0] != "" {
+		return "", "", errors.New("No gcppubsub scheme found")
+	}
+
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
+	}
+
+	remainder := parts[1]
+
+	parts = strings.Split(remainder, "/")
+	if len(parts) == 2 {
+		if len(parts[0]) == 0 {
+			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
+		}
+		if len(parts[1]) == 0 {
+			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
+		}
+		return parts[0], parts[1], nil
+	}
+
+	return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
 }

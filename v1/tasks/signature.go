@@ -22,7 +22,7 @@ func (h Headers) Set(key, val string) {
 	h[key] = val
 }
 
-// ForEachKey on Headers implements opentracing.TextMapReader for trace propagation.
+// ForeachKey on Headers implements opentracing.TextMapReader for trace propagation.
 // It is essentially the same as the opentracing.TextMapReader implementation except
 // for the added casting from interface{} to string.
 func (h Headers) ForeachKey(handler func(key, val string) error) error {
@@ -57,6 +57,8 @@ type Signature struct {
 	OnSuccess      []*Signature
 	OnError        []*Signature
 	ChordCallback  *Signature
+	//MessageGroupId for Broker, e.g. SQS
+	BrokerMessageGroupId string
 }
 
 // NewSignature creates a new task signature
