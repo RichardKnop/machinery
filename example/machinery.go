@@ -132,11 +132,17 @@ func worker() error {
 		log.ERROR.Println("I am an error handler:", err)
 	}
 
-	pretaskhandler := func(signature *tasks.Signature) {
+	pretaskhandler := func(ctx context.Context, signature *tasks.Signature) context.Context {
 		log.INFO.Println("I am a start of task handler for:", signature.Name)
+
+		return context.WithValue(ctx, "context_value", "1")
 	}
 
-	posttaskhandler := func(signature *tasks.Signature) {
+	posttaskhandler := func(ctx context.Context, signature *tasks.Signature) {
+		if v, ok := ctx.Value("context_value").(string); ok {
+			log.INFO.Println("I am an `context_value`:", v)
+		}
+
 		log.INFO.Println("I am an end of task handler for:", signature.Name)
 	}
 
