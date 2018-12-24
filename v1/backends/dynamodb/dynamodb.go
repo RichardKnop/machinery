@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
@@ -20,18 +21,23 @@ import (
 // Backend ...
 type Backend struct {
 	common.Backend
-	cnf     *config.Config
-	client  dynamodbiface.DynamoDBAPI
-	session *session.Session
+	cnf    *config.Config
+	client dynamodbiface.DynamoDBAPI
 }
 
 // New creates a Backend instance
 func New(cnf *config.Config) iface.Backend {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	dy := dynamodb.New(sess)
-	backend := &Backend{Backend: common.NewBackend(cnf), cnf: cnf, client: dy, session: sess}
+	backend := &Backend{Backend: common.NewBackend(cnf), cnf: cnf}
+
+	if cnf.DynamoDB != nil && cnf.DynamoDB.Client != nil {
+		backend.client = cnf.DynamoDB.Client
+	} else {
+		sess := session.Must(session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		}))
+		backend.client = dynamodb.New(sess)
+	}
+
 	// Check if needed tables exist
 	err := backend.checkRequiredTablesIfExist()
 	if err != nil {
