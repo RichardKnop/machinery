@@ -20,9 +20,10 @@ func TestRedisMongodb(t *testing.T) {
 
 	// Redis broker, MongoDB result backend
 	server := testSetup(&config.Config{
-		Broker:        fmt.Sprintf("redis://%v", redisURL),
-		DefaultQueue:  "test_queue",
-		ResultBackend: fmt.Sprintf("mongodb://%v", mongodbURL),
+		Broker:          fmt.Sprintf("redis://%v", redisURL),
+		DefaultQueue:    "test_queue",
+		ResultsExpireIn: 30,
+		ResultBackend:   fmt.Sprintf("mongodb://%v", mongodbURL),
 	})
 	worker := server.NewWorker("test_worker", 0)
 	go worker.Launch()
