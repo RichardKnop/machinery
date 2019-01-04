@@ -59,9 +59,9 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		queueName,                       // queue name
 		true,                            // queue durable
 		false,                           // queue delete when unused
-		b.GetConfig().AMQP.BindingKey,   // queue binding key
-		nil,                             // exchange declare args
-		nil,                             // queue declare args
+		b.GetConfig().AMQP.BindingKey, // queue binding key
+		nil, // exchange declare args
+		nil, // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
@@ -200,8 +200,8 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 
 	connection, err := b.GetOrOpenConnection(signature.RoutingKey,
 		b.GetConfig().AMQP.BindingKey, // queue binding key
-		nil,                           // exchange declare args
-		nil,                           // queue declare args
+		nil, // exchange declare args
+		nil, // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
@@ -304,10 +304,8 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 	// If the task is not registered, we nack it and requeue,
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(signature.Name) {
-		if !delivery.Redelivered {
-			requeue = true
-			log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery.Body)
-		}
+		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery.Body)
+		requeue = true
 		delivery.Nack(multiple, requeue)
 		return nil
 	}
@@ -354,14 +352,14 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 	conn, channel, _, _, _, err := b.Connect(
 		b.GetConfig().Broker,
 		b.GetConfig().TLSConfig,
-		b.GetConfig().AMQP.Exchange,     // exchange name
-		b.GetConfig().AMQP.ExchangeType, // exchange type
-		queueName,                       // queue name
-		true,                            // queue durable
-		false,                           // queue delete when unused
-		queueName,                       // queue binding key
-		nil,                             // exchange declare args
-		declareQueueArgs,                // queue declare args
+		b.GetConfig().AMQP.Exchange,                     // exchange name
+		b.GetConfig().AMQP.ExchangeType,                 // exchange type
+		queueName,                                       // queue name
+		true,                                            // queue durable
+		false,                                           // queue delete when unused
+		queueName,                                       // queue binding key
+		nil,                                             // exchange declare args
+		declareQueueArgs,                                // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
