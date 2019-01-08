@@ -181,3 +181,12 @@ func (b *Broker) GetStopChanForTest() chan int {
 func (b *Broker) GetRetryStopChanForTest() chan int {
 	return b.GetRetryStopChan()
 }
+
+func (b *Broker) GetQueueURLForTest(taskProcessor iface.TaskProcessor) *string {
+	return b.getQueueURL(taskProcessor)
+}
+
+
+func (b *Broker) GetCustomQueueURL(customQueue string) *string {
+	return aws.String(b.GetConfig().Broker + "/" + customQueue)
+}
