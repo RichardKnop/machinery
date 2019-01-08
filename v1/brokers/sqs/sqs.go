@@ -62,7 +62,11 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
-	qURL := b.defaultQueueURL()
+	qURL := taskProcessor.CustomQueue()
+	if qURL == "" {
+		qURL = *b.defaultQueueURL()
+	}
+
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 
 	b.stopReceivingChan = make(chan int)
@@ -79,7 +83,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 			case <-b.stopReceivingChan:
 				return
 			default:
-				output, err := b.receiveMessage(qURL)
+				output, err := b.receiveMessage(&qURL)
 				if err != nil {
 					log.ERROR.Printf("Queue consume error: %s", err)
 					continue
@@ -91,7 +95,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				deliveries <- output
 			}
 
-			whetherContinue, err := b.continueReceivingMessages(qURL, deliveries)
+			whetherContinue, err := b.continueReceivingMessages(&qURL, deliveries)
 			if err != nil {
 				log.ERROR.Printf("Error when receiving messages. Error: %v", err)
 			}
