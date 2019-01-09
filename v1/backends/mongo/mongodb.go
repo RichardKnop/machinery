@@ -16,7 +16,6 @@ import (
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/mongo/options"
-	"github.com/mongodb/mongo-go-driver/x/bsonx"
 )
 
 // Backend represents a MongoDB result backend
@@ -324,12 +323,12 @@ func (b *Backend) createMongoIndexes(database string) error {
 
 	_, err := tasksCollection.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
 		{
-			Keys:    bsonx.Doc{{"state", bsonx.Int32(1)}},
-			Options: mongo.NewIndexOptionsBuilder().Background(true).ExpireAfterSeconds(expireIn).Build(),
+			Keys:    bson.M{"state": 1},
+			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
 		},
 		mongo.IndexModel{
-			Keys:    bsonx.Doc{{"lock", bsonx.Int32(1)}},
-			Options: mongo.NewIndexOptionsBuilder().Background(true).ExpireAfterSeconds(expireIn).Build(),
+			Keys:    bson.M{"lock": 1},
+			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
 		},
 	})
 	if err != nil {

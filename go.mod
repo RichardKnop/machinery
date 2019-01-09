@@ -16,7 +16,7 @@ require (
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/kelseyhightower/envconfig v1.3.0
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/mongodb/mongo-go-driver v0.1.0
+	github.com/mongodb/mongo-go-driver v0.2.0
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/streadway/amqp v0.0.0-20180806233856-70e15c650864
