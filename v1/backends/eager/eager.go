@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
@@ -44,8 +45,9 @@ func (e ErrTasknotFound) Error() string {
 // Backend represents an "eager" in-memory result backend
 type Backend struct {
 	common.Backend
-	groups map[string][]string
-	tasks  map[string][]byte
+	groups     map[string][]string
+	tasks      map[string][]byte
+	stateMutex sync.Mutex
 }
 
 // New creates EagerBackend instance
@@ -196,6 +198,8 @@ func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 
 func (b *Backend) updateState(s *tasks.TaskState) error {
 	// simulate the behavior of json marshal/unmarshal
+	b.stateMutex.Lock()
+	defer b.stateMutex.Unlock()
 	msg, err := json.Marshal(s)
 	if err != nil {
 		return fmt.Errorf("Marshal task state error: %v", err)
