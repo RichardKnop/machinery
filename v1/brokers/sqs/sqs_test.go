@@ -228,3 +228,20 @@ func TestPrivateFunc_deleteOne(t *testing.T) {
 	err = errAWSSQSBroker.DeleteOneForTest(receiveMessageOutput)
 	assert.NotNil(t, err)
 }
+
+
+func Test_CustomQueueName(t *testing.T) {
+	server1, err := machinery.NewServer(cnf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wk := server1.NewWorker("test-worker", 0)
+	qURL := testAWSSQSBroker.GetQueueURLForTest(wk)
+	assert.Equal(t, qURL, testAWSSQSBroker.DefaultQueueURLForTest(), "")
+
+
+	wk2 := server1.NewCustomQueueWorker("test-worker", 0, "my-custom-queue")
+	qURL2 := testAWSSQSBroker.GetQueueURLForTest(wk2)
+	assert.Equal(t, qURL2, testAWSSQSBroker.GetCustomQueueURL("my-custom-queue"), "")
+}

@@ -62,7 +62,8 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
-	qURL := b.defaultQueueURL()
+	qURL := b.getQueueURL(taskProcessor)
+
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 
 	b.stopReceivingChan = make(chan int)
@@ -71,7 +72,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	go func() {
 		defer b.receivingWG.Done()
 
-		log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
+		log.INFO.Printf("[*] Waiting for messages on queue: %s. To exit press CTRL+C\n", *qURL)
 
 		for {
 			select {
@@ -343,4 +344,15 @@ func (b *Broker) continueReceivingMessages(qURL *string, deliveries chan *awssqs
 func (b *Broker) stopReceiving() {
 	// Stop the receiving goroutine
 	b.stopReceivingChan <- 1
+}
+
+// getQueueURL is a method returns that returns queueURL first by checking if custom queue was set and usign it
+// otherwise using default queueName from config
+func (b *Broker) getQueueURL(taskProcessor iface.TaskProcessor) *string {
+	queueName := b.GetConfig().DefaultQueue
+	if taskProcessor.CustomQueue() != "" {
+		queueName = taskProcessor.CustomQueue()
+	}
+
+	return aws.String(b.GetConfig().Broker + "/" + queueName)
 }
