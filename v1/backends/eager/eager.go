@@ -199,12 +199,12 @@ func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 func (b *Backend) updateState(s *tasks.TaskState) error {
 	// simulate the behavior of json marshal/unmarshal
 	b.stateMutex.Lock()
+	defer b.stateMutex.Unlock()
 	msg, err := json.Marshal(s)
 	if err != nil {
 		return fmt.Errorf("Marshal task state error: %v", err)
 	}
 
 	b.tasks[s.TaskUUID] = msg
-	b.stateMutex.Unlock()
 	return nil
 }
