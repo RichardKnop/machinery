@@ -128,7 +128,8 @@ type RedisConfig struct {
 
 // GCPPubSubConfig wraps GCP PubSub related configuration
 type GCPPubSubConfig struct {
-	Client *pubsub.Client
+	Client       *pubsub.Client
+	MaxExtension time.Duration
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

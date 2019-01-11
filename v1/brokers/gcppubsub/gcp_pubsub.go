@@ -23,6 +23,7 @@ type Broker struct {
 
 	service          *pubsub.Client
 	subscriptionName string
+	MaxExtension     time.Duration
 
 	processingWG sync.WaitGroup
 }
@@ -31,6 +32,10 @@ type Broker struct {
 func New(cnf *config.Config, projectID, subscriptionName string) (iface.Broker, error) {
 	b := &Broker{Broker: common.NewBroker(cnf)}
 	b.subscriptionName = subscriptionName
+
+	if cnf.GCPPubSub != nil {
+		b.MaxExtension = cnf.GCPPubSub.MaxExtension
+	}
 
 	if cnf.GCPPubSub != nil && cnf.GCPPubSub.Client != nil {
 		b.service = cnf.GCPPubSub.Client
@@ -54,6 +59,11 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	deliveries := make(chan *pubsub.Message)
 
 	sub := b.service.Subscription(b.subscriptionName)
+
+	if b.MaxExtension != 0 {
+		sub.ReceiveSettings.MaxExtension = b.MaxExtension
+	}
+
 	subscriptionExists, err := sub.Exists(context.Background())
 	if err != nil {
 		return false, err
