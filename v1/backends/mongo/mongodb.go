@@ -1,9 +1,9 @@
 package mongo
 
 import (
-	"crypto/tls"
+	"context"
 	"encoding/json"
-	"net"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -13,59 +13,38 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/mongodb/mongo-go-driver/mongo"
+	"github.com/mongodb/mongo-go-driver/mongo/options"
 )
 
 // Backend represents a MongoDB result backend
 type Backend struct {
 	common.Backend
-	session *mgo.Session
+	client               *mongo.Client
+	tasksCollection      *mongo.Collection
+	groupMetasCollection *mongo.Collection
 }
 
 // New creates Backend instance
-func New(cnf *config.Config) iface.Backend {
-	return &Backend{Backend: common.NewBackend(cnf)}
-}
-
-// Op represents a mongo operation using a copied session
-type Op struct {
-	session              *mgo.Session
-	tasksCollection      *mgo.Collection
-	groupMetasCollection *mgo.Collection
-}
-
-// Do wraps a func using op & defers session close
-func (op *Op) Do(f func() error) error {
-	defer op.session.Close()
-	return f()
-}
-
-// newOp returns an Op pointer w/ copied session
-// and task & groupMetas collections
-func (b *Backend) newOp() *Op {
-	session := b.session.Copy()
-	return &Op{
-		session:              session,
-		tasksCollection:      session.DB("").C("tasks"),
-		groupMetasCollection: session.DB("").C("group_metas"),
+func New(cnf *config.Config) (iface.Backend, error) {
+	backend := &Backend{Backend: common.NewBackend(cnf)}
+	err := backend.connect()
+	if err != nil {
+		return nil, err
 	}
+	return backend, nil
 }
 
 // InitGroup creates and saves a group meta data object
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
-	op, err := b.connect()
-	if err != nil {
-		return err
+	groupMeta := &tasks.GroupMeta{
+		GroupUUID: groupUUID,
+		TaskUUIDs: taskUUIDs,
+		CreatedAt: time.Now().UTC(),
 	}
-	return op.Do(func() error {
-		groupMeta := &tasks.GroupMeta{
-			GroupUUID: groupUUID,
-			TaskUUIDs: taskUUIDs,
-			CreatedAt: time.Now().UTC(),
-		}
-		return op.groupMetasCollection.Insert(groupMeta)
-	})
+	_, err := b.groupMetasCollection.InsertOne(context.Background(), groupMeta)
+	return err
 }
 
 // GroupCompleted returns true if all tasks in a group finished
@@ -105,30 +84,20 @@ func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*task
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
 func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
-	op, err := b.connect()
-	if err != nil {
-		return false, err
+	query := bson.M{
+		"_id":             groupUUID,
+		"chord_triggered": false,
 	}
-	err = op.Do(func() error {
-		query := bson.M{
-			"_id":             groupUUID,
-			"chord_triggered": false,
-		}
-		change := mgo.Change{
-			Update: bson.M{
-				"$set": bson.M{
-					"chord_triggered": true,
-				},
-			},
-			ReturnNew: false,
-		}
-		_, err := op.groupMetasCollection.
-			Find(query).
-			Apply(change, nil)
-		return err
-	})
+	change := bson.M{
+		"$set": bson.M{
+			"chord_triggered": true,
+		},
+	}
+
+	_, err := b.groupMetasCollection.UpdateOne(context.Background(), query, change, options.Update())
+
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			log.WARNING.Printf("Chord already triggered for group %s", groupUUID)
 			return false, nil
 		}
@@ -205,14 +174,9 @@ func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error 
 
 // GetState returns the latest task state
 func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
-	op, err := b.connect()
-	if err != nil {
-		return nil, err
-	}
-	state := new(tasks.TaskState)
-	err = op.Do(func() error {
-		return op.tasksCollection.FindId(taskUUID).One(state)
-	})
+	state := &tasks.TaskState{}
+	err := b.tasksCollection.FindOne(context.Background(), bson.M{"_id": taskUUID}).Decode(state)
+
 	if err != nil {
 		return nil, err
 	}
@@ -221,77 +185,46 @@ func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 
 // PurgeState deletes stored task state
 func (b *Backend) PurgeState(taskUUID string) error {
-	op, err := b.connect()
-	if err != nil {
-		return err
-	}
-	return op.Do(func() error {
-		return op.tasksCollection.RemoveId(taskUUID)
-	})
+	_, err := b.tasksCollection.DeleteOne(context.Background(), bson.M{"_id": taskUUID})
+	return err
 }
 
 // PurgeGroupMeta deletes stored group meta data
 func (b *Backend) PurgeGroupMeta(groupUUID string) error {
-	op, err := b.connect()
-	if err != nil {
-		return err
-	}
-	return op.Do(func() error {
-		return op.groupMetasCollection.RemoveId(groupUUID)
-	})
+	_, err := b.groupMetasCollection.DeleteOne(context.Background(), bson.M{"_id": groupUUID})
+	return err
 }
 
 // lockGroupMeta acquires lock on groupUUID document
 func (b *Backend) lockGroupMeta(groupUUID string) error {
-	op, err := b.connect()
-	if err != nil {
-		return err
+	query := bson.M{
+		"_id":  groupUUID,
+		"lock": false,
 	}
-	return op.Do(func() error {
-		query := bson.M{
-			"_id":  groupUUID,
-			"lock": false,
-		}
-		change := mgo.Change{
-			Update: bson.M{
-				"$set": bson.M{
-					"lock": true,
-				},
-			},
-			Upsert:    true,
-			ReturnNew: false,
-		}
-		_, err := op.groupMetasCollection.
-			Find(query).
-			Apply(change, nil)
-		return err
-	})
+	change := bson.M{
+		"$set": bson.M{
+			"lock": true,
+		},
+	}
+
+	_, err := b.groupMetasCollection.UpdateOne(context.Background(), query, change, options.Update().SetUpsert(true))
+
+	return err
 }
 
 // unlockGroupMeta releases lock on groupUUID document
 func (b *Backend) unlockGroupMeta(groupUUID string) error {
-	op, err := b.connect()
-	if err != nil {
-		return err
-	}
-	return op.Do(func() error {
-		update := bson.M{"$set": bson.M{"lock": false}}
-		_, err := op.groupMetasCollection.UpsertId(groupUUID, update)
-		return err
-	})
+	update := bson.M{"$set": bson.M{"lock": false}}
+	_, err := b.groupMetasCollection.UpdateOne(context.Background(), bson.M{"_id": groupUUID}, update, options.Update())
+	return err
 }
 
 // getGroupMeta retrieves group meta data, convenience function to avoid repetition
 func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
-	op, err := b.connect()
-	if err != nil {
-		return nil, err
-	}
-	groupMeta := new(tasks.GroupMeta)
-	err = op.Do(func() error {
-		query := bson.M{"_id": groupUUID}
-		return op.groupMetasCollection.Find(query).One(groupMeta)
-	})
+	groupMeta := &tasks.GroupMeta{}
+	query := bson.M{"_id": groupUUID}
+
+	err := b.groupMetasCollection.FindOne(context.Background(), query).Decode(groupMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -300,110 +233,107 @@ func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 
 // getStates returns multiple task states
 func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
-	op, err := b.connect()
+	states := make([]*tasks.TaskState, 0, len(taskUUIDs))
+	cur, err := b.tasksCollection.Find(context.Background(), bson.M{"_id": bson.M{"$in": taskUUIDs}})
 	if err != nil {
 		return nil, err
 	}
-	states := make([]*tasks.TaskState, 0, len(taskUUIDs))
-	op.Do(func() error {
-		iter := op.tasksCollection.Find(bson.M{"_id": bson.M{"$in": taskUUIDs}}).Iter()
-		state := new(tasks.TaskState)
-		for iter.Next(state) {
-			states = append(states, state)
-			// otherwise we would end up with the last task being every element of the slice
-			state = new(tasks.TaskState)
+	defer cur.Close(context.Background())
+
+	for cur.Next(context.Background()) {
+		state := &tasks.TaskState{}
+		if err := cur.Decode(state); err != nil {
+			return nil, err
 		}
-		return nil
-	})
+		states = append(states, state)
+	}
+	if cur.Err() != nil {
+		return nil, err
+	}
 	return states, nil
 }
 
 // updateState saves current task state
 func (b *Backend) updateState(signature *tasks.Signature, update bson.M) error {
-	op, err := b.connect()
-	if err != nil {
-		return err
-	}
-	return op.Do(func() error {
-		update = bson.M{"$set": update}
-		_, err := op.tasksCollection.UpsertId(signature.UUID, update)
-		return err
-	})
+	update = bson.M{"$set": update}
+	_, err := b.tasksCollection.UpdateOne(context.Background(), bson.M{"_id": signature.UUID}, update, options.Update().SetUpsert(true))
+	return err
 }
 
-// connect creates the underlying mgo session if it doesn't exist
+// connect creates the underlying mgo connection if it doesn't exist
 // creates required indexes for our collections
-// and returns a a new Op
-func (b *Backend) connect() (*Op, error) {
-	if b.session != nil {
-		b.session.Refresh()
-		return b.newOp(), nil
-	}
-	session, err := b.dial()
+func (b *Backend) connect() error {
+	client, err := b.dial()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	b.session = session
-	err = b.createMongoIndexes()
+	b.client = client
+
+	database := "machinery"
+
+	if b.GetConfig().MongoDB != nil {
+		database = b.GetConfig().MongoDB.Database
+	}
+
+	b.tasksCollection = b.client.Database(database).Collection("tasks")
+	b.groupMetasCollection = b.client.Database(database).Collection("group_metas")
+
+	err = b.createMongoIndexes(database)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return b.newOp(), nil
+	return nil
 }
 
 // dial connects to mongo with TLSConfig if provided
 // else connects via ResultBackend uri
-func (b *Backend) dial() (*mgo.Session, error) {
-	if b.GetConfig().TLSConfig == nil {
-		return mgo.Dial(b.GetConfig().ResultBackend)
+func (b *Backend) dial() (*mongo.Client, error) {
+
+	if b.GetConfig().MongoDB != nil && b.GetConfig().MongoDB.Client != nil {
+		return b.GetConfig().MongoDB.Client, nil
 	}
-	dialInfo, err := mgo.ParseURL(b.GetConfig().ResultBackend)
+
+	uri := b.GetConfig().ResultBackend
+	if strings.HasPrefix(uri, "mongodb://") == false &&
+		strings.HasPrefix(uri, "mongodb+srv://") == false {
+		uri = fmt.Sprintf("mongodb://%s", uri)
+	}
+
+	client, err := mongo.NewClient(uri)
 	if err != nil {
 		return nil, err
 	}
-	dialInfo.Timeout = 5 * time.Second
-	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-		return tls.Dial("tcp", addr.String(), b.GetConfig().TLSConfig)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := client.Connect(ctx); err != nil {
+		return nil, err
 	}
-	return mgo.DialWithInfo(dialInfo)
+
+	return client, nil
 }
 
 // createMongoIndexes ensures all indexes are in place
-func (b *Backend) createMongoIndexes() error {
-	op, err := b.connect()
+func (b *Backend) createMongoIndexes(database string) error {
+
+	tasksCollection := b.client.Database(database).Collection("tasks")
+
+	expireIn := int32(b.GetConfig().ResultsExpireIn)
+
+	_, err := tasksCollection.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+		{
+			Keys:    bson.M{"state": 1},
+			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
+		},
+		mongo.IndexModel{
+			Keys:    bson.M{"lock": 1},
+			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
+		},
+	})
 	if err != nil {
 		return err
 	}
-	return op.Do(func() error {
-		indexes := []mgo.Index{
-			{
-				Key:         []string{"state"},
-				Background:  true, // can be used while index is being built
-				ExpireAfter: time.Duration(b.GetConfig().ResultsExpireIn) * time.Second,
-			},
-			{
-				Key:         []string{"lock"},
-				Background:  true, // can be used while index is being built
-				ExpireAfter: time.Duration(b.GetConfig().ResultsExpireIn) * time.Second,
-			},
-		}
 
-		for _, index := range indexes {
-			// Check if index already exists, if it does, skip
-			if err := op.tasksCollection.EnsureIndex(index); err == nil {
-				log.INFO.Printf("%s index already exist, skipping create step", index.Key[0])
-				continue
-			}
-
-			// Create index (keep in mind EnsureIndex is blocking operation)
-			log.INFO.Printf("Creating %s index", index.Key[0])
-			if err := op.tasksCollection.DropIndex(index.Key[0]); err != nil {
-				return err
-			}
-			if err := op.tasksCollection.EnsureIndex(index); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return err
 }

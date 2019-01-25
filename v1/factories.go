@@ -132,8 +132,9 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 		return redisbackend.New(cnf, "", redisPassword, redisSocket, redisDB), nil
 	}
 
-	if strings.HasPrefix(cnf.ResultBackend, "mongodb://") {
-		return mongobackend.New(cnf), nil
+	if strings.HasPrefix(cnf.ResultBackend, "mongodb://") ||
+		strings.HasPrefix(cnf.ResultBackend, "mongodb+srv://") {
+		return mongobackend.New(cnf)
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "eager") {

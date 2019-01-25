@@ -21,7 +21,10 @@ func newBackend() (iface.Backend, error) {
 		ResultBackend:   os.Getenv("MONGODB_URL"),
 		ResultsExpireIn: 30,
 	}
-	backend := mongo.New(cnf)
+	backend, err := mongo.New(cnf)
+	if err != nil {
+		return nil, err
+	}
 
 	backend.PurgeGroupMeta(groupUUID)
 	for _, taskUUID := range taskUUIDs {
