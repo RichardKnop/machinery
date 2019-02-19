@@ -235,7 +235,7 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 
 // deleteOne is a method delete a delivery from AWS SQS
 func (b *Broker) deleteOne(delivery *awssqs.ReceiveMessageOutput) error {
-	qURL := b.queueURL()
+	qURL := b.defaultQueueURL()
 	_, err := b.service.DeleteMessage(&awssqs.DeleteMessageInput{
 		QueueUrl:      qURL,
 		ReceiptHandle: delivery.Messages[0].ReceiptHandle,
@@ -248,7 +248,7 @@ func (b *Broker) deleteOne(delivery *awssqs.ReceiveMessageOutput) error {
 }
 
 // defaultQueueURL is a method returns the default queue url
-func (b *Broker) queueURL() *string {
+func (b *Broker) defaultQueueURL() *string {
 	if b.queueUrl != nil {
 		return b.queueUrl
 	} else {
