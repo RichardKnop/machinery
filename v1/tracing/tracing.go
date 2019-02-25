@@ -1,106 +1,133 @@
 package tracing
 
 import (
+	"context"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/RichardKnop/machinery/v1/tasks"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	opentracing_ext "github.com/opentracing/opentracing-go/ext"
-	opentracing_log "github.com/opentracing/opentracing-go/log"
+	"go.opencensus.io/trace"
 )
 
-// opentracing tags
+// opencensus attributes
 var (
-	MachineryTag     = opentracing.Tag{Key: string(opentracing_ext.Component), Value: "machinery"}
-	WorkflowGroupTag = opentracing.Tag{Key: "machinery.workflow", Value: "group"}
-	WorkflowChordTag = opentracing.Tag{Key: "machinery.workflow", Value: "chord"}
-	WorkflowChainTag = opentracing.Tag{Key: "machinery.workflow", Value: "chain"}
+	MachineryAttribute     = trace.StringAttribute("component", "machinery")
+	WorkflowGroupAttribute = trace.StringAttribute("machinery.workflow", "group")
+	WorkflowChordAttribute = trace.StringAttribute("machinery.workflow", "chord")
+	WorkflowChainAttribute = trace.StringAttribute("machinery.workflow", "chain")
+
+	traceParentHeader = `traceparent`
 )
 
 // StartSpanFromHeaders will extract a span from the signature headers
 // and start a new span with the given operation name.
-func StartSpanFromHeaders(headers tasks.Headers, operationName string) opentracing.Span {
-	// Try to extract the span context from the carrier.
-	spanContext, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, headers)
-
-	// Create a new span from the span context if found or start a new trace with the function name.
-	// For clarity add the machinery component tag.
-	span := opentracing.StartSpan(
-		operationName,
-		ConsumerOption(spanContext),
-		MachineryTag,
-	)
-
-	// Log any error but don't fail
-	if err != nil {
-		span.LogFields(opentracing_log.Error(err))
+func StartSpanFromHeaders(ctx context.Context, headers tasks.Headers, operationName string) (context.Context, *trace.Span) {
+	spanContext := trace.SpanContext{}
+	if h, ok := headers[traceParentHeader]; ok {
+		if value, ok := h.(string); ok {
+			spanContext = spanContextFromHeader(value)
+		}
 	}
 
-	return span
+	return trace.StartSpanWithRemoteParent(ctx, operationName, spanContext)
+}
+
+// spanContextFromHeader reads the traceparent based on w3c's standard
+// https://w3c.github.io/trace-context/#traceparent-field
+func spanContextFromHeader(h string) (sc trace.SpanContext) {
+	splits := strings.Split(h, `-`)
+
+	if len(splits) != 4 || splits[0] != "00" {
+		return trace.SpanContext{}
+	}
+
+	if len(splits[1]) != 32 {
+		return trace.SpanContext{}
+	}
+
+	buf, err := hex.DecodeString(splits[1])
+	if err != nil {
+		return trace.SpanContext{}
+	}
+	copy(sc.TraceID[:], buf)
+
+	if len(splits[2]) != 16 {
+		return trace.SpanContext{}
+	}
+
+	buf, err = hex.DecodeString(splits[2])
+	if err != nil {
+		return trace.SpanContext{}
+	}
+	copy(sc.SpanID[:], buf)
+
+	if len(splits[3]) != 2 {
+		return trace.SpanContext{}
+	}
+
+	o, err := strconv.ParseUint(splits[3], 16, 32)
+
+	if err != nil {
+		return trace.SpanContext{}
+	}
+
+	sc.TraceOptions = trace.TraceOptions(o)
+
+	if sc.TraceID == [16]byte{} || sc.SpanID == [8]byte{} {
+		return trace.SpanContext{}
+	}
+
+	return sc
 }
 
 // HeadersWithSpan will inject a span into the signature headers
-func HeadersWithSpan(headers tasks.Headers, span opentracing.Span) tasks.Headers {
+func HeadersWithSpan(headers tasks.Headers, span *trace.Span) tasks.Headers {
 	// check if the headers aren't nil
 	if headers == nil {
 		headers = make(tasks.Headers)
 	}
 
-	if err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, headers); err != nil {
-		span.LogFields(opentracing_log.Error(err))
-	}
+	headers[traceParentHeader] = headerFromSpanContext(span.SpanContext())
 
 	return headers
 }
 
-type consumerOption struct {
-	producerContext opentracing.SpanContext
-}
-
-func (c consumerOption) Apply(o *opentracing.StartSpanOptions) {
-	if c.producerContext != nil {
-		opentracing.FollowsFrom(c.producerContext).Apply(o)
-	}
-	opentracing_ext.SpanKindConsumer.Apply(o)
-}
-
-// ConsumerOption ...
-func ConsumerOption(producer opentracing.SpanContext) opentracing.StartSpanOption {
-	return consumerOption{producer}
-}
-
-type producerOption struct{}
-
-func (p producerOption) Apply(o *opentracing.StartSpanOptions) {
-	opentracing_ext.SpanKindProducer.Apply(o)
-}
-
-// ProducerOption ...
-func ProducerOption() opentracing.StartSpanOption {
-	return producerOption{}
+func headerFromSpanContext(sc trace.SpanContext) string {
+	return fmt.Sprintf("%x-%x-%x-%x",
+		[]byte{0x00},
+		sc.TraceID[:],
+		sc.SpanID[:],
+		[]byte{byte(sc.TraceOptions)})
 }
 
 // AnnotateSpanWithSignatureInfo ...
-func AnnotateSpanWithSignatureInfo(span opentracing.Span, signature *tasks.Signature) {
+func AnnotateSpanWithSignatureInfo(span *trace.Span, signature *tasks.Signature) {
+	span.AddAttributes(MachineryAttribute)
 	// tag the span with some info about the signature
-	span.SetTag("signature.name", signature.Name)
-	span.SetTag("signature.uuid", signature.UUID)
+	span.AddAttributes(trace.StringAttribute("signature.name", signature.Name))
+	span.AddAttributes(trace.StringAttribute("signature.uuid", signature.UUID))
 
 	if signature.GroupUUID != "" {
-		span.SetTag("signature.group.uuid", signature.UUID)
+		span.AddAttributes(trace.StringAttribute("signature.group.uuid", signature.UUID))
 	}
 
 	if signature.ChordCallback != nil {
-		span.SetTag("signature.chord.callback.uuid", signature.ChordCallback.UUID)
-		span.SetTag("signature.chord.callback.name", signature.ChordCallback.Name)
+		span.AddAttributes(trace.StringAttribute("signature.chord.callback.uuid", signature.ChordCallback.UUID))
+		span.AddAttributes(trace.StringAttribute("signature.chord.callback.name", signature.ChordCallback.Name))
 	}
 }
 
 // AnnotateSpanWithChainInfo ...
-func AnnotateSpanWithChainInfo(span opentracing.Span, chain *tasks.Chain) {
+func AnnotateSpanWithChainInfo(span *trace.Span, chain *tasks.Chain) {
+	span.AddAttributes(MachineryAttribute)
+	span.AddAttributes(WorkflowChainAttribute)
+
 	// tag the span with some info about the chain
-	span.SetTag("chain.tasks.length", len(chain.Tasks))
+	span.AddAttributes(trace.Int64Attribute("chain.tasks.length", int64(len(chain.Tasks))))
 
 	// inject the tracing span into the tasks signature headers
 	for _, signature := range chain.Tasks {
@@ -109,17 +136,18 @@ func AnnotateSpanWithChainInfo(span opentracing.Span, chain *tasks.Chain) {
 }
 
 // AnnotateSpanWithGroupInfo ...
-func AnnotateSpanWithGroupInfo(span opentracing.Span, group *tasks.Group, sendConcurrency int) {
-	// tag the span with some info about the group
-	span.SetTag("group.uuid", group.GroupUUID)
-	span.SetTag("group.tasks.length", len(group.Tasks))
-	span.SetTag("group.concurrency", sendConcurrency)
+func AnnotateSpanWithGroupInfo(span *trace.Span, group *tasks.Group, sendConcurrency int) {
+	span.AddAttributes(MachineryAttribute)
+	span.AddAttributes(WorkflowGroupAttribute)
 
-	// encode the task uuids to json, if that fails just dump it in
+	// tag the span with some info about the group
+	span.AddAttributes(trace.StringAttribute("group.uuid", group.GroupUUID))
+	span.AddAttributes(trace.Int64Attribute("group.tasks.length", int64(len(group.Tasks))))
+	span.AddAttributes(trace.Int64Attribute("group.concurrency", int64(sendConcurrency)))
+
+	// encode the task uuids to json, if that fails skip it
 	if taskUUIDs, err := json.Marshal(group.GetUUIDs()); err == nil {
-		span.SetTag("group.tasks", string(taskUUIDs))
-	} else {
-		span.SetTag("group.tasks", group.GetUUIDs())
+		span.AddAttributes(trace.StringAttribute("group.tasks", string(taskUUIDs)))
 	}
 
 	// inject the tracing span into the tasks signature headers
@@ -129,9 +157,12 @@ func AnnotateSpanWithGroupInfo(span opentracing.Span, group *tasks.Group, sendCo
 }
 
 // AnnotateSpanWithChordInfo ...
-func AnnotateSpanWithChordInfo(span opentracing.Span, chord *tasks.Chord, sendConcurrency int) {
+func AnnotateSpanWithChordInfo(span *trace.Span, chord *tasks.Chord, sendConcurrency int) {
+	span.AddAttributes(MachineryAttribute)
+	span.AddAttributes(WorkflowChordAttribute)
+
 	// tag the span with chord specific info
-	span.SetTag("chord.callback.uuid", chord.Callback.UUID)
+	span.AddAttributes(trace.StringAttribute("chord.callback.uuid", chord.Callback.UUID))
 
 	// inject the tracing span into the callback signature
 	chord.Callback.Headers = HeadersWithSpan(chord.Callback.Headers, span)

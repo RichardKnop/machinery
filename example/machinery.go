@@ -7,9 +7,6 @@ import (
 	"os"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	opentracing_log "github.com/opentracing/opentracing-go/log"
-
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -19,6 +16,8 @@ import (
 
 	exampletasks "github.com/RichardKnop/machinery/example/tasks"
 	tracers "github.com/RichardKnop/machinery/example/tracers"
+
+	"go.opencensus.io/trace"
 )
 
 var (
@@ -278,12 +277,11 @@ func send() error {
 	 * set a batch id as baggage so it can travel all the way into
 	 * the worker functions.
 	 */
-	span, ctx := opentracing.StartSpanFromContext(context.Background(), "send")
-	defer span.Finish()
+	ctx, span := trace.StartSpan(context.Background(), "send")
+	defer span.End()
 
 	batchID := uuid.New().String()
-	span.SetBaggageItem("batch.id", batchID)
-	span.LogFields(opentracing_log.String("batch.id", batchID))
+	span.AddAttributes(trace.StringAttribute("batch.id", batchID))
 
 	log.INFO.Println("Starting batch:", batchID)
 	/*

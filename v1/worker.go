@@ -13,7 +13,6 @@ import (
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
-	"github.com/opentracing/opentracing-go"
 )
 
 // Worker represents a single worker process
@@ -146,9 +145,9 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 	// try to extract trace span from headers and add it to the function context
 	// so it can be used inside the function if it has context.Context as the first
 	// argument. Start a new span if it isn't found.
-	taskSpan := tracing.StartSpanFromHeaders(signature.Headers, signature.Name)
+	ctx, taskSpan := tracing.StartSpanFromHeaders(task.Context, signature.Headers, signature.Name)
 	tracing.AnnotateSpanWithSignatureInfo(taskSpan, signature)
-	task.Context = opentracing.ContextWithSpan(task.Context, taskSpan)
+	task.Context = ctx
 
 	// Update task state to STARTED
 	if err = worker.server.GetBackend().SetStateStarted(signature); err != nil {
