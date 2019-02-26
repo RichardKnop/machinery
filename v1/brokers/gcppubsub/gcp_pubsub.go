@@ -111,7 +111,7 @@ func (b *Broker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *Broker) Publish(signature *tasks.Signature) error {
+func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
 	b.AdjustRoutingKey(signature)
 
@@ -119,8 +119,6 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
-
-	ctx := context.Background()
 
 	defaultQueue := b.GetConfig().DefaultQueue
 	topic := b.service.Topic(defaultQueue)

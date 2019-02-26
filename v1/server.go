@@ -160,12 +160,6 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 	// tag the span with some info about the signature
 	signature.Headers = tracing.HeadersWithSpan(signature.Headers, span)
 
-	// Send it on to SendTask as normal
-	return server.SendTask(signature)
-}
-
-// SendTask publishes a task to the default queue
-func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult, error) {
 	// Make sure result backend is defined
 	if server.backend == nil {
 		return nil, errors.New("Result backend required")
@@ -186,11 +180,16 @@ func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult,
 		server.prePublishHandler(signature)
 	}
 
-	if err := server.broker.Publish(signature); err != nil {
+	if err := server.broker.Publish(ctx, signature); err != nil {
 		return nil, fmt.Errorf("Publish message error: %s", err)
 	}
 
 	return result.NewAsyncResult(signature, server.backend), nil
+}
+
+// SendTask publishes a task to the default queue
+func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult, error) {
+	return server.SendTaskWithContext(context.Background(), signature)
 }
 
 // SendChainWithContext will inject the trace context in all the signature headers before publishing it
@@ -220,11 +219,6 @@ func (server *Server) SendGroupWithContext(ctx context.Context, group *tasks.Gro
 
 	tracing.AnnotateSpanWithGroupInfo(span, group, sendConcurrency)
 
-	return server.SendGroup(group, sendConcurrency)
-}
-
-// SendGroup triggers a group of parallel tasks
-func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*result.AsyncResult, error) {
 	// Make sure result backend is defined
 	if server.backend == nil {
 		return nil, errors.New("Result backend required")
@@ -265,7 +259,7 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*res
 
 			// Publish task
 
-			err := server.broker.Publish(s)
+			err := server.broker.Publish(ctx, s)
 
 			if sendConcurrency > 0 {
 				pool <- struct{}{}
@@ -294,6 +288,11 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*res
 	}
 }
 
+// SendGroup triggers a group of parallel tasks
+func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*result.AsyncResult, error) {
+	return server.SendGroupWithContext(context.Background(), group, sendConcurrency)
+}
+
 // SendChordWithContext will inject the trace context in all the signature headers before publishing it
 func (server *Server) SendChordWithContext(ctx context.Context, chord *tasks.Chord, sendConcurrency int) (*result.ChordAsyncResult, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "SendChord", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChordTag)
@@ -301,12 +300,7 @@ func (server *Server) SendChordWithContext(ctx context.Context, chord *tasks.Cho
 
 	tracing.AnnotateSpanWithChordInfo(span, chord, sendConcurrency)
 
-	return server.SendChord(chord, sendConcurrency)
-}
-
-// SendChord triggers a group of parallel tasks with a callback
-func (server *Server) SendChord(chord *tasks.Chord, sendConcurrency int) (*result.ChordAsyncResult, error) {
-	_, err := server.SendGroup(chord.Group, sendConcurrency)
+	_, err := server.SendGroupWithContext(ctx, chord.Group, sendConcurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -316,6 +310,11 @@ func (server *Server) SendChord(chord *tasks.Chord, sendConcurrency int) (*resul
 		chord.Callback,
 		server.backend,
 	), nil
+}
+
+// SendChord triggers a group of parallel tasks with a callback
+func (server *Server) SendChord(chord *tasks.Chord, sendConcurrency int) (*result.ChordAsyncResult, error) {
+	return server.SendChordWithContext(context.Background(), chord, sendConcurrency)
 }
 
 // GetRegisteredTaskNames returns slice of registered task names
