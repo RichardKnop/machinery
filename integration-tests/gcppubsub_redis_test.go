@@ -74,15 +74,23 @@ func TestGCPPubSubRedis(t *testing.T) {
 		t.Skip("REDIS_URL is not defined")
 	}
 
+	pubsubClient, err := pubsub.NewClient(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create Cloud Pub/Sub Topic and Subscription
+	createGCPPubSubTopicAndSubscription(pubsubClient, topicName, subscriptionName)
+
 	// Redis broker, Redis result backend
 	server := testSetup(&config.Config{
 		Broker:        pubsubURL,
 		DefaultQueue:  topicName,
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		GCPPubSub: &config.GCPPubSubConfig{
+			Client: pubsubClient,
+		},
 	})
-
-	// Create Cloud Pub/Sub Topic and Subscription
-	createGCPPubSubTopicAndSubscription(server.GetBroker().GetConfig().GCPPubSub.Client, topicName, subscriptionName)
 
 	worker := server.NewWorker("test_worker", 0)
 	go worker.Launch()
