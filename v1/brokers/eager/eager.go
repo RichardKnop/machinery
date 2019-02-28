@@ -2,6 +2,7 @@ package eager
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,7 +39,7 @@ func (eagerBroker *Broker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (eagerBroker *Broker) Publish(task *tasks.Signature) error {
+func (eagerBroker *Broker) Publish(ctx context.Context, task *tasks.Signature) error {
 	if eagerBroker.worker == nil {
 		return errors.New("worker is not assigned in eager-mode")
 	}

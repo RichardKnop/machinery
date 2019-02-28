@@ -2,6 +2,7 @@ package redis
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -152,7 +153,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 					log.ERROR.Print(errs.NewErrCouldNotUnmarshaTaskSignature(task, err))
 				}
 
-				if err := b.Publish(signature); err != nil {
+				if err := b.Publish(context.Background(), signature); err != nil {
 					log.ERROR.Print(err)
 				}
 			}
@@ -188,7 +189,7 @@ func (b *Broker) StopConsuming() {
 }
 
 // Publish places a new message on the default queue
-func (b *Broker) Publish(signature *tasks.Signature) error {
+func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
 	b.Broker.AdjustRoutingKey(signature)
 
