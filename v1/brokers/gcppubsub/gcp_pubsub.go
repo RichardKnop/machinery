@@ -33,6 +33,8 @@ func New(cnf *config.Config, projectID, subscriptionName string) (iface.Broker, 
 	b := &Broker{Broker: common.NewBroker(cnf)}
 	b.subscriptionName = subscriptionName
 
+	ctx := context.Background()
+
 	if cnf.GCPPubSub != nil {
 		b.MaxExtension = cnf.GCPPubSub.MaxExtension
 	}
@@ -40,7 +42,7 @@ func New(cnf *config.Config, projectID, subscriptionName string) (iface.Broker, 
 	if cnf.GCPPubSub != nil && cnf.GCPPubSub.Client != nil {
 		b.service = cnf.GCPPubSub.Client
 	} else {
-		pubsubClient, err := pubsub.NewClient(context.Background(), projectID)
+		pubsubClient, err := pubsub.NewClient(ctx, projectID)
 		if err != nil {
 			return nil, err
 		}
@@ -48,6 +50,34 @@ func New(cnf *config.Config, projectID, subscriptionName string) (iface.Broker, 
 		cnf.GCPPubSub = &config.GCPPubSubConfig{
 			Client: pubsubClient,
 		}
+	}
+
+	// Validate topic exists
+	defaultQueue := b.GetConfig().DefaultQueue
+	topic := b.service.Topic(defaultQueue)
+	defer topic.Stop()
+
+	topicExists, err := topic.Exists(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !topicExists {
+		return nil, fmt.Errorf("topic does not exist, instead got %s", defaultQueue)
+	}
+
+	// Validate subscription exists
+	sub := b.service.Subscription(b.subscriptionName)
+
+	if b.MaxExtension != 0 {
+		sub.ReceiveSettings.MaxExtension = b.MaxExtension
+	}
+
+	subscriptionExists, err := sub.Exists(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !subscriptionExists {
+		return nil, fmt.Errorf("subscription does not exist, instead got %s", b.subscriptionName)
 	}
 
 	return b, nil
@@ -62,14 +92,6 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	if b.MaxExtension != 0 {
 		sub.ReceiveSettings.MaxExtension = b.MaxExtension
-	}
-
-	subscriptionExists, err := sub.Exists(context.Background())
-	if err != nil {
-		return false, err
-	}
-	if !subscriptionExists {
-		return false, fmt.Errorf("subscription does not exist, instead got %s", b.subscriptionName)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -125,14 +147,6 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 	defaultQueue := b.GetConfig().DefaultQueue
 	topic := b.service.Topic(defaultQueue)
 	defer topic.Stop()
-
-	topicExists, err := topic.Exists(ctx)
-	if err != nil {
-		return err
-	}
-	if !topicExists {
-		return fmt.Errorf("topic does not exist, instead got %s", defaultQueue)
-	}
 
 	// Check the ETA signature field, if it is set and it is in the future,
 	// delay the task
