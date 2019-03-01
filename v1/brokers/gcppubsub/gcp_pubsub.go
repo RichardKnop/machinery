@@ -92,6 +92,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	if b.MaxExtension != 0 {
 		sub.ReceiveSettings.MaxExtension = b.MaxExtension
+		sub.ReceiveSettings.NumGoroutines = concurrency
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
