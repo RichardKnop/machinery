@@ -2,7 +2,6 @@ package machinery
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -162,11 +161,6 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 	// tag the span with some info about the signature
 	signature.Headers = tracing.HeadersWithSpan(signature.Headers, span)
 
-	// Make sure result backend is defined
-	if server.backend == nil {
-		return nil, errors.New("Result backend required")
-	}
-
 	// Auto generate a UUID if not set already
 	if signature.UUID == "" {
 		taskID := uuid.New().String()
@@ -220,11 +214,6 @@ func (server *Server) SendGroupWithContext(ctx context.Context, group *tasks.Gro
 	defer span.Finish()
 
 	tracing.AnnotateSpanWithGroupInfo(span, group, sendConcurrency)
-
-	// Make sure result backend is defined
-	if server.backend == nil {
-		return nil, errors.New("Result backend required")
-	}
 
 	asyncResults := make([]*result.AsyncResult, len(group.Tasks))
 
