@@ -94,6 +94,10 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 // BackendFactory creates a new object of backends.Interface
 // Currently supported backends are AMQP/S and Memcache
 func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
+	if cnf.ResultBackend == "" {
+		return nil, errors.New("Result backend required")
+	}
+
 	if strings.HasPrefix(cnf.ResultBackend, "amqp://") {
 		return amqpbackend.New(cnf), nil
 	}

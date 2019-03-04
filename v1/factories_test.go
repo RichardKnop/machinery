@@ -366,7 +366,11 @@ func TestBackendFactory(t *testing.T) {
 func TestBackendFactoryError(t *testing.T) {
 	t.Parallel()
 
-	cnf := config.Config{
+	var cnf config.Config
+
+	// 1) Invalid result backend string
+
+	cnf = config.Config{
 		ResultBackend: "BOGUS",
 	}
 
@@ -374,6 +378,22 @@ func TestBackendFactoryError(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Nil(t, conn)
 		assert.Equal(t, "Factory failed with result backend: BOGUS", err.Error())
+	}
+
+	if conn != nil {
+		t.Errorf("conn = %v, should be nil", conn)
+	}
+
+	// 2) Empty result backend string
+
+	cnf = config.Config{
+		ResultBackend: "",
+	}
+
+	conn, err := machinery.BackendFactory(&cnf)
+	if assert.Error(t, err) {
+		assert.Nil(t, conn)
+		assert.Equal(t, "Result backend required", err.Error())
 	}
 
 	if conn != nil {
