@@ -346,7 +346,7 @@ func TestBackendFactory(t *testing.T) {
 
 	// 4) MongoDB backend test
 	cnf = config.Config{
-		ResultBackend:   "mongodb://mongo:27017/tasks",
+		ResultBackend:   "mongodb://mongo:27017",
 		ResultsExpireIn: 30,
 	}
 
