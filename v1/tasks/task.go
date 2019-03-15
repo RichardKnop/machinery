@@ -14,6 +14,8 @@ import (
 	"github.com/RichardKnop/machinery/v1/log"
 )
 
+type PanicHandler func(task *Task, err interface{})
+
 // ErrTaskPanicked ...
 var ErrTaskPanicked = errors.New("Invoking task caused a panic")
 
@@ -24,14 +26,17 @@ type Task struct {
 	UseContext bool
 	Context    context.Context
 	Args       []reflect.Value
+
+	panicHandler PanicHandler
 }
 
 // New tries to use reflection to convert the function and arguments
 // into a reflect.Value and prepare it for invocation
-func New(taskFunc interface{}, args []Arg) (*Task, error) {
+func New(taskFunc interface{}, args []Arg, panicHandler PanicHandler) (*Task, error) {
 	task := &Task{
-		TaskFunc: reflect.ValueOf(taskFunc),
-		Context:  context.Background(),
+		TaskFunc:     reflect.ValueOf(taskFunc),
+		Context:      context.Background(),
+		panicHandler: panicHandler,
 	}
 
 	taskFuncType := reflect.TypeOf(taskFunc)
@@ -82,8 +87,13 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 				)
 			}
 
-			// Print stack trace
-			log.ERROR.Printf("%s", debug.Stack())
+			if t.panicHandler != nil {
+				// Send raw panic to the panic handler
+				t.panicHandler(t, e)
+			} else {
+				// Print stack trace
+				log.ERROR.Printf("%s", debug.Stack())
+			}
 		}
 	}()
 

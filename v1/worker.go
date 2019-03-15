@@ -41,6 +41,7 @@ type Worker struct {
 	preTaskHandler  func(*tasks.Signature)
 	postTaskHandler func(*tasks.Signature)
 	taskCaller      TaskCaller
+	panicHandler    tasks.PanicHandler
 }
 
 // Launch starts a new worker process. The worker subscribes
@@ -151,7 +152,7 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 	}
 
 	// Prepare task for processing
-	task, err := tasks.New(taskFunc, signature.Args)
+	task, err := tasks.New(taskFunc, signature.Args, worker.panicHandler)
 	// if this failed, it means the task is malformed, probably has invalid
 	// signature, go directly to task failed without checking whether to retry
 	if err != nil {
@@ -407,8 +408,14 @@ func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 	worker.postTaskHandler = handler
 }
 
+// SetTaskCaller sets a custom handler for calling the task.
 func (worker *Worker) SetTaskCaller(taskCaller TaskCaller) {
 	worker.taskCaller = taskCaller
+}
+
+// SetPanicHandler sets a custom handler to recovering from panics during task calls.
+func (worker *Worker) SetPanicHandler(panicHandler tasks.PanicHandler) {
+	worker.panicHandler = panicHandler
 }
 
 //GetServer returns server

@@ -70,4 +70,26 @@ func TestProcess(t *testing.T) {
 		assert.Equal(t, 2, middlewareCallCount)
 		assert.Equal(t, 1, callCount)
 	})
+
+	t.Run("use custom panic handler", func(t *testing.T) {
+		handledPanic := false
+		server := getTestServer(t)
+
+		dummyTask := func(a uint64) (uint64, error) {
+			panic("foo")
+		}
+		assert.NoError(t, server.RegisterTask("Dummy", dummyTask))
+
+		worker := server.NewWorker("test_worker", 1)
+		worker.SetPanicHandler(func(task *tasks.Task, err interface{}) {
+			handledPanic = true
+			assert.Equal(t, "foo", err)
+		})
+
+		assert.NoError(t, worker.Process(&tasks.Signature{
+			Name: "Dummy",
+			Args: []tasks.Arg{{Type: "uint64", Value: uint64(3)}},
+		}))
+		assert.True(t, handledPanic)
+	})
 }
