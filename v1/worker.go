@@ -8,13 +8,28 @@ import (
 	"syscall"
 	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
+
 	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
-	"github.com/opentracing/opentracing-go"
 )
+
+type TaskCaller interface {
+	Call(signature *tasks.Signature, task *tasks.Task) ([]*tasks.TaskResult, error)
+}
+
+type TaskCallerFunc func(signature *tasks.Signature, task *tasks.Task) ([]*tasks.TaskResult, error)
+
+func (fn TaskCallerFunc) Call(signature *tasks.Signature, task *tasks.Task) ([]*tasks.TaskResult, error) {
+	return fn(signature, task)
+}
+
+var DefaultTaskCaller = TaskCallerFunc(func(signature *tasks.Signature, task *tasks.Task) ([]*tasks.TaskResult, error) {
+	return task.Call()
+})
 
 // Worker represents a single worker process
 type Worker struct {
@@ -25,6 +40,7 @@ type Worker struct {
 	errorHandler    func(err error)
 	preTaskHandler  func(*tasks.Signature)
 	postTaskHandler func(*tasks.Signature)
+	taskCaller      TaskCaller
 }
 
 // Launch starts a new worker process. The worker subscribes
@@ -166,7 +182,11 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 	}
 
 	// Call the task
-	results, err := task.Call()
+	taskCaller := worker.taskCaller
+	if taskCaller == nil {
+		taskCaller = DefaultTaskCaller
+	}
+	results, err := taskCaller.Call(signature, task)
 	if err != nil {
 		// If a tasks.ErrRetryTaskLater was returned from the task,
 		// retry the task after specified duration
@@ -385,6 +405,10 @@ func (worker *Worker) SetPreTaskHandler(handler func(*tasks.Signature)) {
 //SetPostTaskHandler sets a custom handler for the end of a job
 func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 	worker.postTaskHandler = handler
+}
+
+func (worker *Worker) SetTaskCaller(taskCaller TaskCaller) {
+	worker.taskCaller = taskCaller
 }
 
 //GetServer returns server
