@@ -1,6 +1,7 @@
 package machinery
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -15,8 +16,6 @@ import (
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/machinery/v1/tracing"
-	"github.com/opentracing/opentracing-go"
 )
 
 // Worker represents a single worker process
@@ -26,8 +25,8 @@ type Worker struct {
 	Concurrency       int
 	Queue             string
 	errorHandler      func(err error)
-	preTaskHandler    func(*tasks.Signature)
-	postTaskHandler   func(*tasks.Signature)
+	preTaskHandler    func(context.Context, *tasks.Signature) context.Context
+	postTaskHandler   func(context.Context, *tasks.Signature)
 	preConsumeHandler func(*Worker) bool
 }
 
@@ -158,13 +157,6 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 		return err
 	}
 
-	// try to extract trace span from headers and add it to the function context
-	// so it can be used inside the function if it has context.Context as the first
-	// argument. Start a new span if it isn't found.
-	taskSpan := tracing.StartSpanFromHeaders(signature.Headers, signature.Name)
-	tracing.AnnotateSpanWithSignatureInfo(taskSpan, signature)
-	task.Context = opentracing.ContextWithSpan(task.Context, taskSpan)
-
 	// Update task state to STARTED
 	if err = worker.server.GetBackend().SetStateStarted(signature); err != nil {
 		return fmt.Errorf("Set state to 'started' for task %s returned error: %s", signature.UUID, err)
@@ -172,12 +164,12 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 
 	//Run handler before the task is called
 	if worker.preTaskHandler != nil {
-		worker.preTaskHandler(signature)
+		task.Context = worker.preTaskHandler(task.Context, signature)
 	}
 
 	//Defer run handler for the end of the task
 	if worker.postTaskHandler != nil {
-		defer worker.postTaskHandler(signature)
+		defer worker.postTaskHandler(task.Context, signature)
 	}
 
 	// Call the task
@@ -404,12 +396,41 @@ func (worker *Worker) SetErrorHandler(handler func(err error)) {
 
 //SetPreTaskHandler sets a custom handler func before a job is started
 func (worker *Worker) SetPreTaskHandler(handler func(*tasks.Signature)) {
-	worker.preTaskHandler = handler
+	worker.preTaskHandler = func(ctx context.Context, signature *tasks.Signature) context.Context {
+		// preserve opentracing behavior
+		ctx = defaultPreTaskHandler(ctx, signature)
+		handler(signature)
+		return ctx
+	}
+}
+
+//SetPreTaskContextHandler sets a custom handler func before a job is started
+//this takes in a context and can be used to mutate the context used to execute the task,
+//e.g. for integration with opentracing, opencensus, and other tracing or logging standards
+func (worker *Worker) SetPreTaskContextHandler(handler func(context.Context, *tasks.Signature) context.Context) {
+	worker.preTaskHandler = func(ctx context.Context, signature *tasks.Signature) context.Context {
+		// preserve opentracing behavior
+		ctx = defaultPreTaskHandler(ctx, signature)
+		return handler(ctx, signature)
+	}
 }
 
 //SetPostTaskHandler sets a custom handler for the end of a job
 func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
-	worker.postTaskHandler = handler
+	worker.postTaskHandler = func(ctx context.Context, signature *tasks.Signature) {
+		// preserve opentracing behavior
+		defaultPostTaskHandler(ctx, signature)
+		handler(signature)
+	}
+}
+
+//SetPostTaskContextHandler sets a custom handler for the end of a job
+func (worker *Worker) SetPostTaskContextHandler(handler func(context.Context, *tasks.Signature)) {
+	worker.postTaskHandler = func(ctx context.Context, signature *tasks.Signature) {
+		// preserve opentracing behavior
+		defaultPostTaskHandler(ctx, signature)
+		handler(ctx, signature)
+	}
 }
 
 //SetPreConsumeHandler sets a custom handler for the end of a job

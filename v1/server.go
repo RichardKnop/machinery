@@ -6,35 +6,41 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/RichardKnop/machinery/v1/backends/result"
 	"github.com/RichardKnop/machinery/v1/brokers/eager"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/machinery/v1/tracing"
-	"github.com/google/uuid"
 
 	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration
 // All the tasks workers process are registered against the server
 type Server struct {
-	config            *config.Config
-	registeredTasks   map[string]interface{}
-	broker            brokersiface.Broker
-	backend           backendsiface.Backend
-	prePublishHandler func(*tasks.Signature)
+	config                 *config.Config
+	registeredTasks        map[string]interface{}
+	broker                 brokersiface.Broker
+	backend                backendsiface.Backend
+	prePublishHandler      func(context.Context, *tasks.Signature) func()
+	preChainPublishHandler func(context.Context, *tasks.Chain) func()
+	preChordPublishHandler func(context.Context, *tasks.Chord, int) func()
+	preGroupPublishHandler func(context.Context, *tasks.Group, int) func()
 }
 
 // NewServerWithBrokerBackend ...
 func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
 	return &Server{
-		config:          cnf,
-		registeredTasks: make(map[string]interface{}),
-		broker:          brokerServer,
-		backend:         backendServer,
+		config:                 cnf,
+		registeredTasks:        make(map[string]interface{}),
+		broker:                 brokerServer,
+		backend:                backendServer,
+		prePublishHandler:      defaultPrePublishHandler,
+		preChainPublishHandler: defaultPreChainPublishHandler,
+		preChordPublishHandler: defaultPreChordPublishHandler,
+		preGroupPublishHandler: defaultPreGroupPublishHandler,
 	}
 }
 
@@ -63,20 +69,24 @@ func NewServer(cnf *config.Config) (*Server, error) {
 // NewWorker creates Worker instance
 func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
 	return &Worker{
-		server:      server,
-		ConsumerTag: consumerTag,
-		Concurrency: concurrency,
-		Queue:       "",
+		server:          server,
+		ConsumerTag:     consumerTag,
+		Concurrency:     concurrency,
+		Queue:           "",
+		preTaskHandler:  defaultPreTaskHandler,
+		postTaskHandler: defaultPostTaskHandler,
 	}
 }
 
 // NewCustomQueueWorker creates Worker instance with Custom Queue
 func (server *Server) NewCustomQueueWorker(consumerTag string, concurrency int, queue string) *Worker {
 	return &Worker{
-		server:      server,
-		ConsumerTag: consumerTag,
-		Concurrency: concurrency,
-		Queue:       queue,
+		server:          server,
+		ConsumerTag:     consumerTag,
+		Concurrency:     concurrency,
+		Queue:           queue,
+		preTaskHandler:  defaultPreTaskHandler,
+		postTaskHandler: defaultPostTaskHandler,
 	}
 }
 
@@ -112,7 +122,55 @@ func (server *Server) SetConfig(cnf *config.Config) {
 
 // SetPreTaskHandler Sets pre publish handler
 func (server *Server) SetPreTaskHandler(handler func(*tasks.Signature)) {
-	server.prePublishHandler = handler
+	server.prePublishHandler = func(ctx context.Context, signature *tasks.Signature) func() {
+		handler(signature)
+		// preserve opentracing behavior
+		return defaultPrePublishHandler(ctx, signature)
+	}
+}
+
+// SetPreTaskContextHandler Sets pre publish handler using a task context
+func (server *Server) SetPreTaskContextHandler(handler func(context.Context, *tasks.Signature) func()) {
+	server.prePublishHandler = func(ctx context.Context, signature *tasks.Signature) func() {
+		// preserve opentracing behavior
+		f1 := defaultPrePublishHandler(ctx, signature)
+		f2 := handler(ctx, signature)
+
+		return finishFunc(f1, f2)
+	}
+}
+
+// SetPreChainContextHandler Sets pre publish handler using a task context
+func (server *Server) SetPreChainContextHandler(handler func(context.Context, *tasks.Chain) func()) {
+	server.preChainPublishHandler = func(ctx context.Context, chain *tasks.Chain) func() {
+		// preserve opentracing behavior
+		f1 := defaultPreChainPublishHandler(ctx, chain)
+		f2 := handler(ctx, chain)
+
+		return finishFunc(f1, f2)
+	}
+}
+
+// SetPreGroupContextHandler Sets pre publish handler using a task context
+func (server *Server) SetPreGroupContextHandler(handler func(context.Context, *tasks.Group, int) func()) {
+	server.preGroupPublishHandler = func(ctx context.Context, group *tasks.Group, sendConcurrency int) func() {
+		// preserve opentracing behavior
+		f1 := defaultPreGroupPublishHandler(ctx, group, sendConcurrency)
+		f2 := handler(ctx, group, sendConcurrency)
+
+		return finishFunc(f1, f2)
+	}
+}
+
+// SetPreTaskContextHandler Sets pre publish handler using a task context
+func (server *Server) SetPreChordContextHandler(handler func(context.Context, *tasks.Chord, int) func()) {
+	server.preChordPublishHandler = func(ctx context.Context, chord *tasks.Chord, sendConcurrency int) func() {
+		// preserve opentracing behavior
+		f1 := defaultPreChordPublishHandler(ctx, chord, sendConcurrency)
+		f2 := handler(ctx, chord, sendConcurrency)
+
+		return finishFunc(f1, f2)
+	}
 }
 
 // RegisterTasks registers all tasks at once
@@ -154,11 +212,11 @@ func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
 
 // SendTaskWithContext will inject the trace context in the signature headers before publishing it
 func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.Signature) (*result.AsyncResult, error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "SendTask", tracing.ProducerOption(), tracing.MachineryTag)
-	defer span.Finish()
 
-	// tag the span with some info about the signature
-	signature.Headers = tracing.HeadersWithSpan(signature.Headers, span)
+	if server.prePublishHandler != nil {
+		finish := server.prePublishHandler(ctx, signature)
+		defer finish()
+	}
 
 	// Make sure result backend is defined
 	if server.backend == nil {
@@ -176,10 +234,6 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 		return nil, fmt.Errorf("Set state pending error: %s", err)
 	}
 
-	if server.prePublishHandler != nil {
-		server.prePublishHandler(signature)
-	}
-
 	if err := server.broker.Publish(ctx, signature); err != nil {
 		return nil, fmt.Errorf("Publish message error: %s", err)
 	}
@@ -194,10 +248,11 @@ func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult,
 
 // SendChainWithContext will inject the trace context in all the signature headers before publishing it
 func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain) (*result.ChainAsyncResult, error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "SendChain", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChainTag)
-	defer span.Finish()
 
-	tracing.AnnotateSpanWithChainInfo(span, chain)
+	if server.preChainPublishHandler != nil {
+		finish := server.preChainPublishHandler(ctx, chain)
+		defer finish()
+	}
 
 	return server.SendChain(chain)
 }
@@ -214,10 +269,10 @@ func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, e
 
 // SendGroupWithContext will inject the trace context in all the signature headers before publishing it
 func (server *Server) SendGroupWithContext(ctx context.Context, group *tasks.Group, sendConcurrency int) ([]*result.AsyncResult, error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "SendGroup", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowGroupTag)
-	defer span.Finish()
-
-	tracing.AnnotateSpanWithGroupInfo(span, group, sendConcurrency)
+	if server.preGroupPublishHandler != nil {
+		finish := server.preGroupPublishHandler(ctx, group, sendConcurrency)
+		defer finish()
+	}
 
 	// Make sure result backend is defined
 	if server.backend == nil {
@@ -295,10 +350,11 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*res
 
 // SendChordWithContext will inject the trace context in all the signature headers before publishing it
 func (server *Server) SendChordWithContext(ctx context.Context, chord *tasks.Chord, sendConcurrency int) (*result.ChordAsyncResult, error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "SendChord", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChordTag)
-	defer span.Finish()
 
-	tracing.AnnotateSpanWithChordInfo(span, chord, sendConcurrency)
+	if server.preGroupPublishHandler != nil {
+		finish := server.preChordPublishHandler(ctx, chord, sendConcurrency)
+		defer finish()
+	}
 
 	_, err := server.SendGroupWithContext(ctx, chord.Group, sendConcurrency)
 	if err != nil {
