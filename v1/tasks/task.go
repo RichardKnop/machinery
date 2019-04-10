@@ -26,11 +26,11 @@ type Task struct {
 	Args       []reflect.Value
 }
 
-type signitureCtxType struct{}
+type signatureCtxType struct{}
 
-var signatureCtx signitureCtxType
+var signatureCtx signatureCtxType
 
-// SignatureFromContext gets the signiture from the context
+// SignatureFromContext gets the signature from the context
 func SignatureFromContext(ctx context.Context) *Signature {
 	if ctx == nil {
 		return nil
@@ -45,7 +45,7 @@ func SignatureFromContext(ctx context.Context) *Signature {
 	return signature
 }
 
-// NewWithSigniture is the same as New but injects the signature
+// NewWithSignature is the same as New but injects the signature
 func NewWithSignature(taskFunc interface{}, signature *Signature) (*Task, error) {
 	args := signature.Args
 	ctx := context.Background()

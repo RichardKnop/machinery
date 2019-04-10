@@ -108,7 +108,7 @@ func TestTaskCallWithContext(t *testing.T) {
 	assert.Equal(t, math.Pi, taskResults[0].Value)
 }
 
-func TestTaskCallWithSignitureInContext(t *testing.T) {
+func TestTaskCallWithSignatureInContext(t *testing.T) {
 	t.Parallel()
 
 	f := func(c context.Context) (interface{}, error) {
