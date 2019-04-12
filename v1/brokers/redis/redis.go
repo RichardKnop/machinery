@@ -92,8 +92,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.stopReceivingChan:
 				return
-			default:
-				<-pool
+			case <-pool:
 				task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
 				//TODO: should this error be ignored?
 				if len(task) > 0 {
