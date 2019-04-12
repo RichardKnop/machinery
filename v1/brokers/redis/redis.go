@@ -52,6 +52,10 @@ func New(cnf *config.Config, host, password, socketPath string, db int) iface.Br
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
+	if concurrency < 1 {
+		concurrency = 1
+	}
+
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
 
 	conn := b.open()
