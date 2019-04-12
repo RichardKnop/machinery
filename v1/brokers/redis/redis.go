@@ -28,16 +28,15 @@ type Broker struct {
 	password          string
 	db                int
 	pool              *redis.Pool
-	poolOnce          sync.Once
 	stopReceivingChan chan int
 	stopDelayedChan   chan int
 	processingWG      sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
 	receivingWG       sync.WaitGroup
 	delayedWG         sync.WaitGroup
 	// If set, path to a socket file overrides hostname
-	socketPath  string
-	redsync     *redsync.Redsync
-	redsyncOnce sync.Once
+	socketPath string
+	redsync    *redsync.Redsync
+	redisOnce  sync.Once
 }
 
 // New creates new Broker instance
@@ -374,11 +373,8 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 
 // open returns or creates instance of Redis connection
 func (b *Broker) open() redis.Conn {
-	b.poolOnce.Do(func() {
+	b.redisOnce.Do(func() {
 		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
-	})
-
-	b.redsyncOnce.Do(func() {
 		b.redsync = redsync.New([]redsync.Pool{b.pool})
 	})
 
