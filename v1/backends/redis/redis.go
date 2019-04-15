@@ -135,7 +135,7 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 		return false, err
 	}
 
-	return true, nil
+	return true, b.setExpirationTime(groupUUID)
 }
 
 func (b *Backend) mergeNewTaskState(newState *tasks.TaskState) {
