@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
@@ -25,6 +26,7 @@ type Backend struct {
 	// If set, path to a socket file overrides hostname
 	socketPath string
 	redsync    *redsync.Redsync
+	redisOnce  sync.Once
 	common.RedisConnector
 }
 
@@ -328,12 +330,9 @@ func (b *Backend) setExpirationTime(key string) error {
 
 // open returns or creates instance of Redis connection
 func (b *Backend) open() redis.Conn {
-	if b.pool == nil {
+	b.redisOnce.Do(func() {
 		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
-	}
-	if b.redsync == nil {
-		var pools = []redsync.Pool{b.pool}
-		b.redsync = redsync.New(pools)
-	}
+		b.redsync = redsync.New([]redsync.Pool{b.pool})
+	})
 	return b.pool.Get()
 }
