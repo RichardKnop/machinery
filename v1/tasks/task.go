@@ -26,6 +26,50 @@ type Task struct {
 	Args       []reflect.Value
 }
 
+type signatureCtxType struct{}
+
+var signatureCtx signatureCtxType
+
+// SignatureFromContext gets the signature from the context
+func SignatureFromContext(ctx context.Context) *Signature {
+	if ctx == nil {
+		return nil
+	}
+
+	v := ctx.Value(signatureCtx)
+	if v == nil {
+		return nil
+	}
+
+	signature, _ := v.(*Signature)
+	return signature
+}
+
+// NewWithSignature is the same as New but injects the signature
+func NewWithSignature(taskFunc interface{}, signature *Signature) (*Task, error) {
+	args := signature.Args
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, signatureCtx, signature)
+	task := &Task{
+		TaskFunc: reflect.ValueOf(taskFunc),
+		Context:  ctx,
+	}
+
+	taskFuncType := reflect.TypeOf(taskFunc)
+	if taskFuncType.NumIn() > 0 {
+		arg0Type := taskFuncType.In(0)
+		if IsContextType(arg0Type) {
+			task.UseContext = true
+		}
+	}
+
+	if err := task.ReflectArgs(args); err != nil {
+		return nil, fmt.Errorf("Reflect task args error: %s", err)
+	}
+
+	return task, nil
+}
+
 // New tries to use reflection to convert the function and arguments
 // into a reflect.Value and prepare it for invocation
 func New(taskFunc interface{}, args []Arg) (*Task, error) {

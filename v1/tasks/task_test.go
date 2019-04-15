@@ -97,9 +97,30 @@ func TestTaskCallWithContext(t *testing.T) {
 
 	f := func(c context.Context) (interface{}, error) {
 		assert.NotNil(t, c)
+		assert.Nil(t, tasks.SignatureFromContext(c))
 		return math.Pi, nil
 	}
 	task, err := tasks.New(f, []tasks.Arg{})
+	assert.NoError(t, err)
+	taskResults, err := task.Call()
+	assert.NoError(t, err)
+	assert.Equal(t, "float64", taskResults[0].Type)
+	assert.Equal(t, math.Pi, taskResults[0].Value)
+}
+
+func TestTaskCallWithSignatureInContext(t *testing.T) {
+	t.Parallel()
+
+	f := func(c context.Context) (interface{}, error) {
+		assert.NotNil(t, c)
+		signature := tasks.SignatureFromContext(c)
+		assert.NotNil(t, signature)
+		assert.Equal(t, "foo", signature.Name)
+		return math.Pi, nil
+	}
+	signature, err := tasks.NewSignature("foo", []tasks.Arg{})
+	assert.NoError(t, err)
+	task, err := tasks.NewWithSignature(f, signature)
 	assert.NoError(t, err)
 	taskResults, err := task.Call()
 	assert.NoError(t, err)
