@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -367,7 +366,9 @@ func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) erro
 
 // Returns true if the worker uses AMQP backend
 func (worker *Worker) hasAMQPBackend() bool {
-	_, ok := worker.server.GetBackend().(*amqp.Backend)
+	_, ok := worker.server.GetBackend().(interface {
+		IsAMQP()
+	})
 	return ok
 }
 

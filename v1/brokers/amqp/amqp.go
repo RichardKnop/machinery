@@ -11,6 +11,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
+	"github.com/RichardKnop/machinery/v1/common/commonamqp"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -31,7 +32,7 @@ type AMQPConnection struct {
 // Broker represents an AMQP broker
 type Broker struct {
 	common.Broker
-	common.AMQPConnector
+	commonamqp.AMQPConnector
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
 
 	connections      map[string]*AMQPConnection
@@ -40,7 +41,7 @@ type Broker struct {
 
 // New creates new Broker instance
 func New(cnf *config.Config) iface.Broker {
-	return &Broker{Broker: common.NewBroker(cnf), AMQPConnector: common.AMQPConnector{}, connections: make(map[string]*AMQPConnection)}
+	return &Broker{Broker: common.NewBroker(cnf), AMQPConnector: commonamqp.AMQPConnector{}, connections: make(map[string]*AMQPConnection)}
 }
 
 // StartConsuming enters a loop and waits for incoming messages
@@ -421,4 +422,13 @@ func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
 	}
 
 	s.RoutingKey = b.GetConfig().DefaultQueue
+}
+
+func init() {
+	iface.BrokerFactories["amqp://"] = func(cnf *config.Config) (iface.Broker, error) {
+		return New(cnf), nil
+	}
+	iface.BrokerFactories["amqps://"] = func(cnf *config.Config) (iface.Broker, error) {
+		return New(cnf), nil
+	}
 }

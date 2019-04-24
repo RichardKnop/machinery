@@ -9,6 +9,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
+	"github.com/RichardKnop/machinery/v1/common/commonredis"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -27,7 +28,7 @@ type Backend struct {
 	socketPath string
 	redsync    *redsync.Redsync
 	redisOnce  sync.Once
-	common.RedisConnector
+	commonredis.RedisConnector
 }
 
 // New creates Backend instance
@@ -335,4 +336,23 @@ func (b *Backend) open() redis.Conn {
 		b.redsync = redsync.New([]redsync.Pool{b.pool})
 	})
 	return b.pool.Get()
+}
+
+func init() {
+	iface.BackendFactories["redis://"] = func(cnf *config.Config) (iface.Backend, error) {
+		redisHost, redisPassword, redisDB, err := common.ParseRedisURL(cnf.ResultBackend)
+		if err != nil {
+			return nil, err
+		}
+
+		return New(cnf, redisHost, redisPassword, "", redisDB), nil
+	}
+	iface.BackendFactories["redis+socket://"] = func(cnf *config.Config) (iface.Backend, error) {
+		redisSocket, redisPassword, redisDB, err := common.ParseRedisSocketURL(cnf.ResultBackend)
+		if err != nil {
+			return nil, err
+		}
+
+		return redisbackend.New(cnf, "", redisPassword, redisSocket, redisDB), nil
+	}
 }

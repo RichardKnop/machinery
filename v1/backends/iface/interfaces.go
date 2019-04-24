@@ -1,6 +1,11 @@
 package iface
 
 import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
@@ -25,4 +30,22 @@ type Backend interface {
 	IsAMQP() bool
 	PurgeState(taskUUID string) error
 	PurgeGroupMeta(groupUUID string) error
+}
+
+var BackendFactories = map[string]func(*config.Config) (Backend, error){}
+
+// BackendFactory creates a new object of backends.Interface
+// Currently supported backends are AMQP/S and Memcache
+func BackendFactory(cnf *config.Config) (Backend, error) {
+	if cnf.ResultBackend == "" {
+		return nil, errors.New("Result backend required")
+	}
+
+	for prefix, create := range BackendFactories {
+		if strings.HasPrefix(cnf.ResultBackend, prefix) {
+			return create(cnf)
+		}
+	}
+
+	return nil, fmt.Errorf("Factory failed with result backend: %v", cnf.ResultBackend)
 }

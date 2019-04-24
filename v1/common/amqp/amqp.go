@@ -1,4 +1,4 @@
-package common
+package commonamqp
 
 import (
 	"crypto/tls"

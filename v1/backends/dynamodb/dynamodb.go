@@ -27,11 +27,14 @@ type Backend struct {
 
 // New creates a Backend instance
 func New(cnf *config.Config) iface.Backend {
+	return NewWith(cnf, nil)
+}
+
+func NewWith(cnf *config.Config, client dynamodbiface.DynamoDBAPI) iface.Backend {
 	backend := &Backend{Backend: common.NewBackend(cnf), cnf: cnf}
 
-	if cnf.DynamoDB != nil && cnf.DynamoDB.Client != nil {
-		backend.client = cnf.DynamoDB.Client
-	} else {
+	backend.client = client
+	if backend.client == nil {
 		sess := session.Must(session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable,
 		}))
@@ -509,4 +512,10 @@ func (b *Backend) tableExists(tableName string, tableNames []*string) bool {
 		}
 	}
 	return false
+}
+
+func init() {
+	iface.BackendFactories["https://dynamodb"] = func(cnf *config.Config) (iface.Backend, error) {
+		return New(cnf), nil
+	}
 }

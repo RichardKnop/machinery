@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -39,11 +40,15 @@ type Broker struct {
 
 // New creates new Broker instance
 func New(cnf *config.Config) iface.Broker {
-	b := &Broker{Broker: common.NewBroker(cnf)}
-	if cnf.SQS != nil && cnf.SQS.Client != nil {
-		// Use provided *SQS client
-		b.service = cnf.SQS.Client
-	} else {
+	return NewWith(cnf, nil)
+}
+
+func NewWith(cnf *config.Config, service sqsiface.SQSAPI) iface.Broker {
+	b := &Broker{
+		Broker:  common.NewBroker(cnf),
+		service: service,
+	}
+	if b.service == nil {
 		// Initialize a session that the SDK will use to load credentials from the shared credentials file, ~/.aws/credentials.
 		// See details on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
 		// Also, env AWS_REGION is also required
@@ -358,4 +363,24 @@ func (b *Broker) getQueueURL(taskProcessor iface.TaskProcessor) *string {
 	}
 
 	return aws.String(b.GetConfig().Broker + "/" + queueName)
+}
+
+func init() {
+	if _, ok := os.LookupEnv("DISABLE_STRICT_SQS_CHECK"); ok {
+		//disable SQS name check, so that users can use this with local simulated SQS
+		//where sql broker url might not start with https://sqs
+
+		//even when disabling strict SQS naming check, make sure its still a valid http URL
+		iface.BrokerFactories["https://"] = func(cnf *config.Config) (iface.Broker, error) {
+			return New(cnf), nil
+		}
+
+		iface.BrokerFactories["http://"] = func(cnf *config.Config) (iface.Broker, error) {
+			return New(cnf), nil
+		}
+	} else {
+		iface.BrokerFactories["https://sqs"] = func(cnf *config.Config) (iface.Broker, error) {
+			return New(cnf), nil
+		}
+	}
 }
