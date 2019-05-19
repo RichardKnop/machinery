@@ -21,10 +21,15 @@ func init() {
 		return
 	}
 
+	amqp2URL := os.Getenv("AMQP2_URL")
+	if amqp2URL == "" {
+		amqp2URL = amqpURL
+	}
+
 	amqpConfig = &config.Config{
 		Broker:        amqpURL,
 		DefaultQueue:  "test_queue",
-		ResultBackend: amqpURL,
+		ResultBackend: amqp2URL,
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",
