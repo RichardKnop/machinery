@@ -199,7 +199,8 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 		}
 	}
 
-	connection, err := b.GetOrOpenConnection(signature.RoutingKey,
+	connection, err := b.GetOrOpenConnection(
+		b.GetConfig().DefaultQueue,
 		b.GetConfig().AMQP.BindingKey, // queue binding key
 		nil,                           // exchange declare args
 		nil,                           // queue declare args
