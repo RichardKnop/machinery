@@ -14,7 +14,7 @@ import (
 
 const (
 	// DefaultResultsExpireIn is a default time used to expire task states and group metadata from the backend
-	DefaultResultsExpireIn = 24 * 3600
+	DefaultResultsExpireIn = 3600
 )
 
 var (
