@@ -390,6 +390,10 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 	return nil
 }
 
+func (b *Broker) isDirectExchange() bool {
+	return b.GetConfig().AMQP != nil && b.GetConfig().AMQP.ExchangeType == "direct"
+}
+
 // AdjustRoutingKey makes sure the routing key is correct.
 // If the routing key is an empty string:
 // a) set it to binding key for direct exchange type
@@ -399,7 +403,7 @@ func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
 		return
 	}
 
-	if b.GetConfig().AMQP != nil && b.GetConfig().AMQP.ExchangeType == "direct" {
+	if b.isDirectExchange() {
 		// The routing algorithm behind a direct exchange is simple - a message goes
 		// to the queues whose binding key exactly matches the routing key of the message.
 		s.RoutingKey = b.GetConfig().AMQP.BindingKey
