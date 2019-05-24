@@ -199,11 +199,18 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 		}
 	}
 
+	queue := b.GetConfig().DefaultQueue
+	bindingKey := b.GetConfig().AMQP.BindingKey // queue binding key
+	if b.isDirectExchange() {
+		queue = signature.RoutingKey
+		bindingKey = signature.RoutingKey
+	}
+
 	connection, err := b.GetOrOpenConnection(
-		b.GetConfig().DefaultQueue,
-		b.GetConfig().AMQP.BindingKey, // queue binding key
-		nil,                           // exchange declare args
-		nil,                           // queue declare args
+		queue,
+		bindingKey, // queue binding key
+		nil,        // exchange declare args
+		nil,        // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
