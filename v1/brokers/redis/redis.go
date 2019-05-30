@@ -138,7 +138,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		}
 	}()
 
-	if err := b.consume(deliveries, pool, concurrency, taskProcessor); err != nil {
+	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
 		return b.GetRetry(), err
 	}
 
@@ -231,14 +231,27 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *Broker) consume(deliveries <-chan []byte, pool chan struct{}, concurrency int, taskProcessor iface.TaskProcessor) error {
+func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor) error {
 	errorsChan := make(chan error, concurrency*2)
+	pool := make(chan struct{}, concurrency)
+
+	// init pool for Worker tasks execution, as many slots as Worker concurrency param
+	go func() {
+		for i := 0; i < concurrency; i++ {
+			pool <- struct{}{}
+		}
+	}()
 
 	for {
 		select {
 		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
+			if concurrency > 0 {
+				// get execution slot from pool (blocks until one is available)
+				<-pool
+			}
+
 			b.processingWG.Add(1)
 
 			// Consume the task inside a goroutine so multiple tasks
@@ -249,6 +262,11 @@ func (b *Broker) consume(deliveries <-chan []byte, pool chan struct{}, concurren
 				}
 
 				b.processingWG.Done()
+
+				if concurrency > 0 {
+					// give slot back to pool
+					pool <- struct{}{}
+				}
 			}()
 		case <-b.Broker.GetStopChan():
 			return nil
