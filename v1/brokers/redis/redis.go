@@ -95,6 +95,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 			select {
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.stopReceivingChan:
+				close(deliveries)
 				return
 			case <-pool:
 				task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
@@ -246,7 +247,10 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 		select {
 		case err := <-errorsChan:
 			return err
-		case d := <-deliveries:
+		case d, open := <-deliveries:
+			if !open {
+				return nil
+			}
 			if concurrency > 0 {
 				// get execution slot from pool (blocks until one is available)
 				<-pool
@@ -268,8 +272,6 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 					pool <- struct{}{}
 				}
 			}()
-		case <-b.Broker.GetStopChan():
-			return nil
 		}
 	}
 }
