@@ -30,7 +30,8 @@ type Broker struct {
 	pool              *redis.Pool
 	stopReceivingChan chan int
 	stopDelayedChan   chan int
-	processingWG      sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
+	consumingWG       sync.WaitGroup // wait group to make sure whole consumption completes
+	processingWG      sync.WaitGroup // use wait group to make sure task processing completes
 	receivingWG       sync.WaitGroup
 	delayedWG         sync.WaitGroup
 	// If set, path to a socket file overrides hostname
@@ -52,6 +53,9 @@ func New(cnf *config.Config, host, password, socketPath string, db int) iface.Br
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
+	b.consumingWG.Add(1)
+	defer b.consumingWG.Done()
+
 	if concurrency < 1 {
 		concurrency = 1
 	}
@@ -163,8 +167,8 @@ func (b *Broker) StopConsuming() {
 
 	b.Broker.StopConsuming()
 
-	// Waiting for any tasks being processed to finish
-	b.processingWG.Wait()
+	// Waiting for consumption to finish
+	b.consumingWG.Wait()
 
 	if b.pool != nil {
 		b.pool.Close()
