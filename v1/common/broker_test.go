@@ -70,10 +70,5 @@ func TestStopConsuming(t *testing.T) {
 		default:
 			assert.Fail(t, "still blocking")
 		}
-		select {
-		case <-broker.GetRetryStopChan():
-		default:
-			assert.Fail(t, "still blocking")
-		}
 	})
 }
