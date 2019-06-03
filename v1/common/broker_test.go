@@ -54,3 +54,24 @@ func TestGetRegisteredTaskNames(t *testing.T) {
 	broker.SetRegisteredTaskNames(fooTasks)
 	assert.Equal(t, fooTasks, broker.GetRegisteredTaskNames())
 }
+
+func TestStopConsuming(t *testing.T) {
+	t.Parallel()
+
+	t.Run("stop consuming", func(t *testing.T) {
+		broker := common.NewBroker(&config.Config{
+			DefaultQueue: "queue",
+		})
+		broker.StopConsuming()
+		select {
+		case <-broker.GetStopChan():
+		default:
+			assert.Fail(t, "still blocking")
+		}
+		select {
+		case <-broker.GetRetryStopChan():
+		default:
+			assert.Fail(t, "still blocking")
+		}
+	})
+}
