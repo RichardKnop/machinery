@@ -24,16 +24,13 @@ var redisDelayedTasksKey = "delayed_tasks"
 type Broker struct {
 	common.Broker
 	common.RedisConnector
-	host              string
-	password          string
-	db                int
-	pool              *redis.Pool
-	stopReceivingChan chan int
-	stopDelayedChan   chan int
-	consumingWG       sync.WaitGroup // wait group to make sure whole consumption completes
-	processingWG      sync.WaitGroup // use wait group to make sure task processing completes
-	receivingWG       sync.WaitGroup
-	delayedWG         sync.WaitGroup
+	host         string
+	password     string
+	db           int
+	pool         *redis.Pool
+	consumingWG  sync.WaitGroup // wait group to make sure whole consumption completes
+	processingWG sync.WaitGroup // use wait group to make sure task processing completes
+	delayedWG    sync.WaitGroup
 	// If set, path to a socket file overrides hostname
 	socketPath string
 	redsync    *redsync.Redsync
@@ -72,12 +69,6 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		return b.GetRetry(), err
 	}
 
-	// Channels and wait groups used to properly close down goroutines
-	b.stopReceivingChan = make(chan int)
-	b.stopDelayedChan = make(chan int)
-	b.receivingWG.Add(1)
-	b.delayedWG.Add(1)
-
 	// Channel to which we will push tasks ready for processing by worker
 	deliveries := make(chan []byte, concurrency)
 	pool := make(chan struct{}, concurrency)
@@ -91,14 +82,13 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	// If the message is valid and can be unmarshaled into a proper structure
 	// we send it to the deliveries channel
 	go func() {
-		defer b.receivingWG.Done()
 
 		log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
 		for {
 			select {
 			// A way to stop this goroutine from b.StopConsuming
-			case <-b.stopReceivingChan:
+			case <-b.GetStopChan():
 				close(deliveries)
 				return
 			case <-pool:
@@ -115,13 +105,14 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	// A goroutine to watch for delayed tasks and push them to deliveries
 	// channel for consumption by the worker
+	b.delayedWG.Add(1)
 	go func() {
 		defer b.delayedWG.Done()
 
 		for {
 			select {
 			// A way to stop this goroutine from b.StopConsuming
-			case <-b.stopDelayedChan:
+			case <-b.GetStopChan():
 				return
 			default:
 				task, err := b.nextDelayedTask(redisDelayedTasksKey)
@@ -155,18 +146,9 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 // StopConsuming quits the loop
 func (b *Broker) StopConsuming() {
-	// Stop the receiving goroutine
-	b.stopReceivingChan <- 1
-	// Waiting for the receiving goroutine to have stopped
-	b.receivingWG.Wait()
-
-	// Stop the delayed tasks goroutine
-	b.stopDelayedChan <- 1
+	b.Broker.StopConsuming()
 	// Waiting for the delayed tasks goroutine to have stopped
 	b.delayedWG.Wait()
-
-	b.Broker.StopConsuming()
-
 	// Waiting for consumption to finish
 	b.consumingWG.Wait()
 
