@@ -3,6 +3,7 @@ package common_test
 import (
 	"testing"
 
+	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -62,6 +63,7 @@ func TestStopConsuming(t *testing.T) {
 		broker := common.NewBroker(&config.Config{
 			DefaultQueue: "queue",
 		})
+		broker.StartConsuming("", 1, &machinery.Worker{})
 		broker.StopConsuming()
 		select {
 		case <-broker.GetStopChan():
