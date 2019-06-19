@@ -62,7 +62,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		false,                           // queue delete when unused
 		b.GetConfig().AMQP.BindingKey,   // queue binding key
 		nil,                             // exchange declare args
-		nil,                             // queue declare args
+		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
@@ -210,7 +210,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 		queue,
 		bindingKey, // queue binding key
 		nil,        // exchange declare args
-		nil,        // queue declare args
+		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {

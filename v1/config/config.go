@@ -70,10 +70,14 @@ type Config struct {
 // QueueBindingArgs arguments which are used when binding to the exchange
 type QueueBindingArgs map[string]interface{}
 
+// QueueDeclareArgs arguments which are used when declaring a queue
+type QueueDeclareArgs map[string]interface{}
+
 // AMQPConfig wraps RabbitMQ related configuration
 type AMQPConfig struct {
 	Exchange         string           `yaml:"exchange" envconfig:"AMQP_EXCHANGE"`
 	ExchangeType     string           `yaml:"exchange_type" envconfig:"AMQP_EXCHANGE_TYPE"`
+	QueueDeclareArgs QueueDeclareArgs `yaml:"queue_declare_args" envconfig:"AMQP_QUEUE_DECLARE_ARGS"`
 	QueueBindingArgs QueueBindingArgs `yaml:"queue_binding_args" envconfig:"AMQP_QUEUE_BINDING_ARGS"`
 	BindingKey       string           `yaml:"binding_key" envconfig:"AMQP_BINDING_KEY"`
 	PrefetchCount    int              `yaml:"prefetch_count" envconfig:"AMQP_PREFETCH_COUNT"`
