@@ -229,6 +229,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 			Headers:      amqp.Table(signature.Headers),
 			ContentType:  "application/json",
 			Body:         msg,
+			Priority:     signature.Priority,
 			DeliveryMode: amqp.Persistent,
 		},
 	); err != nil {

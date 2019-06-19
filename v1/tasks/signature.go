@@ -51,6 +51,7 @@ type Signature struct {
 	GroupTaskCount int
 	Args           []Arg
 	Headers        Headers
+	Priority       uint8
 	Immutable      bool
 	RetryCount     int
 	RetryTimeout   int
