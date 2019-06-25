@@ -217,7 +217,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
-		return errors.Wrap(err, "Failed to get a connection")
+		return errors.Wrapf(err, "Failed to get a connection for queue %s", queue)
 	}
 
 	channel := connection.channel
@@ -235,7 +235,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 			DeliveryMode: amqp.Persistent,
 		},
 	); err != nil {
-		return errors.Wrap(err, "Failed to get publish task")
+		return errors.Wrap(err, "Failed to publish task")
 	}
 
 	confirmed := <-confirmsChan
