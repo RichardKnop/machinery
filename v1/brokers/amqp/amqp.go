@@ -367,7 +367,7 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 		b.GetConfig().AMQP.ExchangeType, // exchange type
 		queueName,                       // queue name
 		true,                            // queue durable
-		false,                           // queue delete when unused
+		b.GetConfig().AMQP.AutoDelete,   // queue delete when unused
 		queueName,                       // queue binding key
 		nil,                             // exchange declare args
 		declareQueueArgs,                // queue declare args
