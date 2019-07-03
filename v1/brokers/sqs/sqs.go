@@ -216,6 +216,7 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
 		return err
 	}
+	sig.SQSReceiptHandle = *delivery.Messages[0].ReceiptHandle
 
 	// If the task is not registered return an error
 	// and leave the message in the queue
