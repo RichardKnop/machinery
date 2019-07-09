@@ -126,8 +126,8 @@ func init() {
 	}
 }
 
-func (b *Broker) ConsumeForTest(deliveries <-chan *awssqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor) error {
-	return b.consume(deliveries, concurrency, taskProcessor)
+func (b *Broker) ConsumeForTest(deliveries <-chan *awssqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}) error {
+	return b.consume(deliveries, concurrency, taskProcessor, pool)
 }
 
 func (b *Broker) ConsumeOneForTest(delivery *awssqs.ReceiveMessageOutput, taskProcessor iface.TaskProcessor) error {
@@ -185,7 +185,6 @@ func (b *Broker) GetRetryStopChanForTest() chan int {
 func (b *Broker) GetQueueURLForTest(taskProcessor iface.TaskProcessor) *string {
 	return b.getQueueURL(taskProcessor)
 }
-
 
 func (b *Broker) GetCustomQueueURL(customQueue string) *string {
 	return aws.String(b.GetConfig().Broker + "/" + customQueue)

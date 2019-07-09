@@ -87,6 +87,7 @@ func TestPrivateFunc_consume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pool := make(chan struct{}, 0)
 	wk := server1.NewWorker("sms_worker", 0)
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	outputCopy := *receiveMessageOutput
@@ -94,7 +95,7 @@ func TestPrivateFunc_consume(t *testing.T) {
 	go func() { deliveries <- &outputCopy }()
 
 	// an infinite loop will be executed only when there is no error
-	err = testAWSSQSBroker.ConsumeForTest(deliveries, 0, wk)
+	err = testAWSSQSBroker.ConsumeForTest(deliveries, 0, wk, pool)
 	assert.NotNil(t, err)
 
 }
@@ -229,7 +230,6 @@ func TestPrivateFunc_deleteOne(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-
 func Test_CustomQueueName(t *testing.T) {
 	server1, err := machinery.NewServer(cnf)
 	if err != nil {
@@ -239,7 +239,6 @@ func Test_CustomQueueName(t *testing.T) {
 	wk := server1.NewWorker("test-worker", 0)
 	qURL := testAWSSQSBroker.GetQueueURLForTest(wk)
 	assert.Equal(t, qURL, testAWSSQSBroker.DefaultQueueURLForTest(), "")
-
 
 	wk2 := server1.NewCustomQueueWorker("test-worker", 0, "my-custom-queue")
 	qURL2 := testAWSSQSBroker.GetQueueURLForTest(wk2)
