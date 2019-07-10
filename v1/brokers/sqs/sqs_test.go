@@ -298,6 +298,4 @@ func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 		// call timed out
 		t.Fatal("task not processed in 2 seconds")
 	}
-	//assert.Equal(t, testResp, resp)
-
 }
