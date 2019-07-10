@@ -267,7 +267,6 @@ func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 	}
 	err = server1.RegisterTask("test-task", func(ctx context.Context) error {
 		output <- testResp
-		testAWSSQSBroker.StopConsuming()
 
 		return nil
 	})
@@ -278,8 +277,12 @@ func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 	wk := server1.NewWorker("sms_worker", 1)
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	outputCopy := *receiveMessageOutput
-	outputCopy.Messages = []*awssqs.Message{}
-	outputCopy.Messages = append(outputCopy.Messages, &awssqs.Message{MessageId: aws.String("test-sqs-msg1"), Body: aws.String(msg)})
+	outputCopy.Messages = []*awssqs.Message{
+		{
+			MessageId: aws.String("test-sqs-msg1"),
+			Body:      aws.String(msg),
+		},
+	}
 
 	go func() {
 		deliveries <- &outputCopy
@@ -287,15 +290,15 @@ func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 	}()
 
 	go func() {
-		testAWSSQSBroker.StartConsumingForTest("test", 1, wk)
 		err = testAWSSQSBroker.ConsumeForTest(deliveries, 1, wk, pool)
 	}()
 
 	select {
 	case resp := <-output:
 		assert.Equal(t, testResp, resp)
-	case <-time.After(2 * time.Second):
+
+	case <-time.After(10 * time.Second):
 		// call timed out
-		t.Fatal("task not processed in 2 seconds")
+		t.Fatal("task not processed in 10 seconds")
 	}
 }
