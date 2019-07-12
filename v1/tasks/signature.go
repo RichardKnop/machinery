@@ -59,6 +59,8 @@ type Signature struct {
 	ChordCallback  *Signature
 	//MessageGroupId for Broker, e.g. SQS
 	BrokerMessageGroupId string
+	//ReceiptHandle of SQS Message
+	SQSReceiptHandle string
 }
 
 // NewSignature creates a new task signature
