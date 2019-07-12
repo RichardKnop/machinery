@@ -12,6 +12,7 @@ require (
 	github.com/google/uuid v1.1.0
 	github.com/kelseyhightower/envconfig v1.3.0
 	github.com/opentracing/opentracing-go v1.0.2
+	github.com/pkg/errors v0.8.1
 	github.com/streadway/amqp v0.0.0-20190214183023-884228600bc9
 	github.com/stretchr/testify v1.3.0
 	github.com/stvp/tempredis v0.0.0-20181119212430-b82af8480203 // indirect

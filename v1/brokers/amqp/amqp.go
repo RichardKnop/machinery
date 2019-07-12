@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 )
 
@@ -140,7 +140,7 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 			queueBindingArgs,                // queue binding args
 		)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "Failed to connect to queue %s", queueName)
 		}
 
 		// Reconnect to the channel if it disconnects/errors out
@@ -148,6 +148,9 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 			select {
 			case err = <-conn.errorchan:
 				log.INFO.Printf("Error occured on queue: %s. Reconnecting", queueName)
+				b.connectionsMutex.Lock()
+				delete(b.connections, queueName)
+				b.connectionsMutex.Unlock()
 				_, err := b.GetOrOpenConnection(queueName, queueBindingKey, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs)
 				if err != nil {
 					log.ERROR.Printf("Failed to reopen queue: %s.", queueName)
@@ -214,7 +217,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Failed to get a connection for queue %s", queue)
 	}
 
 	channel := connection.channel
@@ -232,7 +235,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 			DeliveryMode: amqp.Persistent,
 		},
 	); err != nil {
-		return err
+		return errors.Wrap(err, "Failed to publish task")
 	}
 
 	confirmed := <-confirmsChan
