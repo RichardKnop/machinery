@@ -3,8 +3,10 @@ package machinery
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,6 +39,35 @@ func (worker *Worker) Launch() error {
 	return <-errorsChan
 }
 
+// RedactURL returns a redacted URL
+func RedactURL(urlstring string) string {
+	u, err := url.Parse(urlstring)
+	if err != nil {
+		log.INFO.Printf("Error while Parsing url", err)
+		return urlstring
+	}
+	if u.User == nil {
+		return urlstring
+	}
+	username := u.User.Username()
+	password, _ := u.User.Password()
+
+	mid := len(username) / 2
+	if len(username)%2 != 0 {
+		mid += 1
+	}
+	username = username[:mid] + strings.Join([]string{strings.Repeat("+", len(username)-mid)}, "")
+
+	mid = len(password) / 2
+	if len(password)%2 != 0 {
+		mid += 1
+	}
+	password = password[:mid] + strings.Join([]string{strings.Repeat("+", len(password)-mid)}, "")
+	u.User = url.UserPassword(username, password)
+
+	return u.String()
+}
+
 // LaunchAsync is a non blocking version of Launch
 func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 	cnf := worker.server.GetConfig()
@@ -44,13 +75,13 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 
 	// Log some useful information about worker configuration
 	log.INFO.Printf("Launching a worker with the following settings:")
-	log.INFO.Printf("- Broker: %s", cnf.Broker)
+	log.INFO.Printf("- Broker: %s", RedactURL(cnf.Broker))
 	if worker.Queue == "" {
 		log.INFO.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	} else {
 		log.INFO.Printf("- CustomQueue: %s", worker.Queue)
 	}
-	log.INFO.Printf("- ResultBackend: %s", cnf.ResultBackend)
+	log.INFO.Printf("- ResultBackend: %s", RedactURL(cnf.ResultBackend))
 	if cnf.AMQP != nil {
 		log.INFO.Printf("- AMQP: %s", cnf.AMQP.Exchange)
 		log.INFO.Printf("  - Exchange: %s", cnf.AMQP.Exchange)
