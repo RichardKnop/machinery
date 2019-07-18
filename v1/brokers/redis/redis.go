@@ -71,12 +71,6 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	// Channel to which we will push tasks ready for processing by worker
 	deliveries := make(chan []byte, concurrency)
-	pool := make(chan struct{}, concurrency)
-
-	// initialize worker pool with maxWorkers workers
-	for i := 0; i < concurrency; i++ {
-		pool <- struct{}{}
-	}
 
 	// A receiving goroutine keeps popping messages from the queue by BLPOP
 	// If the message is valid and can be unmarshaled into a proper structure
@@ -91,14 +85,12 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 			case <-b.GetStopChan():
 				close(deliveries)
 				return
-			case <-pool:
+			default:
 				task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
 				//TODO: should this error be ignored?
 				if len(task) > 0 {
 					deliveries <- task
 				}
-
-				pool <- struct{}{}
 			}
 		}
 	}()
@@ -291,7 +283,7 @@ func (b *Broker) nextTask(queue string) (result []byte, err error) {
 	conn := b.open()
 	defer conn.Close()
 
-	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, 1000))
+	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, b.GetConfig().Redis.NormalTasksPollPeriod))
 	if err != nil {
 		return []byte{}, err
 	}

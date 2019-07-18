@@ -126,6 +126,9 @@ type RedisConfig struct {
 
 	// DelayedTasksPollPeriod specifies the period in milliseconds when polling redis for delayed tasks
 	DelayedTasksPollPeriod int `yaml:"delayed_tasks_poll_period" envconfig:"REDIS_DELAYED_TASKS_POLL_PERIOD"`
+
+	// NormalTasksPollPeriod specifies the period in milliseconds when polling redis for normal tasks
+	NormalTasksPollPeriod int `yaml:"normal_tasks_poll_period" envconfig:"REDIS_NORMAL_TASKS_POLL_PERIOD"`
 }
 
 // GCPPubSubConfig wraps GCP PubSub related configuration
