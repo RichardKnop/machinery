@@ -283,7 +283,12 @@ func (b *Broker) nextTask(queue string) (result []byte, err error) {
 	conn := b.open()
 	defer conn.Close()
 
-	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, b.GetConfig().Redis.NormalTasksPollPeriod))
+	normalTasksPollPeriod := 1000
+	if b.GetConfig().Redis != nil && b.GetConfig().Redis.NormalTasksPollPeriod != 0 {
+		normalTasksPollPeriod = b.GetConfig().Redis.NormalTasksPollPeriod
+	}
+
+	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, normalTasksPollPeriod))
 	if err != nil {
 		return []byte{}, err
 	}
