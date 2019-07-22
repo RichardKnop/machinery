@@ -36,7 +36,7 @@ func TestRedisRedis_NormalTasksPollPeriod(t *testing.T) {
 		t.Skip("REDIS_URL is not defined")
 	}
 
-	normalTasksPollPeriod := 5
+	normalTasksPollPeriod := 1
 
 	// Redis broker, Redis result backend
 	var server = testSetup(&config.Config{
@@ -57,7 +57,7 @@ func TestRedisRedis_NormalTasksPollPeriod(t *testing.T) {
 	errorChan := make(chan error)
 	worker.LaunchAsync(errorChan)
 
-	testAll(server, t)
+	testSendTask(server, t)
 
 	before := time.Now()
 	worker.Quit()
