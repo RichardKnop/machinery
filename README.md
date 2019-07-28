@@ -104,6 +104,8 @@ For example:
 
 1. `amqp://guest:guest@localhost:5672`
 
+AMQP also supports multiples brokers urls. You need to specify the URL separator in the `MultipleBrokerSeparator` field.
+
 ##### Redis
 
 Use Redis URL in one of these formats:
