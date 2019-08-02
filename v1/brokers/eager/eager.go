@@ -10,6 +10,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/RichardKnop/machinery/v1/config"
 )
 
 // Broker represents an "eager" in-memory broker
@@ -70,4 +71,10 @@ func (eagerBroker *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, er
 // AssignWorker assigns a worker to the eager broker
 func (eagerBroker *Broker) AssignWorker(w iface.TaskProcessor) {
 	eagerBroker.worker = w
+}
+
+func init() {
+	iface.BrokerFactories["eager"] = func(cnf *config.Config) (iface.Broker, error) {
+		return New(), nil
+	}
 }

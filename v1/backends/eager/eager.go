@@ -208,3 +208,9 @@ func (b *Backend) updateState(s *tasks.TaskState) error {
 	b.tasks[s.TaskUUID] = msg
 	return nil
 }
+
+func init() {
+	iface.BackendFactories["eager"] = func(cnf *config.Config) (iface.Backend, error) {
+		return New(), nil
+	}
+}

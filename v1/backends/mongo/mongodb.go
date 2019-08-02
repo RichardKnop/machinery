@@ -337,3 +337,11 @@ func (b *Backend) createMongoIndexes(database string) error {
 
 	return err
 }
+
+func init() {
+	create := func(cnf *config.Config) (iface.Backend, error) {
+		return New(cnf)
+	}
+	iface.BackendFactories["mongodb://"] = create
+	iface.BackendFactories["mongodb+srv://"] = create
+}

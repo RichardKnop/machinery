@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -396,4 +397,30 @@ func getQueue(config *config.Config, taskProcessor iface.TaskProcessor) string {
 		return config.DefaultQueue
 	}
 	return customQueue
+}
+
+func init() {
+	iface.BrokerFactories["redis://"] = func(cnf *config.Config) (iface.Broker, error) {
+		parts := strings.Split(cnf.Broker, "redis://")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(
+				"Redis broker connection string should be in format redis://host:port, instead got %s",
+				cnf.Broker,
+			)
+		}
+
+		redisHost, redisPassword, redisDB, err := common.ParseRedisURL(cnf.Broker)
+		if err != nil {
+			return nil, err
+		}
+		return New(cnf, redisHost, redisPassword, "", redisDB), nil
+	}
+	iface.BrokerFactories["redis+socket://"] = func(cnf *config.Config) (iface.Broker, error) {
+		redisSocket, redisPassword, redisDB, err := common.ParseRedisSocketURL(cnf.Broker)
+		if err != nil {
+			return nil, err
+		}
+
+		return New(cnf, "", redisPassword, redisSocket, redisDB), nil
+	}
 }

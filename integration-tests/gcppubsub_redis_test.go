@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	machinery "github.com/RichardKnop/machinery/v1"
+	"github.com/RichardKnop/machinery/v1/brokers/gcppubsub"
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
@@ -64,7 +64,7 @@ func TestGCPPubSubRedis(t *testing.T) {
 		t.Skip("GCPPUBSUB_TOPIC is not defined")
 	}
 
-	_, subscriptionName, err := machinery.ParseGCPPubSubURL(pubsubURL)
+	_, subscriptionName, err := gcppubsub.ParseGCPPubSubURL(pubsubURL)
 	if err != nil {
 		t.Fatal(err)
 	}

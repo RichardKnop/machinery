@@ -22,6 +22,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
+	"github.com/RichardKnop/machinery/v1/common/commonamqp"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -31,17 +32,20 @@ import (
 // Backend represents an AMQP result backend
 type Backend struct {
 	common.Backend
-	common.AMQPConnector
+	commonamqp.AMQPConnector
 }
 
 // New creates Backend instance
 func New(cnf *config.Config) iface.Backend {
-	return &Backend{Backend: common.NewBackend(cnf), AMQPConnector: common.AMQPConnector{}}
+	return &Backend{Backend: common.NewBackend(cnf), AMQPConnector: commonamqp.AMQPConnector{}}
 }
 
 // InitGroup creates and saves a group meta data object
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
+}
+
+func (b *Backend) IsAMQP() {
 }
 
 // GroupCompleted returns true if all tasks in a group finished
@@ -390,4 +394,13 @@ func (b *Backend) markTaskCompleted(signature *tasks.Signature, taskState *tasks
 
 func amqmChordTriggeredQueue(groupUUID string) string {
 	return fmt.Sprintf("%s_chord_triggered", groupUUID)
+}
+
+func init() {
+	iface.BackendFactories["amqp://"] = func(cnf *config.Config) (iface.Backend, error) {
+		return New(cnf), nil
+	}
+	iface.BackendFactories["amqps://"] = func(cnf *config.Config) (iface.Backend, error) {
+		return New(cnf), nil
+	}
 }

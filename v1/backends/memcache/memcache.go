@@ -3,6 +3,8 @@ package memcache
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
@@ -289,4 +291,18 @@ func (b *Backend) getClient() *gomemcache.Client {
 		b.client = gomemcache.New(b.servers...)
 	}
 	return b.client
+}
+
+func init() {
+	iface.BackendFactories["memcache://"] = func(cnf *config.Config) (iface.Backend, error) {
+		parts := strings.Split(cnf.ResultBackend, "memcache://")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(
+				"Memcache result backend connection string should be in format memcache://server1:port,server2:port, instead got %s",
+				cnf.ResultBackend,
+			)
+		}
+		servers := strings.Split(parts[1], ",")
+		return New(cnf, servers), nil
+	}
 }

@@ -5,6 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+<<<<<<< HEAD
+=======
+	"strings"
+	"sync"
+>>>>>>> refact factory
 	"time"
 
 	"cloud.google.com/go/pubsub"
@@ -28,6 +33,10 @@ type Broker struct {
 
 // New creates new Broker instance
 func New(cnf *config.Config, projectID, subscriptionName string) (iface.Broker, error) {
+	return NewWith(cnf, projectID, subscriptionName, nil)
+}
+
+func NewWith(cnf *config.Config, projectID, subscriptionName string, client *pubsub.Client) (iface.Broker, error) {
 	b := &Broker{Broker: common.NewBroker(cnf), stopDone: make(chan struct{})}
 	b.subscriptionName = subscriptionName
 
@@ -37,17 +46,13 @@ func New(cnf *config.Config, projectID, subscriptionName string) (iface.Broker, 
 		b.MaxExtension = cnf.GCPPubSub.MaxExtension
 	}
 
-	if cnf.GCPPubSub != nil && cnf.GCPPubSub.Client != nil {
-		b.service = cnf.GCPPubSub.Client
-	} else {
+	b.service = client
+	if b.service == nil {
 		pubsubClient, err := pubsub.NewClient(ctx, projectID)
 		if err != nil {
 			return nil, err
 		}
 		b.service = pubsubClient
-		cnf.GCPPubSub = &config.GCPPubSubConfig{
-			Client: pubsubClient,
-		}
 	}
 
 	// Validate topic exists
@@ -193,4 +198,42 @@ func (b *Broker) consumeOne(delivery *pubsub.Message, taskProcessor iface.TaskPr
 
 	// Call Ack() after successfully consuming and processing the message
 	delivery.Ack()
+}
+
+func init() {
+	iface.BrokerFactories["gcppubsub://"] = func(cnf *config.Config) (iface.Broker, error) {
+		projectID, subscriptionName, err := ParseGCPPubSubURL(cnf.Broker)
+		if err != nil {
+			return nil, err
+		}
+		return New(cnf, projectID, subscriptionName)
+	}
+}
+
+// ParseGCPPubSubURL Parse GCP Pub/Sub URL
+// url: gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME
+func ParseGCPPubSubURL(url string) (string, string, error) {
+	parts := strings.Split(url, "gcppubsub://")
+	if parts[0] != "" {
+		return "", "", errors.New("No gcppubsub scheme found")
+	}
+
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
+	}
+
+	remainder := parts[1]
+
+	parts = strings.Split(remainder, "/")
+	if len(parts) == 2 {
+		if len(parts[0]) == 0 {
+			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
+		}
+		if len(parts[1]) == 0 {
+			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
+		}
+		return parts[0], parts[1], nil
+	}
+
+	return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
 }

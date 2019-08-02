@@ -4,3 +4,4 @@ _vendor-*
 .env
 .DS_Store
 dump.rdb
+*.exe
