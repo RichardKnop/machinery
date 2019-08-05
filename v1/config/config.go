@@ -61,7 +61,9 @@ type Config struct {
 	Redis           *RedisConfig     `yaml:"redis"`
 	GCPPubSub       *GCPPubSubConfig `yaml:"-" ignored:"true"`
 	MongoDB         *MongoDBConfig   `yamk:"-" ignored:"true"`
-	TLSConfig       *tls.Config
+	Kafka           *KafkaConfig     `yaml:"kafka"`
+
+	TLSConfig *tls.Config
 	// NoUnixSignals - when set disables signal handling in machinery
 	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
 	DynamoDB      *DynamoDBConfig `yaml:"dynamodb"`
@@ -138,6 +140,14 @@ type GCPPubSubConfig struct {
 type MongoDBConfig struct {
 	Client   *mongo.Client
 	Database string
+}
+
+// KafkaConfig represents config required to initialize Kafka consumer group.
+type KafkaConfig struct {
+	OffsetNewest bool     `yaml:"offset_newest" envconfig:"KAFKA_OFFSET_NEWEST"`
+	Group        string   `yaml:"group" envconfig:"KAFKA_GROUP"`
+	Addrs        []string `yaml:"addrs" envconfig:"KAFKA_ADDRS"`
+	ClientID     string   `yaml:"client_id" envconfig:"KAFKA_CLIENT_ID"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

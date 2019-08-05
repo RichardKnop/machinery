@@ -181,6 +181,23 @@ cnf := &config.Config{
 }
 ```
 
+##### Kafka
+
+`Broker` url is not applicable to Kafka broker so initialize worker with `config.KafaConfig`.
+
+```go
+cnf := &config.Config{
+  DefaultQueue:    "KAFKA_TOPIC_TO_LISTEN",
+  ResultBackend:   "YOUR_BACKEND_URL",
+  Kafka: &config.KafkaConfig{
+    Group:    "KAFKA_GROUP",  // Kafka consumer group
+    Addrs:    []string{"127.0.0.1:9092"}, // Kafka broker URLs
+    ClientID: "KAFKA_CLIENT_ID", // Optional
+    OffsetNewest: true, // Consume from newest if enabled
+  },
+}
+```
+
 #### DefaultQueue
 
 Default queue name, e.g. `machinery_tasks`.
@@ -599,18 +616,18 @@ If you configure a result backend, the task states and results will be persisted
 
 ```go
 const (
-	// StatePending - initial state of a task
-	StatePending = "PENDING"
-	// StateReceived - when task is received by a worker
-	StateReceived = "RECEIVED"
-	// StateStarted - when the worker starts processing the task
-	StateStarted = "STARTED"
-	// StateRetry - when failed task has been scheduled for retry
-	StateRetry = "RETRY"
-	// StateSuccess - when the task is processed successfully
-	StateSuccess = "SUCCESS"
-	// StateFailure - when processing of the task fails
-	StateFailure = "FAILURE"
+    // StatePending - initial state of a task
+    StatePending = "PENDING"
+    // StateReceived - when task is received by a worker
+    StateReceived = "RECEIVED"
+    // StateStarted - when the worker starts processing the task
+    StateStarted = "STARTED"
+    // StateRetry - when failed task has been scheduled for retry
+    StateRetry = "RETRY"
+    // StateSuccess - when the task is processed successfully
+    StateSuccess = "SUCCESS"
+    // StateFailure - when processing of the task fails
+    StateFailure = "FAILURE"
 )
 ```
 
