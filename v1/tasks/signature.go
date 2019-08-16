@@ -61,6 +61,9 @@ type Signature struct {
 	BrokerMessageGroupId string
 	//ReceiptHandle of SQS Message
 	SQSReceiptHandle string
+	// IgnoreWhenTaskNotRegistered auto removes the request when there is no handeler available
+	// When this is true it a task with no handeler will be ignored and not placed back in the database
+	IgnoreWhenTaskNotRegistered bool
 }
 
 // NewSignature creates a new task signature
