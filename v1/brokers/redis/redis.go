@@ -66,7 +66,15 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	_, err := conn.Do("PING")
 	if err != nil {
 		b.GetRetryFunc()(b.GetRetryStopChan())
-		return b.GetRetry(), err
+
+		// Return err if retry is still true.
+		// If retry is false, broker.StopConsuming() has been called and
+		// therefore Redis might have been stopped. Return nil exit
+		// StartConsuming()
+		if b.GetRetry() {
+			return b.GetRetry(), err
+		}
+		return b.GetRetry(), errs.ErrConsumerStopped
 	}
 
 	// Channel to which we will push tasks ready for processing by worker

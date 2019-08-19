@@ -1,6 +1,7 @@
 package errs
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -19,3 +20,6 @@ func (e ErrCouldNotUnmarshaTaskSignature) Error() string {
 func NewErrCouldNotUnmarshaTaskSignature(msg []byte, err error) ErrCouldNotUnmarshaTaskSignature {
 	return ErrCouldNotUnmarshaTaskSignature{msg: msg, reason: err.Error()}
 }
+
+// ErrConsumerStopped indicates that the operation is now illegal because of the consumer being stopped.
+var ErrConsumerStopped = errors.New("the server has been stopped")
