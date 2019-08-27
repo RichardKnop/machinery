@@ -39,7 +39,11 @@ type Broker struct {
 
 const (
 	// defaultClientID is Kafka consumer client id.
-	defaultClientID = "machinery"
+	defaultClientID   = "machinery"
+	compressionGZIP   = "gzip"
+	compressionLZ4    = "lz4"
+	compressionSnappy = "snappy"
+	compressionZSTD   = "zstd"
 )
 
 // New creates new Kafka broker instance.
@@ -62,6 +66,26 @@ func newProducer(cnf *config.KafkaConfig) (sarama.SyncProducer, error) {
 	config.Producer.Partitioner = sarama.NewRandomPartitioner
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
+	// Set compresion format and level.
+	if cnf.Compression != "" {
+		switch cnf.Compression {
+		case compressionGZIP:
+			config.Producer.Compression = sarama.CompressionGZIP
+		case compressionLZ4:
+			config.Producer.Compression = sarama.CompressionLZ4
+		case compressionSnappy:
+			config.Producer.Compression = sarama.CompressionSnappy
+		case compressionZSTD:
+			config.Producer.Compression = sarama.CompressionZSTD
+		default:
+			return nil, fmt.Errorf("unsupported compression format: %s. Supported formats are: %s, %s, %s, %s",
+				cnf.Compression, compressionGZIP, compressionLZ4, compressionSnappy, compressionZSTD)
+		}
+		if cnf.CompressionLevel != nil {
+			config.Producer.CompressionLevel = *cnf.CompressionLevel
+		}
+	}
+	config.Producer.Compression = sarama.CompressionSnappy
 	return sarama.NewSyncProducer(cnf.Addrs, config)
 }
 

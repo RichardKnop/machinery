@@ -190,10 +190,18 @@ cnf := &config.Config{
   DefaultQueue:    "KAFKA_TOPIC_TO_LISTEN",
   ResultBackend:   "YOUR_BACKEND_URL",
   Kafka: &config.KafkaConfig{
-    Group:    "KAFKA_GROUP",  // Kafka consumer group
-    Addrs:    []string{"127.0.0.1:9092"}, // Kafka broker URLs
-    ClientID: "KAFKA_CLIENT_ID", // Optional
-    OffsetNewest: true, // Consume from newest if enabled
+    // Kafka consumer group name.
+    Group:    "KAFKA_GROUP",
+    // Kafka broker URLs.
+    Addrs:    []string{"127.0.0.1:9092"},
+    // Client ID used by Kafka client (optional).
+    ClientID: "KAFKA_CLIENT_ID",
+    // Consume from newest if enabled, bydefault it consumes from oldest.
+    OffsetNewest: true,
+    // Set compression format (optional). Allowed values are `gzip`, `lz4`, `snappy`, `zstd`.
+    Compression: "gzip",
+    // Set compression level (optional).
+    CompressionLevel: 5,
   },
 }
 ```

@@ -148,6 +148,10 @@ type KafkaConfig struct {
 	Group        string   `yaml:"group" envconfig:"KAFKA_GROUP"`
 	Addrs        []string `yaml:"addrs" envconfig:"KAFKA_ADDRS"`
 	ClientID     string   `yaml:"client_id" envconfig:"KAFKA_CLIENT_ID"`
+	Compression  string   `yaml:"compression" envconfig:"KAFKA_COMPRESSION"`
+	// Its a pointer because we can check for nil value instead of zero.
+	// Zero can be a valid compression level.
+	CompressionLevel *int `yaml:"compression_level" envconfig:"KAFKA_COMPRESSION_LEVEL"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements
