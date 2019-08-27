@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -39,6 +40,7 @@ var (
 		"[]uint64":  reflect.TypeOf(make([]uint64, 0)),
 		"[]float32": reflect.TypeOf(make([]float32, 0)),
 		"[]float64": reflect.TypeOf(make([]float64, 0)),
+		"[]byte":    reflect.TypeOf(make([]byte, 0)),
 		"[]string":  reflect.TypeOf([]string{""}),
 	}
 
@@ -190,7 +192,19 @@ func reflectValues(valueType string, value interface{}) (reflect.Value, error) {
 	}
 
 	// Unsigned integers
-	if strings.HasPrefix(theType.String(), "[]uint") {
+	if strings.HasPrefix(theType.String(), "[]uint") || theType.String() == "[]byte" {
+
+		// Decode the base64 string if the value type is []uint8 or it's alias []byte
+		// See: https://golang.org/pkg/encoding/json/#Marshal
+		// > Array and slice values encode as JSON arrays, except that []byte encodes as a base64-encoded string
+		if reflect.TypeOf(value).String() == "string" {
+			output, err := base64.StdEncoding.DecodeString(value.(string))
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			value = output
+		}
+
 		uints := reflect.ValueOf(value)
 
 		theValue = reflect.MakeSlice(theType, uints.Len(), uints.Len())
@@ -291,11 +305,15 @@ func getUintValue(theType string, value interface{}) (uint64, error) {
 		return uint64(intVal), nil
 	}
 
-	n, ok := value.(uint64)
-	if !ok {
+	var n uint64
+	switch value.(type) {
+	case uint64:
+		n = value.(uint64)
+	case uint8:
+		n = uint64(value.(uint8))
+	default:
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
-
 	return n, nil
 }
 
