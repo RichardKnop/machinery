@@ -85,7 +85,9 @@ func newProducer(cnf *config.KafkaConfig) (sarama.SyncProducer, error) {
 			config.Producer.CompressionLevel = *cnf.CompressionLevel
 		}
 	}
-	config.Producer.Compression = sarama.CompressionSnappy
+	if cnf.MessageSize != 0 {
+		config.Producer.MaxMessageBytes = cnf.MessageSize
+	}
 	return sarama.NewSyncProducer(cnf.Addrs, config)
 }
 
@@ -108,6 +110,10 @@ func newConsumerGroup(cnf *config.KafkaConfig) sarama.ConsumerGroup {
 		config.Consumer.Offsets.Initial = sarama.OffsetNewest
 	} else {
 		config.Consumer.Offsets.Initial = sarama.OffsetOldest
+	}
+	// Set max consume size.
+	if cnf.MessageSize != 0 {
+		config.Consumer.Fetch.Max = int32(cnf.MessageSize)
 	}
 	// Create a new consumer group.
 	cGroup, err := sarama.NewConsumerGroup(cnf.Addrs, cnf.Group, config)

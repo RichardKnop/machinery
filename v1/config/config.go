@@ -155,6 +155,8 @@ type KafkaConfig struct {
 	// Its a pointer because we can check for nil value instead of zero.
 	// Zero can be a valid compression level.
 	CompressionLevel *int `yaml:"compression_level" envconfig:"KAFKA_COMPRESSION_LEVEL"`
+	// Max message size iin bytes. Used for both consumer and producer.
+	MessageSize int `yaml:"message_size" envconfig:"KAFKA_MESSAGE_SIZE"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements
