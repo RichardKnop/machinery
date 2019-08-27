@@ -66,7 +66,15 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	_, err := conn.Do("PING")
 	if err != nil {
 		b.GetRetryFunc()(b.GetRetryStopChan())
-		return b.GetRetry(), err
+
+		// Return err if retry is still true.
+		// If retry is false, broker.StopConsuming() has been called and
+		// therefore Redis might have been stopped. Return nil exit
+		// StartConsuming()
+		if b.GetRetry() {
+			return b.GetRetry(), err
+		}
+		return b.GetRetry(), errs.ErrConsumerStopped
 	}
 
 	// Channel to which we will push tasks ready for processing by worker
@@ -274,6 +282,8 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 	// If the task is not registered, we requeue it,
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(signature.Name) {
+		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery)
+
 		conn := b.open()
 		defer conn.Close()
 
@@ -291,7 +301,16 @@ func (b *Broker) nextTask(queue string) (result []byte, err error) {
 	conn := b.open()
 	defer conn.Close()
 
-	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, 1000))
+	pollPeriodMilliseconds := 1000 // default poll period for normal tasks
+	if b.GetConfig().Redis != nil {
+		configuredPollPeriod := b.GetConfig().Redis.NormalTasksPollPeriod
+		if configuredPollPeriod > 0 {
+			pollPeriodMilliseconds = configuredPollPeriod
+		}
+	}
+	pollPeriod := time.Duration(pollPeriodMilliseconds) * time.Millisecond
+
+	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriod.Seconds()))
 	if err != nil {
 		return []byte{}, err
 	}
@@ -326,7 +345,7 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 		reply interface{}
 	)
 
-	var pollPeriod = 500 // default poll period for delayed tasks
+	pollPeriod := 500 // default poll period for delayed tasks
 	if b.GetConfig().Redis != nil {
 		configuredPollPeriod := b.GetConfig().Redis.DelayedTasksPollPeriod
 		// the default period is 0, which bombards redis with requests, despite
