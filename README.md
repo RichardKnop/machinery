@@ -181,6 +181,31 @@ cnf := &config.Config{
 }
 ```
 
+##### Kafka
+
+`Broker` url is not applicable to Kafka broker so initialize worker with `config.KafaConfig`.
+
+```go
+cnf := &config.Config{
+  DefaultQueue:    "KAFKA_TOPIC_TO_LISTEN",
+  ResultBackend:   "YOUR_BACKEND_URL",
+  Kafka: &config.KafkaConfig{
+    // Kafka consumer group name.
+    Group:    "KAFKA_GROUP",
+    // Kafka broker URLs.
+    Addrs:    []string{"127.0.0.1:9092"},
+    // Client ID used by Kafka client (optional).
+    ClientID: "KAFKA_CLIENT_ID",
+    // Consume from newest if enabled, bydefault it consumes from oldest.
+    OffsetNewest: true,
+    // Set compression format (optional). Allowed values are `gzip`, `lz4`, `snappy`, `zstd`.
+    Compression: "gzip",
+    // Set compression level (optional).
+    CompressionLevel: 5,
+  },
+}
+```
+
 #### DefaultQueue
 
 Default queue name, e.g. `machinery_tasks`.
@@ -599,18 +624,18 @@ If you configure a result backend, the task states and results will be persisted
 
 ```go
 const (
-	// StatePending - initial state of a task
-	StatePending = "PENDING"
-	// StateReceived - when task is received by a worker
-	StateReceived = "RECEIVED"
-	// StateStarted - when the worker starts processing the task
-	StateStarted = "STARTED"
-	// StateRetry - when failed task has been scheduled for retry
-	StateRetry = "RETRY"
-	// StateSuccess - when the task is processed successfully
-	StateSuccess = "SUCCESS"
-	// StateFailure - when processing of the task fails
-	StateFailure = "FAILURE"
+    // StatePending - initial state of a task
+    StatePending = "PENDING"
+    // StateReceived - when task is received by a worker
+    StateReceived = "RECEIVED"
+    // StateStarted - when the worker starts processing the task
+    StateStarted = "STARTED"
+    // StateRetry - when failed task has been scheduled for retry
+    StateRetry = "RETRY"
+    // StateSuccess - when the task is processed successfully
+    StateSuccess = "SUCCESS"
+    // StateFailure - when processing of the task fails
+    StateFailure = "FAILURE"
 )
 ```
 

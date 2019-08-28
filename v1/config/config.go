@@ -66,6 +66,7 @@ type Config struct {
 	// NoUnixSignals - when set disables signal handling in machinery
 	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
 	DynamoDB      *DynamoDBConfig `yaml:"dynamodb"`
+	Kafka         *KafkaConfig    `yaml:"kafka"`
 }
 
 // QueueBindingArgs arguments which are used when binding to the exchange
@@ -142,6 +143,20 @@ type GCPPubSubConfig struct {
 type MongoDBConfig struct {
 	Client   *mongo.Client
 	Database string
+}
+
+// KafkaConfig represents config required to initialize Kafka consumer group.
+type KafkaConfig struct {
+	OffsetNewest bool     `yaml:"offset_newest" envconfig:"KAFKA_OFFSET_NEWEST"`
+	Group        string   `yaml:"group" envconfig:"KAFKA_GROUP"`
+	Addrs        []string `yaml:"addrs" envconfig:"KAFKA_ADDRS"`
+	ClientID     string   `yaml:"client_id" envconfig:"KAFKA_CLIENT_ID"`
+	Compression  string   `yaml:"compression" envconfig:"KAFKA_COMPRESSION"`
+	// Its a pointer because we can check for nil value instead of zero.
+	// Zero can be a valid compression level.
+	CompressionLevel *int `yaml:"compression_level" envconfig:"KAFKA_COMPRESSION_LEVEL"`
+	// Max message size iin bytes. Used for both consumer and producer.
+	MessageSize int `yaml:"message_size" envconfig:"KAFKA_MESSAGE_SIZE"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

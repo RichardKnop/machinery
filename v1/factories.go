@@ -14,16 +14,17 @@ import (
 	eagerbroker "github.com/RichardKnop/machinery/v1/brokers/eager"
 	gcppubsubbroker "github.com/RichardKnop/machinery/v1/brokers/gcppubsub"
 	brokeriface "github.com/RichardKnop/machinery/v1/brokers/iface"
+	kafkabroker "github.com/RichardKnop/machinery/v1/brokers/kafka"
 	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
 
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	dynamobackend "github.com/RichardKnop/machinery/v1/backends/dynamodb"
 	eagerbackend "github.com/RichardKnop/machinery/v1/backends/eager"
-	nullbackend "github.com/RichardKnop/machinery/v1/backends/null"
 	backendiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
 	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
+	nullbackend "github.com/RichardKnop/machinery/v1/backends/null"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
 )
 
@@ -87,6 +88,10 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 			return nil, err
 		}
 		return gcppubsubbroker.New(cnf, projectID, subscriptionName)
+	}
+
+	if cnf.Kafka != nil {
+		return kafkabroker.New(cnf), nil
 	}
 
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
