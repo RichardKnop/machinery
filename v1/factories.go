@@ -46,12 +46,16 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 				cnf.Broker,
 			)
 		}
-
-		redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.Broker)
-		if err != nil {
-			return nil, err
+		brokers := strings.Split(parts[1], ",")
+		if brokers[1] != "" {
+			return redisbroker.NewGR(cnf, brokers, 0), nil
+		} else {
+			redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.Broker)
+			if err != nil {
+				return nil, err
+			}
+			return redisbroker.New(cnf, redisHost, redisPassword, "", redisDB), nil
 		}
-		return redisbroker.New(cnf, redisHost, redisPassword, "", redisDB), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "redis+socket://") {
