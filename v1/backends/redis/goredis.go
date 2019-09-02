@@ -3,7 +3,6 @@ package redis
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/go-redis/redis"
 	"sync"
 	"time"
@@ -239,26 +238,28 @@ func (b *BackendGR) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 // getStates returns multiple task states
 func (b *BackendGR) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	taskStates := make([]*tasks.TaskState, len(taskUUIDs))
-
-	reply, err := b.rclient.MGet(taskUUIDs...).Result()
+	// to avoid CROSSSLOT error, use pipeline
+	cmders, err := b.rclient.Pipelined(func(pipeliner redis.Pipeliner) error {
+		for _, uuid := range taskUUIDs {
+			pipeliner.Get(uuid)
+		}
+		return nil
+	})
 	if err != nil {
 		return taskStates, err
 	}
-
-	for i, value := range reply {
-		stateBytes, ok := value.([]byte)
-		if !ok {
-			return taskStates, fmt.Errorf("Expected byte array, instead got: %v", value)
+	for i, cmder := range cmders {
+		stateBytes, err1 := cmder.(*redis.StringCmd).Bytes()
+		if err1 != nil {
+			return taskStates, err1
 		}
-
 		taskState := new(tasks.TaskState)
 		decoder := json.NewDecoder(bytes.NewReader(stateBytes))
 		decoder.UseNumber()
-		if err := decoder.Decode(taskState); err != nil {
-			log.ERROR.Print(err)
-			return taskStates, err
+		if err1 = decoder.Decode(taskState); err1 != nil {
+			log.ERROR.Print(err1)
+			return taskStates, err1
 		}
-
 		taskStates[i] = taskState
 	}
 
