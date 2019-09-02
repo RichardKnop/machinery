@@ -41,6 +41,9 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 		DB:    db,
 	}
 	b.rclient = redis.NewUniversalClient(ropt)
+	if cnf.Redis.DelayedTasksKey != "" {
+		redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
+	}
 	return b
 }
 
