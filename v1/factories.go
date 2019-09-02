@@ -120,12 +120,19 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
-		redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
-		if err != nil {
-			return nil, err
-		}
+		parts := strings.Split(cnf.Broker, "redis://")
+		addrs := strings.Split(parts[1], ",")
+		if len(addrs) > 1 {
+			return redisbackend.NewGR(cnf, addrs, 0), nil
+		} else {
+			redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
 
-		return redisbackend.New(cnf, redisHost, redisPassword, "", redisDB), nil
+			if err != nil {
+				return nil, err
+			}
+
+			return redisbackend.New(cnf, redisHost, redisPassword, "", redisDB), nil
+		}
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis+socket://") {
