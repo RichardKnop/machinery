@@ -20,10 +20,10 @@ import (
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	dynamobackend "github.com/RichardKnop/machinery/v1/backends/dynamodb"
 	eagerbackend "github.com/RichardKnop/machinery/v1/backends/eager"
-	nullbackend "github.com/RichardKnop/machinery/v1/backends/null"
 	backendiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
 	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
+	nullbackend "github.com/RichardKnop/machinery/v1/backends/null"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
 )
 

@@ -6,33 +6,36 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Backend represents a MongoDB result backend
 type Backend struct {
 	common.Backend
-	client               *mongo.Client
-	tasksCollection      *mongo.Collection
-	groupMetasCollection *mongo.Collection
+	client *mongo.Client
+	tc     *mongo.Collection
+	gmc    *mongo.Collection
+	once   sync.Once
 }
 
 // New creates Backend instance
 func New(cnf *config.Config) (iface.Backend, error) {
-	backend := &Backend{Backend: common.NewBackend(cnf)}
-	err := backend.connect()
-	if err != nil {
-		return nil, err
+	backend := &Backend{
+		Backend: common.NewBackend(cnf),
+		once: sync.Once{},
 	}
+
 	return backend, nil
 }
 
@@ -43,7 +46,7 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 		TaskUUIDs: taskUUIDs,
 		CreatedAt: time.Now().UTC(),
 	}
-	_, err := b.groupMetasCollection.InsertOne(context.Background(), groupMeta)
+	_, err := b.groupMetasCollection().InsertOne(context.Background(), groupMeta)
 	return err
 }
 
@@ -94,7 +97,7 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 		},
 	}
 
-	_, err := b.groupMetasCollection.UpdateOne(context.Background(), query, change, options.Update())
+	_, err := b.groupMetasCollection().UpdateOne(context.Background(), query, change, options.Update())
 
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -175,7 +178,7 @@ func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error 
 // GetState returns the latest task state
 func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	state := &tasks.TaskState{}
-	err := b.tasksCollection.FindOne(context.Background(), bson.M{"_id": taskUUID}).Decode(state)
+	err := b.tasksCollection().FindOne(context.Background(), bson.M{"_id": taskUUID}).Decode(state)
 
 	if err != nil {
 		return nil, err
@@ -185,13 +188,13 @@ func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 
 // PurgeState deletes stored task state
 func (b *Backend) PurgeState(taskUUID string) error {
-	_, err := b.tasksCollection.DeleteOne(context.Background(), bson.M{"_id": taskUUID})
+	_, err := b.tasksCollection().DeleteOne(context.Background(), bson.M{"_id": taskUUID})
 	return err
 }
 
 // PurgeGroupMeta deletes stored group meta data
 func (b *Backend) PurgeGroupMeta(groupUUID string) error {
-	_, err := b.groupMetasCollection.DeleteOne(context.Background(), bson.M{"_id": groupUUID})
+	_, err := b.groupMetasCollection().DeleteOne(context.Background(), bson.M{"_id": groupUUID})
 	return err
 }
 
@@ -207,7 +210,7 @@ func (b *Backend) lockGroupMeta(groupUUID string) error {
 		},
 	}
 
-	_, err := b.groupMetasCollection.UpdateOne(context.Background(), query, change, options.Update().SetUpsert(true))
+	_, err := b.groupMetasCollection().UpdateOne(context.Background(), query, change, options.Update().SetUpsert(true))
 
 	return err
 }
@@ -215,7 +218,7 @@ func (b *Backend) lockGroupMeta(groupUUID string) error {
 // unlockGroupMeta releases lock on groupUUID document
 func (b *Backend) unlockGroupMeta(groupUUID string) error {
 	update := bson.M{"$set": bson.M{"lock": false}}
-	_, err := b.groupMetasCollection.UpdateOne(context.Background(), bson.M{"_id": groupUUID}, update, options.Update())
+	_, err := b.groupMetasCollection().UpdateOne(context.Background(), bson.M{"_id": groupUUID}, update, options.Update())
 	return err
 }
 
@@ -224,7 +227,7 @@ func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 	groupMeta := &tasks.GroupMeta{}
 	query := bson.M{"_id": groupUUID}
 
-	err := b.groupMetasCollection.FindOne(context.Background(), query).Decode(groupMeta)
+	err := b.groupMetasCollection().FindOne(context.Background(), query).Decode(groupMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +237,7 @@ func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 // getStates returns multiple task states
 func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	states := make([]*tasks.TaskState, 0, len(taskUUIDs))
-	cur, err := b.tasksCollection.Find(context.Background(), bson.M{"_id": bson.M{"$in": taskUUIDs}})
+	cur, err := b.tasksCollection().Find(context.Background(), bson.M{"_id": bson.M{"$in": taskUUIDs}})
 	if err != nil {
 		return nil, err
 	}
@@ -256,8 +259,24 @@ func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 // updateState saves current task state
 func (b *Backend) updateState(signature *tasks.Signature, update bson.M) error {
 	update = bson.M{"$set": update}
-	_, err := b.tasksCollection.UpdateOne(context.Background(), bson.M{"_id": signature.UUID}, update, options.Update().SetUpsert(true))
+	_, err := b.tasksCollection().UpdateOne(context.Background(), bson.M{"_id": signature.UUID}, update, options.Update().SetUpsert(true))
 	return err
+}
+
+func (b *Backend) tasksCollection() *mongo.Collection {
+	b.once.Do(func() {
+		b.connect()
+	})
+
+	return b.tc
+}
+
+func (b *Backend) groupMetasCollection() *mongo.Collection {
+	b.once.Do(func() {
+		b.connect()
+	})
+
+	return b.gmc
 }
 
 // connect creates the underlying mgo connection if it doesn't exist
@@ -275,8 +294,8 @@ func (b *Backend) connect() error {
 		database = b.GetConfig().MongoDB.Database
 	}
 
-	b.tasksCollection = b.client.Database(database).Collection("tasks")
-	b.groupMetasCollection = b.client.Database(database).Collection("group_metas")
+	b.tc = b.client.Database(database).Collection("tasks")
+	b.gmc = b.client.Database(database).Collection("group_metas")
 
 	err = b.createMongoIndexes(database)
 	if err != nil {
