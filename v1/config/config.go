@@ -41,7 +41,7 @@ var (
 			WriteTimeout:           15,
 			ConnectTimeout:         15,
 			NormalTasksPollPeriod:  1000,
-			DelayedTasksPollPeriod: 20,
+			DelayedTasksPollPeriod: 500,
 		},
 		GCPPubSub: &GCPPubSubConfig{
 			Client: nil,
