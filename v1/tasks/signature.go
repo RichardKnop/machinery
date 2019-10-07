@@ -61,6 +61,9 @@ type Signature struct {
 	BrokerMessageGroupId string
 	//ReceiptHandle of SQS Message
 	SQSReceiptHandle string
+	//used in sqs when we want to send failed messages to dlq, and don't want machinery
+	// to delete from source queue
+	StopTaskDeletionOnError bool
 }
 
 // NewSignature creates a new task signature
