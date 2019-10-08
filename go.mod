@@ -4,7 +4,7 @@ require (
 	cloud.google.com/go v0.36.0
 	github.com/RichardKnop/logging v0.0.0-20181101035820-b1d5d44c82d6
 	github.com/RichardKnop/redsync v1.2.0
-	github.com/aws/aws-sdk-go v1.17.2
+	github.com/aws/aws-sdk-go v1.25.8
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737
 	github.com/go-redis/redis v6.15.2+incompatible
 	github.com/go-stack/stack v1.8.0 // indirect
@@ -16,7 +16,7 @@ require (
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pkg/errors v0.8.1
-	github.com/streadway/amqp v0.0.0-20190214183023-884228600bc9
+	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/stretchr/testify v1.3.0
 	github.com/stvp/tempredis v0.0.0-20181119212430-b82af8480203 // indirect
 	github.com/tidwall/pretty v0.0.0-20180105212114-65a9db5fad51 // indirect
