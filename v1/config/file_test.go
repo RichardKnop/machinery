@@ -19,6 +19,8 @@ amqp:
   exchange: exchange
   exchange_type: exchange_type
   prefetch_count: 123
+  queue_declare_args:
+    x-max-priority: 10
   queue_binding_args:
     image-type: png
     x-match: any
@@ -55,6 +57,7 @@ func TestNewFromYaml(t *testing.T) {
 	assert.Equal(t, "exchange", cnf.AMQP.Exchange)
 	assert.Equal(t, "exchange_type", cnf.AMQP.ExchangeType)
 	assert.Equal(t, "binding_key", cnf.AMQP.BindingKey)
+	assert.Equal(t, 10, cnf.AMQP.QueueDeclareArgs["x-max-priority"])
 	assert.Equal(t, "any", cnf.AMQP.QueueBindingArgs["x-match"])
 	assert.Equal(t, "png", cnf.AMQP.QueueBindingArgs["image-type"])
 	assert.Equal(t, 123, cnf.AMQP.PrefetchCount)
