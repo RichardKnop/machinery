@@ -570,7 +570,7 @@ signature.ETA = &eta
 
 #### Retry Tasks
 
-You can set a number of retry attempts before declaring task as failed. Fibonacci sequence will be used to space out retry requests over time.
+You can set a number of retry attempts before declaring task as failed. Fibonacci sequence will be used to space out retry requests over time. (See `RetryTimeout` for details.)
 
 ```go
 // If the task fails, retry it up to 3 times
