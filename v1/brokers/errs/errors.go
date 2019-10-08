@@ -23,3 +23,6 @@ func NewErrCouldNotUnmarshaTaskSignature(msg []byte, err error) ErrCouldNotUnmar
 
 // ErrConsumerStopped indicates that the operation is now illegal because of the consumer being stopped.
 var ErrConsumerStopped = errors.New("the server has been stopped")
+
+// ErrStopTaskDeletion indicates that the task should not be deleted from source after task failure
+var ErrStopTaskDeletion = errors.New("task should not be deleted")
