@@ -120,7 +120,7 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
-		parts := strings.Split(cnf.Broker, "redis://")
+		parts := strings.Split(cnf.ResultBackend, "redis://")
 		addrs := strings.Split(parts[1], ",")
 		if len(addrs) > 1 {
 			return redisbackend.NewGR(cnf, addrs, 0), nil
