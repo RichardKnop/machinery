@@ -218,6 +218,9 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 	// If the task is not registered return an error
 	// and leave the message in the queue
 	if !b.IsTaskRegistered(sig.Name) {
+		if sig.IgnoreWhenTaskNotRegistered {
+			b.deleteOne(delivery)
+		}
 		return fmt.Errorf("task %s is not registered", sig.Name)
 	}
 
