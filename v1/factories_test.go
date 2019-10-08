@@ -17,6 +17,7 @@ import (
 	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
 
+	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
@@ -374,16 +375,16 @@ func TestBackendFactory(t *testing.T) {
 		ResultsExpireIn: 30,
 	}
 
-	_, err = machinery.BackendFactory(&cnf)
+	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		//expected, err := mongobackend.New(&cnf)
-		//if assert.NoError(t, err) {
-		// assert.True(
-		// 	t,
-		// 	reflect.DeepEqual(actual, expected),
-		// 	fmt.Sprintf("conn = %v, want %v", actual, expected),
-		// )
-		//}
+		expected, err := mongobackend.New(&cnf)
+		if assert.NoError(t, err) {
+			assert.True(
+				t,
+				reflect.DeepEqual(actual, expected),
+				fmt.Sprintf("conn = %v, want %v", actual, expected),
+			)
+		}
 	}
 }
 

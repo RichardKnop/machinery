@@ -41,7 +41,7 @@ var (
 			WriteTimeout:           15,
 			ConnectTimeout:         15,
 			NormalTasksPollPeriod:  1000,
-			DelayedTasksPollPeriod: 20,
+			DelayedTasksPollPeriod: 500,
 		},
 		GCPPubSub: &GCPPubSubConfig{
 			Client: nil,
@@ -130,6 +130,7 @@ type RedisConfig struct {
 
 	// DelayedTasksPollPeriod specifies the period in milliseconds when polling redis for delayed tasks
 	DelayedTasksPollPeriod int `yaml:"delayed_tasks_poll_period" envconfig:"REDIS_DELAYED_TASKS_POLL_PERIOD"`
+	DelayedTasksKey string `yaml:"delayed_tasks_key" envconfig:"REDIS_DELAYED_TASKS_KEY"`
 }
 
 // GCPPubSubConfig wraps GCP PubSub related configuration
