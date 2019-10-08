@@ -40,7 +40,8 @@ var (
 			ReadTimeout:            15,
 			WriteTimeout:           15,
 			ConnectTimeout:         15,
-			DelayedTasksPollPeriod: 20,
+			NormalTasksPollPeriod:  1000,
+			DelayedTasksPollPeriod: 500,
 		},
 		GCPPubSub: &GCPPubSubConfig{
 			Client: nil,
@@ -125,8 +126,12 @@ type RedisConfig struct {
 	// no DialNetDial option is specified.
 	ConnectTimeout int `yaml:"connect_timeout" envconfig:"REDIS_CONNECT_TIMEOUT"`
 
+	// NormalTasksPollPeriod specifies the period in milliseconds when polling redis for normal tasks
+	NormalTasksPollPeriod int `yaml:"normal_tasks_poll_period" envconfig:"REDIS_NORMAL_TASKS_POLL_PERIOD"`
+
 	// DelayedTasksPollPeriod specifies the period in milliseconds when polling redis for delayed tasks
 	DelayedTasksPollPeriod int `yaml:"delayed_tasks_poll_period" envconfig:"REDIS_DELAYED_TASKS_POLL_PERIOD"`
+	DelayedTasksKey string `yaml:"delayed_tasks_key" envconfig:"REDIS_DELAYED_TASKS_KEY"`
 }
 
 // GCPPubSubConfig wraps GCP PubSub related configuration
