@@ -23,7 +23,7 @@ type Worker struct {
 	ConsumerTag     string
 	Concurrency     int
 	Queue           string
-	errorHandler    func(err error)
+	errorHandler    func(*tasks.Signature, err error)
 	preTaskHandler  func(*tasks.Signature)
 	postTaskHandler func(*tasks.Signature)
 }
@@ -233,11 +233,6 @@ func (worker *Worker) retryTaskIn(signature *tasks.Signature, retryIn time.Durat
 // taskSucceeded updates the task state and triggers success callbacks or a
 // chord callback if this was the last task of a group with a chord callback
 func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*tasks.TaskResult) error {
-	// Update task state to SUCCESS
-	if err := worker.server.GetBackend().SetStateSuccess(signature, taskResults); err != nil {
-		return fmt.Errorf("Set state to 'success' for task %s returned error: %s", signature.UUID, err)
-	}
-
 	// Log human readable results of the processed task
 	var debugResults = "[]"
 	results, err := tasks.ReflectTaskResults(taskResults)
@@ -341,13 +336,8 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 
 // taskFailed updates the task state and triggers error callbacks
 func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) error {
-	// Update task state to FAILURE
-	if err := worker.server.GetBackend().SetStateFailure(signature, taskErr.Error()); err != nil {
-		return fmt.Errorf("Set state to 'failure' for task %s returned error: %s", signature.UUID, err)
-	}
-
 	if worker.errorHandler != nil {
-		worker.errorHandler(taskErr)
+		worker.errorHandler(signature, taskErr)
 	} else {
 		log.ERROR.Printf("Failed processing task %s. Error = %v", signature.UUID, taskErr)
 	}
