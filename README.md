@@ -49,7 +49,7 @@ Please be advised that V2 is work in progress and breaking changes can and will 
 
 You can use the current V2 in order to avoid having to import all dependencies for brokers and backends you are not using.
 
-Instead of factory, you will need to supplu broker and backend objects to the server constructor:
+Instead of factory, you will need to inject broker and backend objects to the server constructor:
 
 ```go
 import (
