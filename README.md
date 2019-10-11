@@ -19,6 +19,7 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 
 ---
 
+* [V2 Experiment](#v2-experiment)
 * [First Steps](#first-steps)
 * [Configuration](#configuration)
 * [Custom Logger](#custom-logger)
@@ -41,6 +42,29 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
   * [Requirements](#requirements)
   * [Dependencies](#dependencies)
   * [Testing](#testing)
+
+### V2 Experiment
+
+Please be advised that V2 is work in progress and breaking changes can and will happen until it is ready.
+
+You can use the current V2 in order to avoid having to import all dependencies for brokers and backends you are not using.
+
+Instead of factory, you will need to supplu broker and backend objects to the server constructor:
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v2"
+  backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
+  brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
+)
+
+var broker brokersiface.Broker
+var backend backendsiface.Backend
+server, err := machinery.NewServer(cnf, broker, backend)
+if err != nil {
+  // do something with the error
+}
+```
 
 ### First Steps
 
