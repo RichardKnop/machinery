@@ -224,6 +224,33 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return taskSignatures, nil
 }
 
+// GetDelayedTasks returns a slice of task signatures that are scheduled, but not yet in the queue
+func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
+	conn := b.open()
+	defer conn.Close()
+
+	dataBytes, err := conn.Do("ZRANGE", redisDelayedTasksKey, 0, -1)
+	if err != nil {
+		return nil, err
+	}
+	results, err := redis.ByteSlices(dataBytes, err)
+	if err != nil {
+		return nil, err
+	}
+
+	taskSignatures := make([]*tasks.Signature, len(results))
+	for i, result := range results {
+		signature := new(tasks.Signature)
+		decoder := json.NewDecoder(bytes.NewReader(result))
+		decoder.UseNumber()
+		if err := decoder.Decode(signature); err != nil {
+			return nil, err
+		}
+		taskSignatures[i] = signature
+	}
+	return taskSignatures, nil
+}
+
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
 func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor) error {

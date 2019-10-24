@@ -209,6 +209,26 @@ func (b *BrokerGR) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return taskSignatures, nil
 }
 
+// GetDelayedTasks returns a slice of task signatures that are scheduled, but not yet in the queue
+func (b *BrokerGR) GetDelayedTasks() ([]*tasks.Signature, error) {
+	results, err := b.rclient.ZRange(redisDelayedTasksKey, 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	taskSignatures := make([]*tasks.Signature, len(results))
+	for i, result := range results {
+		signature := new(tasks.Signature)
+		decoder := json.NewDecoder(strings.NewReader(result))
+		decoder.UseNumber()
+		if err := decoder.Decode(signature); err != nil {
+			return nil, err
+		}
+		taskSignatures[i] = signature
+	}
+	return taskSignatures, nil
+}
+
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
 func (b *BrokerGR) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor) error {
