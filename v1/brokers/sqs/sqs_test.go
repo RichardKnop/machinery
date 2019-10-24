@@ -302,3 +302,49 @@ func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 		t.Fatal("task not processed in 10 seconds")
 	}
 }
+
+type roundRobinQueues struct {
+	queues []string
+	currentIndex int
+}
+
+func NewRoundRobinQueues(queues []string) *roundRobinQueues {
+	return &roundRobinQueues{
+		queues:       queues,
+		currentIndex: -1,
+	}
+}
+
+func (r *roundRobinQueues) Peek() string {
+	return r.queues[r.currentIndex]
+}
+
+func (r *roundRobinQueues) Next() string {
+	r.currentIndex += 1
+	if r.currentIndex >= len(r.queues) {
+		r.currentIndex = 0
+	}
+
+	q := r.queues[r.currentIndex]
+	return q
+}
+
+func TestPrivateFunc_consumeWithRoundRobinQueues(t *testing.T) {
+	server1, err := machinery.NewServer(cnf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := server1.NewWorker("test-worker", 0)
+
+	// Assigning a getQueueHandler to `Next` method of roundRobinQueues
+	rr := NewRoundRobinQueues([]string{"custom-queue-0", "custom-queue-1", "custom-queue-2", "custom-queue-3"})
+	w.SetGetQueueHandler(rr.Next)
+
+	for i := 0; i < 5; i++ {
+		// the queue url of the broker should match the current queue url of roundRobin
+		// and thus queues are being utilized in round-robin fashion
+		qURL := testAWSSQSBroker.GetQueueURLForTest(w)
+		assert.Equal(t, qURL, testAWSSQSBroker.GetCustomQueueURL(rr.Peek()))
+	}
+}

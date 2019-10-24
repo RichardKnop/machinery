@@ -26,6 +26,7 @@ type Worker struct {
 	errorHandler    func(err error)
 	preTaskHandler  func(*tasks.Signature)
 	postTaskHandler func(*tasks.Signature)
+	getQueueHandler func() string
 }
 
 // Launch starts a new worker process. The worker subscribes
@@ -109,6 +110,11 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 
 // CustomQueue returns Custom Queue of the running worker process
 func (worker *Worker) CustomQueue() string {
+	// if the handler is defined, use that to fetch the queue name
+	if worker.getQueueHandler != nil {
+		return worker.getQueueHandler()
+	}
+
 	return worker.Queue
 }
 
@@ -390,6 +396,11 @@ func (worker *Worker) SetPreTaskHandler(handler func(*tasks.Signature)) {
 //SetPostTaskHandler sets a custom handler for the end of a job
 func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 	worker.postTaskHandler = handler
+}
+
+//SetGetQueueHandler sets a get queue handler to fetch queue name from
+func (worker *Worker) SetGetQueueHandler(handler func() string) {
+	worker.getQueueHandler = handler
 }
 
 //GetServer returns server

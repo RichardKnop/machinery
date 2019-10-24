@@ -9,6 +9,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
@@ -135,7 +136,7 @@ func (b *Broker) ConsumeOneForTest(delivery *awssqs.ReceiveMessageOutput, taskPr
 }
 
 func (b *Broker) DeleteOneForTest(delivery *awssqs.ReceiveMessageOutput) error {
-	return b.deleteOne(delivery)
+	return b.deleteOne(delivery, &tasks.Signature{RoutingKey: ""})
 }
 
 func (b *Broker) DefaultQueueURLForTest() *string {

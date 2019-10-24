@@ -290,7 +290,9 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 		conn := b.open()
 		defer conn.Close()
 
-		conn.Do("RPUSH", getQueue(b.GetConfig(), taskProcessor), delivery)
+		// Adjust routing key (this decides which queue the message will be send back to)
+		b.Broker.AdjustRoutingKey(signature)
+		conn.Do("RPUSH", signature.RoutingKey, delivery)
 		return nil
 	}
 
