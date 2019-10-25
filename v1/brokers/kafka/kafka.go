@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
@@ -34,7 +35,8 @@ type Broker struct {
 	// Queue where consumed tasks are pushed.
 	tskQueue chan []byte
 	// Queue where errors while processing tasks are pushed.
-	errQueue chan error
+	errQueue    chan error
+	stopConsume int32
 }
 
 const (
@@ -45,6 +47,45 @@ const (
 	compressionSnappy = "snappy"
 	compressionZSTD   = "zstd"
 )
+
+// consumer is a handler which consumes the Kafka messages for given topics and groups.
+type consumer struct {
+	mux    sync.Mutex
+	sess   sarama.ConsumerGroupSession
+	broker *Broker
+	ctx    context.Context
+}
+
+// Implement consumer group handler
+func (c *consumer) Setup(cgs sarama.ConsumerGroupSession) error {
+	c.mux.Lock()
+	c.sess = cgs
+	c.mux.Unlock()
+	return nil
+}
+
+func (c *consumer) Cleanup(cgs sarama.ConsumerGroupSession) error {
+	return nil
+}
+
+// ConsumeClaim consumes the message sent to a topic and marks it as claimed.
+// This method is internally called by Sarama when consumer starts consuming.
+func (c *consumer) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	for msg := range claim.Messages() {
+		if msg != nil {
+			// Add tasks wait group. Once message is processed its marked as done.
+			// This way when consumer is closing we wait for this wait group to finish before exiting.
+			c.broker.tasksWG.Add(1)
+			// Add a message to task queue which is consumed elsewhere.
+			c.broker.tskQueue <- msg.Value
+			// Mark the message immediately after user is inserted to db.
+			// If process is stopped while inserting/updating user then on
+			// restart its consumed again.
+			c.sess.MarkMessage(msg, "")
+		}
+	}
+	return nil
+}
 
 // New creates new Kafka broker instance.
 func New(cnf *config.Config) iface.Broker {
@@ -129,39 +170,6 @@ func newConsumerGroup(cnf *config.KafkaConfig) sarama.ConsumerGroup {
 	return cGroup
 }
 
-// Setup runs while setting up kafka consumer.
-func (b *Broker) Setup(cgs sarama.ConsumerGroupSession) error { return nil }
-
-// Cleanup cleans up after Kafka consumer.
-func (b *Broker) Cleanup(cgs sarama.ConsumerGroupSession) error { return nil }
-
-// ConsumeClaim consumes the message sent to a topic and marks it as claimed.
-// This method is internally called by Sarama when consumer starts consuming.
-func (b *Broker) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	// Read message pushed to topic.
-	for {
-		select {
-		// A way to stop this goroutine from b.StopConsuming
-		case <-b.GetStopChan():
-			// Close tasks queue so that new tasks wont be able to push.
-			close(b.tskQueue)
-			return nil
-		case msg := <-claim.Messages():
-			if msg != nil {
-				// Add tasks wait group. Once message is processed its marked as done.
-				// This way when consumer is closing we wait for this wait group to finish before exiting.
-				b.tasksWG.Add(1)
-				// Add a message to task queue which is consumed elsewhere.
-				b.tskQueue <- msg.Value
-				// Mark the message immediately after user is inserted to db.
-				// If process is stopped while inserting/updating user then on
-				// restart its consumed again.
-				sess.MarkMessage(msg, "")
-			}
-		}
-	}
-}
-
 // tskWorker consumes from tasks queue and runs `taskProcessor.Process` call which
 // executes the actual task. If task execution results in error then send to errors
 // queue which is logged separately in a go routine.
@@ -211,10 +219,6 @@ func (b *Broker) StartConsuming(cTag string, con int, tskPr iface.TaskProcessor)
 	}
 	// Call brokerfactory which initialized channels for stop and retry consumer.
 	b.Broker.StartConsuming(cTag, con, tskPr)
-	ctx := context.Background()
-	// Add consumer to wait group.
-	b.consumerWG.Add(1)
-	defer b.consumerWG.Done()
 	// Initialize task queue.
 	b.tskQueue = make(chan []byte, con)
 	// Initialize error queue.
@@ -223,23 +227,34 @@ func (b *Broker) StartConsuming(cTag string, con int, tskPr iface.TaskProcessor)
 	for p := 0; p <= con; p++ {
 		go b.tskWorker(p, tskPr)
 	}
-	// Log all the errors while processing tasks.
-	go func() {
-		for err := range b.errQueue {
-			log.ERROR.Printf("task processing failed: %v", err)
-		}
-	}()
 	log.INFO.Printf("Waiting for tasks from topics: %s", strings.Join(b.getTopics(tskPr), ","))
-	if err := b.consumer.Consume(ctx, b.getTopics(tskPr), b); err != nil {
-		return b.GetRetry(), err
+
+	b.consumerWG.Add(1)
+	defer b.consumerWG.Done()
+
+	ctx := context.Background()
+	cmr := &consumer{broker: b}
+	for {
+		if b.stopConsume != 0 {
+			return false, nil
+		}
+		if err := b.consumer.Consume(ctx, b.getTopics(tskPr), cmr); err != nil {
+			log.ERROR.Printf("Error Kafka consume: %v", err)
+			return b.GetRetry(), nil
+		}
 	}
-	return b.GetRetry(), nil
 }
 
 // StopConsuming quits the loop.
 func (b *Broker) StopConsuming() {
 	b.Broker.StopConsuming()
-	// Waiting for consumer to be stopped.
+	// Increment stop consume flag.
+	atomic.AddInt32(&b.stopConsume, 1)
+	// Stop consumer group.
+	if err := b.consumer.Close(); err != nil {
+		log.ERROR.Printf("Error stopping Kafka consumer: %v", err)
+	}
+	// Wait for consmer group to exit.
 	b.consumerWG.Wait()
 	// Waiting for any tasks being processed to finish.
 	b.tasksWG.Wait()
