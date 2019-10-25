@@ -147,15 +147,17 @@ func (b *Broker) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.Con
 			close(b.tskQueue)
 			return nil
 		case msg := <-claim.Messages():
-			// Add tasks wait group. Once message is processed its marked as done.
-			// This way when consumer is closing we wait for this wait group to finish before exiting.
-			b.tasksWG.Add(1)
-			// Add a message to task queue which is consumed elsewhere.
-			b.tskQueue <- msg.Value
-			// Mark the message immediately after user is inserted to db.
-			// If process is stopped while inserting/updating user then on
-			// restart its consumed again.
-			sess.MarkMessage(msg, "")
+			if msg != nil {
+				// Add tasks wait group. Once message is processed its marked as done.
+				// This way when consumer is closing we wait for this wait group to finish before exiting.
+				b.tasksWG.Add(1)
+				// Add a message to task queue which is consumed elsewhere.
+				b.tskQueue <- msg.Value
+				// Mark the message immediately after user is inserted to db.
+				// If process is stopped while inserting/updating user then on
+				// restart its consumed again.
+				sess.MarkMessage(msg, "")
+			}
 		}
 	}
 }
