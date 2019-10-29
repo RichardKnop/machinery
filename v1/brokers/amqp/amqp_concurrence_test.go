@@ -7,6 +7,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/streadway/amqp"
 	"testing"
+	"time"
 )
 
 type doNothingProcessor struct {}
@@ -29,6 +30,7 @@ func TestConsume(t *testing.T) {
 	t.Run("with deliveries more than the number of concurrency", func(t *testing.T) {
 		iBroker = New(&config.Config{})
 		broker, _ := iBroker.(*Broker)
+		errChan := make(chan error)
 
 		// simulate that there are too much deliveries
 		go func() {
@@ -37,6 +39,17 @@ func TestConsume(t *testing.T) {
 			}
 		}()
 
-		broker.consume(deliveries, 2, processor, closeChan)
+		go func() {
+			err := broker.consume(deliveries, 2, processor, closeChan)
+			if err != nil {
+				errChan <- err
+			}
+		}()
+
+		select{
+		case <- errChan:
+		case <- time.After(1 * time.Second):
+			t.Error("Maybe deadlock")
+		}
 	})
 }
