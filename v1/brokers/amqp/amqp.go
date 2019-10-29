@@ -260,7 +260,10 @@ func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskP
 		}
 	}()
 
-	errorsChan := make(chan error)
+	// make channel with a capacity makes it become a buffered channel so that a worker which wants to
+	// push an error to `errorsChan` doesn't need to be blocked while the for-loop is blocked waiting
+	// a worker, that is, it avoids a possible deadlock
+	errorsChan := make(chan error, 1)
 
 	for {
 		select {
