@@ -176,7 +176,7 @@ func (b *BrokerGR) Publish(ctx context.Context, signature *tasks.Signature) erro
 
 		if signature.ETA.After(now) {
 			score := signature.ETA.UnixNano()
-			err = b.rclient.ZAdd(redisDelayedTasksKey, redis.Z{Score: float64(score), Member: msg}).Err()
+			err = b.rclient.ZAdd(redisDelayedTasksKey, &redis.Z{Score: float64(score), Member: msg}).Err()
 			return err
 		}
 	}
@@ -343,7 +343,7 @@ func (b *BrokerGR) nextDelayedTask(key string) (result []byte, err error) {
 			now := time.Now().UTC().UnixNano()
 
 			// https://redis.io/commands/zrangebyscore
-			items, err = tx.ZRevRangeByScore(key, redis.ZRangeBy{
+			items, err = tx.ZRevRangeByScore(key, &redis.ZRangeBy{
 				Min: "0", Max: strconv.FormatInt(now, 10), Offset: 0, Count: 1,
 			}).Result()
 			if err != nil {
