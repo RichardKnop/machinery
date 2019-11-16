@@ -147,7 +147,7 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 		go func() {
 			select {
 			case err = <-conn.errorchan:
-				log.INFO.Printf("Error occured on queue: %s. Reconnecting", queueName)
+				log.INFO.Printf("Error occurred on queue: %s. Reconnecting", queueName)
 				b.connectionsMutex.Lock()
 				delete(b.connections, queueName)
 				b.connectionsMutex.Unlock()
