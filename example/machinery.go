@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	// Initialise a CLI app
+	// Initialize a CLI app
 	app = cli.NewApp()
 	app.Name = "machinery"
 	app.Usage = "machinery worker and send example tasks with machinery send"
