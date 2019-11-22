@@ -195,9 +195,8 @@ func (b *Broker) processTask(msg []byte, tskPr iface.TaskProcessor) error {
 	if err := decoder.Decode(tsk); err != nil {
 		return errs.NewErrCouldNotUnmarshaTaskSignature(msg, err)
 	}
-	// TODO: If the task is not registered, we requeue it,
-	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(tsk.Name) {
+		return fmt.Errorf("task not registered - name: %v, id: %v, routing key: %v", tsk.Name, tsk.UUID, tsk.RoutingKey)
 	}
 	return tskPr.Process(tsk)
 }
@@ -223,6 +222,14 @@ func (b *Broker) StartConsuming(cTag string, con int, tskPr iface.TaskProcessor)
 	b.tskQueue = make(chan []byte, con)
 	// Initialize error queue.
 	b.errQueue = make(chan error, con*2)
+
+	// Initialize go routine to log errors from task queue.
+	go func() {
+		for err := range b.errQueue {
+			log.ERROR.Printf("error processing tasks: %v", err)
+		}
+	}()
+
 	// Initialize worker pools.
 	for p := 0; p < con; p++ {
 		go b.tskWorker(p, tskPr)
