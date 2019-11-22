@@ -224,7 +224,7 @@ func (b *Broker) StartConsuming(cTag string, con int, tskPr iface.TaskProcessor)
 	// Initialize error queue.
 	b.errQueue = make(chan error, con*2)
 	// Initialize worker pools.
-	for p := 0; p <= con; p++ {
+	for p := 0; p < con; p++ {
 		go b.tskWorker(p, tskPr)
 	}
 	log.INFO.Printf("Waiting for tasks from topics: %s", strings.Join(b.getTopics(tskPr), ","))
