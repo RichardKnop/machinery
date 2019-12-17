@@ -80,6 +80,11 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return nil, errors.New("Not implemented")
 }
 
+// GetDelayedTasks returns a slice of task.Signatures that are scheduled, but not yet in the queue
+func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
+	return nil, errors.New("Not implemented")
+}
+
 // StartConsuming is a common part of StartConsuming method
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) {
 	if b.retryFunc == nil {

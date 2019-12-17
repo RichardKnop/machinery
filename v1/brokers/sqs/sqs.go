@@ -57,11 +57,6 @@ func New(cnf *config.Config) iface.Broker {
 	return b
 }
 
-// GetPendingTasks returns a slice of task.Signatures waiting in the queue
-func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
-	return nil, errors.New("Not implemented")
-}
-
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)

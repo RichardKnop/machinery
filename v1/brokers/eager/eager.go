@@ -62,11 +62,6 @@ func (eagerBroker *Broker) Publish(ctx context.Context, task *tasks.Signature) e
 	return eagerBroker.worker.Process(signature)
 }
 
-// GetPendingTasks returns a slice of task.Signatures waiting in the queue
-func (eagerBroker *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
-	return []*tasks.Signature{}, errors.New("Not implemented")
-}
-
 // AssignWorker assigns a worker to the eager broker
 func (eagerBroker *Broker) AssignWorker(w iface.TaskProcessor) {
 	eagerBroker.worker = w
