@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/tls"
 	"fmt"
+	"strings"
 
 	"github.com/streadway/amqp"
 )
@@ -12,9 +13,26 @@ type AMQPConnector struct{}
 
 // Connect opens a connection to RabbitMQ, declares an exchange, opens a channel,
 // declares and binds the queue and enables publish notifications
-func (ac *AMQPConnector) Connect(url string, tlsConfig *tls.Config, exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, <-chan *amqp.Error, error) {
-	// Connect to server
-	conn, channel, err := ac.Open(url, tlsConfig)
+func (ac *AMQPConnector) Connect(urls string, urlSeparator string, tlsConfig *tls.Config, exchange, exchangeType, queueName string, queueDurable, queueDelete bool, queueBindingKey string, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs amqp.Table) (*amqp.Connection, *amqp.Channel, amqp.Queue, <-chan amqp.Confirmation, <-chan *amqp.Error, error) {
+	urlsList := []string{urls}
+	if urlSeparator != "" {
+		urlsList = strings.Split(urls, urlSeparator)
+	}
+
+	var conn *amqp.Connection
+	var channel *amqp.Channel
+	var err error
+
+	for _, url := range urlsList {
+		// Connect to server
+		conn, channel, err = ac.Open(url, tlsConfig)
+		if err != nil {
+			continue
+		} else {
+			break
+		}
+	}
+
 	if err != nil {
 		return nil, nil, amqp.Queue{}, nil, nil, err
 	}

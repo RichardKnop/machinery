@@ -54,6 +54,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
 		b.GetConfig().Broker,
+		b.GetConfig().MultipleBrokerSeparator,
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
@@ -128,6 +129,7 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 		}
 		conn.connection, conn.channel, conn.queue, conn.confirmation, conn.errorchan, err = b.Connect(
 			b.GetConfig().Broker,
+			b.GetConfig().MultipleBrokerSeparator,
 			b.GetConfig().TLSConfig,
 			b.GetConfig().AMQP.Exchange,     // exchange name
 			b.GetConfig().AMQP.ExchangeType, // exchange type
@@ -371,6 +373,7 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 	}
 	conn, channel, _, _, _, err := b.Connect(
 		b.GetConfig().Broker,
+		b.GetConfig().MultipleBrokerSeparator,
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
