@@ -502,7 +502,7 @@ type Signature struct {
 
 `ETA` is  a timestamp used for delaying a task. if it's nil, the task will be published for workers to consume immediately. If it is set, the task will be delayed until the ETA timestamp.
 
-`GroupUUID`, GroupTaskCount are useful for creating groups of tasks.
+`GroupUUID`, `GroupTaskCount` are useful for creating groups of tasks.
 
 `Args` is a list of arguments that will be passed to the task when it is executed by a worker.
 
