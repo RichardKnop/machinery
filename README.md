@@ -229,6 +229,7 @@ For example:
 1. `redis://localhost:6379`, or with password `redis://password@localhost:6379`
 2. `redis+socket://password@/path/to/file.sock:/0`
 3. cluster `redis://host1:port1,host2:port2,host3:port3`
+4. cluster with password `redis://pass@host1:port1,host2:port2,host3:port3`
 
 ##### Memcache
 

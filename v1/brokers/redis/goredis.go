@@ -36,9 +36,19 @@ type BrokerGR struct {
 // New creates new Broker instance
 func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 	b := &BrokerGR{Broker: common.NewBroker(cnf)}
+
+	var password string
+	parts := strings.Split(addrs[0], "@")
+	if len(parts) == 2 {
+		// with passwrod
+		password = parts[0]
+		addrs[0] = parts[1]
+	}
+
 	ropt := &redis.UniversalOptions{
-		Addrs: addrs,
-		DB:    db,
+		Addrs:    addrs,
+		DB:       db,
+		Password: password,
 	}
 	b.rclient = redis.NewUniversalClient(ropt)
 	if cnf.Redis.DelayedTasksKey != "" {

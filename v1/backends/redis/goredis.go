@@ -3,9 +3,11 @@ package redis
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/go-redis/redis"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
@@ -33,10 +35,19 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 	b := &BackendGR{
 		Backend: common.NewBackend(cnf),
 	}
-	ropt := &redis.UniversalOptions{
-		Addrs: addrs,
-		DB:    db,
+	parts := strings.Split(addrs[0], "@")
+	if len(parts) == 2 {
+		// with passwrod
+		b.password = parts[0]
+		addrs[0] = parts[1]
 	}
+
+	ropt := &redis.UniversalOptions{
+		Addrs:    addrs,
+		DB:       db,
+		Password: b.password,
+	}
+
 	b.rclient = redis.NewUniversalClient(ropt)
 	return b
 }
