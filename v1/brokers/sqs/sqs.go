@@ -209,6 +209,10 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 	decoder.UseNumber()
 	if err := decoder.Decode(sig); err != nil {
 		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
+		// if the unmarshal fails, remove the delivery from the queue
+		if err = b.deleteOne(delivery); err != nil {
+			log.ERROR.Printf("error when deleting the delivery. delivery is %v, Error=%s", delivery, err)
+		}
 		return err
 	}
 	if delivery.Messages[0].ReceiptHandle != nil {
