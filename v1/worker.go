@@ -28,6 +28,13 @@ type Worker struct {
 	postTaskHandler func(*tasks.Signature)
 }
 
+var (
+	// ErrWorkerQuitGracefully is return when worker quit gracefully
+	ErrWorkerQuitGracefully = errors.New("Worker quit gracefully")
+	// ErrWorkerQuitGracefully is return when worker quit abruptly
+	ErrWorkerQuitAbruptly = errors.New("Worker quit abruptly")
+)
+
 // Launch starts a new worker process. The worker subscribes
 // to the default queue and processes incoming registered tasks
 func (worker *Worker) Launch() error {
@@ -95,11 +102,11 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 						log.WARNING.Print("Waiting for running tasks to finish before shutting down")
 						go func() {
 							worker.Quit()
-							errorsChan <- errors.New("Worker quit gracefully")
+							errorsChan <- ErrWorkerQuitGracefully
 						}()
 					} else {
 						// Abort the program when user hits Ctrl+C second time in a row
-						errorsChan <- errors.New("Worker quit abruptly")
+						errorsChan <- ErrWorkerQuitAbruptly
 					}
 				}
 			}
