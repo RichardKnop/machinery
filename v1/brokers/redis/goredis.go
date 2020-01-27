@@ -20,7 +20,7 @@ import (
 	"github.com/go-redis/redis"
 )
 
-// Broker represents a Redis broker
+// BrokerGR represents a Redis broker
 type BrokerGR struct {
 	common.Broker
 	rclient      redis.UniversalClient
@@ -33,7 +33,7 @@ type BrokerGR struct {
 	redisOnce  sync.Once
 }
 
-// New creates new Broker instance
+// NewGR creates new Broker instance
 func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 	b := &BrokerGR{Broker: common.NewBroker(cnf)}
 
@@ -50,6 +50,10 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 		DB:       db,
 		Password: password,
 	}
+	if cnf.Redis != nil {
+		ropt.MasterName = cnf.Redis.MasterName
+	}
+
 	b.rclient = redis.NewUniversalClient(ropt)
 	if cnf.Redis.DelayedTasksKey != "" {
 		redisDelayedTasksKey = cnf.Redis.DelayedTasksKey

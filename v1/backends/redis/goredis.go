@@ -17,7 +17,7 @@ import (
 	"github.com/RichardKnop/redsync"
 )
 
-// Backend represents a Redis result backend
+// BackendGR represents a Redis result backend
 type BackendGR struct {
 	common.Backend
 	rclient  redis.UniversalClient
@@ -30,7 +30,7 @@ type BackendGR struct {
 	redisOnce  sync.Once
 }
 
-// New creates Backend instance
+// NewGR creates Backend instance
 func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 	b := &BackendGR{
 		Backend: common.NewBackend(cnf),
@@ -46,6 +46,9 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 		Addrs:    addrs,
 		DB:       db,
 		Password: b.password,
+	}
+	if cnf.Redis != nil {
+		ropt.MasterName = cnf.Redis.MasterName
 	}
 
 	b.rclient = redis.NewUniversalClient(ropt)
