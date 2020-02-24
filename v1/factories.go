@@ -19,6 +19,7 @@ import (
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
 
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
+	cassandrabackend "github.com/RichardKnop/machinery/v1/backends/cassandra"
 	dynamobackend "github.com/RichardKnop/machinery/v1/backends/dynamodb"
 	eagerbackend "github.com/RichardKnop/machinery/v1/backends/eager"
 	backendiface "github.com/RichardKnop/machinery/v1/backends/iface"
@@ -153,6 +154,10 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 
 	if strings.HasPrefix(cnf.ResultBackend, "https://dynamodb") {
 		return dynamobackend.New(cnf), nil
+	}
+
+	if cnf.Cassandra != nil {
+		return cassandrabackend.New(cnf)
 	}
 
 	return nil, fmt.Errorf("Factory failed with result backend: %v", cnf.ResultBackend)

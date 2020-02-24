@@ -64,9 +64,10 @@ type Config struct {
 	MongoDB         *MongoDBConfig   `yaml:"-" ignored:"true"`
 	TLSConfig       *tls.Config
 	// NoUnixSignals - when set disables signal handling in machinery
-	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
-	DynamoDB      *DynamoDBConfig `yaml:"dynamodb"`
-	Kafka         *KafkaConfig    `yaml:"kafka"`
+	NoUnixSignals bool             `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
+	DynamoDB      *DynamoDBConfig  `yaml:"dynamodb"`
+	Kafka         *KafkaConfig     `yaml:"kafka"`
+	Cassandra     *CassandraConfig `yaml:"cassandra"`
 }
 
 // QueueBindingArgs arguments which are used when binding to the exchange
@@ -157,6 +158,14 @@ type KafkaConfig struct {
 	CompressionLevel *int `yaml:"compression_level" envconfig:"KAFKA_COMPRESSION_LEVEL"`
 	// Max message size iin bytes. Used for both consumer and producer.
 	MessageSize int `yaml:"message_size" envconfig:"KAFKA_MESSAGE_SIZE"`
+}
+
+// CassandraConfig represents config required for Cassandra result backend.
+type CassandraConfig struct {
+	Hosts    []string `yaml:"hosts" envconfig:"CASSANDRA_HOSTS"`
+	Username string   `yaml:"username" envconfig:"CASSANDRA_USERNAME"`
+	Password string   `yaml:"password" envconfig:"CASSANDRA_PASSWORD"`
+	Keyspace string   `yaml:"keyspace" envconfig:"CASSANDRA_KEYSPACE"`
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

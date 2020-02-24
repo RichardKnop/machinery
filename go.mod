@@ -10,6 +10,7 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/gocql/gocql v0.0.0-20200221113847-372a19b1a852
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.0
 	github.com/jcmturner/gofork v1.0.0 // indirect
@@ -37,3 +38,5 @@ require (
 	gopkg.in/jcmturner/gokrb5.v7 v7.3.0 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
+
+go 1.13
