@@ -23,6 +23,7 @@ import (
 	backendiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
 	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
+	nullbackend "github.com/RichardKnop/machinery/v1/backends/null"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
 )
 
@@ -45,12 +46,16 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 				cnf.Broker,
 			)
 		}
-
-		redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.Broker)
-		if err != nil {
-			return nil, err
+		brokers := strings.Split(parts[1], ",")
+		if len(brokers) > 1 {
+			return redisbroker.NewGR(cnf, brokers, 0), nil
+		} else {
+			redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.Broker)
+			if err != nil {
+				return nil, err
+			}
+			return redisbroker.New(cnf, redisHost, redisPassword, "", redisDB), nil
 		}
-		return redisbroker.New(cnf, redisHost, redisPassword, "", redisDB), nil
 	}
 
 	if strings.HasPrefix(cnf.Broker, "redis+socket://") {
@@ -115,12 +120,19 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
-		redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
-		if err != nil {
-			return nil, err
-		}
+		parts := strings.Split(cnf.ResultBackend, "redis://")
+		addrs := strings.Split(parts[1], ",")
+		if len(addrs) > 1 {
+			return redisbackend.NewGR(cnf, addrs, 0), nil
+		} else {
+			redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
 
-		return redisbackend.New(cnf, redisHost, redisPassword, "", redisDB), nil
+			if err != nil {
+				return nil, err
+			}
+
+			return redisbackend.New(cnf, redisHost, redisPassword, "", redisDB), nil
+		}
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis+socket://") {
@@ -132,12 +144,17 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 		return redisbackend.New(cnf, "", redisPassword, redisSocket, redisDB), nil
 	}
 
-	if strings.HasPrefix(cnf.ResultBackend, "mongodb://") {
-		return mongobackend.New(cnf), nil
+	if strings.HasPrefix(cnf.ResultBackend, "mongodb://") ||
+		strings.HasPrefix(cnf.ResultBackend, "mongodb+srv://") {
+		return mongobackend.New(cnf)
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "eager") {
 		return eagerbackend.New(), nil
+	}
+
+	if strings.HasPrefix(cnf.ResultBackend, "null") {
+		return nullbackend.New(), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "https://dynamodb") {

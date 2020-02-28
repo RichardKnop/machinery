@@ -21,10 +21,29 @@ func init() {
 		return
 	}
 
+	finalAmqpURL := amqpURL
+	var finalSeparator string
+
+	amqpURLs := os.Getenv("AMQP_URLS")
+	if amqpURLs != "" {
+		separator := os.Getenv("AMQP_URLS_SEPARATOR")
+		if separator == "" {
+			return
+		}
+		finalSeparator = separator
+		finalAmqpURL = amqpURLs
+	}
+
+	amqp2URL := os.Getenv("AMQP2_URL")
+	if amqp2URL == "" {
+		amqp2URL = amqpURL
+	}
+
 	amqpConfig = &config.Config{
-		Broker:        amqpURL,
-		DefaultQueue:  "test_queue",
-		ResultBackend: amqpURL,
+		Broker:                  finalAmqpURL,
+		MultipleBrokerSeparator: finalSeparator,
+		DefaultQueue:            "test_queue",
+		ResultBackend:           amqp2URL,
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",

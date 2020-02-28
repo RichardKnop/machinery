@@ -8,6 +8,8 @@ amqp:
   exchange: exchange
   exchange_type: exchange_type
   prefetch_count: 123
+  queue_declare_args:
+    x-max-priority: 10
   queue_binding_args:
     image-type: png
     x-match: any

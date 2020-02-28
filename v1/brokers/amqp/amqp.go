@@ -2,8 +2,8 @@ package amqp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -14,6 +14,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 )
 
@@ -53,6 +54,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
 		b.GetConfig().Broker,
+		b.GetConfig().MultipleBrokerSeparator,
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
@@ -61,7 +63,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		false,                           // queue delete when unused
 		b.GetConfig().AMQP.BindingKey,   // queue binding key
 		nil,                             // exchange declare args
-		nil,                             // queue declare args
+		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
@@ -127,6 +129,7 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 		}
 		conn.connection, conn.channel, conn.queue, conn.confirmation, conn.errorchan, err = b.Connect(
 			b.GetConfig().Broker,
+			b.GetConfig().MultipleBrokerSeparator,
 			b.GetConfig().TLSConfig,
 			b.GetConfig().AMQP.Exchange,     // exchange name
 			b.GetConfig().AMQP.ExchangeType, // exchange type
@@ -139,14 +142,17 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 			queueBindingArgs,                // queue binding args
 		)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "Failed to connect to queue %s", queueName)
 		}
 
 		// Reconnect to the channel if it disconnects/errors out
 		go func() {
 			select {
 			case err = <-conn.errorchan:
-				log.INFO.Printf("Error occured on queue: %s. Reconnecting", queueName)
+				log.INFO.Printf("Error occurred on queue: %s. Reconnecting", queueName)
+				b.connectionsMutex.Lock()
+				delete(b.connections, queueName)
+				b.connectionsMutex.Unlock()
 				_, err := b.GetOrOpenConnection(queueName, queueBindingKey, exchangeDeclareArgs, queueDeclareArgs, queueBindingArgs)
 				if err != nil {
 					log.ERROR.Printf("Failed to reopen queue: %s.", queueName)
@@ -177,7 +183,7 @@ func (b *Broker) CloseConnections() error {
 }
 
 // Publish places a new message on the default queue
-func (b *Broker) Publish(signature *tasks.Signature) error {
+func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
 	b.AdjustRoutingKey(signature)
 
@@ -198,14 +204,22 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 		}
 	}
 
-	connection, err := b.GetOrOpenConnection(signature.RoutingKey,
-		b.GetConfig().AMQP.BindingKey, // queue binding key
-		nil,                           // exchange declare args
-		nil,                           // queue declare args
+	queue := b.GetConfig().DefaultQueue
+	bindingKey := b.GetConfig().AMQP.BindingKey // queue binding key
+	if b.isDirectExchange() {
+		queue = signature.RoutingKey
+		bindingKey = signature.RoutingKey
+	}
+
+	connection, err := b.GetOrOpenConnection(
+		queue,
+		bindingKey, // queue binding key
+		nil,        // exchange declare args
+		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Failed to get a connection for queue %s", queue)
 	}
 
 	channel := connection.channel
@@ -220,10 +234,11 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 			Headers:      amqp.Table(signature.Headers),
 			ContentType:  "application/json",
 			Body:         msg,
+			Priority:     signature.Priority,
 			DeliveryMode: amqp.Persistent,
 		},
 	); err != nil {
-		return err
+		return errors.Wrap(err, "Failed to publish task")
 	}
 
 	confirmed := <-confirmsChan
@@ -247,7 +262,10 @@ func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskP
 		}
 	}()
 
-	errorsChan := make(chan error)
+	// make channel with a capacity makes it become a buffered channel so that a worker which wants to
+	// push an error to `errorsChan` doesn't need to be blocked while the for-loop is blocked waiting
+	// a worker, that is, it avoids a possible deadlock
+	errorsChan := make(chan error, 1)
 
 	for {
 		select {
@@ -306,11 +324,15 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 	if !b.IsTaskRegistered(signature.Name) {
 		requeue = true
 		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery.Body)
-		delivery.Nack(multiple, requeue)
+
+    if !signature.IgnoreWhenTaskNotRegistered {
+			delivery.Nack(multiple, requeue)
+		}
+    
 		return nil
 	}
 
-	log.INFO.Printf("Received new message: %s", delivery.Body)
+	log.DEBUG.Printf("Received new message: %s", delivery.Body)
 
 	err := taskProcessor.Process(signature)
 	delivery.Ack(multiple)
@@ -351,12 +373,13 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 	}
 	conn, channel, _, _, _, err := b.Connect(
 		b.GetConfig().Broker,
+		b.GetConfig().MultipleBrokerSeparator,
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
 		queueName,                       // queue name
 		true,                            // queue durable
-		false,                           // queue delete when unused
+		b.GetConfig().AMQP.AutoDelete,   // queue delete when unused
 		queueName,                       // queue binding key
 		nil,                             // exchange declare args
 		declareQueueArgs,                // queue declare args
@@ -386,6 +409,10 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 	return nil
 }
 
+func (b *Broker) isDirectExchange() bool {
+	return b.GetConfig().AMQP != nil && b.GetConfig().AMQP.ExchangeType == "direct"
+}
+
 // AdjustRoutingKey makes sure the routing key is correct.
 // If the routing key is an empty string:
 // a) set it to binding key for direct exchange type
@@ -395,7 +422,7 @@ func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
 		return
 	}
 
-	if b.GetConfig().AMQP != nil && b.GetConfig().AMQP.ExchangeType == "direct" {
+	if b.isDirectExchange() {
 		// The routing algorithm behind a direct exchange is simple - a message goes
 		// to the queues whose binding key exactly matches the routing key of the message.
 		s.RoutingKey = b.GetConfig().AMQP.BindingKey

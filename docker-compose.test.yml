@@ -22,7 +22,8 @@ services:
       context: .
       dockerfile: ./Dockerfile.test
     environment:
-      AMQP_URL: 'amqp://guest:guest@rabbitmq:5672/'
+      AMQP_URLS: 'amqp://guest:guest@dummy:5672/,amqp://guest:guest@rabbitmq:5672/'
+      AMQP_URLS_SEPARATOR: ','
       REDIS_URL: 'redis:6379'
       MEMCACHE_URL: 'memcached:11211'
       MONGODB_URL: 'mongo:27017'

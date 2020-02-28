@@ -8,13 +8,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
+
 	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
-	"github.com/opentracing/opentracing-go"
 )
 
 // Worker represents a single worker process
@@ -27,13 +28,6 @@ type Worker struct {
 	preTaskHandler  func(*tasks.Signature)
 	postTaskHandler func(*tasks.Signature)
 }
-
-var (
-	// ErrWorkerQuitGracefully is return when worker quit gracefully
-	ErrWorkerQuitGracefully = errors.New("Worker quit gracefully")
-	// ErrWorkerQuitGracefully is return when worker quit abruptly
-	ErrWorkerQuitAbruptly = errors.New("Worker quit abruptly")
-)
 
 // Launch starts a new worker process. The worker subscribes
 // to the default queue and processes incoming registered tasks
@@ -102,11 +96,11 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 						log.WARNING.Print("Waiting for running tasks to finish before shutting down")
 						go func() {
 							worker.Quit()
-							errorsChan <- ErrWorkerQuitGracefully
+							errorsChan <- errors.New("Worker quit gracefully")
 						}()
 					} else {
 						// Abort the program when user hits Ctrl+C second time in a row
-						errorsChan <- ErrWorkerQuitAbruptly
+						errorsChan <- errors.New("Worker quit abruptly")
 					}
 				}
 			}

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,19 +17,13 @@ import (
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/redsync"
-	"github.com/gomodule/redigo/redis"
+	"github.com/go-redis/redis"
 )
 
-var redisDelayedTasksKey = "delayed_tasks"
-
-// Broker represents a Redis broker
-type Broker struct {
+// BrokerGR represents a Redis broker
+type BrokerGR struct {
 	common.Broker
-	common.RedisConnector
-	host         string
-	password     string
-	db           int
-	pool         *redis.Pool
+	rclient      redis.UniversalClient
 	consumingWG  sync.WaitGroup // wait group to make sure whole consumption completes
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes
 	delayedWG    sync.WaitGroup
@@ -37,19 +33,36 @@ type Broker struct {
 	redisOnce  sync.Once
 }
 
-// New creates new Broker instance
-func New(cnf *config.Config, host, password, socketPath string, db int) iface.Broker {
-	b := &Broker{Broker: common.NewBroker(cnf)}
-	b.host = host
-	b.db = db
-	b.password = password
-	b.socketPath = socketPath
+// NewGR creates new Broker instance
+func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
+	b := &BrokerGR{Broker: common.NewBroker(cnf)}
 
+	var password string
+	parts := strings.Split(addrs[0], "@")
+	if len(parts) == 2 {
+		// with passwrod
+		password = parts[0]
+		addrs[0] = parts[1]
+	}
+
+	ropt := &redis.UniversalOptions{
+		Addrs:    addrs,
+		DB:       db,
+		Password: password,
+	}
+	if cnf.Redis != nil {
+		ropt.MasterName = cnf.Redis.MasterName
+	}
+
+	b.rclient = redis.NewUniversalClient(ropt)
+	if cnf.Redis.DelayedTasksKey != "" {
+		redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
+	}
 	return b
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
+func (b *BrokerGR) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
 	b.consumingWG.Add(1)
 	defer b.consumingWG.Done()
 
@@ -59,11 +72,8 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
 
-	conn := b.open()
-	defer conn.Close()
-
 	// Ping the server to make sure connection is live
-	_, err := conn.Do("PING")
+	_, err := b.rclient.Ping().Result()
 	if err != nil {
 		b.GetRetryFunc()(b.GetRetryStopChan())
 
@@ -100,7 +110,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				close(deliveries)
 				return
 			case <-pool:
-				task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
+				task, _ := b.nextTask(getQueueGR(b.GetConfig(), taskProcessor))
 				//TODO: should this error be ignored?
 				if len(task) > 0 {
 					deliveries <- task
@@ -153,20 +163,18 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 }
 
 // StopConsuming quits the loop
-func (b *Broker) StopConsuming() {
+func (b *BrokerGR) StopConsuming() {
 	b.Broker.StopConsuming()
 	// Waiting for the delayed tasks goroutine to have stopped
 	b.delayedWG.Wait()
 	// Waiting for consumption to finish
 	b.consumingWG.Wait()
 
-	if b.pool != nil {
-		b.pool.Close()
-	}
+	b.rclient.Close()
 }
 
 // Publish places a new message on the default queue
-func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error {
+func (b *BrokerGR) Publish(ctx context.Context, signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
 	b.Broker.AdjustRoutingKey(signature)
 
@@ -175,9 +183,6 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
-	conn := b.open()
-	defer conn.Close()
-
 	// Check the ETA signature field, if it is set and it is in the future,
 	// delay the task
 	if signature.ETA != nil {
@@ -185,28 +190,22 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 
 		if signature.ETA.After(now) {
 			score := signature.ETA.UnixNano()
-			_, err = conn.Do("ZADD", redisDelayedTasksKey, score, msg)
+			err = b.rclient.ZAdd(redisDelayedTasksKey, redis.Z{Score: float64(score), Member: msg}).Err()
 			return err
 		}
 	}
 
-	_, err = conn.Do("RPUSH", signature.RoutingKey, msg)
+	err = b.rclient.RPush(signature.RoutingKey, msg).Err()
 	return err
 }
 
 // GetPendingTasks returns a slice of task signatures waiting in the queue
-func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
-	conn := b.open()
-	defer conn.Close()
+func (b *BrokerGR) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 
 	if queue == "" {
 		queue = b.GetConfig().DefaultQueue
 	}
-	dataBytes, err := conn.Do("LRANGE", queue, 0, -1)
-	if err != nil {
-		return nil, err
-	}
-	results, err := redis.ByteSlices(dataBytes, err)
+	results, err := b.rclient.LRange(queue, 0, -1).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +213,7 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	taskSignatures := make([]*tasks.Signature, len(results))
 	for i, result := range results {
 		signature := new(tasks.Signature)
-		decoder := json.NewDecoder(bytes.NewReader(result))
+		decoder := json.NewDecoder(strings.NewReader(result))
 		decoder.UseNumber()
 		if err := decoder.Decode(signature); err != nil {
 			return nil, err
@@ -225,15 +224,8 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 }
 
 // GetDelayedTasks returns a slice of task signatures that are scheduled, but not yet in the queue
-func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
-	conn := b.open()
-	defer conn.Close()
-
-	dataBytes, err := conn.Do("ZRANGE", redisDelayedTasksKey, 0, -1)
-	if err != nil {
-		return nil, err
-	}
-	results, err := redis.ByteSlices(dataBytes, err)
+func (b *BrokerGR) GetDelayedTasks() ([]*tasks.Signature, error) {
+	results, err := b.rclient.ZRange(redisDelayedTasksKey, 0, -1).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +233,7 @@ func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
 	taskSignatures := make([]*tasks.Signature, len(results))
 	for i, result := range results {
 		signature := new(tasks.Signature)
-		decoder := json.NewDecoder(bytes.NewReader(result))
+		decoder := json.NewDecoder(strings.NewReader(result))
 		decoder.UseNumber()
 		if err := decoder.Decode(signature); err != nil {
 			return nil, err
@@ -253,7 +245,7 @@ func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor) error {
+func (b *BrokerGR) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor) error {
 	errorsChan := make(chan error, concurrency*2)
 	pool := make(chan struct{}, concurrency)
 
@@ -298,7 +290,7 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 }
 
 // consumeOne processes a single message using TaskProcessor
-func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) error {
+func (b *BrokerGR) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) error {
 	signature := new(tasks.Signature)
 	decoder := json.NewDecoder(bytes.NewReader(delivery))
 	decoder.UseNumber()
@@ -309,15 +301,9 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 	// If the task is not registered, we requeue it,
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(signature.Name) {
-		if signature.IgnoreWhenTaskNotRegistered {
-			return nil
-		}
 		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery)
 
-		conn := b.open()
-		defer conn.Close()
-
-		conn.Do("RPUSH", getQueue(b.GetConfig(), taskProcessor), delivery)
+		b.rclient.RPush(getQueueGR(b.GetConfig(), taskProcessor), delivery)
 		return nil
 	}
 
@@ -327,9 +313,7 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 }
 
 // nextTask pops next available task from the default queue
-func (b *Broker) nextTask(queue string) (result []byte, err error) {
-	conn := b.open()
-	defer conn.Close()
+func (b *BrokerGR) nextTask(queue string) (result []byte, err error) {
 
 	pollPeriodMilliseconds := 1000 // default poll period for normal tasks
 	if b.GetConfig().Redis != nil {
@@ -340,7 +324,7 @@ func (b *Broker) nextTask(queue string) (result []byte, err error) {
 	}
 	pollPeriod := time.Duration(pollPeriodMilliseconds) * time.Millisecond
 
-	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriod.Seconds()))
+	items, err := b.rclient.BLPop(pollPeriod, queue).Result()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -348,30 +332,29 @@ func (b *Broker) nextTask(queue string) (result []byte, err error) {
 	// items[0] - the name of the key where an element was popped
 	// items[1] - the value of the popped element
 	if len(items) != 2 {
-		return []byte{}, redis.ErrNil
+		return []byte{}, redis.Nil
 	}
 
-	result = items[1]
+	result = []byte(items[1])
 
 	return result, nil
 }
 
 // nextDelayedTask pops a value from the ZSET key using WATCH/MULTI/EXEC commands.
-// https://github.com/gomodule/redigo/blob/master/redis/zpop_example_test.go
-func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
-	conn := b.open()
-	defer conn.Close()
+func (b *BrokerGR) nextDelayedTask(key string) (result []byte, err error) {
 
-	defer func() {
-		// Return connection to normal state on error.
-		// https://redis.io/commands/discard
-		if err != nil {
-			conn.Do("DISCARD")
-		}
-	}()
+	//pipe := b.rclient.Pipeline()
+	//
+	//defer func() {
+	//	// Return connection to normal state on error.
+	//	// https://redis.io/commands/discard
+	//	if err != nil {
+	//		pipe.Discard()
+	//	}
+	//}()
 
 	var (
-		items [][]byte
+		items []string
 		reply interface{}
 	)
 
@@ -389,39 +372,37 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 		// Space out queries to ZSET so we don't bombard redis
 		// server with relentless ZRANGEBYSCOREs
 		time.Sleep(time.Duration(pollPeriod) * time.Millisecond)
-		if _, err = conn.Do("WATCH", key); err != nil {
+		watchFunc := func(tx *redis.Tx) error {
+
+			now := time.Now().UTC().UnixNano()
+
+			// https://redis.io/commands/zrangebyscore
+			items, err = tx.ZRevRangeByScore(key, redis.ZRangeBy{
+				Min: "0", Max: strconv.FormatInt(now, 10), Offset: 0, Count: 1,
+			}).Result()
+			if err != nil {
+				return err
+			}
+			if len(items) != 1 {
+				return redis.Nil
+			}
+
+			return nil
+
+		}
+		if err = b.rclient.Watch(watchFunc, key); err != nil {
 			return
 		}
 
-		now := time.Now().UTC().UnixNano()
-
-		// https://redis.io/commands/zrangebyscore
-		items, err = redis.ByteSlices(conn.Do(
-			"ZRANGEBYSCORE",
-			key,
-			0,
-			now,
-			"LIMIT",
-			0,
-			1,
-		))
-		if err != nil {
-			return
-		}
-		if len(items) != 1 {
-			err = redis.ErrNil
-			return
-		}
-
-		_ = conn.Send("MULTI")
-		_ = conn.Send("ZREM", key, items[0])
-		reply, err = conn.Do("EXEC")
+		txpipe := b.rclient.TxPipeline()
+		txpipe.ZRem(key, items[0])
+		reply, err = txpipe.Exec()
 		if err != nil {
 			return
 		}
 
 		if reply != nil {
-			result = items[0]
+			result = []byte(items[0])
 			break
 		}
 	}
@@ -429,17 +410,7 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 	return
 }
 
-// open returns or creates instance of Redis connection
-func (b *Broker) open() redis.Conn {
-	b.redisOnce.Do(func() {
-		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
-		b.redsync = redsync.New([]redsync.Pool{b.pool})
-	})
-
-	return b.pool.Get()
-}
-
-func getQueue(config *config.Config, taskProcessor iface.TaskProcessor) string {
+func getQueueGR(config *config.Config, taskProcessor iface.TaskProcessor) string {
 	customQueue := taskProcessor.CustomQueue()
 	if customQueue == "" {
 		return config.DefaultQueue

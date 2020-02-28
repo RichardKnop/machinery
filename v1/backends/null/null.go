@@ -1,10 +1,7 @@
-package eager
+package null
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"sync"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
@@ -45,71 +42,41 @@ func (e ErrTasknotFound) Error() string {
 // Backend represents an "eager" in-memory result backend
 type Backend struct {
 	common.Backend
-	groups     map[string][]string
-	tasks      map[string][]byte
-	stateMutex sync.Mutex
+	groups map[string]struct{}
 }
 
 // New creates EagerBackend instance
 func New() iface.Backend {
 	return &Backend{
 		Backend: common.NewBackend(new(config.Config)),
-		groups:  make(map[string][]string),
-		tasks:   make(map[string][]byte),
+		groups:  make(map[string]struct{}),
 	}
 }
 
 // InitGroup creates and saves a group meta data object
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
-	tasks := make([]string, 0, len(taskUUIDs))
-	// copy every task
-	for _, v := range taskUUIDs {
-		tasks = append(tasks, v)
-	}
-
-	b.groups[groupUUID] = tasks
+	b.groups[groupUUID] = struct{}{}
 	return nil
 }
 
 // GroupCompleted returns true if all tasks in a group finished
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
-	tasks, ok := b.groups[groupUUID]
+	_, ok := b.groups[groupUUID]
 	if !ok {
 		return false, NewErrGroupNotFound(groupUUID)
 	}
 
-	var countSuccessTasks = 0
-	for _, v := range tasks {
-		t, err := b.GetState(v)
-		if err != nil {
-			return false, err
-		}
-
-		if t.IsCompleted() {
-			countSuccessTasks++
-		}
-	}
-
-	return countSuccessTasks == groupTaskCount, nil
+	return true, nil
 }
 
 // GroupTaskStates returns states of all tasks in the group
 func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
-	taskUUIDs, ok := b.groups[groupUUID]
+	_, ok := b.groups[groupUUID]
 	if !ok {
 		return nil, NewErrGroupNotFound(groupUUID)
 	}
 
 	ret := make([]*tasks.TaskState, 0, groupTaskCount)
-	for _, taskUUID := range taskUUIDs {
-		t, err := b.GetState(taskUUID)
-		if err != nil {
-			return nil, err
-		}
-
-		ret = append(ret, t)
-	}
-
 	return ret, nil
 }
 
@@ -159,30 +126,12 @@ func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error 
 
 // GetState returns the latest task state
 func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
-	tasktStateBytes, ok := b.tasks[taskUUID]
-	if !ok {
-		return nil, NewErrTasknotFound(taskUUID)
-	}
-
-	state := new(tasks.TaskState)
-	decoder := json.NewDecoder(bytes.NewReader(tasktStateBytes))
-	decoder.UseNumber()
-	if err := decoder.Decode(state); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal task state %v", b)
-	}
-
-	return state, nil
+	return nil, NewErrTasknotFound(taskUUID)
 }
 
 // PurgeState deletes stored task state
 func (b *Backend) PurgeState(taskUUID string) error {
-	_, ok := b.tasks[taskUUID]
-	if !ok {
-		return NewErrTasknotFound(taskUUID)
-	}
-
-	delete(b.tasks, taskUUID)
-	return nil
+	return NewErrTasknotFound(taskUUID)
 }
 
 // PurgeGroupMeta deletes stored group meta data
@@ -192,19 +141,10 @@ func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 		return NewErrGroupNotFound(groupUUID)
 	}
 
-	delete(b.groups, groupUUID)
 	return nil
 }
 
 func (b *Backend) updateState(s *tasks.TaskState) error {
 	// simulate the behavior of json marshal/unmarshal
-	b.stateMutex.Lock()
-	defer b.stateMutex.Unlock()
-	msg, err := json.Marshal(s)
-	if err != nil {
-		return fmt.Errorf("Marshal task state error: %v", err)
-	}
-
-	b.tasks[s.TaskUUID] = msg
 	return nil
 }

@@ -20,9 +20,10 @@ func TestSQSMongodb(t *testing.T) {
 
 	// AMQP broker, MongoDB result backend
 	server := testSetup(&config.Config{
-		Broker:        sqsURL,
-		DefaultQueue:  "test_queue",
-		ResultBackend: fmt.Sprintf("mongodb://%v", mongodbURL),
+		Broker:          sqsURL,
+		DefaultQueue:    "test_queue",
+		ResultsExpireIn: 30,
+		ResultBackend:   fmt.Sprintf("mongodb://%v", mongodbURL),
 	})
 	worker := server.NewWorker("test_worker", 0)
 	go worker.Launch()

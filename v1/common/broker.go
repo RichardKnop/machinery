@@ -22,7 +22,12 @@ type Broker struct {
 
 // NewBroker creates new Broker instance
 func NewBroker(cnf *config.Config) Broker {
-	return Broker{cnf: cnf, retry: true}
+	return Broker{
+		cnf:           cnf,
+		retry:         true,
+		stopChan:      make(chan int),
+		retryStopChan: make(chan int),
+	}
 }
 
 // GetConfig returns config
@@ -75,14 +80,17 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return nil, errors.New("Not implemented")
 }
 
+// GetDelayedTasks returns a slice of task.Signatures that are scheduled, but not yet in the queue
+func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
+	return nil, errors.New("Not implemented")
+}
+
 // StartConsuming is a common part of StartConsuming method
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) {
 	if b.retryFunc == nil {
 		b.retryFunc = retry.Closure()
 	}
 
-	b.stopChan = make(chan int)
-	b.retryStopChan = make(chan int)
 }
 
 // StopConsuming is a common part of StopConsuming
@@ -96,11 +104,8 @@ func (b *Broker) StopConsuming() {
 	default:
 	}
 	// Notifying the stop channel stops consuming of messages
-	select {
-	case b.stopChan <- 1:
-		log.WARNING.Print("Stop channel")
-	default:
-	}
+	close(b.stopChan)
+	log.WARNING.Print("Stop channel")
 }
 
 // GetRegisteredTaskNames returns registered tasks names

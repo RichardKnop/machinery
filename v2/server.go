@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
+	"github.com/opentracing/opentracing-go"
+
+	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/backends/result"
-	"github.com/RichardKnop/machinery/v1/brokers/eager"
+	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
-	"github.com/google/uuid"
-
-	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
-	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -28,36 +27,14 @@ type Server struct {
 	prePublishHandler func(*tasks.Signature)
 }
 
-// NewServerWithBrokerBackend ...
-func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
+// NewServer ...
+func NewServer(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
 	return &Server{
 		config:          cnf,
 		registeredTasks: make(map[string]interface{}),
 		broker:          brokerServer,
 		backend:         backendServer,
 	}
-}
-
-// NewServer creates Server instance
-func NewServer(cnf *config.Config) (*Server, error) {
-	broker, err := BrokerFactory(cnf)
-	if err != nil {
-		return nil, err
-	}
-
-	// Backend is optional so we ignore the error
-	backend, _ := BackendFactory(cnf)
-
-	srv := NewServerWithBrokerBackend(cnf, broker, backend)
-
-	// init for eager-mode
-	eager, ok := broker.(eager.Mode)
-	if ok {
-		// we don't have to call worker.Launch in eager mode
-		eager.AssignWorker(srv.NewWorker("eager", 0))
-	}
-
-	return srv, nil
 }
 
 // NewWorker creates Worker instance

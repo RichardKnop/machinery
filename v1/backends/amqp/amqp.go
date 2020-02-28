@@ -48,7 +48,7 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 // NOTE: Given AMQP limitation this will only return true if all finished
 // tasks were successful as we do not keep track of completed failed tasks
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
-	conn, channel, err := b.Open(b.GetConfig().Broker, b.GetConfig().TLSConfig)
+	conn, channel, err := b.Open(b.GetConfig().ResultBackend, b.GetConfig().TLSConfig)
 	if err != nil {
 		return false, err
 	}
@@ -64,7 +64,7 @@ func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, er
 
 // GroupTaskStates returns states of all tasks in the group
 func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
-	conn, channel, err := b.Open(b.GetConfig().Broker, b.GetConfig().TLSConfig)
+	conn, channel, err := b.Open(b.GetConfig().ResultBackend, b.GetConfig().TLSConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*task
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
 func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
-	conn, channel, err := b.Open(b.GetConfig().Broker, b.GetConfig().TLSConfig)
+	conn, channel, err := b.Open(b.GetConfig().ResultBackend, b.GetConfig().TLSConfig)
 	if err != nil {
 		return false, err
 	}
@@ -196,7 +196,8 @@ func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 		"x-expires": int32(b.getExpiresIn()),
 	}
 	conn, channel, _, _, _, err := b.Connect(
-		b.GetConfig().Broker,
+		b.GetConfig().ResultBackend,
+		"",
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
@@ -240,7 +241,7 @@ func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 
 // PurgeState deletes stored task state
 func (b *Backend) PurgeState(taskUUID string) error {
-	conn, channel, err := b.Open(b.GetConfig().Broker, b.GetConfig().TLSConfig)
+	conn, channel, err := b.Open(b.GetConfig().ResultBackend, b.GetConfig().TLSConfig)
 	if err != nil {
 		return err
 	}
@@ -251,7 +252,7 @@ func (b *Backend) PurgeState(taskUUID string) error {
 
 // PurgeGroupMeta deletes stored group meta data
 func (b *Backend) PurgeGroupMeta(groupUUID string) error {
-	conn, channel, err := b.Open(b.GetConfig().Broker, b.GetConfig().TLSConfig)
+	conn, channel, err := b.Open(b.GetConfig().ResultBackend, b.GetConfig().TLSConfig)
 	if err != nil {
 		return err
 	}
@@ -277,7 +278,8 @@ func (b *Backend) updateState(taskState *tasks.TaskState) error {
 		"x-expires": int32(b.getExpiresIn()),
 	}
 	conn, channel, queue, confirmsChan, _, err := b.Connect(
-		b.GetConfig().Broker,
+		b.GetConfig().ResultBackend,
+		"",
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type
@@ -348,7 +350,8 @@ func (b *Backend) markTaskCompleted(signature *tasks.Signature, taskState *tasks
 		"x-expires": int32(b.getExpiresIn()),
 	}
 	conn, channel, queue, confirmsChan, _, err := b.Connect(
-		b.GetConfig().Broker,
+		b.GetConfig().ResultBackend,
+		"",
 		b.GetConfig().TLSConfig,
 		b.GetConfig().AMQP.Exchange,     // exchange name
 		b.GetConfig().AMQP.ExchangeType, // exchange type

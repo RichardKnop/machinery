@@ -1,17 +1,20 @@
 package sqs_test
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/brokers/sqs"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/retry"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/stretchr/testify/assert"
 
 	awssqs "github.com/aws/aws-sdk-go/service/sqs"
 )
@@ -87,6 +90,7 @@ func TestPrivateFunc_consume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pool := make(chan struct{}, 0)
 	wk := server1.NewWorker("sms_worker", 0)
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	outputCopy := *receiveMessageOutput
@@ -94,7 +98,7 @@ func TestPrivateFunc_consume(t *testing.T) {
 	go func() { deliveries <- &outputCopy }()
 
 	// an infinite loop will be executed only when there is no error
-	err = testAWSSQSBroker.ConsumeForTest(deliveries, 0, wk)
+	err = testAWSSQSBroker.ConsumeForTest(deliveries, 0, wk, pool)
 	assert.NotNil(t, err)
 
 }
@@ -227,4 +231,74 @@ func TestPrivateFunc_deleteOne(t *testing.T) {
 
 	err = errAWSSQSBroker.DeleteOneForTest(receiveMessageOutput)
 	assert.NotNil(t, err)
+}
+
+func Test_CustomQueueName(t *testing.T) {
+	server1, err := machinery.NewServer(cnf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wk := server1.NewWorker("test-worker", 0)
+	qURL := testAWSSQSBroker.GetQueueURLForTest(wk)
+	assert.Equal(t, qURL, testAWSSQSBroker.DefaultQueueURLForTest(), "")
+
+	wk2 := server1.NewCustomQueueWorker("test-worker", 0, "my-custom-queue")
+	qURL2 := testAWSSQSBroker.GetQueueURLForTest(wk2)
+	assert.Equal(t, qURL2, testAWSSQSBroker.GetCustomQueueURL("my-custom-queue"), "")
+}
+
+func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
+
+	msg := `{
+        "UUID": "uuid-dummy-task",
+        "Name": "test-task",
+        "RoutingKey": "dummy-routing"
+	}
+	`
+
+	testResp := "47f8b355-5115-4b45-b33a-439016400411"
+	output := make(chan string) // The output channel
+
+	cnf.ResultBackend = "eager"
+	server1, err := machinery.NewServer(cnf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = server1.RegisterTask("test-task", func(ctx context.Context) error {
+		output <- testResp
+
+		return nil
+	})
+	testAWSSQSBroker.SetRegisteredTaskNames([]string{"test-task"})
+	assert.NoError(t, err)
+	pool := make(chan struct{}, 1)
+	pool <- struct{}{}
+	wk := server1.NewWorker("sms_worker", 1)
+	deliveries := make(chan *awssqs.ReceiveMessageOutput)
+	outputCopy := *receiveMessageOutput
+	outputCopy.Messages = []*awssqs.Message{
+		{
+			MessageId: aws.String("test-sqs-msg1"),
+			Body:      aws.String(msg),
+		},
+	}
+
+	go func() {
+		deliveries <- &outputCopy
+
+	}()
+
+	go func() {
+		err = testAWSSQSBroker.ConsumeForTest(deliveries, 1, wk, pool)
+	}()
+
+	select {
+	case resp := <-output:
+		assert.Equal(t, testResp, resp)
+
+	case <-time.After(10 * time.Second):
+		// call timed out
+		t.Fatal("task not processed in 10 seconds")
+	}
 }

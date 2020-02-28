@@ -1,6 +1,8 @@
 package iface
 
 import (
+	"context"
+
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
@@ -12,8 +14,9 @@ type Broker interface {
 	IsTaskRegistered(name string) bool
 	StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error)
 	StopConsuming()
-	Publish(task *tasks.Signature) error
+	Publish(ctx context.Context, task *tasks.Signature) error
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)
+	GetDelayedTasks() ([]*tasks.Signature, error)
 	AdjustRoutingKey(s *tasks.Signature)
 }
 
