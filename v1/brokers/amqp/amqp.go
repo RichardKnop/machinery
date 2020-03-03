@@ -284,7 +284,7 @@ func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskP
 			// Consume the task inside a gotourine so multiple tasks
 			// can be processed concurrently
 			go func() {
-				if err := b.consumeOne(d, taskProcessor); err != nil {
+				if err := b.consumeOne(d, taskProcessor, true); err != nil {
 					errorsChan <- err
 				}
 
@@ -302,7 +302,7 @@ func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskP
 }
 
 // consumeOne processes a single message using TaskProcessor
-func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProcessor) error {
+func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProcessor, ack bool) error {
 	if len(delivery.Body) == 0 {
 		delivery.Nack(true, false)                     // multiple, requeue
 		return errors.New("Received an empty message") // RabbitMQ down?
@@ -335,7 +335,9 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 	log.DEBUG.Printf("Received new message: %s", delivery.Body)
 
 	err := taskProcessor.Process(signature)
-	delivery.Ack(multiple)
+	if ack {
+		delivery.Ack(multiple)
+	}
 	return err
 }
 
@@ -430,4 +432,58 @@ func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
 	}
 
 	s.RoutingKey = b.GetConfig().DefaultQueue
+}
+
+// Helper type for GetPendingTasks to accumulate signatures
+type sigDumper struct {
+	customQueue string
+	Signatures  []*tasks.Signature
+}
+
+func (s *sigDumper) Process(sig *tasks.Signature) error {
+	s.Signatures = append(s.Signatures, sig)
+	return nil
+}
+
+func (s *sigDumper) CustomQueue() string {
+	return s.customQueue
+}
+
+func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
+	if queue == "" {
+		queue = b.GetConfig().DefaultQueue
+	}
+
+	bindingKey := b.GetConfig().AMQP.BindingKey // queue binding key
+	conn, err := b.GetOrOpenConnection(
+		queue,
+		bindingKey, // queue binding key
+		nil,        // exchange declare args
+		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
+		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to get a connection for queue %s", queue)
+	}
+
+	channel := conn.channel
+	queueInfo, err := channel.QueueInspect(queue)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to get info for queue %s", queue)
+	}
+
+	var tag uint64
+	defer channel.Nack(tag, true, true) // multiple, requeue
+
+	dumper := &sigDumper{customQueue: queue}
+	for i := 0; i < queueInfo.Messages; i++ {
+		d, _, err := channel.Get(queue, false)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to get from queue")
+		}
+		tag = d.DeliveryTag
+		b.consumeOne(d, dumper, false)
+	}
+
+	return dumper.Signatures, nil
 }
