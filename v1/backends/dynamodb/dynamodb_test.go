@@ -1,7 +1,9 @@
 package dynamodb_test
 
 import (
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/RichardKnop/machinery/v1/backends/dynamodb"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -22,11 +24,39 @@ func TestInitGroup(t *testing.T) {
 	groupUUID := "testGroupUUID"
 	taskUUIDs := []string{"testTaskUUID1", "testTaskUUID2", "testTaskUUID3"}
 	log.INFO.Println(dynamodb.TestDynamoDBBackend.GetConfig())
+
 	err := dynamodb.TestDynamoDBBackend.InitGroup(groupUUID, taskUUIDs)
 	assert.Nil(t, err)
 
 	err = dynamodb.TestErrDynamoDBBackend.InitGroup(groupUUID, taskUUIDs)
 	assert.NotNil(t, err)
+
+	// assert proper TTL value is set in InitGroup()
+	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 3 * 3600 // results should expire after 3 hours
+	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
+	// Override DynamoDB PutItem() behavior
+	var isPutItemCalled bool
+	client.PutItemOverride = func(input *awsdynamodb.PutItemInput) (*awsdynamodb.PutItemOutput, error) {
+		isPutItemCalled = true
+		assert.NotNil(t, input)
+
+		actualTTLStr := *input.Item["TTL"].N
+		expectedTTLTime := time.Now().Add(3 * time.Hour)
+		assertTTLValue(t, expectedTTLTime, actualTTLStr)
+
+		return &awsdynamodb.PutItemOutput{}, nil
+	}
+	err = dynamodb.TestDynamoDBBackend.InitGroup(groupUUID, taskUUIDs)
+	assert.Nil(t, err)
+	assert.True(t, isPutItemCalled)
+	client.ResetOverrides()
+}
+
+func assertTTLValue(t *testing.T, expectedTTLTime time.Time, actualEncodedTTLValue string) {
+	actualTTLTimestamp, err := strconv.ParseInt(actualEncodedTTLValue, 10, 64)
+	assert.Nil(t, err)
+	actualTTLTime := time.Unix(actualTTLTimestamp, 0)
+	assert.WithinDuration(t, expectedTTLTime, actualTTLTime, time.Second)
 }
 
 func TestGroupCompleted(t *testing.T) {
@@ -256,6 +286,120 @@ func TestPrivateFuncSetTaskState(t *testing.T) {
 	assert.NotNil(t, err)
 	err = dynamodb.TestDynamoDBBackend.SetTaskStateForTest(state)
 	assert.Nil(t, err)
+}
+
+// verifyUpdateInput is a helper function to verify valid dynamoDB update input.
+func verifyUpdateInput(t *testing.T, input *awsdynamodb.UpdateItemInput, expectedTaskID string, expectedState string, expectedTTLTime time.Time) {
+	assert.NotNil(t, input)
+
+	// verify task ID
+	assert.Equal(t, expectedTaskID, *input.Key["TaskUUID"].S)
+
+	// verify task state
+	assert.Equal(t, expectedState, *input.ExpressionAttributeValues[":s"].S)
+
+	// Verify TTL
+	if !expectedTTLTime.IsZero() {
+		actualTTLStr := *input.ExpressionAttributeValues[":t"].N
+		assertTTLValue(t, expectedTTLTime, actualTTLStr)
+	}
+}
+
+func TestSetStateSuccess(t *testing.T) {
+	signature := &tasks.Signature{UUID: "testTaskUUID"}
+
+	// assert correct task ID, state and TTL value is set in SetStateSuccess()
+	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 3 * 3600 // results should expire after 3 hours
+	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
+	// Override DynamoDB UpdateItem() behavior
+	var isUpdateItemCalled bool
+	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+		isUpdateItemCalled = true
+		verifyUpdateInput(t, input, signature.UUID, tasks.StateSuccess, time.Now().Add(3*time.Hour))
+		return &awsdynamodb.UpdateItemOutput{}, nil
+	}
+
+	err := dynamodb.TestDynamoDBBackend.SetStateSuccess(signature, nil)
+	assert.Nil(t, err)
+	assert.True(t, isUpdateItemCalled)
+	client.ResetOverrides()
+}
+
+func TestSetStateFailure(t *testing.T) {
+	signature := &tasks.Signature{UUID: "testTaskUUID"}
+
+	// assert correct task ID, state and TTL value is set in SetStateFailure()
+	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 2 * 3600 // results should expire after 2 hours
+	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
+	// Override DynamoDB UpdateItem() behavior
+	var isUpdateItemCalled bool
+	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+		isUpdateItemCalled = true
+		verifyUpdateInput(t, input, signature.UUID, tasks.StateFailure, time.Now().Add(2*time.Hour))
+		return &awsdynamodb.UpdateItemOutput{}, nil
+	}
+
+	err := dynamodb.TestDynamoDBBackend.SetStateFailure(signature, "Some error occurred")
+	assert.Nil(t, err)
+	assert.True(t, isUpdateItemCalled)
+	client.ResetOverrides()
+}
+
+func TestSetStateReceived(t *testing.T) {
+	signature := &tasks.Signature{UUID: "testTaskUUID"}
+
+	// assert correct task ID, state and *no* TTL value is set in SetStateReceived()
+	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 2 * 3600 // results should expire after 2 hours (ignored for this state)
+	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
+	var isUpdateItemCalled bool
+	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+		isUpdateItemCalled = true
+		verifyUpdateInput(t, input, signature.UUID, tasks.StateReceived, time.Time{})
+		return &awsdynamodb.UpdateItemOutput{}, nil
+	}
+
+	err := dynamodb.TestDynamoDBBackend.SetStateReceived(signature)
+	assert.Nil(t, err)
+	assert.True(t, isUpdateItemCalled)
+	client.ResetOverrides()
+}
+
+func TestSetStateStarted(t *testing.T) {
+	signature := &tasks.Signature{UUID: "testTaskUUID"}
+
+	// assert correct task ID, state and *no* TTL value is set in SetStateStarted()
+	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 2 * 3600 // results should expire after 2 hours (ignored for this state)
+	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
+	var isUpdateItemCalled bool
+	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+		isUpdateItemCalled = true
+		verifyUpdateInput(t, input, signature.UUID, tasks.StateStarted, time.Time{})
+		return &awsdynamodb.UpdateItemOutput{}, nil
+	}
+
+	err := dynamodb.TestDynamoDBBackend.SetStateStarted(signature)
+	assert.Nil(t, err)
+	assert.True(t, isUpdateItemCalled)
+	client.ResetOverrides()
+}
+
+func TestSetStateRetry(t *testing.T) {
+	signature := &tasks.Signature{UUID: "testTaskUUID"}
+
+	// assert correct task ID, state and *no* TTL value is set in SetStateStarted()
+	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 2 * 3600 // results should expire after 2 hours (ignored for this state)
+	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
+	var isUpdateItemCalled bool
+	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+		isUpdateItemCalled = true
+		verifyUpdateInput(t, input, signature.UUID, tasks.StateRetry, time.Time{})
+		return &awsdynamodb.UpdateItemOutput{}, nil
+	}
+
+	err := dynamodb.TestDynamoDBBackend.SetStateRetry(signature)
+	assert.Nil(t, err)
+	assert.True(t, isUpdateItemCalled)
+	client.ResetOverrides()
 }
 
 func TestPrivateFuncGetStates(t *testing.T) {

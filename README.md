@@ -302,6 +302,8 @@ dynamodb:
 ```
 If these tables are not found, an fatal error would be thrown.
 
+If you wish to expire the records, you can configure the `TTL` field in AWS admin for these tables. The `TTL` field is set based on the `ResultsExpireIn` value in the Server's config. See https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/howitworks-ttl.html for more information.
+
 ### Custom Logger
 
 You can define a custom logger by implementing the following interface:
