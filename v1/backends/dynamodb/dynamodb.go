@@ -118,7 +118,7 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	// If group meta is locked, wait until it's unlocked
 	for groupMeta.Lock {
 		groupMeta, _ = b.getGroupMeta(groupUUID)
-		log.WARNING.Print("Group meta locked, waiting")
+		log.WARNING.Printf("Group [%s] locked, waiting", groupUUID)
 		time.Sleep(time.Millisecond * 5)
 	}
 
@@ -235,13 +235,12 @@ func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 		},
 	})
 	if err != nil {
-		log.ERROR.Printf("Error when getting group meta. Error: %v", err)
+		log.ERROR.Printf("Error when getting group [%s]. Error: [%s]", groupUUID, err)
 		return nil, err
 	}
 	item, err := b.unmarshalGroupMetaGetItemResult(result)
 	if err != nil {
-		log.INFO.Println("!!!", result)
-		log.ERROR.Printf("Failed to unmarshal item, %v", err)
+		log.ERROR.Printf("Failed to unmarshal item. Error: [%s], Result: [%+v]", err, result)
 		return nil, err
 	}
 	return item, nil
