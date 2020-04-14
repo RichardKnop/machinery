@@ -25,9 +25,19 @@ var (
 
 type TestDynamoDBClient struct {
 	dynamodbiface.DynamoDBAPI
+	PutItemOverride    func(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
+	UpdateItemOverride func(*dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error)
 }
 
-func (t *TestDynamoDBClient) PutItem(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
+func (t *TestDynamoDBClient) ResetOverrides() {
+	t.PutItemOverride = nil
+	t.UpdateItemOverride = nil
+}
+
+func (t *TestDynamoDBClient) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
+	if t.PutItemOverride != nil {
+		return t.PutItemOverride(input)
+	}
 	return &dynamodb.PutItemOutput{}, nil
 }
 
@@ -104,7 +114,10 @@ func (t *TestDynamoDBClient) DeleteItem(*dynamodb.DeleteItemInput) (*dynamodb.De
 	return &dynamodb.DeleteItemOutput{}, nil
 }
 
-func (t *TestDynamoDBClient) UpdateItem(*dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
+func (t *TestDynamoDBClient) UpdateItem(input *dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
+	if t.UpdateItemOverride != nil {
+		return t.UpdateItemOverride(input)
+	}
 	return &dynamodb.UpdateItemOutput{}, nil
 }
 

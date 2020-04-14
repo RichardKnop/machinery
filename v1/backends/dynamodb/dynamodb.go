@@ -52,6 +52,7 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
 		CreatedAt: time.Now().UTC(),
+		TTL:       b.getExpirationTime(),
 	}
 	av, err := dynamodbattribute.MarshalMap(meta)
 	if err != nil {
@@ -164,12 +165,14 @@ func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 // SetStateSuccess ...
 func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	taskState := tasks.NewSuccessTaskState(signature, results)
+	taskState.TTL = b.getExpirationTime()
 	return b.setTaskState(taskState)
 }
 
 // SetStateFailure ...
 func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
 	taskState := tasks.NewFailureTaskState(signature, err)
+	taskState.TTL = b.getExpirationTime()
 	return b.updateToFailureStateWithError(taskState)
 }
 
@@ -367,6 +370,13 @@ func (b *Backend) setTaskState(taskState *tasks.TaskState) error {
 		}
 		exp += ", #C = :c"
 	}
+	if taskState.TTL > 0 {
+		expAttributeNames["#T"] = aws.String("TTL")
+		expAttributeValues[":t"] = &dynamodb.AttributeValue{
+			N: aws.String(fmt.Sprintf("%d", taskState.TTL)),
+		}
+		exp += ", #T = :t"
+	}
 	if taskState.Results != nil && len(taskState.Results) != 0 {
 		expAttributeNames["#R"] = aws.String("Results")
 		var results []*dynamodb.AttributeValue
@@ -447,6 +457,14 @@ func (b *Backend) updateToFailureStateWithError(taskState *tasks.TaskState) erro
 		UpdateExpression: aws.String("SET #S = :s, #E = :e"),
 	}
 
+	if taskState.TTL > 0 {
+		input.ExpressionAttributeNames["#T"] = aws.String("TTL")
+		input.ExpressionAttributeValues[":t"] = &dynamodb.AttributeValue{
+			N: aws.String(fmt.Sprintf("%d", taskState.TTL)),
+		}
+		input.UpdateExpression = aws.String(aws.StringValue(input.UpdateExpression) + ", #T = :t")
+	}
+
 	_, err := b.client.UpdateItem(input)
 
 	if err != nil {
@@ -510,4 +528,13 @@ func (b *Backend) tableExists(tableName string, tableNames []*string) bool {
 		}
 	}
 	return false
+}
+
+func (b *Backend) getExpirationTime() int64 {
+	expiresIn := b.GetConfig().ResultsExpireIn
+	if expiresIn == 0 {
+		// expire results after 1 hour by default
+		expiresIn = config.DefaultResultsExpireIn
+	}
+	return time.Now().Add(time.Second * time.Duration(expiresIn)).Unix()
 }
