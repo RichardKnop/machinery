@@ -182,6 +182,7 @@ func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 				S: aws.String(taskUUID),
 			},
 		},
+		ConsistentRead: aws.Bool(true),
 	})
 	if err != nil {
 		return nil, err
@@ -233,6 +234,7 @@ func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 				S: aws.String(groupUUID),
 			},
 		},
+		ConsistentRead: aws.Bool(true),
 	})
 	if err != nil {
 		log.ERROR.Printf("Error when getting group meta. Error: %v", err)
