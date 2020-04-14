@@ -10,7 +10,7 @@ result_backend: 'redis://localhost:6379'
 results_expire_in: 3600000
 
 amqp:
-  binding_key: machinery_task
+  binding_key: machinery_tasks
   exchange: machinery_exchange
   exchange_type: direct
   prefetch_count: 3
