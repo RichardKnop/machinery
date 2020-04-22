@@ -3,6 +3,7 @@ package machinery
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -52,13 +53,13 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 
 	// Log some useful information about worker configuration
 	log.INFO.Printf("Launching a worker with the following settings:")
-	log.INFO.Printf("- Broker: %s", cnf.Broker)
+	log.INFO.Printf("- Broker: %s", RedactURL(cnf.Broker))
 	if worker.Queue == "" {
 		log.INFO.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	} else {
 		log.INFO.Printf("- CustomQueue: %s", worker.Queue)
 	}
-	log.INFO.Printf("- ResultBackend: %s", cnf.ResultBackend)
+	log.INFO.Printf("- ResultBackend: %s", RedactURL(cnf.ResultBackend))
 	if cnf.AMQP != nil {
 		log.INFO.Printf("- AMQP: %s", cnf.AMQP.Exchange)
 		log.INFO.Printf("  - Exchange: %s", cnf.AMQP.Exchange)
@@ -402,4 +403,13 @@ func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 //GetServer returns server
 func (worker *Worker) GetServer() *Server {
 	return worker.server
+}
+
+
+func RedactURL(urlString string) string {
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return urlString
+	}
+	return fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 }
