@@ -3,6 +3,8 @@ package machinery
 import (
 	"errors"
 	"fmt"
+	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
+	redislock "github.com/RichardKnop/machinery/v1/locks/redis"
 	neturl "net/url"
 	"os"
 	"strconv"
@@ -199,6 +201,21 @@ func ParseRedisURL(url string) (host, password string, db int, err error) {
 	}
 
 	return
+}
+
+func LockFactory(cnf *config.Config) (lockiface.Lock, error) {
+	if strings.HasPrefix(cnf.Lock, "redis://") {
+		parts := strings.Split(cnf.Lock, "redis://")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(
+				"Redis broker connection string should be in format redis://host:port, instead got %s",
+				cnf.Lock,
+			)
+		}
+		locks := strings.Split(parts[1], ",")
+		return redislock.New(cnf, locks, 0, 3), nil
+	}
+	return nil, fmt.Errorf("Factory failed with lock: %v", cnf.Lock)
 }
 
 // ParseRedisSocketURL extracts Redis connection options from a URL with the

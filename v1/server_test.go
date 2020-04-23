@@ -77,6 +77,7 @@ func getTestServer(t *testing.T) *machinery.Server {
 		Broker:        "amqp://guest:guest@localhost:5672/",
 		DefaultQueue:  "machinery_tasks",
 		ResultBackend: "redis://127.0.0.1:6379",
+		Lock:          "redis://127.0.0.1:6379",
 		AMQP: &config.AMQPConfig{
 			Exchange:      "machinery_exchange",
 			ExchangeType:  "direct",
