@@ -35,7 +35,6 @@ type Broker struct {
 	stopReceivingChan chan int
 	sess              *session.Session
 	service           sqsiface.SQSAPI
-	queueUrl          *string
 }
 
 // New creates new Broker instance
@@ -60,10 +59,6 @@ func New(cnf *config.Config) iface.Broker {
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
-	qURL := b.getQueueURL(taskProcessor)
-	//save it so that it can be used later when attempting to delete task
-	b.queueUrl = qURL
-
 	deliveries := make(chan *awssqs.ReceiveMessageOutput, concurrency)
 	pool := make(chan struct{}, concurrency)
 
@@ -77,8 +72,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	go func() {
 		defer b.receivingWG.Done()
 
-		log.INFO.Printf("[*] Waiting for messages on queue: %s. To exit press CTRL+C\n", *qURL)
-
+		log.INFO.Printf("[*] Waiting for messages on queue. To exit press CTRL+C\n")
 		for {
 			select {
 			// A way to stop this goroutine from b.StopConsuming
@@ -86,6 +80,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				close(deliveries)
 				return
 			case <-pool:
+				qURL := b.getQueueURL(taskProcessor)
 				output, err := b.receiveMessage(qURL)
 				if err == nil && len(output.Messages) > 0 {
 					deliveries <- output
@@ -135,7 +130,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 
 	MsgInput := &awssqs.SendMessageInput{
 		MessageBody: aws.String(string(msg)),
-		QueueUrl:    aws.String(b.GetConfig().Broker + "/" + signature.RoutingKey),
+		QueueUrl:    b.queueToURL(signature.RoutingKey),
 	}
 
 	// if this is a fifo queue, there needs to be some additional parameters.
@@ -219,7 +214,7 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 	// and leave the message in the queue
 	if !b.IsTaskRegistered(sig.Name) {
 		if sig.IgnoreWhenTaskNotRegistered {
-			b.deleteOne(delivery)
+			b.deleteOne(delivery, sig)
 		}
 		return fmt.Errorf("task %s is not registered", sig.Name)
 	}
@@ -233,15 +228,19 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 		return err
 	}
 	// Delete message after successfully consuming and processing the message
-	if err = b.deleteOne(delivery); err != nil {
+	if err = b.deleteOne(delivery, sig); err != nil {
 		log.ERROR.Printf("error when deleting the delivery. delivery is %v, Error=%s", delivery, err)
 	}
 	return err
 }
 
 // deleteOne is a method delete a delivery from AWS SQS
-func (b *Broker) deleteOne(delivery *awssqs.ReceiveMessageOutput) error {
+func (b *Broker) deleteOne(delivery *awssqs.ReceiveMessageOutput, sig *tasks.Signature) error {
 	qURL := b.defaultQueueURL()
+	if sig.RoutingKey != "" {
+		qURL = b.queueToURL(sig.RoutingKey)
+	}
+
 	_, err := b.service.DeleteMessage(&awssqs.DeleteMessageInput{
 		QueueUrl:      qURL,
 		ReceiptHandle: delivery.Messages[0].ReceiptHandle,
@@ -255,12 +254,7 @@ func (b *Broker) deleteOne(delivery *awssqs.ReceiveMessageOutput) error {
 
 // defaultQueueURL is a method returns the default queue url
 func (b *Broker) defaultQueueURL() *string {
-	if b.queueUrl != nil {
-		return b.queueUrl
-	} else {
-		return aws.String(b.GetConfig().Broker + "/" + b.GetConfig().DefaultQueue)
-	}
-
+	return b.queueToURL(b.GetConfig().DefaultQueue)
 }
 
 // receiveMessage is a method receives a message from specified queue url
@@ -359,10 +353,13 @@ func (b *Broker) stopReceiving() {
 // getQueueURL is a method returns that returns queueURL first by checking if custom queue was set and usign it
 // otherwise using default queueName from config
 func (b *Broker) getQueueURL(taskProcessor iface.TaskProcessor) *string {
-	queueName := b.GetConfig().DefaultQueue
-	if taskProcessor.CustomQueue() != "" {
-		queueName = taskProcessor.CustomQueue()
+	if customQueue := taskProcessor.CustomQueue(); customQueue != "" {
+		return b.queueToURL(customQueue)
 	}
 
-	return aws.String(b.GetConfig().Broker + "/" + queueName)
+	return b.defaultQueueURL()
+}
+
+func (b *Broker) queueToURL(queue string) *string {
+	return aws.String(b.GetConfig().Broker + "/" + queue)
 }
