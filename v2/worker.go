@@ -28,6 +28,7 @@ type Worker struct {
 	errorHandler    func(err error)
 	preTaskHandler  func(*tasks.Signature)
 	postTaskHandler func(*tasks.Signature)
+	preConsumeHandler func(*Worker) bool
 }
 
 // Launch starts a new worker process. The worker subscribes
@@ -394,7 +395,17 @@ func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 	worker.postTaskHandler = handler
 }
 
+//SetPreConsumeHandler sets a custom handler func before the task is popped
+func (worker *Worker) SetPreConsumeHandler(handler func(*Worker) bool) {
+	worker.preConsumeHandler = handler
+}
+
 //GetServer returns server
 func (worker *Worker) GetServer() *Server {
 	return worker.server
+}
+
+// PreConsumeHandler calls the handler before the task is popped
+func (worker *Worker) PreConsumeHandler() bool {
+	return worker.preConsumeHandler(worker)
 }
