@@ -407,5 +407,9 @@ func (worker *Worker) GetServer() *Server {
 
 // PreConsumeHandler calls the handler before the task is popped
 func (worker *Worker) PreConsumeHandler() bool {
+	if worker.preConsumeHandler == nil {
+		return true
+	}
+
 	return worker.preConsumeHandler(worker)
 }

@@ -413,6 +413,10 @@ func (worker *Worker) GetServer() *Server {
 
 //
 func (worker *Worker) PreConsumeHandler() bool {
+	if worker.preConsumeHandler == nil {
+		return true
+	}
+
 	return worker.preConsumeHandler(worker)
 }
 
