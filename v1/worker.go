@@ -27,6 +27,7 @@ type Worker struct {
 	errorHandler    func(err error)
 	preTaskHandler  func(*tasks.Signature)
 	postTaskHandler func(*tasks.Signature)
+	preConsumeHandler func(*Worker) bool
 }
 
 var (
@@ -400,11 +401,24 @@ func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 	worker.postTaskHandler = handler
 }
 
+//SetPreConsumeHandler sets a custom handler for the end of a job
+func (worker *Worker) SetPreConsumeHandler(handler func(*Worker) bool) {
+	worker.preConsumeHandler = handler
+}
+
 //GetServer returns server
 func (worker *Worker) GetServer() *Server {
 	return worker.server
 }
 
+//
+func (worker *Worker) PreConsumeHandler() bool {
+	if worker.preConsumeHandler == nil {
+		return true
+	}
+
+	return worker.preConsumeHandler(worker)
+}
 
 func RedactURL(urlString string) string {
 	u, err := url.Parse(urlString)

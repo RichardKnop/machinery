@@ -449,6 +449,10 @@ func (s *sigDumper) CustomQueue() string {
 	return s.customQueue
 }
 
+func (_ *sigDumper) PreConsumeHandler() bool {
+	return true
+}
+
 func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	if queue == "" {
 		queue = b.GetConfig().DefaultQueue

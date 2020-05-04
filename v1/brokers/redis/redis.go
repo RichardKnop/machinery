@@ -100,10 +100,12 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				close(deliveries)
 				return
 			case <-pool:
-				task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
-				//TODO: should this error be ignored?
-				if len(task) > 0 {
-					deliveries <- task
+				if taskProcessor.PreConsumeHandler() {
+					task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
+					//TODO: should this error be ignored?
+					if len(task) > 0 {
+						deliveries <- task
+					}
 				}
 
 				pool <- struct{}{}

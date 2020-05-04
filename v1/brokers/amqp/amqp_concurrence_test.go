@@ -19,6 +19,10 @@ func (_ doNothingProcessor) CustomQueue() string {
 	return "oops"
 }
 
+func (_ doNothingProcessor) PreConsumeHandler() bool {
+	return true
+}
+
 func TestConsume(t *testing.T) {
 	var (
 		iBroker iface.Broker
