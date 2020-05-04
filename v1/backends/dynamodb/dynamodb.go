@@ -3,6 +3,7 @@ package dynamodb
 import (
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -16,6 +17,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+)
+
+const (
+	BatchItemsLimit  = 99
+	MaxFetchAttempts = 3
 )
 
 // Backend ...
@@ -78,7 +84,8 @@ func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, er
 	if err != nil {
 		return false, err
 	}
-	taskStates, err := b.getStates(groupMeta.TaskUUIDs...)
+
+	taskStates, err := b.getStates(groupMeta.TaskUUIDs)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +106,7 @@ func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*task
 		return nil, err
 	}
 
-	return b.getStates(groupMeta.TaskUUIDs...)
+	return b.getStates(groupMeta.TaskUUIDs)
 }
 
 // TriggerChord ...
@@ -193,6 +200,91 @@ func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 	return b.unmarshalTaskStateGetItemResult(result)
 }
 
+// getStates returns the current states for the given list of tasks.
+// It uses batch fetch API. If any keys fail to fetch, it'll retry with exponential backoff until maxFetchAttempts times.
+func (b *Backend) getStates(tasksToFetch []string) ([]*tasks.TaskState, error) {
+	fetchedTaskStates := make([]*tasks.TaskState, 0, len(tasksToFetch))
+	var unfetchedTaskIDs []string
+
+	// try until all keys are fetched or until we run out of attempts.
+	for attempt := 0; len(tasksToFetch) > 0 && attempt < MaxFetchAttempts; attempt++ {
+		unfetchedTaskIDs = nil
+		for _, batch := range chunkTasks(tasksToFetch, BatchItemsLimit) {
+			fetched, unfetched, err := b.batchFetchTaskStates(batch)
+			if err != nil {
+				return nil, err
+			}
+			fetchedTaskStates = append(fetchedTaskStates, fetched...)
+			unfetchedTaskIDs = append(unfetchedTaskIDs, unfetched...)
+		}
+		tasksToFetch = unfetchedTaskIDs
+
+		// Check if there were any tasks that were not fetched. If so, retry with exponential backoff.
+		if len(unfetchedTaskIDs) > 0 {
+			backoffDuration := time.Duration(math.Pow(2, float64(attempt))) * time.Second
+			log.DEBUG.Printf("Unable to fetch [%d] keys on attempt [%d]. Sleeping for [%s]", len(unfetchedTaskIDs), attempt+1, backoffDuration)
+			time.Sleep(backoffDuration)
+		}
+	}
+
+	if len(unfetchedTaskIDs) > 0 {
+		return nil, fmt.Errorf("Failed to fetch [%d] keys even after retries: [%+v]", len(unfetchedTaskIDs), unfetchedTaskIDs)
+	}
+
+	return fetchedTaskStates, nil
+}
+
+// batchFetchTaskStates returns the current states of the given tasks by fetching them all in a single batched API.
+// DynamoDB's BatchGetItem() can return partial results. If there are any unfetched keys, they are returned as second
+// return value so that the caller can retry those keys.
+// https://docs.aws.amazon.com/sdk-for-go/api/service/dynamodb/#DynamoDB.BatchGetItem
+func (b *Backend) batchFetchTaskStates(taskUUIDs []string) ([]*tasks.TaskState, []string, error) {
+	tableName := b.cnf.DynamoDB.TaskStatesTable
+	keys := make([]map[string]*dynamodb.AttributeValue, len(taskUUIDs))
+	for i, tid := range taskUUIDs {
+		keys[i] = map[string]*dynamodb.AttributeValue{
+			"TaskUUID": {
+				S: aws.String(tid),
+			},
+		}
+	}
+
+	input := &dynamodb.BatchGetItemInput{
+		RequestItems: map[string]*dynamodb.KeysAndAttributes{
+			tableName: {
+				ConsistentRead: aws.Bool(true),
+				Keys:           keys,
+			},
+		},
+	}
+
+	result, err := b.client.BatchGetItem(input)
+	if err != nil {
+		return nil, nil, fmt.Errorf("BatchGetItem failed. Error: [%s]", err)
+	}
+
+	fetchedKeys, ok := result.Responses[tableName]
+	if !ok {
+		return nil, nil, fmt.Errorf("no keys returned from the table: [%s]", tableName)
+	}
+
+	states := []*tasks.TaskState{}
+	if err := dynamodbattribute.UnmarshalListOfMaps(fetchedKeys, &states); err != nil {
+		return nil, nil, fmt.Errorf("Got error when unmarshal map. Error: %v", err)
+	}
+
+	// Look for any unprocessed keys
+	var unfetchedKeys []string
+	if result.UnprocessedKeys[tableName] != nil {
+		unfetchedKeys, err = getUnfetchedKeys(result.UnprocessedKeys[tableName])
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to fetch some keys: [%+v]. Error: [%s]", result.UnprocessedKeys, err)
+		}
+	}
+
+	return states, unfetchedKeys, nil
+}
+
 // PurgeState ...
 func (b *Backend) PurgeState(taskUUID string) error {
 	input := &dynamodb.DeleteItemInput{
@@ -249,31 +341,6 @@ func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 		return nil, err
 	}
 	return item, nil
-}
-
-func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
-	var states []*tasks.TaskState
-	stateChan := make(chan *tasks.TaskState, len(taskUUIDs))
-	errChan := make(chan error)
-	// There is no method like querying items by `in` a list of primary keys.
-	// So a for loop with go routine is used to get multiple items
-	for _, id := range taskUUIDs {
-		go func(id string) {
-			state, err := b.GetState(id)
-			if err != nil {
-				errChan <- err
-			}
-			stateChan <- state
-		}(id)
-	}
-
-	for s := range stateChan {
-		states = append(states, s)
-		if len(states) == len(taskUUIDs) {
-			close(stateChan)
-		}
-	}
-	return states, nil
 }
 
 func (b *Backend) lockGroupMeta(groupUUID string) error {
@@ -537,4 +604,36 @@ func (b *Backend) getExpirationTime() int64 {
 		expiresIn = config.DefaultResultsExpireIn
 	}
 	return time.Now().Add(time.Second * time.Duration(expiresIn)).Unix()
+}
+
+// getUnfetchedKeys returns keys that were not fetched in a batch request.
+func getUnfetchedKeys(unprocessed *dynamodb.KeysAndAttributes) ([]string, error) {
+	states := []*tasks.TaskState{}
+	var taskIDs []string
+	if err := dynamodbattribute.UnmarshalListOfMaps(unprocessed.Keys, &states); err != nil {
+		return nil, fmt.Errorf("Got error when unmarshal map. Error: %v", err)
+	}
+	for _, s := range states {
+		taskIDs = append(taskIDs, s.TaskUUID)
+	}
+	return taskIDs, nil
+}
+
+// chunkTasks chunks the list of strings into multiple smaller lists of specified size.
+func chunkTasks(array []string, chunkSize int) [][]string {
+	var result [][]string
+	for len(array) > 0 {
+		sz := min(len(array), chunkSize)
+		chunk := array[:sz]
+		array = array[sz:]
+		result = append(result, chunk)
+	}
+	return result
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
