@@ -20,13 +20,13 @@ import (
 
 // Worker represents a single worker process
 type Worker struct {
-	server          *Server
-	ConsumerTag     string
-	Concurrency     int
-	Queue           string
-	errorHandler    func(err error)
-	preTaskHandler  func(*tasks.Signature)
-	postTaskHandler func(*tasks.Signature)
+	server            *Server
+	ConsumerTag       string
+	Concurrency       int
+	Queue             string
+	errorHandler      func(err error)
+	preTaskHandler    func(*tasks.Signature)
+	postTaskHandler   func(*tasks.Signature)
 	preConsumeHandler func(*Worker) bool
 }
 
@@ -319,6 +319,12 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		signature.GroupTaskCount,
 	)
 	if err != nil {
+		log.ERROR.Printf(
+			"Failed to get tasks states for group:[%s]. Task count:[%d]. The chord may not be triggered. Error:[%s]",
+			signature.GroupUUID,
+			signature.GroupTaskCount,
+			err,
+		)
 		return nil
 	}
 
