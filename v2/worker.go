@@ -21,13 +21,13 @@ import (
 
 // Worker represents a single worker process
 type Worker struct {
-	server          *Server
-	ConsumerTag     string
-	Concurrency     int
-	Queue           string
-	errorHandler    func(err error)
-	preTaskHandler  func(*tasks.Signature)
-	postTaskHandler func(*tasks.Signature)
+	server            *Server
+	ConsumerTag       string
+	Concurrency       int
+	Queue             string
+	errorHandler      func(err error)
+	preTaskHandler    func(*tasks.Signature)
+	postTaskHandler   func(*tasks.Signature)
 	preConsumeHandler func(*Worker) bool
 }
 
@@ -272,6 +272,11 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		return nil
 	}
 
+	// There is no chord callback, just return
+	if signature.ChordCallback == nil {
+		return nil
+	}
+
 	// Check if all task in the group has completed
 	groupCompleted, err := worker.server.GetBackend().GroupCompleted(
 		signature.GroupUUID,
@@ -289,11 +294,6 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	// Defer purging of group meta queue if we are using AMQP backend
 	if worker.hasAMQPBackend() {
 		defer worker.server.GetBackend().PurgeGroupMeta(signature.GroupUUID)
-	}
-
-	// There is no chord callback, just return
-	if signature.ChordCallback == nil {
-		return nil
 	}
 
 	// Trigger chord callback
