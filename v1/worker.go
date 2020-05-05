@@ -319,6 +319,12 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		signature.GroupTaskCount,
 	)
 	if err != nil {
+		log.ERROR.Printf(
+			"Failed to get tasks states for group:[%s]. Task count:[%d]. The chord may not be triggered. Error:[%s]",
+			signature.GroupUUID,
+			signature.GroupTaskCount,
+			err,
+		)
 		return nil
 	}
 
