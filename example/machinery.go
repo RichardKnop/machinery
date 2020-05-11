@@ -7,23 +7,24 @@ import (
 	"os"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	opentracing_log "github.com/opentracing/opentracing-go/log"
-
-	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/google/uuid"
 	"github.com/urfave/cli"
 
+	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/log"
+	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/RichardKnop/machinery/v2"
+
 	exampletasks "github.com/RichardKnop/machinery/example/tasks"
 	tracers "github.com/RichardKnop/machinery/example/tracers"
+	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
+	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
+	opentracing "github.com/opentracing/opentracing-go"
+	opentracing_log "github.com/opentracing/opentracing-go/log"
 )
 
 var (
-	app        *cli.App
-	configPath string
+	app *cli.App
 )
 
 func init() {
@@ -34,14 +35,6 @@ func init() {
 	app.Author = "Richard Knop"
 	app.Email = "risoknop@gmail.com"
 	app.Version = "0.0.0"
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:        "c",
-			Value:       "",
-			Destination: &configPath,
-			Usage:       "Path to a configuration file",
-		},
-	}
 }
 
 func main() {
@@ -74,10 +67,6 @@ func main() {
 }
 
 func loadConfig() (*config.Config, error) {
-	if configPath != "" {
-		return config.NewFromYaml(configPath, true)
-	}
-
 	return config.NewFromEnvironment(true)
 }
 
@@ -88,10 +77,16 @@ func startServer() (*machinery.Server, error) {
 	}
 
 	// Create server instance
-	server, err := machinery.NewServer(cnf)
+	broker, err := amqpbroker.New(cnf), nil
 	if err != nil {
 		return nil, err
 	}
+	backend, err := amqpbackend.New(cnf), nil
+	if err != nil {
+		return nil, err
+	}
+
+	server := machinery.NewServer(cnf, broker, backend)
 
 	// Register tasks
 	tasks := map[string]interface{}{

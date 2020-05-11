@@ -3,6 +3,7 @@ package machinery
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -32,6 +32,13 @@ type Worker struct {
 	preConsumeHandler func(*Worker) bool
 }
 
+var (
+	// ErrWorkerQuitGracefully is return when worker quit gracefully
+	ErrWorkerQuitGracefully = errors.New("Worker quit gracefully")
+	// ErrWorkerQuitGracefully is return when worker quit abruptly
+	ErrWorkerQuitAbruptly = errors.New("Worker quit abruptly")
+)
+
 // Launch starts a new worker process. The worker subscribes
 // to the default queue and processes incoming registered tasks
 func (worker *Worker) Launch() error {
@@ -49,13 +56,13 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 
 	// Log some useful information about worker configuration
 	log.INFO.Printf("Launching a worker with the following settings:")
-	log.INFO.Printf("- Broker: %s", machinery.RedactURL(cnf.Broker))
+	log.INFO.Printf("- Broker: %s", RedactURL(cnf.Broker))
 	if worker.Queue == "" {
 		log.INFO.Printf("- DefaultQueue: %s", cnf.DefaultQueue)
 	} else {
 		log.INFO.Printf("- CustomQueue: %s", worker.Queue)
 	}
-	log.INFO.Printf("- ResultBackend: %s", machinery.RedactURL(cnf.ResultBackend))
+	log.INFO.Printf("- ResultBackend: %s", RedactURL(cnf.ResultBackend))
 	if cnf.AMQP != nil {
 		log.INFO.Printf("- AMQP: %s", cnf.AMQP.Exchange)
 		log.INFO.Printf("  - Exchange: %s", cnf.AMQP.Exchange)
@@ -102,12 +109,12 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 						go func() {
 							signalWG.Add(1)
 							worker.Quit()
-							errorsChan <- errors.New("Worker quit gracefully")
+							errorsChan <- ErrWorkerQuitGracefully
 							signalWG.Done()
 						}()
 					} else {
 						// Abort the program when user hits Ctrl+C second time in a row
-						errorsChan <- errors.New("Worker quit abruptly")
+						errorsChan <- ErrWorkerQuitAbruptly
 					}
 				}
 			}
@@ -406,7 +413,7 @@ func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 	worker.postTaskHandler = handler
 }
 
-//SetPreConsumeHandler sets a custom handler func before the task is popped
+//SetPreConsumeHandler sets a custom handler for the end of a job
 func (worker *Worker) SetPreConsumeHandler(handler func(*Worker) bool) {
 	worker.preConsumeHandler = handler
 }
@@ -416,11 +423,19 @@ func (worker *Worker) GetServer() *Server {
 	return worker.server
 }
 
-// PreConsumeHandler calls the handler before the task is popped
+//
 func (worker *Worker) PreConsumeHandler() bool {
 	if worker.preConsumeHandler == nil {
 		return true
 	}
 
 	return worker.preConsumeHandler(worker)
+}
+
+func RedactURL(urlString string) string {
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return urlString
+	}
+	return fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 }

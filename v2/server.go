@@ -7,14 +7,15 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/opentracing/opentracing-go"
 
-	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/backends/result"
-	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
+
+	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
+	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -27,7 +28,7 @@ type Server struct {
 	prePublishHandler func(*tasks.Signature)
 }
 
-// NewServer ...
+// NewServer creates Server instance
 func NewServer(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
 	return &Server{
 		config:          cnf,
