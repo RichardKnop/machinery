@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -63,6 +64,7 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 		log.INFO.Printf("  - PrefetchCount: %d", cnf.AMQP.PrefetchCount)
 	}
 
+	var signalWG sync.WaitGroup
 	// Goroutine to start broker consumption and handle retries when broker connection dies
 	go func() {
 		for {
@@ -75,6 +77,7 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 					log.WARNING.Printf("Broker failed with error: %s", err)
 				}
 			} else {
+				signalWG.Wait()
 				errorsChan <- err // stop the goroutine
 				return
 			}
@@ -97,8 +100,10 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 						// After first Ctrl+C start quitting the worker gracefully
 						log.WARNING.Print("Waiting for running tasks to finish before shutting down")
 						go func() {
+							signalWG.Add(1)
 							worker.Quit()
 							errorsChan <- errors.New("Worker quit gracefully")
+							signalWG.Done()
 						}()
 					} else {
 						// Abort the program when user hits Ctrl+C second time in a row
