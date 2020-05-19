@@ -314,7 +314,7 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 		if signature.IgnoreWhenTaskNotRegistered {
 			return nil
 		}
-		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery)
+		log.INFO.Printf("Task not registered with this worker. Requeuing message: %s", delivery)
 
 		conn := b.open()
 		defer conn.Close()
