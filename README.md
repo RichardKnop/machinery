@@ -22,6 +22,14 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 * [V2 Experiment](#v2-experiment)
 * [First Steps](#first-steps)
 * [Configuration](#configuration)
+  * [Broker](#broker)
+  * [DefaultQueue](#defaultqueue)
+  * [ResultBackend](#resultbackend)
+  * [ResultsExpireIn](#resultsexpirein)
+  * [AMQP](#amqp-2)
+  * [DynamoDB](#dynamodb)
+  * [Redis](#redis-2)
+  * [GCPPubSub](#gcppubsub)
 * [Custom Logger](#custom-logger)
 * [Server](#server)
 * [Workers](#workers)
@@ -289,10 +297,11 @@ RabbitMQ related configuration. Not necessary if you are using other broker/back
 * `BindingKey`: The queue is bind to the exchange with this key, e.g. `machinery_task`
 * `PrefetchCount`: How many tasks to prefetch (set to `1` if you have long running tasks)
 
-#### Dynamodb
-Dynamodb related configuration. Not necessary if you are using other backend.
-* `task_states_table`: Custom table name for saving task states. Default one is `task_states`, and make sure to create this table in your AWS admin first, using `TaskUUID` as table's primary key.
-* `group_metas_table`: Custom table name for saving group metas. Default one is `group_metas`, and make sure to create this table in your AWS admin first, using `GroupUUID` as table's primary key.
+#### DynamoDB
+
+DynamoDB related configuration. Not necessary if you are using other backend.
+* `TaskStatesTable`: Custom table name for saving task states. Default one is `task_states`, and make sure to create this table in your AWS admin first, using `TaskUUID` as table's primary key.
+* `GroupMetasTable`: Custom table name for saving group metas. Default one is `group_metas`, and make sure to create this table in your AWS admin first, using `GroupUUID` as table's primary key.
 For example:
 
 ```
@@ -303,6 +312,18 @@ dynamodb:
 If these tables are not found, an fatal error would be thrown.
 
 If you wish to expire the records, you can configure the `TTL` field in AWS admin for these tables. The `TTL` field is set based on the `ResultsExpireIn` value in the Server's config. See https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/howitworks-ttl.html for more information.
+
+#### Redis
+
+Redis related configuration. Not necessary if you are using other backend.
+
+See: [config](/v1/config/config.go) (TODO)
+
+#### GCPPubSub
+
+GCPPubSub related configuration. Not necessary if you are using other backend.
+
+See: [config](/v1/config/config.go) (TODO)
 
 ### Custom Logger
 
