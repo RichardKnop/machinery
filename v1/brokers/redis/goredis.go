@@ -40,7 +40,7 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 	var password string
 	parts := strings.Split(addrs[0], "@")
 	if len(parts) == 2 {
-		// with passwrod
+		// with password
 		password = parts[0]
 		addrs[0] = parts[1]
 	}
@@ -301,7 +301,7 @@ func (b *BrokerGR) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor
 	// If the task is not registered, we requeue it,
 	// there might be different workers for processing specific tasks
 	if !b.IsTaskRegistered(signature.Name) {
-		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery)
+		log.INFO.Printf("Task not registered with this worker. Requeuing message: %s", delivery)
 
 		b.rclient.RPush(getQueueGR(b.GetConfig(), taskProcessor), delivery)
 		return nil
