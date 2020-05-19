@@ -316,7 +316,7 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 	decoder.UseNumber()
 	if err := decoder.Decode(signature); err != nil {
 		delivery.Nack(multiple, requeue)
-		return errs.NewErrCouldNotUnmarshaTaskSignature(delivery.Body, err)
+		return errs.NewErrCouldNotUnmarshalTaskSignature(delivery.Body, err)
 	}
 
 	// If the task is not registered, we nack it and requeue,

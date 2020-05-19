@@ -134,7 +134,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				decoder := json.NewDecoder(bytes.NewReader(task))
 				decoder.UseNumber()
 				if err := decoder.Decode(signature); err != nil {
-					log.ERROR.Print(errs.NewErrCouldNotUnmarshaTaskSignature(task, err))
+					log.ERROR.Print(errs.NewErrCouldNotUnmarshalTaskSignature(task, err))
 				}
 
 				if err := b.Publish(context.Background(), signature); err != nil {
@@ -305,7 +305,7 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 	decoder := json.NewDecoder(bytes.NewReader(delivery))
 	decoder.UseNumber()
 	if err := decoder.Decode(signature); err != nil {
-		return errs.NewErrCouldNotUnmarshaTaskSignature(delivery, err)
+		return errs.NewErrCouldNotUnmarshalTaskSignature(delivery, err)
 	}
 
 	// If the task is not registered, we requeue it,
