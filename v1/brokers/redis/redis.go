@@ -161,6 +161,8 @@ func (b *Broker) StopConsuming() {
 	b.delayedWG.Wait()
 	// Waiting for consumption to finish
 	b.consumingWG.Wait()
+	// Wait for currently processing tasks to finish as well.
+	b.processingWG.Wait()
 
 	if b.pool != nil {
 		b.pool.Close()
