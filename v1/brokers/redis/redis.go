@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -344,7 +345,14 @@ func (b *Broker) nextTask(queue string) (result []byte, err error) {
 	}
 	pollPeriod := time.Duration(pollPeriodMilliseconds) * time.Millisecond
 
-	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriod.Seconds()))
+	// Issue 548: BLPOP expects an integer timeout expresses in seconds.
+	// The call will if the value is a float. Convert to integer using
+	// math.Ceil():
+	//   math.Ceil(0.0) --> 0 (block indefinitely)
+	//   math.Ceil(0.2) --> 1 (timeout after 1 second)
+	pollPeriodSeconds := math.Ceil(pollPeriod.Seconds())
+
+	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriodSeconds))
 	if err != nil {
 		return []byte{}, err
 	}
