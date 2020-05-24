@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -54,7 +55,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	defer b.consumingWG.Done()
 
 	if concurrency < 1 {
-		concurrency = 1
+		concurrency = runtime.NumCPU() * 2
 	}
 
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
