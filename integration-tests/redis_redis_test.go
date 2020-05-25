@@ -29,6 +29,27 @@ func TestRedisRedis(t *testing.T) {
 	worker.Quit()
 }
 
+func TestRedisRedisNormalTaskPollPeriodLessThan1SecondShouldNotFailNextTask(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL is not defined")
+	}
+
+	// Redis broker, Redis result backend
+	server := testSetup(&config.Config{
+		Broker:        fmt.Sprintf("redis://%v", redisURL),
+		DefaultQueue:  "test_queue",
+		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Redis: &config.RedisConfig{
+			NormalTasksPollPeriod: 10, // 10 milliseconds
+		},
+	})
+	worker := server.NewWorker("test_worker", 0)
+	go worker.Launch()
+	defer worker.Quit()
+	testSendTask(server, t)
+}
+
 func TestRedisRedisWorkerQuitRaceCondition(t *testing.T) {
 	repeat := 3
 	for i := 0; i < repeat; i++ {
@@ -120,7 +141,7 @@ func TestRedisRedisWorkerPreConsumeHandler(t *testing.T) {
 	errorsChan := make(chan error)
 	err := errors.New("PreConsumeHandler is invoked")
 	worker.SetPreConsumeHandler(func(*machinery.Worker) bool {
-		errorsChan<-err
+		errorsChan <- err
 		return true
 	})
 
