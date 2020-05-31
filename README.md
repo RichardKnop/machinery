@@ -937,16 +937,19 @@ if err != nil {
 }
 ```
 
-The above example executes task1, then task2 and then task3, passing the result of each task to the next task in the chain. Therefore what would end up happening is:
+The above example executes task1, then task2 and then task3. When a task is completed successfully, the result is appended to the end of list of arguments for the next task in the chain. Therefore what would end up happening is:
 
 ```
-multiply(add(add(1, 1), 5, 5), 4)
+multiply(4, add(5, 5, add(1, 1)))
 ```
 
 More explicitly:
 
 ```
-((1 + 1) + (5 + 5)) * 4 = 12 * 4 = 48
+  4 * (5 + 5 + (1 + 1))   # task1: add(1, 1)        returns 2
+= 4 * (5 + 5 + 2)         # task2: add(5, 5, 2)     returns 12
+= 4 * (12)                # task3: multiply(4, 12)  returns 48
+= 48
 ```
 
 `SendChain` returns `ChainAsyncResult` which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:
