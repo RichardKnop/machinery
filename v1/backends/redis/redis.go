@@ -57,12 +57,13 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	conn := b.open()
 	defer conn.Close()
 
-	_, err = conn.Do("SET", groupUUID, encoded)
+	expiration := int64(b.getExpiration().Seconds())
+	_, err = conn.Do("SET", groupUUID, encoded, "EX", expiration)
 	if err != nil {
 		return err
 	}
 
-	return b.setExpirationTime(conn, groupUUID)
+	return nil
 }
 
 // GroupCompleted returns true if all tasks in a group finished
@@ -136,12 +137,13 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 		return false, err
 	}
 
-	_, err = conn.Do("SET", groupUUID, encoded)
+	expiration := int64(b.getExpiration().Seconds())
+	_, err = conn.Do("SET", groupUUID, encoded, "EX", expiration)
 	if err != nil {
 		return false, err
 	}
 
-	return true, b.setExpirationTime(conn, groupUUID)
+	return true, nil
 }
 
 func (b *Backend) mergeNewTaskState(conn redis.Conn, newState *tasks.TaskState) {
@@ -315,35 +317,29 @@ func (b *Backend) getStates(conn redis.Conn, taskUUIDs ...string) ([]*tasks.Task
 
 // updateState saves current task state
 func (b *Backend) updateState(conn redis.Conn, taskState *tasks.TaskState) error {
-
 	encoded, err := json.Marshal(taskState)
 	if err != nil {
 		return err
 	}
 
-	_, err = conn.Do("SET", taskState.TaskUUID, encoded)
-	if err != nil {
-		return err
-	}
-
-	return b.setExpirationTime(conn, taskState.TaskUUID)
-}
-
-// setExpirationTime sets expiration timestamp on a stored task state
-func (b *Backend) setExpirationTime(conn redis.Conn, key string) error {
-	expiresIn := b.GetConfig().ResultsExpireIn
-	if expiresIn == 0 {
-		// // expire results after 1 hour by default
-		expiresIn = config.DefaultResultsExpireIn
-	}
-	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
-
-	_, err := conn.Do("EXPIREAT", key, expirationTimestamp)
+	expiration := int64(b.getExpiration().Seconds())
+	_, err = conn.Do("SET", taskState.TaskUUID, encoded, "EX", expiration)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// getExpiration returns expiration for a stored task state
+func (b *Backend) getExpiration() time.Duration {
+	expiresIn := b.GetConfig().ResultsExpireIn
+	if expiresIn == 0 {
+		// expire results after 1 hour by default
+		expiresIn = config.DefaultResultsExpireIn
+	}
+
+	return time.Duration(expiresIn) * time.Second
 }
 
 // open returns or creates instance of Redis connection

@@ -68,12 +68,13 @@ func (b *BackendGR) InitGroup(groupUUID string, taskUUIDs []string) error {
 		return err
 	}
 
-	err = b.rclient.Set(groupUUID, encoded, 0).Err()
+	expiration := b.getExpiration()
+	err = b.rclient.Set(groupUUID, encoded, expiration).Err()
 	if err != nil {
 		return err
 	}
 
-	return b.setExpirationTime(groupUUID)
+	return nil
 }
 
 // GroupCompleted returns true if all tasks in a group finished
@@ -138,12 +139,13 @@ func (b *BackendGR) TriggerChord(groupUUID string) (bool, error) {
 		return false, err
 	}
 
-	err = b.rclient.Set(groupUUID, encoded, 0).Err()
+	expiration := b.getExpiration()
+	err = b.rclient.Set(groupUUID, encoded, expiration).Err()
 	if err != nil {
 		return false, err
 	}
 
-	return true, b.setExpirationTime(groupUUID)
+	return true, nil
 }
 
 func (b *BackendGR) mergeNewTaskState(newState *tasks.TaskState) {
@@ -287,27 +289,22 @@ func (b *BackendGR) updateState(taskState *tasks.TaskState) error {
 		return err
 	}
 
-	_, err = b.rclient.Set(taskState.TaskUUID, encoded, 0).Result()
-	if err != nil {
-		return err
-	}
-
-	return b.setExpirationTime(taskState.TaskUUID)
-}
-
-// setExpirationTime sets expiration timestamp on a stored task state
-func (b *BackendGR) setExpirationTime(key string) error {
-	expiresIn := b.GetConfig().ResultsExpireIn
-	if expiresIn == 0 {
-		// // expire results after 1 hour by default
-		expiresIn = config.DefaultResultsExpireIn
-	}
-	expirationTimestamp := time.Now().Add(time.Duration(expiresIn) * time.Second)
-
-	_, err := b.rclient.ExpireAt(key, expirationTimestamp).Result()
+	expiration := b.getExpiration()
+	_, err = b.rclient.Set(taskState.TaskUUID, encoded, expiration).Result()
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// getExpiration returns expiration for a stored task state
+func (b *BackendGR) getExpiration() time.Duration {
+	expiresIn := b.GetConfig().ResultsExpireIn
+	if expiresIn == 0 {
+		// expire results after 1 hour by default
+		expiresIn = config.DefaultResultsExpireIn
+	}
+
+	return time.Duration(expiresIn) * time.Second
 }
