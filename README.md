@@ -707,7 +707,7 @@ fmt.Printf("Current state of %v task is:\n", taskState.TaskUUID)
 fmt.Println(taskState.State)
 ```
 
-There are couple of convenient me methods to inspect the task status:
+There are couple of convenient methods to inspect the task status:
 
 ```go
 asyncResult.GetState().IsCompleted()
