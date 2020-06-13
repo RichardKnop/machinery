@@ -378,6 +378,7 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 	defer func() {
 		// Return connection to normal state on error.
 		// https://redis.io/commands/discard
+		// https://redis.io/commands/unwatch
 		if err == redis.ErrNil {
 			conn.Do("UNWATCH")
 		} else if err != nil {
