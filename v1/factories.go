@@ -38,11 +38,17 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 		return amqpbroker.New(cnf), nil
 	}
 
-	if strings.HasPrefix(cnf.Broker, "redis://") {
-		parts := strings.Split(cnf.Broker, "redis://")
+	if strings.HasPrefix(cnf.Broker, "redis://") || strings.HasPrefix(cnf.Broker, "rediss://") {
+		var scheme string
+		if strings.HasPrefix(cnf.Broker, "redis://") {
+			scheme = "redis://"
+		} else {
+			scheme = "rediss://"
+		}
+		parts := strings.Split(cnf.Broker, scheme)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf(
-				"Redis broker connection string should be in format redis://host:port, instead got %s",
+				"Redis broker connection string should be in format %shost:port, instead got %s", scheme,
 				cnf.Broker,
 			)
 		}
@@ -119,8 +125,14 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 		return memcachebackend.New(cnf, servers), nil
 	}
 
-	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
-		parts := strings.Split(cnf.ResultBackend, "redis://")
+	if strings.HasPrefix(cnf.ResultBackend, "redis://") || strings.HasPrefix(cnf.ResultBackend, "rediss://") {
+		var scheme string
+		if strings.HasPrefix(cnf.ResultBackend, "redis://") {
+			scheme = "redis://"
+		} else {
+			scheme = "rediss://"
+		}
+		parts := strings.Split(cnf.ResultBackend, scheme)
 		addrs := strings.Split(parts[1], ",")
 		if len(addrs) > 1 {
 			return redisbackend.NewGR(cnf, addrs, 0), nil
@@ -173,7 +185,7 @@ func ParseRedisURL(url string) (host, password string, db int, err error) {
 	if err != nil {
 		return
 	}
-	if u.Scheme != "redis" {
+	if u.Scheme != "redis" && u.Scheme != "rediss" {
 		err = errors.New("No redis scheme found")
 		return
 	}
