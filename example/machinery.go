@@ -67,7 +67,7 @@ func main() {
 }
 
 func loadConfig() (*config.Config, error) {
-	return config.NewFromEnvironment(true)
+	return config.NewFromEnvironment()
 }
 
 func startServer() (*machinery.Server, error) {
@@ -75,6 +75,8 @@ func startServer() (*machinery.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println(cnf.Broker)
 
 	// Create server instance
 	broker, err := amqpbroker.New(cnf), nil

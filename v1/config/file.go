@@ -33,7 +33,6 @@ func NewFromYaml(cnfPath string, keepReloading bool) (*Config, error) {
 				}
 
 				*cnf = *newCnf
-				// log.INFO.Printf("Successfully reloaded config from file %s", cnfPath)
 			}
 		}()
 	}
