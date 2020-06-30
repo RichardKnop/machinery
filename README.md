@@ -87,7 +87,7 @@ First, you will need to define some tasks. Look at sample tasks in `example/task
 Second, you will need to launch a worker process:
 
 ```sh
-go run example/machinery.go -c example/config.yml worker
+go run example/machinery.go worker
 ```
 
 ![Example worker][1]
@@ -95,7 +95,7 @@ go run example/machinery.go -c example/config.yml worker
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
 ```sh
-go run example/machinery.go -c example/config.yml send
+go run example/machinery.go send
 ```
 
 You will be able to see the tasks being processed asynchronously by the worker:
@@ -107,7 +107,7 @@ You will be able to see the tasks being processed asynchronously by the worker:
 The [config](/v1/config/config.go) package has convenience methods for loading configuration from environment variables or a YAML file. For example, load configuration from environment variables:
 
 ```go
-cnf, err := config.NewFromEnvironment(true)
+cnf, err := config.NewFromEnvironment()
 ```
 
 Or load from YAML file:
