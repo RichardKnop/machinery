@@ -44,6 +44,8 @@ dynamodb:
 `
 
 func TestReadFromFile(t *testing.T) {
+	t.Parallel()
+
 	data, err := config.ReadFromFile("testconfig.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -53,6 +55,8 @@ func TestReadFromFile(t *testing.T) {
 }
 
 func TestNewFromYaml(t *testing.T) {
+	t.Parallel()
+
 	cnf, err := config.NewFromYaml("testconfig.yml", false)
 	if err != nil {
 		t.Fatal(err)
