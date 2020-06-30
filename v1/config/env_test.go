@@ -28,7 +28,7 @@ func TestNewFromEnvironment(t *testing.T) {
 		os.Setenv(parts[0], parts[1])
 	}
 
-	cnf, err := config.NewFromEnvironment(false)
+	cnf, err := config.NewFromEnvironment()
 	if err != nil {
 		t.Fatal(err)
 	}
