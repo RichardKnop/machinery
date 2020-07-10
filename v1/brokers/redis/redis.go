@@ -102,6 +102,13 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				close(deliveries)
 				return
 			case <-pool:
+				select {
+				case <-b.GetStopChan():
+					close(deliveries)
+					return
+				default:
+				}
+
 				if taskProcessor.PreConsumeHandler() {
 					task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
 					//TODO: should this error be ignored?
@@ -280,7 +287,12 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 			}
 			if concurrency > 0 {
 				// get execution slot from pool (blocks until one is available)
-				<-pool
+				select {
+				case <-b.GetStopChan():
+					b.requeueMessage(d, taskProcessor)
+					continue
+				case <-pool:
+				}
 			}
 
 			b.processingWG.Add(1)
@@ -319,11 +331,7 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 			return nil
 		}
 		log.INFO.Printf("Task not registered with this worker. Requeuing message: %s", delivery)
-
-		conn := b.open()
-		defer conn.Close()
-
-		conn.Do("RPUSH", getQueue(b.GetConfig(), taskProcessor), delivery)
+		b.requeueMessage(delivery, taskProcessor)
 		return nil
 	}
 
@@ -461,4 +469,10 @@ func getQueue(config *config.Config, taskProcessor iface.TaskProcessor) string {
 		return config.DefaultQueue
 	}
 	return customQueue
+}
+
+func (b *Broker) requeueMessage(delivery []byte, taskProcessor iface.TaskProcessor) {
+	conn := b.open()
+	defer conn.Close()
+	conn.Do("RPUSH", getQueue(b.GetConfig(), taskProcessor), delivery)
 }
