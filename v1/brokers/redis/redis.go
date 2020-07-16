@@ -96,7 +96,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	go func() {
 
 		log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
-
+		var gotTask bool
 		for {
 			select {
 			// A way to stop this goroutine from b.StopConsuming
@@ -112,11 +112,16 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				}
 
 				if taskProcessor.PreConsumeHandler() {
-					<-nextTask
+					if !gotTask {
+						<-nextTask
+						gotTask = true
+					}
+
 					task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
 					//TODO: should this error be ignored?
 					if len(task) > 0 {
 						deliveries <- task
+						gotTask = false
 					}
 				}
 
