@@ -2,12 +2,13 @@ package redis
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
@@ -69,7 +70,7 @@ func (b *BackendGR) InitGroup(groupUUID string, taskUUIDs []string) error {
 	}
 
 	expiration := b.getExpiration()
-	err = b.rclient.Set(groupUUID, encoded, expiration).Err()
+	err = b.rclient.Set(context.Background(), groupUUID, encoded, expiration).Err()
 	if err != nil {
 		return err
 	}
@@ -140,7 +141,7 @@ func (b *BackendGR) TriggerChord(groupUUID string) (bool, error) {
 	}
 
 	expiration := b.getExpiration()
-	err = b.rclient.Set(groupUUID, encoded, expiration).Err()
+	err = b.rclient.Set(context.Background(), groupUUID, encoded, expiration).Err()
 	if err != nil {
 		return false, err
 	}
@@ -200,7 +201,7 @@ func (b *BackendGR) SetStateFailure(signature *tasks.Signature, err string) erro
 // GetState returns the latest task state
 func (b *BackendGR) GetState(taskUUID string) (*tasks.TaskState, error) {
 
-	item, err := b.rclient.Get(taskUUID).Bytes()
+	item, err := b.rclient.Get(context.Background(), taskUUID).Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +217,7 @@ func (b *BackendGR) GetState(taskUUID string) (*tasks.TaskState, error) {
 
 // PurgeState deletes stored task state
 func (b *BackendGR) PurgeState(taskUUID string) error {
-	err := b.rclient.Del(taskUUID).Err()
+	err := b.rclient.Del(context.Background(), taskUUID).Err()
 	if err != nil {
 		return err
 	}
@@ -226,7 +227,7 @@ func (b *BackendGR) PurgeState(taskUUID string) error {
 
 // PurgeGroupMeta deletes stored group meta data
 func (b *BackendGR) PurgeGroupMeta(groupUUID string) error {
-	err := b.rclient.Del(groupUUID).Err()
+	err := b.rclient.Del(context.Background(), groupUUID).Err()
 	if err != nil {
 		return err
 	}
@@ -236,7 +237,7 @@ func (b *BackendGR) PurgeGroupMeta(groupUUID string) error {
 
 // getGroupMeta retrieves group meta data, convenience function to avoid repetition
 func (b *BackendGR) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
-	item, err := b.rclient.Get(groupUUID).Bytes()
+	item, err := b.rclient.Get(context.Background(), groupUUID).Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -255,9 +256,9 @@ func (b *BackendGR) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 func (b *BackendGR) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	taskStates := make([]*tasks.TaskState, len(taskUUIDs))
 	// to avoid CROSSSLOT error, use pipeline
-	cmders, err := b.rclient.Pipelined(func(pipeliner redis.Pipeliner) error {
+	cmders, err := b.rclient.Pipelined(context.Background(), func(pipeliner redis.Pipeliner) error {
 		for _, uuid := range taskUUIDs {
-			pipeliner.Get(uuid)
+			pipeliner.Get(context.Background(), uuid)
 		}
 		return nil
 	})
@@ -290,7 +291,7 @@ func (b *BackendGR) updateState(taskState *tasks.TaskState) error {
 	}
 
 	expiration := b.getExpiration()
-	_, err = b.rclient.Set(taskState.TaskUUID, encoded, expiration).Result()
+	_, err = b.rclient.Set(context.Background(), taskState.TaskUUID, encoded, expiration).Result()
 	if err != nil {
 		return err
 	}
