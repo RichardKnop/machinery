@@ -82,7 +82,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	// Channel to which we will push tasks ready for processing by worker
 	deliveries := make(chan []byte, concurrency)
 	pool := make(chan struct{}, concurrency)
-	nextTask := make(chan struct{}, concurrency)
+  nextTask := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
 	for i := 0; i < concurrency; i++ {
@@ -274,7 +274,7 @@ func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *Broker) consume(deliveries <-chan []byte, nextTask chan<- struct{}, concurrency int, taskProcessor iface.TaskProcessor) error {
+func (b *Broker) consume(deliveries <-chan []byte, nextPool chan<- struct{}, concurrency int, taskProcessor iface.TaskProcessor) error {
 	errorsChan := make(chan error, concurrency*2)
 	pool := make(chan struct{}, concurrency)
 
@@ -309,9 +309,10 @@ func (b *Broker) consume(deliveries <-chan []byte, nextTask chan<- struct{}, con
 			// can be processed concurrently
 			go func() {
 				defer func() {
-					nextTask <- struct{}{}
+					nextPool <- struct{}{}
 				}()
-
+				
+        
 				if err := b.consumeOne(d, taskProcessor); err != nil {
 					errorsChan <- err
 				}
