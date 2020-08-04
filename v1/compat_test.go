@@ -26,6 +26,77 @@ func TestOpenTracingPreTaskHandler(t *testing.T) {
 	assert.NotNil(t, opentracing.SpanFromContext(ctx2), "context returned contains an opentracing span")
 }
 
+func TestOpenTracingPreChainTaskHandler(t *testing.T) {
+	t.Parallel()
+
+	chain := &tasks.Chain{
+		Tasks: []*tasks.Signature{
+			{
+				Name: "abc",
+			},
+			{
+				Name: "def",
+			},
+			{
+				Name: "ghi",
+			},
+		},
+	}
+
+	ctx := context.Background()
+	finish := machinery.OpenTracingPreChainPublishTaskHandler(ctx, chain)
+	assert.NotPanics(t, finish)
+}
+
+func TestOpenTracingPreGroupTaskHandler(t *testing.T) {
+	t.Parallel()
+
+	group := &tasks.Group{
+		Tasks: []*tasks.Signature{
+			{
+				Name: "abc",
+			},
+			{
+				Name: "def",
+			},
+			{
+				Name: "ghi",
+			},
+		},
+	}
+
+	ctx := context.Background()
+	finish := machinery.OpenTracingPreGroupPublishTaskHandler(ctx, group, 0)
+	assert.NotPanics(t, finish)
+}
+
+func TestOpenTracingPreChordTaskHandler(t *testing.T) {
+	t.Parallel()
+
+	chord := &tasks.Chord{
+		Group: &tasks.Group{
+			Tasks: []*tasks.Signature{
+				{
+					Name: "abc",
+				},
+				{
+					Name: "def",
+				},
+				{
+					Name: "ghi",
+				},
+			},
+		},
+		Callback: &tasks.Signature{
+			Name: "callback",
+		},
+	}
+
+	ctx := context.Background()
+	finish := machinery.OpenTracingPreChordPublishTaskHandler(ctx, chord, 0)
+	assert.NotPanics(t, finish)
+}
+
 func TestOpenTracingPostTaskHandler(t *testing.T) {
 	t.Parallel()
 
