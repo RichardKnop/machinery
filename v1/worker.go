@@ -183,9 +183,9 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 	// Call the task
 	results, err := task.Call()
 	if err != nil {
-		// If a tasks.ErrRetryTaskLater was returned from the task,
+		// If a tasks.Retriable was returned from the task,
 		// retry the task after specified duration
-		retriableErr, ok := interface{}(err).(tasks.ErrRetryTaskLater)
+		retriableErr, ok := interface{}(err).(tasks.Retriable)
 		if ok {
 			return worker.retryTaskIn(signature, retriableErr.RetryIn())
 		}
