@@ -18,6 +18,7 @@ import (
 	brokeriface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
+	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	dynamobackend "github.com/RichardKnop/machinery/v1/backends/dynamodb"
@@ -216,6 +217,9 @@ func ParseRedisURL(url string) (host, password string, db int, err error) {
 }
 
 func LockFactory(cnf *config.Config) (lockiface.Lock, error) {
+	if strings.HasPrefix(cnf.Lock, "eager") {
+		return eagerlock.New(), nil
+	}
 	if strings.HasPrefix(cnf.Lock, "redis://") {
 		parts := strings.Split(cnf.Lock, "redis://")
 		if len(parts) != 2 {
