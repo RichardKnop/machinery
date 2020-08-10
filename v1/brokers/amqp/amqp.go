@@ -316,7 +316,7 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 	decoder.UseNumber()
 	if err := decoder.Decode(signature); err != nil {
 		delivery.Nack(multiple, requeue)
-		return errs.NewErrCouldNotUnmarshaTaskSignature(delivery.Body, err)
+		return errs.NewErrCouldNotUnmarshalTaskSignature(delivery.Body, err)
 	}
 
 	// If the task is not registered, we nack it and requeue,
@@ -325,10 +325,10 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 		requeue = true
 		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery.Body)
 
-    if !signature.IgnoreWhenTaskNotRegistered {
+		if !signature.IgnoreWhenTaskNotRegistered {
 			delivery.Nack(multiple, requeue)
 		}
-    
+
 		return nil
 	}
 
@@ -447,6 +447,10 @@ func (s *sigDumper) Process(sig *tasks.Signature) error {
 
 func (s *sigDumper) CustomQueue() string {
 	return s.customQueue
+}
+
+func (_ *sigDumper) PreConsumeHandler() bool {
+	return true
 }
 
 func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {

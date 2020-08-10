@@ -11,6 +11,8 @@ import (
 )
 
 func TestNewFromEnvironment(t *testing.T) {
+	t.Parallel()
+
 	file, err := os.Open("test.env")
 	if err != nil {
 		t.Fatal(err)
@@ -26,7 +28,7 @@ func TestNewFromEnvironment(t *testing.T) {
 		os.Setenv(parts[0], parts[1])
 	}
 
-	cnf, err := config.NewFromEnvironment(false)
+	cnf, err := config.NewFromEnvironment()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -22,6 +22,14 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 * [V2 Experiment](#v2-experiment)
 * [First Steps](#first-steps)
 * [Configuration](#configuration)
+  * [Broker](#broker)
+  * [DefaultQueue](#defaultqueue)
+  * [ResultBackend](#resultbackend)
+  * [ResultsExpireIn](#resultsexpirein)
+  * [AMQP](#amqp-2)
+  * [DynamoDB](#dynamodb)
+  * [Redis](#redis-2)
+  * [GCPPubSub](#gcppubsub)
 * [Custom Logger](#custom-logger)
 * [Server](#server)
 * [Workers](#workers)
@@ -79,7 +87,7 @@ First, you will need to define some tasks. Look at sample tasks in `example/task
 Second, you will need to launch a worker process:
 
 ```sh
-go run example/machinery.go -c example/config.yml worker
+go run example/machinery.go worker
 ```
 
 ![Example worker][1]
@@ -87,7 +95,7 @@ go run example/machinery.go -c example/config.yml worker
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
 
 ```sh
-go run example/machinery.go -c example/config.yml send
+go run example/machinery.go send
 ```
 
 You will be able to see the tasks being processed asynchronously by the worker:
@@ -99,7 +107,7 @@ You will be able to see the tasks being processed asynchronously by the worker:
 The [config](/v1/config/config.go) package has convenience methods for loading configuration from environment variables or a YAML file. For example, load configuration from environment variables:
 
 ```go
-cnf, err := config.NewFromEnvironment(true)
+cnf, err := config.NewFromEnvironment()
 ```
 
 Or load from YAML file:
@@ -289,10 +297,11 @@ RabbitMQ related configuration. Not necessary if you are using other broker/back
 * `BindingKey`: The queue is bind to the exchange with this key, e.g. `machinery_task`
 * `PrefetchCount`: How many tasks to prefetch (set to `1` if you have long running tasks)
 
-#### Dynamodb
-Dynamodb related configuration. Not necessary if you are using other backend.
-* `task_states_table`: Custom table name for saving task states. Default one is `task_states`, and make sure to create this table in your AWS admin first, using `TaskUUID` as table's primary key.
-* `group_metas_table`: Custom table name for saving group metas. Default one is `group_metas`, and make sure to create this table in your AWS admin first, using `GroupUUID` as table's primary key.
+#### DynamoDB
+
+DynamoDB related configuration. Not necessary if you are using other backend.
+* `TaskStatesTable`: Custom table name for saving task states. Default one is `task_states`, and make sure to create this table in your AWS admin first, using `TaskUUID` as table's primary key.
+* `GroupMetasTable`: Custom table name for saving group metas. Default one is `group_metas`, and make sure to create this table in your AWS admin first, using `GroupUUID` as table's primary key.
 For example:
 
 ```
@@ -303,6 +312,18 @@ dynamodb:
 If these tables are not found, an fatal error would be thrown.
 
 If you wish to expire the records, you can configure the `TTL` field in AWS admin for these tables. The `TTL` field is set based on the `ResultsExpireIn` value in the Server's config. See https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/howitworks-ttl.html for more information.
+
+#### Redis
+
+Redis related configuration. Not necessary if you are using other backend.
+
+See: [config](/v1/config/config.go) (TODO)
+
+#### GCPPubSub
+
+GCPPubSub related configuration. Not necessary if you are using other backend.
+
+See: [config](/v1/config/config.go) (TODO)
 
 ### Custom Logger
 
@@ -686,7 +707,7 @@ fmt.Printf("Current state of %v task is:\n", taskState.TaskUUID)
 fmt.Println(taskState.State)
 ```
 
-There are couple of convenient me methods to inspect the task status:
+There are couple of convenient methods to inspect the task status:
 
 ```go
 asyncResult.GetState().IsCompleted()
@@ -916,16 +937,19 @@ if err != nil {
 }
 ```
 
-The above example executes task1, then task2 and then task3, passing the result of each task to the next task in the chain. Therefore what would end up happening is:
+The above example executes task1, then task2 and then task3. When a task is completed successfully, the result is appended to the end of list of arguments for the next task in the chain. Therefore what would end up happening is:
 
 ```
-multiply(add(add(1, 1), 5, 5), 4)
+multiply(4, add(5, 5, add(1, 1)))
 ```
 
 More explicitly:
 
 ```
-((1 + 1) + (5 + 5)) * 4 = 12 * 4 = 48
+  4 * (5 + 5 + (1 + 1))   # task1: add(1, 1)        returns 2
+= 4 * (5 + 5 + 2)         # task2: add(5, 5, 2)     returns 12
+= 4 * (12)                # task3: multiply(4, 12)  returns 48
+= 48
 ```
 
 `SendChain` returns `ChainAsyncResult` which follows AsyncResult's interface. So you can do a blocking call and wait for the result of the whole chain:

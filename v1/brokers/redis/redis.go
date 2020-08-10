@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"runtime"
 	"sync"
 	"time"
 
@@ -54,7 +56,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	defer b.consumingWG.Done()
 
 	if concurrency < 1 {
-		concurrency = 1
+		concurrency = runtime.NumCPU() * 2
 	}
 
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
@@ -100,10 +102,19 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				close(deliveries)
 				return
 			case <-pool:
-				task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
-				//TODO: should this error be ignored?
-				if len(task) > 0 {
-					deliveries <- task
+				select {
+				case <-b.GetStopChan():
+					close(deliveries)
+					return
+				default:
+				}
+
+				if taskProcessor.PreConsumeHandler() {
+					task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
+					//TODO: should this error be ignored?
+					if len(task) > 0 {
+						deliveries <- task
+					}
 				}
 
 				pool <- struct{}{}
@@ -132,7 +143,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				decoder := json.NewDecoder(bytes.NewReader(task))
 				decoder.UseNumber()
 				if err := decoder.Decode(signature); err != nil {
-					log.ERROR.Print(errs.NewErrCouldNotUnmarshaTaskSignature(task, err))
+					log.ERROR.Print(errs.NewErrCouldNotUnmarshalTaskSignature(task, err))
 				}
 
 				if err := b.Publish(context.Background(), signature); err != nil {
@@ -159,6 +170,8 @@ func (b *Broker) StopConsuming() {
 	b.delayedWG.Wait()
 	// Waiting for consumption to finish
 	b.consumingWG.Wait()
+	// Wait for currently processing tasks to finish as well.
+	b.processingWG.Wait()
 
 	if b.pool != nil {
 		b.pool.Close()
@@ -274,7 +287,12 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 			}
 			if concurrency > 0 {
 				// get execution slot from pool (blocks until one is available)
-				<-pool
+				select {
+				case <-b.GetStopChan():
+					b.requeueMessage(d, taskProcessor)
+					continue
+				case <-pool:
+				}
 			}
 
 			b.processingWG.Add(1)
@@ -303,7 +321,7 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 	decoder := json.NewDecoder(bytes.NewReader(delivery))
 	decoder.UseNumber()
 	if err := decoder.Decode(signature); err != nil {
-		return errs.NewErrCouldNotUnmarshaTaskSignature(delivery, err)
+		return errs.NewErrCouldNotUnmarshalTaskSignature(delivery, err)
 	}
 
 	// If the task is not registered, we requeue it,
@@ -312,12 +330,8 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 		if signature.IgnoreWhenTaskNotRegistered {
 			return nil
 		}
-		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery)
-
-		conn := b.open()
-		defer conn.Close()
-
-		conn.Do("RPUSH", getQueue(b.GetConfig(), taskProcessor), delivery)
+		log.INFO.Printf("Task not registered with this worker. Requeuing message: %s", delivery)
+		b.requeueMessage(delivery, taskProcessor)
 		return nil
 	}
 
@@ -340,7 +354,14 @@ func (b *Broker) nextTask(queue string) (result []byte, err error) {
 	}
 	pollPeriod := time.Duration(pollPeriodMilliseconds) * time.Millisecond
 
-	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriod.Seconds()))
+	// Issue 548: BLPOP expects an integer timeout expresses in seconds.
+	// The call will if the value is a float. Convert to integer using
+	// math.Ceil():
+	//   math.Ceil(0.0) --> 0 (block indefinitely)
+	//   math.Ceil(0.2) --> 1 (timeout after 1 second)
+	pollPeriodSeconds := math.Ceil(pollPeriod.Seconds())
+
+	items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriodSeconds))
 	if err != nil {
 		return []byte{}, err
 	}
@@ -365,7 +386,10 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 	defer func() {
 		// Return connection to normal state on error.
 		// https://redis.io/commands/discard
-		if err != nil {
+		// https://redis.io/commands/unwatch
+		if err == redis.ErrNil {
+			conn.Do("UNWATCH")
+		} else if err != nil {
 			conn.Do("DISCARD")
 		}
 	}()
@@ -445,4 +469,10 @@ func getQueue(config *config.Config, taskProcessor iface.TaskProcessor) string {
 		return config.DefaultQueue
 	}
 	return customQueue
+}
+
+func (b *Broker) requeueMessage(delivery []byte, taskProcessor iface.TaskProcessor) {
+	conn := b.open()
+	defer conn.Close()
+	conn.Do("RPUSH", getQueue(b.GetConfig(), taskProcessor), delivery)
 }

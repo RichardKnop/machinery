@@ -5,8 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v2"
+
+	backend "github.com/RichardKnop/machinery/v1/backends/eager"
+	broker "github.com/RichardKnop/machinery/v1/brokers/eager"
 )
 
 func TestRegisterTasks(t *testing.T) {
@@ -74,19 +77,5 @@ func TestNewCustomQueueWorker(t *testing.T) {
 }
 
 func getTestServer(t *testing.T) *machinery.Server {
-	server, err := machinery.NewServer(&config.Config{
-		Broker:        "amqp://guest:guest@localhost:5672/",
-		DefaultQueue:  "machinery_tasks",
-		ResultBackend: "redis://127.0.0.1:6379",
-		AMQP: &config.AMQPConfig{
-			Exchange:      "machinery_exchange",
-			ExchangeType:  "direct",
-			BindingKey:    "machinery_task",
-			PrefetchCount: 1,
-		},
-	})
-	if err != nil {
-		t.Error(err)
-	}
-	return server
+	return machinery.NewServer(&config.Config{}, broker.New(), backend.New())
 }
