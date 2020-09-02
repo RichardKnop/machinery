@@ -94,7 +94,6 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	}
 
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
-
 	if err := b.consume(deliveries, concurrency, taskProcessor, amqpCloseChan); err != nil {
 		return b.GetRetry(), err
 	}
@@ -107,6 +106,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 // StopConsuming quits the loop
 func (b *Broker) StopConsuming() {
+
 	b.Broker.StopConsuming()
 
 	// Waiting for any tasks being processed to finish
@@ -325,14 +325,14 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 		requeue = true
 		log.INFO.Printf("Task not registered with this worker. Requeing message: %s", delivery.Body)
 
-    if !signature.IgnoreWhenTaskNotRegistered {
+		if !signature.IgnoreWhenTaskNotRegistered {
 			delivery.Nack(multiple, requeue)
 		}
-    
+
 		return nil
 	}
 
-	log.DEBUG.Printf("Received new message: %s", delivery.Body)
+	//log.DEBUG.Printf("Received new message: %s", delivery.Body)
 
 	err := taskProcessor.Process(signature)
 	if ack {

@@ -19,13 +19,14 @@ const (
 
 // TaskState represents a state of a task
 type TaskState struct {
-	TaskUUID  string        `bson:"_id"`
-	TaskName  string        `bson:"task_name"`
-	State     string        `bson:"state"`
-	Results   []*TaskResult `bson:"results"`
-	Error     string        `bson:"error"`
-	CreatedAt time.Time     `bson:"created_at"`
-	TTL       int64         `bson:"ttl,omitempty"`
+	TaskUUID  string            `bson:"_id"`
+	TaskName  string            `bson:"task_name"`
+	State     string            `bson:"state"`
+	Meta      map[string]string `bson:"meta"`
+	Results   []*TaskResult     `bson:"results"`
+	Error     string            `bson:"error"`
+	CreatedAt time.Time         `bson:"created_at"`
+	TTL       int64             `bson:"ttl,omitempty"`
 }
 
 // GroupMeta stores useful metadata about tasks within the same group

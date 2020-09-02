@@ -20,9 +20,10 @@ const (
 var (
 	// Start with sensible default values
 	defaultCnf = &Config{
-		Broker:          "amqp://guest:guest@localhost:5672/",
-		DefaultQueue:    "machinery_tasks",
-		ResultBackend:   "amqp://guest:guest@localhost:5672/",
+		Broker:       "amqp://guest:guest@localhost:5672/",
+		DefaultQueue: "machinery_tasks",
+		// ResultBackend:   "amqp://guest:guest@localhost:5672/",
+		ResultBackend:   "mongodb://localhost:27017/taskresults",
 		ResultsExpireIn: DefaultResultsExpireIn,
 		AMQP: &AMQPConfig{
 			Exchange:      "machinery_exchange",

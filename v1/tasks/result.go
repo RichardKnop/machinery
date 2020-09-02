@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // TaskResult represents an actual return value of a processed task
@@ -16,6 +19,17 @@ type TaskResult struct {
 func ReflectTaskResults(taskResults []*TaskResult) ([]reflect.Value, error) {
 	resultValues := make([]reflect.Value, len(taskResults))
 	for i, taskResult := range taskResults {
+
+		if taskResult.Type == "json" {
+			taskResult.Type = "string"
+			ret, err := bson.MarshalExtJSON(taskResult.Value.(primitive.D).Map(), false, false)
+			// ret, err := json.Marshal(taskResult.Value.(primitive.D).Map())
+			if err != nil {
+				return nil, err
+			}
+			taskResult.Value = string(ret)
+		}
+
 		resultValue, err := ReflectValue(taskResult.Type, taskResult.Value)
 		if err != nil {
 			return nil, err

@@ -33,7 +33,7 @@ type Backend struct {
 func New(cnf *config.Config) (iface.Backend, error) {
 	backend := &Backend{
 		Backend: common.NewBackend(cnf),
-		once: sync.Once{},
+		once:    sync.Once{},
 	}
 
 	return backend, nil
@@ -115,6 +115,7 @@ func (b *Backend) SetStatePending(signature *tasks.Signature) error {
 		"state":      tasks.StatePending,
 		"task_name":  signature.Name,
 		"created_at": time.Now().UTC(),
+		"meta":       signature.Meta,
 	}
 	return b.updateState(signature, update)
 }
