@@ -110,7 +110,7 @@ func TestRedisRedisWorkerQuickQuit(t *testing.T) {
 
 	before := time.Now()
 	worker.Quit()
-	delta := time.Now().Sub(before)
+	delta := time.Since(before)
 
 	threshold := time.Duration(pollPeriod)*time.Millisecond + 1000 // add 1 second as buffer
 
