@@ -12,6 +12,7 @@ require (
 	github.com/go-redis/redis/v8 v8.0.0-beta.6
 	github.com/gomodule/redigo v1.8.2
 	github.com/google/uuid v1.1.1
+	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/klauspost/compress v1.10.10 // indirect
@@ -28,6 +29,7 @@ require (
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/tools v0.0.0-20200715235423-130c9f19d3fe // indirect
 	google.golang.org/genproto v0.0.0-20200715011427-11fb19a81f2c // indirect
+	gopkg.in/fsnotify.v1 v1.4.7
 	gopkg.in/yaml.v2 v2.3.0
 )
 

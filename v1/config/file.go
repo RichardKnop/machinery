@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/log"
+	"github.com/juju/fslock"
+	"gopkg.in/fsnotify.v1"
 	"gopkg.in/yaml.v2"
 )
 
@@ -19,22 +21,41 @@ func NewFromYaml(cnfPath string, keepReloading bool) (*Config, error) {
 	log.INFO.Printf("Successfully loaded config from file %s", cnfPath)
 
 	if keepReloading {
+		// creates a new file watcher
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			log.WARNING.Printf("Config Watcher ERROR", err)
+		}
 		// Open a goroutine to watch remote changes forever
 		go func() {
+			last := time.Now()
+			lock := fslock.New(cnfPath)
 			for {
-				// Delay after each request
-				time.Sleep(reloadDelay)
-
-				// Attempt to reload the config
-				newCnf, newErr := fromFile(cnfPath)
-				if newErr != nil {
-					log.WARNING.Printf("Failed to reload config from file %s: %v", cnfPath, newErr)
-					continue
+				select {
+				// watch for events
+				case event := <-watcher.Events:
+					if (event.Op.String() == "WRITE") && (time.Since(last).Seconds() > 5.0) {
+						lock.Lock()
+						// Attempt to reload the config
+						newCnf, newErr := fromFile(cnfPath)
+						if newErr == nil {
+							*cnf = *newCnf
+							log.INFO.Printf("Config reloaded from file %s", cnfPath)
+							last = time.Now()
+						}
+						lock.Unlock()
+					}
+					// watch for errors
+				case err := <-watcher.Errors:
+					fmt.Println("ERROR", err)
 				}
-
-				*cnf = *newCnf
 			}
 		}()
+
+		// out of the box fsnotify can watch a single file, or a single directory
+		if err := watcher.Add(cnfPath); err != nil {
+			log.WARNING.Printf("Config Watcher ERROR", err)
+		}
 	}
 
 	return cnf, nil
@@ -43,6 +64,7 @@ func NewFromYaml(cnfPath string, keepReloading bool) (*Config, error) {
 // ReadFromFile reads data from a file
 func ReadFromFile(cnfPath string) ([]byte, error) {
 	file, err := os.Open(cnfPath)
+	defer file.Close()
 
 	// Config file not found
 	if err != nil {
