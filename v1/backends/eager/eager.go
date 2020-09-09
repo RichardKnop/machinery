@@ -63,9 +63,7 @@ func New() iface.Backend {
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	tasks := make([]string, 0, len(taskUUIDs))
 	// copy every task
-	for _, v := range taskUUIDs {
-		tasks = append(tasks, v)
-	}
+	tasks = append(tasks, taskUUIDs...)
 
 	b.groups[groupUUID] = tasks
 	return nil
