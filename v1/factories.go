@@ -278,10 +278,10 @@ func ParseGCPPubSubURL(url string) (string, string, error) {
 
 	parts = strings.Split(remainder, "/")
 	if len(parts) == 2 {
-		if len(parts[0]) == 0 {
+		if parts[0] == "" {
 			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
 		}
-		if len(parts[1]) == 0 {
+		if parts[1] == "" {
 			return "", "", fmt.Errorf("gcppubsub scheme should be in format gcppubsub://YOUR_GCP_PROJECT_ID/YOUR_PUBSUB_SUBSCRIPTION_NAME, instead got %s", url)
 		}
 		return parts[0], parts[1], nil
