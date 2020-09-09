@@ -33,7 +33,7 @@ type Backend struct {
 func New(cnf *config.Config) (iface.Backend, error) {
 	backend := &Backend{
 		Backend: common.NewBackend(cnf),
-		once: sync.Once{},
+		once:    sync.Once{},
 	}
 
 	return backend, nil
@@ -150,7 +150,7 @@ func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.T
 // decodeResults detects & decodes json strings in TaskResult.Value and returns a new slice
 func (b *Backend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult {
 	l := len(results)
-	jsonResults := make([]*tasks.TaskResult, l, l)
+	jsonResults := make([]*tasks.TaskResult, l)
 	for i, result := range results {
 		jsonResult := new(bson.M)
 		resultType := reflect.TypeOf(result.Value).Kind()
