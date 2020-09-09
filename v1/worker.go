@@ -96,7 +96,7 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 
 		// Goroutine Handle SIGINT and SIGTERM signals
 		go func() {
-			for s := range <-sig {
+			for s := range sig {
 				log.WARNING.Printf("Signal received: %v", s)
 				signalsReceived++
 
