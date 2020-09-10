@@ -18,38 +18,6 @@ const (
 )
 
 var (
-	// Start with sensible default values
-	defaultCnf = &Config{
-		Broker:       "amqp://guest:guest@localhost:5672/",
-		DefaultQueue: "machinery_tasks",
-		// ResultBackend:   "amqp://guest:guest@localhost:5672/",
-		ResultBackend:   "mongodb://localhost:27017/taskresults",
-		ResultsExpireIn: DefaultResultsExpireIn,
-		AMQP: &AMQPConfig{
-			Exchange:      "machinery_exchange",
-			ExchangeType:  "direct",
-			BindingKey:    "machinery_task",
-			PrefetchCount: 3,
-		},
-		DynamoDB: &DynamoDBConfig{
-			TaskStatesTable: "task_states",
-			GroupMetasTable: "group_metas",
-		},
-		Redis: &RedisConfig{
-			MaxIdle:                3,
-			IdleTimeout:            240,
-			ReadTimeout:            15,
-			WriteTimeout:           15,
-			ConnectTimeout:         15,
-			NormalTasksPollPeriod:  1000,
-			DelayedTasksPollPeriod: 500,
-		},
-		GCPPubSub: &GCPPubSubConfig{
-			Client: nil,
-		},
-		Models: &ModelsConfig{},
-	}
-
 	reloadDelay = time.Second * 10
 )
 
@@ -166,6 +134,40 @@ type GCPPubSubConfig struct {
 type MongoDBConfig struct {
 	Client   *mongo.Client
 	Database string
+}
+
+func makeDefaultConf() *Config {
+	// Start with sensible default values
+	return &Config{
+		Broker:       "amqp://guest:guest@localhost:5672/",
+		DefaultQueue: "machinery_tasks",
+		// ResultBackend:   "amqp://guest:guest@localhost:5672/",
+		ResultBackend:   "mongodb://localhost:27017/taskresults",
+		ResultsExpireIn: DefaultResultsExpireIn,
+		AMQP: &AMQPConfig{
+			Exchange:      "machinery_exchange",
+			ExchangeType:  "direct",
+			BindingKey:    "machinery_task",
+			PrefetchCount: 3,
+		},
+		DynamoDB: &DynamoDBConfig{
+			TaskStatesTable: "task_states",
+			GroupMetasTable: "group_metas",
+		},
+		Redis: &RedisConfig{
+			MaxIdle:                3,
+			IdleTimeout:            240,
+			ReadTimeout:            15,
+			WriteTimeout:           15,
+			ConnectTimeout:         15,
+			NormalTasksPollPeriod:  1000,
+			DelayedTasksPollPeriod: 500,
+		},
+		GCPPubSub: &GCPPubSubConfig{
+			Client: nil,
+		},
+		Models: &ModelsConfig{},
+	}
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

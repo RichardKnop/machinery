@@ -20,7 +20,7 @@ func NewFromEnvironment() (*Config, error) {
 
 func fromEnvironment() (*Config, error) {
 	loadedCnf, cnf := new(Config), new(Config)
-	*cnf = *defaultCnf
+	*cnf = *makeDefaultConf()
 
 	if err := envconfig.Process("", cnf); err != nil {
 		return nil, err

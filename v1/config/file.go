@@ -83,7 +83,8 @@ func ReadFromFile(cnfPath string) ([]byte, error) {
 
 func fromFile(cnfPath string) (*Config, error) {
 	loadedCnf, cnf := new(Config), new(Config)
-	*cnf = *defaultCnf
+
+	*cnf = *makeDefaultConf()
 
 	data, err := ReadFromFile(cnfPath)
 	if err != nil {
