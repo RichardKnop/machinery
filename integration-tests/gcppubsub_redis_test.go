@@ -39,7 +39,7 @@ func createGCPPubSubTopicAndSubscription(cli *pubsub.Client, topicName, subscrip
 	}
 
 	if !subExists {
-		sub, err = cli.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{
+		_, err = cli.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{
 			Topic:       topic,
 			AckDeadline: 10 * time.Second,
 		})
