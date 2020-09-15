@@ -160,7 +160,6 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 			case <-conn.cleanup:
 				return
 			}
-			return
 		}()
 		b.connections[queueName] = conn
 	}
