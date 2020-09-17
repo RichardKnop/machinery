@@ -94,6 +94,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	}
 
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
+
 	if err := b.consume(deliveries, concurrency, taskProcessor, amqpCloseChan); err != nil {
 		return b.GetRetry(), err
 	}
@@ -106,7 +107,6 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 // StopConsuming quits the loop
 func (b *Broker) StopConsuming() {
-
 	b.Broker.StopConsuming()
 
 	// Waiting for any tasks being processed to finish
