@@ -1,6 +1,7 @@
 package machinery
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -38,6 +39,25 @@ var (
 	// ErrWorkerQuitGracefully is return when worker quit abruptly
 	ErrWorkerQuitAbruptly = errors.New("Worker quit abruptly")
 )
+
+type serverCtxType struct{}
+
+var serverCtx serverCtxType
+
+// ServerFromContext gets the signature from the context
+func ServerFromContext(ctx context.Context) *Server {
+	if ctx == nil {
+		return nil
+	}
+
+	v := ctx.Value(serverCtx)
+	if v == nil {
+		return nil
+	}
+
+	server, _ := v.(*Server)
+	return server
+}
 
 // Launch starts a new worker process. The worker subscribes
 // to the default queue and processes incoming registered tasks
@@ -155,6 +175,8 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 		worker.taskFailed(signature, err)
 		return err
 	}
+
+	task.Context = context.WithValue(task.Context, serverCtx, worker.GetServer())
 
 	// try to extract trace span from headers and add it to the function context
 	// so it can be used inside the function if it has context.Context as the first
