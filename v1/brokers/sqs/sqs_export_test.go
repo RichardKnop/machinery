@@ -70,6 +70,7 @@ func init() {
 		Broker:        brokerURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: redisURL,
+		Lock:          redisURL,
 	}
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
