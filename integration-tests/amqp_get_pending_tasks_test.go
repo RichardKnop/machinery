@@ -2,12 +2,12 @@ package integration_test
 
 import (
 	"os"
-	"time"
 	"testing"
+	"time"
 
+	"github.com/RichardKnop/machinery/v1/backends/result"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/machinery/v1/backends/result"
 )
 
 func TestAmqpGetPendingTasks(t *testing.T) {
