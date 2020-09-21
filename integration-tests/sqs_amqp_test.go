@@ -23,6 +23,7 @@ func TestSQSAmqp(t *testing.T) {
 		Broker:        sqsURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: amqpURL,
+		Lock:          "eager",
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",

@@ -24,6 +24,7 @@ func TestAmqpMongodb(t *testing.T) {
 		DefaultQueue:    "test_queue",
 		ResultsExpireIn: 30,
 		ResultBackend:   fmt.Sprintf("mongodb://%v", mongodbURL),
+		Lock:            "eager",
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",

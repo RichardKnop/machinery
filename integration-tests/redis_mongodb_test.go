@@ -24,6 +24,7 @@ func TestRedisMongodb(t *testing.T) {
 		DefaultQueue:    "test_queue",
 		ResultsExpireIn: 30,
 		ResultBackend:   fmt.Sprintf("mongodb://%v", mongodbURL),
+		Lock:            "eager",
 	})
 	worker := server.NewWorker("test_worker", 0)
 	go worker.Launch()

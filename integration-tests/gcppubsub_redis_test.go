@@ -87,6 +87,7 @@ func TestGCPPubSubRedis(t *testing.T) {
 		Broker:        pubsubURL,
 		DefaultQueue:  topicName,
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          "eager",
 		GCPPubSub: &config.GCPPubSubConfig{
 			Client: pubsubClient,
 		},

@@ -18,11 +18,17 @@ func TestAmqpMemcache(t *testing.T) {
 		t.Skip("MEMCACHE_URL is not defined")
 	}
 
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL is not defined")
+	}
+
 	// AMQP broker, Memcache result backend
 	server := testSetup(&config.Config{
 		Broker:        amqpURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("memcache://%v", memcacheURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",
