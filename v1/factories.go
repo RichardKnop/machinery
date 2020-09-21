@@ -216,6 +216,8 @@ func ParseRedisURL(url string) (host, password string, db int, err error) {
 	return
 }
 
+// LockFactory creates a new object of iface.Lock
+// Currently supported lock is redis
 func LockFactory(cnf *config.Config) (lockiface.Lock, error) {
 	if strings.HasPrefix(cnf.Lock, "eager") {
 		return eagerlock.New(), nil

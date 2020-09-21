@@ -3,6 +3,7 @@ package sqs
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 
@@ -72,8 +73,8 @@ func init() {
 	TestConf = &config.Config{
 		Broker:        brokerURL,
 		DefaultQueue:  "test_queue",
-		ResultBackend: redisURL,
-		Lock:          redisURL,
+		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 	}
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
