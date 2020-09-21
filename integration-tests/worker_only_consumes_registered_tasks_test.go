@@ -145,7 +145,7 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
-		Lock:          "eager",
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 	}
 
 	server1, err := machinery.NewServer(&cnf)

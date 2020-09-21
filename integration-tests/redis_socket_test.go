@@ -19,7 +19,7 @@ func TestRedisSocket(t *testing.T) {
 		Broker:        fmt.Sprintf("redis+socket://%v", redisSocket),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis+socket://%v", redisSocket),
-		Lock:          "eager",
+		Lock:          fmt.Sprintf("redis+socket://%v", redisSocket),
 	})
 	worker := server.NewWorker("test_worker", 0)
 	go worker.Launch()

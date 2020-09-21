@@ -19,7 +19,7 @@ func TestRedisGetPendingTasks(t *testing.T) {
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
-		Lock:          "eager",
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 	})
 	pendingMessages, err := server.GetBroker().GetPendingTasks(server.GetConfig().DefaultQueue)
 	if err != nil {
