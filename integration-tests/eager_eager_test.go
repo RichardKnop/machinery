@@ -29,6 +29,7 @@ func (s *EagerIntegrationTestSuite) SetupSuite() {
 	cnf := config.Config{
 		Broker:        "eager",
 		ResultBackend: "eager",
+		Lock:          "eager",
 	}
 	s.srv, err = machinery.NewServer(&cnf)
 	s.Nil(err)

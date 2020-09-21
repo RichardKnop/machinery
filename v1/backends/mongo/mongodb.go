@@ -33,7 +33,7 @@ type Backend struct {
 func New(cnf *config.Config) (iface.Backend, error) {
 	backend := &Backend{
 		Backend: common.NewBackend(cnf),
-		once: sync.Once{},
+		once:    sync.Once{},
 	}
 
 	return backend, nil

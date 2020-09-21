@@ -32,6 +32,7 @@ func TestAmqpAmqp(t *testing.T) {
 		MultipleBrokerSeparator: finalSeparator,
 		DefaultQueue:            "test_queue",
 		ResultBackend:           amqpURL,
+		Lock:                    "eager",
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",
