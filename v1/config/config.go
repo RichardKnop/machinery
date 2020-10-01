@@ -38,6 +38,7 @@ type Config struct {
 	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
 	DynamoDB      *DynamoDBConfig `yaml:"dynamodb"`
 	Models        *ModelsConfig   `yaml:"models"`
+	Webhook       string          `yaml:"webhook"`
 }
 
 // ModelsConfig ...
@@ -166,7 +167,8 @@ func makeDefaultConf() *Config {
 		GCPPubSub: &GCPPubSubConfig{
 			Client: nil,
 		},
-		Models: &ModelsConfig{},
+		Models:  &ModelsConfig{},
+		Webhook: "",
 	}
 }
 
