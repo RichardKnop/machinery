@@ -1,4 +1,4 @@
-module github.factset.com/ggodik/machinery
+module github.com/RichardKnop/machinery
 
 require (
 	cloud.google.com/go v0.61.0 // indirect
