@@ -356,6 +356,69 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	return nil
 }
 
+func (worker *Worker) processErrorChord(signature *tasks.Signature, taskErr error) error {
+	// Check if all task in the group has completed
+	groupCompleted, err := worker.server.GetBackend().GroupCompleted(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+	)
+	if err != nil {
+		return fmt.Errorf("Completed check for group %s returned error: %s", signature.GroupUUID, err)
+	}
+
+	// If the group has not yet completed, just return
+	if !groupCompleted {
+		return nil
+	}
+
+	// Trigger chord callback
+	shouldTrigger, err := worker.server.GetBackend().TriggerChord(signature.GroupUUID)
+	if err != nil {
+		return fmt.Errorf("Triggering chord for group %s returned error: %s", signature.GroupUUID, err)
+	}
+
+	// Chord has already been triggered
+	if !shouldTrigger {
+		return nil
+	}
+
+	// Get task states
+	taskStates, err := worker.server.GetBackend().GroupTaskStates(
+		signature.GroupUUID,
+		signature.GroupTaskCount,
+	)
+	if err != nil {
+		log.ERROR.Printf(
+			"Failed to get tasks states for group:[%s]. Task count:[%d]. The chord may not be triggered. Error:[%s]",
+			signature.GroupUUID,
+			signature.GroupTaskCount,
+			err,
+		)
+		return nil
+	}
+
+	signature.ChordErrorCallback.Args = append(signature.ChordErrorCallback.Args,
+		tasks.Arg{
+			Type:  "string",
+			Value: taskErr.Error(),
+		})
+
+	// Append group tasks' return values to chord task if it's not immutable
+	for _, taskState := range taskStates {
+		if !taskState.IsSuccess() {
+			signature.ChordErrorCallback.Args = append(signature.ChordErrorCallback.Args,
+				tasks.Arg{
+					Type:  "string",
+					Value: taskState.Error,
+				})
+		}
+	}
+
+	// Send the chord task
+	_, err = worker.server.SendTask(signature.ChordErrorCallback)
+	return err
+}
+
 // taskFailed updates the task state and triggers error callbacks
 func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) error {
 	// Update task state to FAILURE

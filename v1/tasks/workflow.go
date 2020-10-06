@@ -20,8 +20,9 @@ type Group struct {
 // Chord adds an optional callback to the group to be executed
 // after all tasks in the group finished
 type Chord struct {
-	Group    *Group
-	Callback *Signature
+	Group         *Group
+	Callback      *Signature
+	ErrorCallback *Signature
 }
 
 // GetUUIDs returns slice of task UUIDS
@@ -80,6 +81,12 @@ func NewGroup(signatures ...*Signature) (*Group, error) {
 // NewChord creates a new chord (a group of tasks with a single callback
 // to be executed after all tasks in the group has completed)
 func NewChord(group *Group, callback *Signature) (*Chord, error) {
+	return NewChordWithError(group, callback, nil)
+}
+
+// NewChordWithError creates a new chord (a group of tasks with a single callback
+// to be executed after all tasks in the group has completed)
+func NewChordWithError(group *Group, callback *Signature, errorCallback *Signature) (*Chord, error) {
 	if callback.UUID == "" {
 		// Generate a UUID for the chord callback
 		callbackUUID := uuid.New().String()
@@ -89,7 +96,8 @@ func NewChord(group *Group, callback *Signature) (*Chord, error) {
 	// Add a chord callback to all tasks
 	for _, signature := range group.Tasks {
 		signature.ChordCallback = callback
+		signature.ChordErrorCallback = errorCallback
 	}
 
-	return &Chord{Group: group, Callback: callback}, nil
+	return &Chord{Group: group, Callback: callback, ErrorCallback: errorCallback}, nil
 }

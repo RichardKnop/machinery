@@ -286,6 +286,7 @@ func (server *Server) SendChordWithContext(ctx context.Context, chord *tasks.Cho
 	return result.NewChordAsyncResult(
 		chord.Group.Tasks,
 		chord.Callback,
+		chord.ErrorCallback,
 		server.backend,
 	), nil
 }
