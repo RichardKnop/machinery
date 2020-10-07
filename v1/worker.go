@@ -12,6 +12,7 @@ import (
 
 	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
+	"github.com/RichardKnop/machinery/v1/iface"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -284,45 +285,42 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 }
 
 func (worker *Worker) processChords(signature *tasks.Signature) error {
-	log.DEBUG.Println("processChords")
+	return processChords(worker.GetServer(), signature, worker.hasAMQPBackend())
+}
 
+func processChords(server iface.Server, signature *tasks.Signature, hasAMQPBackend bool) error {
 	// this is not group chord execution. short circuit out early
-	if signature.ChordCallback == nil && signature.ChordErrorCallback == nil {
+	if signature == nil ||
+		(signature.ChordCallback == nil && signature.ChordErrorCallback == nil) {
 		return nil
 	}
 
 	// Check if all task in the group has completed
-	groupCompleted, err := worker.server.GetBackend().GroupCompleted(
+	if groupCompleted, err := server.GetBackend().GroupCompleted(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("Completed check for group %s returned error: %s", signature.GroupUUID, err)
-	}
-
-	// If the group has not yet completed, just return
-	if !groupCompleted {
+	} else if !groupCompleted {
+		// If the group has not yet completed, just return
 		return nil
 	}
 
 	// Defer purging of group meta queue if we are using AMQP backend
-	if worker.hasAMQPBackend() {
-		defer worker.server.GetBackend().PurgeGroupMeta(signature.GroupUUID)
+	if hasAMQPBackend {
+		defer server.GetBackend().PurgeGroupMeta(signature.GroupUUID)
 	}
 
 	// Trigger chord callback
-	shouldTrigger, err := worker.server.GetBackend().TriggerChord(signature.GroupUUID)
-	if err != nil {
+	if shouldTrigger, err := server.GetBackend().TriggerChord(signature.GroupUUID); err != nil {
 		return fmt.Errorf("Triggering chord for group %s returned error: %s", signature.GroupUUID, err)
-	}
-
-	// Chord has already been triggered
-	if !shouldTrigger {
+	} else if !shouldTrigger {
+		// Chord has already been triggered
 		return nil
 	}
 
 	// Get task states
-	taskStates, err := worker.server.GetBackend().GroupTaskStates(
+	taskStates, err := server.GetBackend().GroupTaskStates(
 		signature.GroupUUID,
 		signature.GroupTaskCount,
 	)
@@ -337,35 +335,43 @@ func (worker *Worker) processChords(signature *tasks.Signature) error {
 	}
 
 	errors := []string{}
+	successArgs := []tasks.Arg{}
+
 	for _, taskState := range taskStates {
 		if !taskState.IsSuccess() {
 			errors = append(errors, taskState.Error)
 			continue
 		}
 
-		if signature.ChordCallback.Immutable == false {
-			// Pass results of the task to the chord callback
-			for _, taskResult := range taskState.Results {
-				signature.ChordCallback.Args = append(signature.ChordCallback.Args, tasks.Arg{
-					Type:  taskResult.Type,
-					Value: taskResult.Value,
-				})
-			}
+		for _, taskResult := range taskState.Results {
+			successArgs = append(successArgs, tasks.Arg{
+				Type:  taskResult.Type,
+				Value: taskResult.Value,
+			})
 		}
+
 	}
 
-	if len(errors) == 0 {
-		// Send the chord task
-		_, err = worker.server.SendTask(signature.ChordCallback)
+	// No errors in the group => pass results of the task to the chord callback
+	if len(errors) == 0 && signature.ChordCallback != nil {
+		if signature.ChordCallback.Immutable == false {
+			signature.ChordCallback.Args = append(signature.ChordCallback.Args, successArgs...)
+		}
+
+		_, err = server.SendTask(signature.ChordCallback)
 		return err
 	}
 
-	signature.ChordErrorCallback.Args = append(signature.ChordErrorCallback.Args,
-		tasks.Arg{Type: "[]string", Value: errors})
+	if len(errors) != 0 && signature.ChordErrorCallback != nil {
+		signature.ChordErrorCallback.Args = append(signature.ChordErrorCallback.Args,
+			tasks.Arg{Type: "[]string", Value: errors})
 
-	// Send the chord task
-	_, err = worker.server.SendTask(signature.ChordErrorCallback)
-	return err
+		// Send the chord task
+		_, err = server.SendTask(signature.ChordErrorCallback)
+		return err
+	}
+
+	return nil
 }
 
 // taskFailed updates the task state and triggers error callbacks
@@ -432,7 +438,7 @@ func (worker *Worker) SetPreConsumeHandler(handler func(*Worker) bool) {
 }
 
 //GetServer returns server
-func (worker *Worker) GetServer() *Server {
+func (worker *Worker) GetServer() iface.Server {
 	return worker.server
 }
 

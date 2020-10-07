@@ -5,6 +5,7 @@ import (
 )
 
 // Backend - a common interface for all result backends
+//go:generate go run github.com/vektra/mockery/cmd/mockery -name Backend
 type Backend interface {
 	// Group related functions
 	InitGroup(groupUUID string, taskUUIDs []string) error
