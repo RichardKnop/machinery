@@ -280,19 +280,14 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		return nil
 	}
 
-	if signature.ChordErrorCallback != nil {
-		sent, err := worker.processErrorChord(signature)
-		if err != nil {
-			return fmt.Errorf("Error while processing ErrorChord=%v", err)
-		}
+	return worker.processChords(signature)
+}
 
-		if sent == true {
-			return nil
-		}
-	}
+func (worker *Worker) processChords(signature *tasks.Signature) error {
+	log.DEBUG.Println("processChords")
 
-	// There is no chord callback, just return
-	if signature.ChordCallback == nil {
+	// this is not group chord execution. short circuit out early
+	if signature.ChordCallback == nil && signature.ChordErrorCallback == nil {
 		return nil
 	}
 
@@ -341,10 +336,11 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		return nil
 	}
 
-	// Append group tasks' return values to chord task if it's not immutable
+	errors := []string{}
 	for _, taskState := range taskStates {
 		if !taskState.IsSuccess() {
-			return nil
+			errors = append(errors, taskState.Error)
+			continue
 		}
 
 		if signature.ChordCallback.Immutable == false {
@@ -358,77 +354,18 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 		}
 	}
 
-	// Send the chord task
-	_, err = worker.server.SendTask(signature.ChordCallback)
-	if err != nil {
+	if len(errors) == 0 {
+		// Send the chord task
+		_, err = worker.server.SendTask(signature.ChordCallback)
 		return err
 	}
 
-	return nil
-}
-
-func (worker *Worker) processErrorChord(signature *tasks.Signature) (bool, error) {
-	log.DEBUG.Println("processErrorChord")
-	// Check if all task in the group has completed
-	groupCompleted, err := worker.server.GetBackend().GroupCompleted(
-		signature.GroupUUID,
-		signature.GroupTaskCount,
-	)
-	if err != nil {
-		return false, fmt.Errorf("Completed check for group %s returned error: %s", signature.GroupUUID, err)
-	}
-
-	// If the group has not yet completed, just return
-	if !groupCompleted {
-		return false, nil
-	}
-
-	// Trigger chord callback
-	shouldTrigger, err := worker.server.GetBackend().TriggerChord(signature.GroupUUID)
-	if err != nil {
-		return false, fmt.Errorf("Triggering chord for group %s returned error: %s", signature.GroupUUID, err)
-	}
-
-	// Chord has already been triggered
-	if !shouldTrigger {
-		return false, nil
-	}
-
-	// Get task states
-	taskStates, err := worker.server.GetBackend().GroupTaskStates(
-		signature.GroupUUID,
-		signature.GroupTaskCount,
-	)
-	if err != nil {
-		log.ERROR.Printf(
-			"Failed to get tasks states for group:[%s]. Task count:[%d]. The chord may not be triggered. Error:[%s]",
-			signature.GroupUUID,
-			signature.GroupTaskCount,
-			err,
-		)
-		return false, nil
-	}
-
-	errors := []string{}
-	for _, taskState := range taskStates {
-		if !taskState.IsSuccess() {
-			errors = append(errors, taskState.Error)
-		}
-	}
-
-	if len(errors) == 0 {
-		return false, nil
-	}
-
-	signature.ChordErrorCallback.Args = []tasks.Arg{
-		tasks.Arg{
-			Type:  "[]string",
-			Value: errors,
-		}}
+	signature.ChordErrorCallback.Args = append(signature.ChordErrorCallback.Args,
+		tasks.Arg{Type: "[]string", Value: errors})
 
 	// Send the chord task
 	_, err = worker.server.SendTask(signature.ChordErrorCallback)
-	return true, err
+	return err
 }
 
 // taskFailed updates the task state and triggers error callbacks
@@ -444,11 +381,9 @@ func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) erro
 		log.ERROR.Printf("Failed processing task %s. Error = %v", signature.UUID, taskErr)
 	}
 
-	if signature.ChordErrorCallback != nil {
-		_, err := worker.processErrorChord(signature)
-		if err != nil {
-			return fmt.Errorf("Error while processing ErrorChord=%v", err)
-		}
+	err := worker.processChords(signature)
+	if err != nil {
+		return fmt.Errorf("Error while processing ErrorChord=%v", err)
 	}
 
 	// Trigger error callbacks
