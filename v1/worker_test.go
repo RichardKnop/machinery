@@ -45,7 +45,7 @@ type processChordSuite struct {
 	chordError   *tasks.Signature
 }
 
-func Test_executeMDSFixture(t *testing.T) {
+func TestProcessChordSuite(t *testing.T) {
 	suite.Run(t, new(processChordSuite))
 }
 

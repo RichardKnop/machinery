@@ -2,9 +2,11 @@ package integration_test
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,6 +27,7 @@ func testAll(server *machinery.Server, t *testing.T) {
 	testSendGroup(server, t, 0) // with unlimited concurrency
 	testSendGroup(server, t, 2) // with limited concurrency (2 parallel tasks at the most)
 	testSendChord(server, t)
+	testSendChordWithError(server, t)
 	testSendChain(server, t)
 	testReturnJustError(server, t)
 	testReturnMultipleValues(server, t)
@@ -185,6 +188,42 @@ func testSendChord(server *machinery.Server, t *testing.T) {
 	}
 
 	if results[0].Interface() != int64(88) {
+		t.Errorf(
+			"result = %v(%v), want int64(88)",
+			results[0].Type().String(),
+			results[0].Interface(),
+		)
+	}
+}
+
+func testSendChordWithError(server *machinery.Server, t *testing.T) {
+	t1, t2, t3, t4, t5 := newAddTask(1, 1), newAddTask(2, 2), newErrorTask("chord error", true), newMultipleTask(), newHandleErrorTask("handle")
+
+	group, err := tasks.NewGroup(t1, t2, t3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	chord, err := tasks.NewChordWithError(group, t4, t5)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	chordAsyncResult, err := server.SendChord(chord, 10)
+	if err != nil {
+		t.Error(err)
+	}
+
+	results, err := chordAsyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
+	}
+
+	if results[0].Interface() != "handle=chord_error" {
 		t.Errorf(
 			"result = %v(%v), want int64(88)",
 			results[0].Type().String(),
@@ -370,6 +409,9 @@ func testSetup(cnf *config.Config) *machinery.Server {
 		"delay_test": func() (int64, error) {
 			return time.Now().UTC().UnixNano(), nil
 		},
+		"handle_error": func(msg string, errors []string) (string, error) {
+			return fmt.Sprintf("%s=%s", msg, strings.Join(errors, ",")), nil
+		},
 	}
 	server.RegisterTasks(tasks)
 
@@ -458,5 +500,17 @@ func newDelayTask(eta time.Time) *tasks.Signature {
 	return &tasks.Signature{
 		Name: "delay_test",
 		ETA:  &eta,
+	}
+}
+
+func newHandleErrorTask(msg string) *tasks.Signature {
+	return &tasks.Signature{
+		Name: "handle_error",
+		Args: []tasks.Arg{
+			{
+				Type:  "string",
+				Value: msg,
+			},
+		},
 	}
 }
