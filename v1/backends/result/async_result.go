@@ -170,12 +170,16 @@ func (chordAsyncResult *ChordAsyncResult) Get(sleepDuration time.Duration) ([]re
 		return nil, ErrBackendNotConfigured
 	}
 
-	var err error
+	errorSeen := false
 	for _, asyncResult := range chordAsyncResult.groupAsyncResults {
-		_, err = asyncResult.Get(sleepDuration)
+		_, err := asyncResult.Get(sleepDuration)
 		if err != nil {
-			return chordAsyncResult.errorAsyncResult.Get(sleepDuration)
+			errorSeen = true
 		}
+	}
+
+	if errorSeen {
+		return chordAsyncResult.errorAsyncResult.Get(sleepDuration)
 	}
 
 	return chordAsyncResult.chordAsyncResult.Get(sleepDuration)
