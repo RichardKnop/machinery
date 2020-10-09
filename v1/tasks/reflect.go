@@ -306,11 +306,11 @@ func getUintValue(theType string, value interface{}) (uint64, error) {
 	}
 
 	var n uint64
-	switch value.(type) {
+	switch value := value.(type) {
 	case uint64:
-		n = value.(uint64)
+		n = value
 	case uint8:
-		n = uint64(value.(uint8))
+		n = uint64(value)
 	default:
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}

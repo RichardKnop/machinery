@@ -47,6 +47,10 @@ func New(cnf *config.Config, host, password, socketPath string, db int) iface.Br
 	b.password = password
 	b.socketPath = socketPath
 
+	if cnf.Redis != nil && cnf.Redis.DelayedTasksKey != "" {
+		redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
+	}
+
 	return b
 }
 

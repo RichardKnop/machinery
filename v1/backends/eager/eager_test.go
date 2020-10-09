@@ -166,10 +166,8 @@ func (s *EagerBackendTestSuite) TestGroupTaskStates() {
 		ts, err := s.backend.GroupTaskStates(g.id, len(g.tasks))
 		s.NotNil(ts)
 		s.Nil(err)
-		if ts != nil {
-			for _, t := range ts {
-				s.Equal(t.TaskUUID, t.Error)
-			}
+		for _, t := range ts {
+			s.Equal(t.TaskUUID, t.Error)
 		}
 	}
 

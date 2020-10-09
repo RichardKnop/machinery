@@ -90,7 +90,7 @@ func TestPrivateFunc_consume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pool := make(chan struct{}, 0)
+	pool := make(chan struct{})
 	wk := server1.NewWorker("sms_worker", 0)
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	outputCopy := *receiveMessageOutput
