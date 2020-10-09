@@ -223,9 +223,9 @@ func testSendChordWithError(server *machinery.Server, t *testing.T) {
 		t.Errorf("Number of results returned = %d. Wanted %d", len(results), 1)
 	}
 
-	if results[0].Interface() != "handle=chord_error" {
+	if results[0].Interface().(string) != "handle=chord error" {
 		t.Errorf(
-			"result = %v(%v), want int64(88)",
+			"result = %v(%v), want handle=chord error",
 			results[0].Type().String(),
 			results[0].Interface(),
 		)
