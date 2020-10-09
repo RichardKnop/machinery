@@ -36,8 +36,9 @@ type Server struct {
 }
 
 // NewServerWithBrokerBackend ...
-func NewServerWithBrokerBackendLock(brokerServer brokersiface.Broker, backendServer backendsiface.Backend, lock lockiface.Lock) *Server {
+func NewServerWithBrokerBackendLock(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend, lock lockiface.Lock) *Server {
 	srv := &Server{
+		config:          cnf,
 		registeredTasks: map[string]interface{}{},
 		broker:          brokerServer,
 		backend:         backendServer,
@@ -67,7 +68,7 @@ func NewServer(cnf *config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	srv := NewServerWithBrokerBackendLock(broker, backend, lock)
+	srv := NewServerWithBrokerBackendLock(cnf, broker, backend, lock)
 
 	// init for eager-mode
 	eager, ok := broker.(eager.Mode)
