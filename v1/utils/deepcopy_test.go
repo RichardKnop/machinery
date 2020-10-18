@@ -1,11 +1,14 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDeepCopy(t *testing.T) {
+	t.Parallel()
+
 	type s struct {
 		A float64
 		B int
