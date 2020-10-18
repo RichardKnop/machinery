@@ -1,11 +1,14 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetLockName(t *testing.T) {
+	t.Parallel()
+
 	lockName := GetLockName("test", "*/3 * * *")
-	assert.Equal(t, "machinery_lock____TestGetLockName_in_github_com_RichardKnop_machinery_v1_utilstest*/3 * * *", lockName)
+	assert.Equal(t, "machinery_lock_utils.testtest*/3 * * *", lockName)
 }
