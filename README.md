@@ -46,7 +46,7 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
   * [Groups](#groups)
   * [Chords](#chords)
   * [Chains](#chains)
-* [Periodic Tasks & Workflows](#periodic-tasks-workflows)
+* [Periodic Tasks & Workflows](#periodic-tasks--workflows)
   * [Periodic Tasks](#periodic-tasks)
   * [Periodic Groups](#periodic-groups)
   * [Periodic Chains](#periodic-chains)
@@ -974,7 +974,7 @@ for _, result := range results {
 
 Machinery now supports scheduling periodic tasks and workflows. See examples bellow.
 
-#### Periodic Tasls
+#### Periodic Tasks
 
 ```go
 import (
