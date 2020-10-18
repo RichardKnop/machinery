@@ -3,6 +3,8 @@ package machinery
 import (
 	"errors"
 	"fmt"
+	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
+	redislock "github.com/RichardKnop/machinery/v1/locks/redis"
 	neturl "net/url"
 	"os"
 	"strconv"
@@ -16,6 +18,7 @@ import (
 	brokeriface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
+	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	dynamobackend "github.com/RichardKnop/machinery/v1/backends/dynamodb"
@@ -211,6 +214,26 @@ func ParseRedisURL(url string) (host, password string, db int, err error) {
 	}
 
 	return
+}
+
+// LockFactory creates a new object of iface.Lock
+// Currently supported lock is redis
+func LockFactory(cnf *config.Config) (lockiface.Lock, error) {
+	if strings.HasPrefix(cnf.Lock, "eager") {
+		return eagerlock.New(), nil
+	}
+	if strings.HasPrefix(cnf.Lock, "redis://") {
+		parts := strings.Split(cnf.Lock, "redis://")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(
+				"Redis broker connection string should be in format redis://host:port, instead got %s",
+				cnf.Lock,
+			)
+		}
+		locks := strings.Split(parts[1], ",")
+		return redislock.New(cnf, locks, 0, 3), nil
+	}
+	return nil, fmt.Errorf("Factory failed with lock: %v", cnf.Lock)
 }
 
 // ParseRedisSocketURL extracts Redis connection options from a URL with the

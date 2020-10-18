@@ -17,9 +17,9 @@ import (
 	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
 
-	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
+	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
 )
 

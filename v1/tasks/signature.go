@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"fmt"
+	"github.com/RichardKnop/machinery/v1/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,8 +63,8 @@ type Signature struct {
 	BrokerMessageGroupId string
 	//ReceiptHandle of SQS Message
 	SQSReceiptHandle string
-	// StopTaskDeletionOnError used with sqs when we want to send failed messages to dlq, 
-  // and don't want machinery to delete from source queue
+	// StopTaskDeletionOnError used with sqs when we want to send failed messages to dlq,
+	// and don't want machinery to delete from source queue
 	StopTaskDeletionOnError bool
 	// IgnoreWhenTaskNotRegistered auto removes the request when there is no handeler available
 	// When this is true a task with no handler will be ignored and not placed back in the queue
@@ -78,4 +79,18 @@ func NewSignature(name string, args []Arg) (*Signature, error) {
 		Name: name,
 		Args: args,
 	}, nil
+}
+
+func CopySignatures(signatures ...*Signature) []*Signature {
+	var sigs = make([]*Signature, len(signatures))
+	for index, signature := range signatures {
+		sigs[index] = CopySignature(signature)
+	}
+	return sigs
+}
+
+func CopySignature(signature *Signature) *Signature {
+	var sig = new(Signature)
+	_ = utils.DeepCopy(sig, signature)
+	return sig
 }
