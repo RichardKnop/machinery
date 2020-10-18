@@ -23,6 +23,7 @@ func TestAmqpRedis(t *testing.T) {
 		Broker:        amqpURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          "eager",
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",

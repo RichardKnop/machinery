@@ -362,10 +362,10 @@ import (
 )
 
 var cnf = &config.Config{
-  Broker:             "amqp://guest:guest@localhost:5672/",
-  DefaultQueue:       "machinery_tasks",
-  ResultBackend:      "amqp://guest:guest@localhost:5672/",
-  AMQP:               &config.AMQPConfig{
+  Broker:        "amqp://guest:guest@localhost:5672/",
+  DefaultQueue:  "machinery_tasks",
+  ResultBackend: "amqp://guest:guest@localhost:5672/",
+  AMQP: &config.AMQPConfig{
     Exchange:     "machinery_exchange",
     ExchangeType: "direct",
     BindingKey:   "machinery_task",

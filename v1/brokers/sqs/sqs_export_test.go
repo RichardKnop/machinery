@@ -3,6 +3,7 @@ package sqs
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 
@@ -65,11 +66,15 @@ func (e *ErrorSQS) DeleteMessage(*awssqs.DeleteMessageInput) (*awssqs.DeleteMess
 
 func init() {
 	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "eager"
+	}
 	brokerURL := "https://sqs.foo.amazonaws.com.cn"
 	TestConf = &config.Config{
 		Broker:        brokerURL,
 		DefaultQueue:  "test_queue",
-		ResultBackend: redisURL,
+		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 	}
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,

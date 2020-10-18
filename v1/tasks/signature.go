@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"fmt"
+	"github.com/RichardKnop/machinery/v1/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -80,4 +81,18 @@ func NewSignature(name string, args []Arg) (*Signature, error) {
 		Name: name,
 		Args: args,
 	}, nil
+}
+
+func CopySignatures(signatures ...*Signature) []*Signature {
+	var sigs = make([]*Signature, len(signatures))
+	for index, signature := range signatures {
+		sigs[index] = CopySignature(signature)
+	}
+	return sigs
+}
+
+func CopySignature(signature *Signature) *Signature {
+	var sig = new(Signature)
+	_ = utils.DeepCopy(sig, signature)
+	return sig
 }
