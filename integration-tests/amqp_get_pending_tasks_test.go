@@ -77,10 +77,10 @@ func TestAmqpGetPendingTasks(t *testing.T) {
 
 	worker := server.NewWorker("test_worker", 0)
 	go worker.Launch()
+	defer worker.Quit()
 	for _, r := range results {
 		r.Get(time.Duration(time.Millisecond * 5))
 	}
-	worker.Quit()
 
 	pendingMessages, err = server.GetBroker().GetPendingTasks(server.GetConfig().DefaultQueue)
 	if err != nil {
