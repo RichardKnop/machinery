@@ -46,6 +46,11 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
   * [Groups](#groups)
   * [Chords](#chords)
   * [Chains](#chains)
+* [Periodic Tasks & Workflows](#periodic-tasks-workflows)
+  * [Periodic Tasks](#periodic-tasks)
+  * [Periodic Groups](#periodic-groups)
+  * [Periodic Chains](#periodic-chains)
+  * [Periodic Chords](#periodic-chords)
 * [Development](#development)
   * [Requirements](#requirements)
   * [Dependencies](#dependencies)
@@ -962,6 +967,181 @@ if err != nil {
 }
 for _, result := range results {
   fmt.Println(result.Interface())
+}
+```
+
+### Periodic Tasks & Workflows
+
+Machinery now supports scheduling periodic tasks and workflows. See examples bellow.
+
+#### Periodic Tasls
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v1/tasks"
+)
+
+signature := &tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+  },
+}
+
+err := server.RegisterPeriodTask("0 6 * * ?", "periodic-task", signature)
+if err != nil {
+  // failed to register periodic task
+}
+```
+
+#### Periodic Groups
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v1/tasks"
+  "github.com/RichardKnop/machinery/v1"
+)
+
+signature1 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+  },
+}
+
+signature2 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+  },
+}
+
+group, _ := tasks.NewGroup(&signature1, &signature2)
+err := server.RegisterPeriodGroup("0 6 * * ?", "periodic-group", group)
+if err != nil {
+  // failed to register periodic group
+}
+```
+
+#### Periodic Chains
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v1/tasks"
+  "github.com/RichardKnop/machinery/v1"
+)
+
+signature1 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+  },
+}
+
+signature2 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+  },
+}
+
+signature3 := tasks.Signature{
+  Name: "multiply",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 4,
+    },
+  },
+}
+
+chain, _ := tasks.NewChain(&signature1, &signature2, &signature3)
+err := server.RegisterPeriodChain("0 6 * * ?", "periodic-chain", chain)
+if err != nil {
+  // failed to register periodic chain
+}
+```
+
+#### Chord
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v1/tasks"
+  "github.com/RichardKnop/machinery/v1"
+)
+
+signature1 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+  },
+}
+
+signature2 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+  },
+}
+
+signature3 := tasks.Signature{
+  Name: "multiply",
+}
+
+group := tasks.NewGroup(&signature1, &signature2)
+chord, _ := tasks.NewChord(group, &signature3)
+err := server.RegisterPeriodChord("0 6 * * ?", "periodic-chord", chord)
+if err != nil {
+  // failed to register periodic chord
 }
 ```
 
