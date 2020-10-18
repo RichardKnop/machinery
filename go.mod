@@ -23,6 +23,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/stvp/tempredis v0.0.0-20181119212430-b82af8480203 // indirect
 	github.com/urfave/cli v1.22.4
+	github.com/vektra/mockery v1.1.2
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/mongo-driver v1.4.2
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect

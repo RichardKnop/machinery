@@ -58,7 +58,9 @@ type Signature struct {
 	RetryTimeout   int
 	OnSuccess      []*Signature
 	OnError        []*Signature
-	ChordCallback  *Signature
+	// Chord members
+	ChordCallback      *Signature
+	ChordErrorCallback *Signature
 	//MessageGroupId for Broker, e.g. SQS
 	BrokerMessageGroupId string
 	//ReceiptHandle of SQS Message
