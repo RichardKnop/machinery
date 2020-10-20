@@ -22,6 +22,7 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 * [V2 Experiment](#v2-experiment)
 * [First Steps](#first-steps)
 * [Configuration](#configuration)
+  * [Lock](#lock)
   * [Broker](#broker)
   * [DefaultQueue](#defaultqueue)
   * [ResultBackend](#resultbackend)
@@ -119,6 +120,20 @@ cnf, err := config.NewFromYaml("config.yml", true)
 Second boolean flag enables live reloading of configuration every 10 seconds. Use `false` to disable live reloading.
 
 Machinery configuration is encapsulated by a `Config` struct and injected as a dependency to objects that need it.
+
+#### Lock
+
+##### Redis
+
+Use Redis URL in one of these formats:
+
+```
+redis://[password@]host[port][/db_num]
+```
+
+For example:
+
+1. `redis://localhost:6379`, or with password `redis://password@localhost:6379`
 
 #### Broker
 
@@ -971,7 +986,7 @@ for _, result := range results {
 
 * Go
 * RabbitMQ (optional)
-* Redis (optional)
+* Redis
 * Memcached (optional)
 * MongoDB (optional)
 
