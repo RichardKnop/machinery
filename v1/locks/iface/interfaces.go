@@ -1,9 +1,13 @@
 package iface
 
 type Lock interface {
-	//带重试的获取锁, key为锁的名字，锁需要在value（纳秒时间戳）时刻自动释放
+	//Acquire the lock with retry
+	//key: the name of the lock,
+	//value: at the nanosecond timestamp that lock needs to be released automatically
 	LockWithRetries(key string, value int64) error
 
-	//获取锁, key为锁的名字，锁需要在value（纳秒时间戳）时刻自动释放
+	//Acquire the lock with once
+	//key: the name of the lock,
+	//value: at the nanosecond timestamp that lock needs to be released automatically
 	Lock(key string, value int64) error
 }
