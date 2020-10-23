@@ -19,6 +19,7 @@ import (
 	tracers "github.com/RichardKnop/machinery/example/tracers"
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
+	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 	opentracing "github.com/opentracing/opentracing-go"
 	opentracing_log "github.com/opentracing/opentracing-go/log"
 )
@@ -87,8 +88,9 @@ func startServer() (*machinery.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	lock := eagerlock.New()
 
-	server := machinery.NewServer(cnf, broker, backend)
+	server := machinery.NewServer(cnf, broker, backend, lock)
 
 	// Register tasks
 	tasks := map[string]interface{}{

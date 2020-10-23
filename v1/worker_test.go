@@ -1,9 +1,11 @@
 package machinery_test
 
 import (
-	"github.com/RichardKnop/machinery/v1"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/RichardKnop/machinery/v1"
 )
 
 func TestRedactURL(t *testing.T) {
@@ -16,6 +18,7 @@ func TestRedactURL(t *testing.T) {
 
 func TestPreConsumeHandler(t *testing.T) {
 	t.Parallel()
+	
 	worker := &machinery.Worker{}
 
 	worker.SetPreConsumeHandler(SamplePreConsumeHandler)
