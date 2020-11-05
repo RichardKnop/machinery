@@ -27,7 +27,7 @@ import (
 // All the tasks workers process are registered against the server
 type Server struct {
 	config            *config.Config
-	registeredTasks   map[string]interface{}
+	registeredTasks   *sync.Map
 	broker            brokersiface.Broker
 	backend           backendsiface.Backend
 	lock              lockiface.Lock
@@ -39,7 +39,7 @@ type Server struct {
 func NewServer(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend, lock lockiface.Lock) *Server {
 	srv := &Server{
 		config:          cnf,
-		registeredTasks: make(map[string]interface{}),
+		registeredTasks: new(sync.Map),
 		broker:          brokerServer,
 		backend:         backendServer,
 		lock:            lock,
@@ -56,7 +56,7 @@ func NewServer(cnf *config.Config, brokerServer brokersiface.Broker, backendServ
 func NewServerWithBrokerBackendLock(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend, lock lockiface.Lock) *Server {
 	srv := &Server{
 		config:          cnf,
-		registeredTasks: map[string]interface{}{},
+		registeredTasks: new(sync.Map),
 		broker:          brokerServer,
 		backend:         backendServer,
 		lock:            lock,
@@ -131,7 +131,9 @@ func (server *Server) RegisterTasks(namedTaskFuncs map[string]interface{}) error
 			return err
 		}
 	}
-	server.registeredTasks = namedTaskFuncs
+	for k, v := range namedTaskFuncs {
+		server.registeredTasks.Store(k, v)
+	}
 	server.broker.SetRegisteredTaskNames(server.GetRegisteredTaskNames())
 	return nil
 }
@@ -141,20 +143,20 @@ func (server *Server) RegisterTask(name string, taskFunc interface{}) error {
 	if err := tasks.ValidateTask(taskFunc); err != nil {
 		return err
 	}
-	server.registeredTasks[name] = taskFunc
+	server.registeredTasks.Store(name, taskFunc)
 	server.broker.SetRegisteredTaskNames(server.GetRegisteredTaskNames())
 	return nil
 }
 
 // IsTaskRegistered returns true if the task name is registered with this broker
 func (server *Server) IsTaskRegistered(name string) bool {
-	_, ok := server.registeredTasks[name]
+	_, ok := server.registeredTasks.Load(name)
 	return ok
 }
 
 // GetRegisteredTask returns registered task by name
 func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
-	taskFunc, ok := server.registeredTasks[name]
+	taskFunc, ok := server.registeredTasks.Load(name)
 	if !ok {
 		return nil, fmt.Errorf("Task not registered error: %s", name)
 	}
@@ -328,12 +330,12 @@ func (server *Server) SendChord(chord *tasks.Chord, sendConcurrency int) (*resul
 
 // GetRegisteredTaskNames returns slice of registered task names
 func (server *Server) GetRegisteredTaskNames() []string {
-	taskNames := make([]string, len(server.registeredTasks))
-	var i = 0
-	for name := range server.registeredTasks {
-		taskNames[i] = name
-		i++
-	}
+	taskNames := make([]string, 0)
+
+	server.registeredTasks.Range(func(key, value interface{}) bool {
+		taskNames = append(taskNames, key.(string))
+		return true
+	})
 	return taskNames
 }
 

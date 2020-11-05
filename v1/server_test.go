@@ -33,6 +33,20 @@ func TestRegisterTask(t *testing.T) {
 	assert.NoError(t, err, "test_task is not registered but it should be")
 }
 
+func TestRegisterTaskInRaceCondition(t *testing.T) {
+	t.Parallel()
+
+	server := getTestServer(t)
+	for i:=0; i<10; i++ {
+		go func() {
+			err := server.RegisterTask("test_task", func() error { return nil })
+			assert.NoError(t, err)
+			_, err = server.GetRegisteredTask("test_task")
+			assert.NoError(t, err, "test_task is not registered but it should be")
+		}()
+	}
+}
+
 func TestGetRegisteredTask(t *testing.T) {
 	t.Parallel()
 
