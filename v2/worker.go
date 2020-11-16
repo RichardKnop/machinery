@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	
+
 	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -26,7 +26,7 @@ type Worker struct {
 	ConsumerTag       string
 	Concurrency       int
 	Queue             string
-	errorHandler      func(err error)
+	errorHandler      func(task *tasks.Signature, err error)
 	preTaskHandler    func(*tasks.Signature)
 	postTaskHandler   func(*tasks.Signature)
 	preConsumeHandler func(*Worker) bool
@@ -78,11 +78,7 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 			retry, err := broker.StartConsuming(worker.ConsumerTag, worker.Concurrency, worker)
 
 			if retry {
-				if worker.errorHandler != nil {
-					worker.errorHandler(err)
-				} else {
-					log.WARNING.Printf("Broker failed with error: %s", err)
-				}
+				log.WARNING.Printf("Broker failed with error: %s", err)
 			} else {
 				signalWG.Wait()
 				errorsChan <- err // stop the goroutine
@@ -365,7 +361,7 @@ func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) erro
 	}
 
 	if worker.errorHandler != nil {
-		worker.errorHandler(taskErr)
+		worker.errorHandler(signature, taskErr)
 	} else {
 		log.ERROR.Printf("Failed processing task %s. Error = %v", signature.UUID, taskErr)
 	}
@@ -396,7 +392,7 @@ func (worker *Worker) hasAMQPBackend() bool {
 
 // SetErrorHandler sets a custom error handler for task errors
 // A default behavior is just to log the error after all the retry attempts fail
-func (worker *Worker) SetErrorHandler(handler func(err error)) {
+func (worker *Worker) SetErrorHandler(handler func(signature *tasks.Signature, err error)) {
 	worker.errorHandler = handler
 }
 
