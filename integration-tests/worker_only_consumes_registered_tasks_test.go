@@ -23,6 +23,7 @@ func TestWorkerOnlyConsumesRegisteredTaskAMQP(t *testing.T) {
 		Broker:        amqpURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: amqpURL,
+		Lock:          "eager",
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",
@@ -144,6 +145,7 @@ func TestWorkerOnlyConsumesRegisteredTaskRedis(t *testing.T) {
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 	}
 
 	server1, err := machinery.NewServer(&cnf)
