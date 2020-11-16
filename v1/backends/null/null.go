@@ -39,13 +39,13 @@ func (e ErrTasknotFound) Error() string {
 	return fmt.Sprintf("Task not found: %v", e.taskUUID)
 }
 
-// Backend represents an "eager" in-memory result backend
+// Backend represents an "null" result backend
 type Backend struct {
 	common.Backend
 	groups map[string]struct{}
 }
 
-// New creates EagerBackend instance
+// New creates NullBackend instance
 func New() iface.Backend {
 	return &Backend{
 		Backend: common.NewBackend(new(config.Config)),
@@ -59,7 +59,7 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
-// GroupCompleted returns true if all tasks in a group finished
+// GroupCompleted returns true (always)
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	_, ok := b.groups[groupUUID]
 	if !ok {
@@ -69,7 +69,7 @@ func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, er
 	return true, nil
 }
 
-// GroupTaskStates returns states of all tasks in the group
+// GroupTaskStates returns null states of all tasks in the group
 func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
 	_, ok := b.groups[groupUUID]
 	if !ok {
@@ -80,10 +80,7 @@ func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*task
 	return ret, nil
 }
 
-// TriggerChord flags chord as triggered in the backend storage to make sure
-// chord is never trigerred multiple times. Returns a boolean flag to indicate
-// whether the worker should trigger chord (true) or no if it has been triggered
-// already (false)
+// TriggerChord returns true (always)
 func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	return true, nil
 }
@@ -145,6 +142,5 @@ func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 }
 
 func (b *Backend) updateState(s *tasks.TaskState) error {
-	// simulate the behavior of json marshal/unmarshal
 	return nil
 }

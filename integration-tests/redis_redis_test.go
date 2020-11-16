@@ -22,11 +22,13 @@ func TestRedisRedis(t *testing.T) {
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 	})
+
 	worker := server.NewWorker("test_worker", 0)
+	defer worker.Quit()
 	go worker.Launch()
 	testAll(server, t)
-	worker.Quit()
 }
 
 func TestRedisRedisNormalTaskPollPeriodLessThan1SecondShouldNotFailNextTask(t *testing.T) {
@@ -40,10 +42,12 @@ func TestRedisRedisNormalTaskPollPeriodLessThan1SecondShouldNotFailNextTask(t *t
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 		Redis: &config.RedisConfig{
 			NormalTasksPollPeriod: 10, // 10 milliseconds
 		},
 	})
+
 	worker := server.NewWorker("test_worker", 0)
 	go worker.Launch()
 	defer worker.Quit()
@@ -63,6 +67,7 @@ func TestRedisRedisWorkerQuitRaceCondition(t *testing.T) {
 			Broker:        fmt.Sprintf("redis://%v", redisURL),
 			DefaultQueue:  "test_queue",
 			ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+			Lock:          fmt.Sprintf("redis://%v", redisURL),
 		}
 
 		server, _ := machinery.NewServer(cnf)
@@ -94,6 +99,7 @@ func TestRedisRedisWorkerQuickQuit(t *testing.T) {
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 		Redis: &config.RedisConfig{
 			NormalTasksPollPeriod: pollPeriod, // default: 1000
 		},
@@ -131,6 +137,7 @@ func TestRedisRedisWorkerPreConsumeHandler(t *testing.T) {
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 		Redis: &config.RedisConfig{
 			NormalTasksPollPeriod: pollPeriod, // default: 1000
 		},

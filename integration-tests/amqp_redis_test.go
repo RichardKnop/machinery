@@ -23,6 +23,7 @@ func TestAmqpRedis(t *testing.T) {
 		Broker:        amqpURL,
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          "eager",
 		AMQP: &config.AMQPConfig{
 			Exchange:      "test_exchange",
 			ExchangeType:  "direct",
@@ -30,8 +31,9 @@ func TestAmqpRedis(t *testing.T) {
 			PrefetchCount: 1,
 		},
 	})
+
 	worker := server.NewWorker("test_worker", 0)
+	defer worker.Quit()
 	go worker.Launch()
 	testAll(server, t)
-	worker.Quit()
 }
