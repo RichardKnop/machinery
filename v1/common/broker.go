@@ -75,6 +75,8 @@ func (b *Broker) SetRegisteredTaskNames(names []string) {
 
 // IsTaskRegistered returns true if the task is registered with this broker
 func (b *Broker) IsTaskRegistered(name string) bool {
+	b.registeredTaskNames.RLock()
+	defer b.registeredTaskNames.RUnlock()
 	for _, registeredTaskName := range b.registeredTaskNames.items {
 		if registeredTaskName == name {
 			return true
@@ -118,7 +120,10 @@ func (b *Broker) StopConsuming() {
 
 // GetRegisteredTaskNames returns registered tasks names
 func (b *Broker) GetRegisteredTaskNames() []string {
-	return b.registeredTaskNames.items
+	b.registeredTaskNames.RLock()
+	defer b.registeredTaskNames.RUnlock()
+	items := b.registeredTaskNames.items
+	return items
 }
 
 // AdjustRoutingKey makes sure the routing key is correct.
