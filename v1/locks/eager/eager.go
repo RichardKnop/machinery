@@ -19,8 +19,8 @@ type Lock struct {
 	}
 }
 
-func New() Lock {
-	return Lock{
+func New() *Lock {
+	return &Lock{
 		retries:  3,
 		interval: 5 * time.Second,
 		register: struct {
@@ -30,7 +30,7 @@ func New() Lock {
 	}
 }
 
-func (e Lock) LockWithRetries(key string, value int64) error {
+func (e *Lock) LockWithRetries(key string, value int64) error {
 	for i := 0; i <= e.retries; i++ {
 		err := e.Lock(key, value)
 		if err == nil {
@@ -43,7 +43,7 @@ func (e Lock) LockWithRetries(key string, value int64) error {
 	return ErrEagerLockFailed
 }
 
-func (e Lock) Lock(key string, value int64) error {
+func (e *Lock) Lock(key string, value int64) error {
 	e.register.RLock()
 	defer e.register.RUnlock()
 	_, exist := e.register.m[key]

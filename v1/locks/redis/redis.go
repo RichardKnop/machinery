@@ -2,13 +2,12 @@ package redis
 
 import (
 	"errors"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/redsync"
-	"github.com/go-redis/redis"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/go-redis/redis"
 )
 
 var (
@@ -16,12 +15,9 @@ var (
 )
 
 type Lock struct {
-	rclient    redis.UniversalClient
-	retries    int
-	interval   time.Duration
-	socketPath string
-	redsync    *redsync.Redsync
-	redisOnce  sync.Once
+	rclient  redis.UniversalClient
+	retries  int
+	interval time.Duration
 }
 
 func New(cnf *config.Config, addrs []string, db, retries int) Lock {
