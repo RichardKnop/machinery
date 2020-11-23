@@ -11,14 +11,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/go-redsync/redsync/v4"
+
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/redsync"
-	"github.com/go-redis/redis/v8"
 )
 
 // BrokerGR represents a Redis broker

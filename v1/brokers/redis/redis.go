@@ -10,14 +10,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redsync/redsync/v4"
+	redsyncredis "github.com/go-redsync/redsync/v4/redis/redigo"
+	"github.com/gomodule/redigo/redis"
+
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/redsync"
-	"github.com/gomodule/redigo/redis"
 )
 
 var redisDelayedTasksKey = "delayed_tasks"
@@ -461,7 +463,7 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 func (b *Broker) open() redis.Conn {
 	b.redisOnce.Do(func() {
 		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
-		b.redsync = redsync.New([]redsync.Pool{b.pool})
+		b.redsync = redsync.New(redsyncredis.NewPool(b.pool))
 	})
 
 	return b.pool.Get()
