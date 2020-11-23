@@ -27,9 +27,9 @@ import (
 	nullbackend "github.com/RichardKnop/machinery/v1/backends/null"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
 
+	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
 	redislock "github.com/RichardKnop/machinery/v1/locks/redis"
-	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 )
 
 // BrokerFactory creates a new object of iface.Broker
@@ -110,6 +110,7 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 // BackendFactory creates a new object of backends.Interface
 // Currently supported backends are AMQP/S and Memcache
 func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
+
 	if strings.HasPrefix(cnf.ResultBackend, "amqp://") {
 		return amqpbackend.New(cnf), nil
 	}

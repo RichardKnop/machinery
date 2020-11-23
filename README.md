@@ -90,18 +90,22 @@ go get github.com/RichardKnop/machinery/v1
 
 First, you will need to define some tasks. Look at sample tasks in `example/tasks/tasks.go` to see a few examples.
 
-Second, you will need to launch a worker process:
+Second, you will need to launch a worker process with one of these commands:
 
 ```sh
-go run example/machinery.go worker
+go run example/amqp.go worker
+go run example/redigo/main.go worker // Redis with redigo driver
+go run example/go-redis/main.go worker // Redis with Go Redis driver
 ```
 
 ![Example worker][1]
 
-Finally, once you have a worker running and waiting for tasks to consume, send some tasks:
+Finally, once you have a worker running and waiting for tasks to consume, send some tasks with one of these commands:
 
 ```sh
-go run example/machinery.go send
+go run example/amqp.go send
+go run example/redigo/main.go send // Redis with redigo driver
+go run example/go-redis/main.go send // Redis with Go Redis driver
 ```
 
 You will be able to see the tasks being processed asynchronously by the worker:
