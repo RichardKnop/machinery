@@ -87,13 +87,14 @@ func TestGCPPubSubRedis(t *testing.T) {
 		Broker:        pubsubURL,
 		DefaultQueue:  topicName,
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 		GCPPubSub: &config.GCPPubSubConfig{
 			Client: pubsubClient,
 		},
 	})
 
 	worker := server.NewWorker("test_worker", 0)
+	defer worker.Quit()
 	go worker.Launch()
 	testAll(server, t)
-	worker.Quit()
 }

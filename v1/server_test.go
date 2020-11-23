@@ -3,9 +3,10 @@ package machinery_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestRegisterTasks(t *testing.T) {
@@ -30,6 +31,20 @@ func TestRegisterTask(t *testing.T) {
 
 	_, err = server.GetRegisteredTask("test_task")
 	assert.NoError(t, err, "test_task is not registered but it should be")
+}
+
+func TestRegisterTaskInRaceCondition(t *testing.T) {
+	t.Parallel()
+
+	server := getTestServer(t)
+	for i:=0; i<10; i++ {
+		go func() {
+			err := server.RegisterTask("test_task", func() error { return nil })
+			assert.NoError(t, err)
+			_, err = server.GetRegisteredTask("test_task")
+			assert.NoError(t, err, "test_task is not registered but it should be")
+		}()
+	}
 }
 
 func TestGetRegisteredTask(t *testing.T) {
@@ -77,6 +92,7 @@ func getTestServer(t *testing.T) *machinery.Server {
 		Broker:        "amqp://guest:guest@localhost:5672/",
 		DefaultQueue:  "machinery_tasks",
 		ResultBackend: "redis://127.0.0.1:6379",
+		Lock:          "redis://127.0.0.1:6379",
 		AMQP: &config.AMQPConfig{
 			Exchange:      "machinery_exchange",
 			ExchangeType:  "direct",

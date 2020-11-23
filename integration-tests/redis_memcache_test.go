@@ -23,9 +23,11 @@ func TestRedisMemcache(t *testing.T) {
 		Broker:        fmt.Sprintf("redis://%v", redisURL),
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("memcache://%v", memcacheURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
 	})
+
 	worker := server.NewWorker("test_worker", 0)
+	defer worker.Quit()
 	go worker.Launch()
 	testAll(server, t)
-	worker.Quit()
 }

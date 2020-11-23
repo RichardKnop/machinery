@@ -3,24 +3,23 @@ package sqs
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 
 	awssqs "github.com/aws/aws-sdk-go/service/sqs"
 )
 
 var (
-	TestAWSSQSBroker     *Broker
-	ErrAWSSQSBroker      *Broker
 	ReceiveMessageOutput *awssqs.ReceiveMessageOutput
-	TestConf             *config.Config
 )
 
 type FakeSQS struct {
@@ -64,36 +63,6 @@ func (e *ErrorSQS) DeleteMessage(*awssqs.DeleteMessageInput) (*awssqs.DeleteMess
 }
 
 func init() {
-	redisURL := os.Getenv("REDIS_URL")
-	brokerURL := "https://sqs.foo.amazonaws.com.cn"
-	TestConf = &config.Config{
-		Broker:        brokerURL,
-		DefaultQueue:  "test_queue",
-		ResultBackend: redisURL,
-	}
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	svc := new(FakeSQS)
-	TestAWSSQSBroker = &Broker{
-		Broker:            common.NewBroker(TestConf),
-		sess:              sess,
-		service:           svc,
-		processingWG:      sync.WaitGroup{},
-		receivingWG:       sync.WaitGroup{},
-		stopReceivingChan: make(chan int),
-	}
-
-	errSvc := new(ErrorSQS)
-	ErrAWSSQSBroker = &Broker{
-		Broker:            common.NewBroker(TestConf),
-		sess:              sess,
-		service:           errSvc,
-		processingWG:      sync.WaitGroup{},
-		receivingWG:       sync.WaitGroup{},
-		stopReceivingChan: make(chan int),
-	}
-
 	// TODO: chang message body to signature example
 	messageBody, _ := json.Marshal(map[string]int{"apple": 5, "lettuce": 7})
 	ReceiveMessageOutput = &awssqs.ReceiveMessageOutput{
@@ -123,6 +92,57 @@ func init() {
 				ReceiptHandle: aws.String("AQEBGhTR/nhq+pDPAunCDgLpwQuCq0JkD2dtv7pAcPF5DA/XaoPAjHfgn/PZ5DeG3YiQdTjCUj+rvFq5b79DTq+hK6r1Niuds02l+jdIk3u2JiL01Dsd203pW1lLUNryd74QAcn462eXzv7/hVDagXTn+KtOzox3X0vmPkCSQkWXWxtc23oa5+5Q7HWDmRm743L0zza1579rQ2R2B0TrdlTMpNsdjQlDmybNu+aDq8bazD/Wew539tIvUyYADuhVyKyS1L2QQuyXll73/DixulPNmvGPRHNoB1GIo+Ex929OHFchXoKonoFJnurX4VNNl1p/Byp2IYBi6nkTRzeJUFCrFq0WMAHKLwuxciezJSlLD7g3bbU8kgEer8+jTz1DBriUlDGsARr0s7mnlsd02cb46K/j+u1oPfA69vIVc0FaRtA="),
 			},
 		},
+	}
+}
+
+func NewTestConfig() *config.Config {
+
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "eager"
+	}
+	brokerURL := "https://sqs.foo.amazonaws.com.cn"
+	return &config.Config{
+		Broker:        brokerURL,
+		DefaultQueue:  "test_queue",
+		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
+		Lock:          fmt.Sprintf("redis://%v", redisURL),
+	}
+}
+
+func NewTestBroker() *Broker {
+
+	cnf := NewTestConfig()
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	svc := new(FakeSQS)
+	return &Broker{
+		Broker:            common.NewBroker(cnf),
+		sess:              sess,
+		service:           svc,
+		processingWG:      sync.WaitGroup{},
+		receivingWG:       sync.WaitGroup{},
+		stopReceivingChan: make(chan int),
+	}
+}
+
+func NewTestErrorBroker() *Broker {
+
+	cnf := NewTestConfig()
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	errSvc := new(ErrorSQS)
+	return &Broker{
+		Broker:            common.NewBroker(cnf),
+		sess:              sess,
+		service:           errSvc,
+		processingWG:      sync.WaitGroup{},
+		receivingWG:       sync.WaitGroup{},
+		stopReceivingChan: make(chan int),
 	}
 }
 

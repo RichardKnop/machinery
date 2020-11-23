@@ -22,6 +22,7 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
 * [V2 Experiment](#v2-experiment)
 * [First Steps](#first-steps)
 * [Configuration](#configuration)
+  * [Lock](#lock)
   * [Broker](#broker)
   * [DefaultQueue](#defaultqueue)
   * [ResultBackend](#resultbackend)
@@ -46,6 +47,11 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
   * [Groups](#groups)
   * [Chords](#chords)
   * [Chains](#chains)
+* [Periodic Tasks & Workflows](#periodic-tasks--workflows)
+  * [Periodic Tasks](#periodic-tasks)
+  * [Periodic Groups](#periodic-groups)
+  * [Periodic Chains](#periodic-chains)
+  * [Periodic Chords](#periodic-chords)
 * [Development](#development)
   * [Requirements](#requirements)
   * [Dependencies](#dependencies)
@@ -119,6 +125,20 @@ cnf, err := config.NewFromYaml("config.yml", true)
 Second boolean flag enables live reloading of configuration every 10 seconds. Use `false` to disable live reloading.
 
 Machinery configuration is encapsulated by a `Config` struct and injected as a dependency to objects that need it.
+
+#### Lock
+
+##### Redis
+
+Use Redis URL in one of these formats:
+
+```
+redis://[password@]host[port][/db_num]
+```
+
+For example:
+
+1. `redis://localhost:6379`, or with password `redis://password@localhost:6379`
 
 #### Broker
 
@@ -362,10 +382,10 @@ import (
 )
 
 var cnf = &config.Config{
-  Broker:             "amqp://guest:guest@localhost:5672/",
-  DefaultQueue:       "machinery_tasks",
-  ResultBackend:      "amqp://guest:guest@localhost:5672/",
-  AMQP:               &config.AMQPConfig{
+  Broker:        "amqp://guest:guest@localhost:5672/",
+  DefaultQueue:  "machinery_tasks",
+  ResultBackend: "amqp://guest:guest@localhost:5672/",
+  AMQP: &config.AMQPConfig{
     Exchange:     "machinery_exchange",
     ExchangeType: "direct",
     BindingKey:   "machinery_task",
@@ -965,13 +985,188 @@ for _, result := range results {
 }
 ```
 
+### Periodic Tasks & Workflows
+
+Machinery now supports scheduling periodic tasks and workflows. See examples bellow.
+
+#### Periodic Tasks
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v1/tasks"
+)
+
+signature := &tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+  },
+}
+
+err := server.RegisterPeriodTask("0 6 * * ?", "periodic-task", signature)
+if err != nil {
+  // failed to register periodic task
+}
+```
+
+#### Periodic Groups
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v1/tasks"
+  "github.com/RichardKnop/machinery/v1"
+)
+
+signature1 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+  },
+}
+
+signature2 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+  },
+}
+
+group, _ := tasks.NewGroup(&signature1, &signature2)
+err := server.RegisterPeriodGroup("0 6 * * ?", "periodic-group", group)
+if err != nil {
+  // failed to register periodic group
+}
+```
+
+#### Periodic Chains
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v1/tasks"
+  "github.com/RichardKnop/machinery/v1"
+)
+
+signature1 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+  },
+}
+
+signature2 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+  },
+}
+
+signature3 := tasks.Signature{
+  Name: "multiply",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 4,
+    },
+  },
+}
+
+chain, _ := tasks.NewChain(&signature1, &signature2, &signature3)
+err := server.RegisterPeriodChain("0 6 * * ?", "periodic-chain", chain)
+if err != nil {
+  // failed to register periodic chain
+}
+```
+
+#### Chord
+
+```go
+import (
+  "github.com/RichardKnop/machinery/v1/tasks"
+  "github.com/RichardKnop/machinery/v1"
+)
+
+signature1 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+    {
+      Type:  "int64",
+      Value: 1,
+    },
+  },
+}
+
+signature2 := tasks.Signature{
+  Name: "add",
+  Args: []tasks.Arg{
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+    {
+      Type:  "int64",
+      Value: 5,
+    },
+  },
+}
+
+signature3 := tasks.Signature{
+  Name: "multiply",
+}
+
+group := tasks.NewGroup(&signature1, &signature2)
+chord, _ := tasks.NewChord(group, &signature3)
+err := server.RegisterPeriodChord("0 6 * * ?", "periodic-chord", chord)
+if err != nil {
+  // failed to register periodic chord
+}
+```
+
 ### Development
 
 #### Requirements
 
 * Go
 * RabbitMQ (optional)
-* Redis (optional)
+* Redis
 * Memcached (optional)
 * MongoDB (optional)
 

@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -10,10 +11,15 @@ import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
+type registeredTaskNames struct {
+	sync.RWMutex
+	items []string
+}
+
 // Broker represents a base broker structure
 type Broker struct {
 	cnf                 *config.Config
-	registeredTaskNames []string
+	registeredTaskNames registeredTaskNames
 	retry               bool
 	retryFunc           func(chan int)
 	retryStopChan       chan int
@@ -62,12 +68,16 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 
 // SetRegisteredTaskNames sets registered task names
 func (b *Broker) SetRegisteredTaskNames(names []string) {
-	b.registeredTaskNames = names
+	b.registeredTaskNames.Lock()
+	defer b.registeredTaskNames.Unlock()
+	b.registeredTaskNames.items = names
 }
 
 // IsTaskRegistered returns true if the task is registered with this broker
 func (b *Broker) IsTaskRegistered(name string) bool {
-	for _, registeredTaskName := range b.registeredTaskNames {
+	b.registeredTaskNames.RLock()
+	defer b.registeredTaskNames.RUnlock()
+	for _, registeredTaskName := range b.registeredTaskNames.items {
 		if registeredTaskName == name {
 			return true
 		}
@@ -110,7 +120,10 @@ func (b *Broker) StopConsuming() {
 
 // GetRegisteredTaskNames returns registered tasks names
 func (b *Broker) GetRegisteredTaskNames() []string {
-	return b.registeredTaskNames
+	b.registeredTaskNames.RLock()
+	defer b.registeredTaskNames.RUnlock()
+	items := b.registeredTaskNames.items
+	return items
 }
 
 // AdjustRoutingKey makes sure the routing key is correct.

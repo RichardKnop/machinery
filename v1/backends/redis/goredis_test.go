@@ -91,7 +91,6 @@ func TestGetStateGR(t *testing.T) {
 		GroupUUID: "testGroupUUID",
 	}
 
-
 	backend.PurgeState("testTaskUUID")
 
 	var (
@@ -149,7 +148,6 @@ func TestPurgeStateGR(t *testing.T) {
 		UUID:      "testTaskUUID",
 		GroupUUID: "testGroupUUID",
 	}
-
 
 	backend.SetStatePending(signature)
 	taskState, err := backend.GetState(signature.UUID)
