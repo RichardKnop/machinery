@@ -93,12 +93,12 @@ First, you will need to define some tasks. Look at sample tasks in `example/task
 Second, you will need to launch a worker process with one of these commands (v2 is recommended since it doesn't import dependencies for all brokers / backends, only those you actually need):
 
 ```sh
-go run example/v2/amqp.go worker
+go run example/v2/amqp/main.go worker
 go run example/v2/redigo/main.go worker // Redis with redigo driver
 go run example/v2/go-redis/main.go worker // Redis with Go Redis driver
 
-go run example/v1/amqp.go worker
-go run example/v1/redis.go worker
+go run example/v1/amqp/main.go worker
+go run example/v1/redis/main.go worker
 ```
 
 ![Example worker][1]
@@ -106,12 +106,12 @@ go run example/v1/redis.go worker
 Finally, once you have a worker running and waiting for tasks to consume, send some tasks with one of these commands (v2 is recommended since it doesn't import dependencies for all brokers / backends, only those you actually need):
 
 ```sh
-go run example/v2/amqp.go send
+go run example/v2/amqp/main.go send
 go run example/v2/redigo/main.go send // Redis with redigo driver
 go run example/v2/go-redis/main.go send // Redis with Go Redis driver
 
-go run example/v1/amqp.go send
-go run example/v1/redis.go send
+go run example/v1/amqp/main.go send
+go run example/v1/redis/main.go send
 ```
 
 You will be able to see the tasks being processed asynchronously by the worker:
