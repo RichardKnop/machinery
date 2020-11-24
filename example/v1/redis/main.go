@@ -10,16 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/urfave/cli"
 
+	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/machinery/v2"
 
 	exampletasks "github.com/RichardKnop/machinery/example/tasks"
 	tracers "github.com/RichardKnop/machinery/example/tracers"
-	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
-	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
-	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 	opentracing "github.com/opentracing/opentracing-go"
 	opentracing_log "github.com/opentracing/opentracing-go/log"
 )
@@ -67,30 +64,27 @@ func main() {
 	app.Run(os.Args)
 }
 
-func loadConfig() (*config.Config, error) {
-	return config.NewFromEnvironment()
-}
-
 func startServer() (*machinery.Server, error) {
-	cnf, err := loadConfig()
+	cnf := &config.Config{
+		DefaultQueue:    "machinery_tasks",
+		ResultsExpireIn: 3600,
+		Broker:          "redis://localhost:6379",
+		ResultBackend:   "redis://localhost:6379",
+		Redis: &config.RedisConfig{
+			MaxIdle:                3,
+			IdleTimeout:            240,
+			ReadTimeout:            15,
+			WriteTimeout:           15,
+			ConnectTimeout:         15,
+			NormalTasksPollPeriod:  1000,
+			DelayedTasksPollPeriod: 500,
+		},
+	}
+
+	server, err := machinery.NewServer(cnf)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(cnf.Broker)
-
-	// Create server instance
-	broker, err := amqpbroker.New(cnf), nil
-	if err != nil {
-		return nil, err
-	}
-	backend, err := amqpbackend.New(cnf), nil
-	if err != nil {
-		return nil, err
-	}
-	lock := eagerlock.New()
-
-	server := machinery.NewServer(cnf, broker, backend, lock)
 
 	// Register tasks
 	tasks := map[string]interface{}{
