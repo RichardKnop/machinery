@@ -15,6 +15,7 @@ require (
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/go-cmp v0.5.3 // indirect
 	github.com/google/uuid v1.1.2
+	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.11.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0
@@ -35,6 +36,7 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20201113130914-ce600e9a6f9e // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/fsnotify.v1 v1.4.7
 	gopkg.in/yaml.v2 v2.3.0
 )
 
