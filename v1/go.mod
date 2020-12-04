@@ -1,4 +1,4 @@
-module github.com/RichardKnop/machinery
+module github.com/RichardKnop/machinery/v1
 
 require (
 	cloud.google.com/go v0.72.0 // indirect
