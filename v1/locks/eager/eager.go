@@ -34,7 +34,7 @@ func (e Lock) LockWithRetries(key string, value int64) error {
 	for i := 0; i <= e.retries; i++ {
 		err := e.Lock(key, value)
 		if err == nil {
-			//成功拿到锁，返回
+			// success to acquire lock, return
 			return nil
 		}
 
@@ -46,8 +46,8 @@ func (e Lock) LockWithRetries(key string, value int64) error {
 func (e Lock) Lock(key string, value int64) error {
 	e.register.RLock()
 	defer e.register.RUnlock()
-	_, exist := e.register.m[key]
-	if !exist {
+	oldValue, exist := e.register.m[key]
+	if !exist || time.Now().UnixNano() > oldValue {
 		e.register.m[key] = value
 		return nil
 	}

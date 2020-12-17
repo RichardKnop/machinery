@@ -69,7 +69,7 @@ func (r Lock) LockWithRetries(key string, value int64) error {
 func (r Lock) Lock(key string, value int64) error {
 	var now = time.Now().UnixNano()
 
-	success, err := r.rclient.SetNX(key, value, 0).Result()
+	success, err := r.rclient.SetNX(key, value, time.Duration(value+1)).Result()
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,8 @@ func (r Lock) Lock(key string, value int64) error {
 			}
 
 			if now > int64(curTimeout) {
-				//使用getset加锁成功
+				// success to add lock with getset, and set the expiration
+				r.rclient.Expire(key, time.Duration(value+1))
 				return nil
 			}
 
