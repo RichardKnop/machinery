@@ -22,7 +22,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 )
 
-var redisDelayedTasksKey = "delayed_tasks"
+const defaultRedisDelayedTasksKey = "delayed_tasks"
 
 // Broker represents a Redis broker
 type Broker struct {
@@ -36,9 +36,10 @@ type Broker struct {
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes
 	delayedWG    sync.WaitGroup
 	// If set, path to a socket file overrides hostname
-	socketPath string
-	redsync    *redsync.Redsync
-	redisOnce  sync.Once
+	socketPath           string
+	redsync              *redsync.Redsync
+	redisOnce            sync.Once
+	redisDelayedTasksKey string
 }
 
 // New creates new Broker instance
@@ -50,7 +51,9 @@ func New(cnf *config.Config, host, password, socketPath string, db int) iface.Br
 	b.socketPath = socketPath
 
 	if cnf.Redis != nil && cnf.Redis.DelayedTasksKey != "" {
-		redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
+		b.redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
+	} else {
+		b.redisDelayedTasksKey = defaultRedisDelayedTasksKey
 	}
 
 	return b
@@ -140,7 +143,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 			case <-b.GetStopChan():
 				return
 			default:
-				task, err := b.nextDelayedTask(redisDelayedTasksKey)
+				task, err := b.nextDelayedTask(b.redisDelayedTasksKey)
 				if err != nil {
 					continue
 				}
@@ -204,7 +207,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 
 		if signature.ETA.After(now) {
 			score := signature.ETA.UnixNano()
-			_, err = conn.Do("ZADD", redisDelayedTasksKey, score, msg)
+			_, err = conn.Do("ZADD", b.redisDelayedTasksKey, score, msg)
 			return err
 		}
 	}
@@ -248,7 +251,7 @@ func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
 	conn := b.open()
 	defer conn.Close()
 
-	dataBytes, err := conn.Do("ZRANGE", redisDelayedTasksKey, 0, -1)
+	dataBytes, err := conn.Do("ZRANGE", b.redisDelayedTasksKey, 0, -1)
 	if err != nil {
 		return nil, err
 	}
