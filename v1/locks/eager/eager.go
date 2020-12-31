@@ -46,8 +46,8 @@ func (e *Lock) LockWithRetries(key string, value int64) error {
 func (e *Lock) Lock(key string, value int64) error {
 	e.register.RLock()
 	defer e.register.RUnlock()
-	_, exist := e.register.m[key]
-	if !exist {
+	timeout, exist := e.register.m[key]
+	if !exist || time.Now().UnixNano() > timeout {
 		e.register.m[key] = value
 		return nil
 	}
