@@ -67,29 +67,24 @@ func main() {
 	app.Run(os.Args)
 }
 
-func loadConfig() (*config.Config, error) {
-	return config.NewFromEnvironment()
-}
-
 func startServer() (*machinery.Server, error) {
-	cnf, err := loadConfig()
-	if err != nil {
-		return nil, err
+	cnf := &config.Config{
+		Broker:          "amqp://guest:guest@localhost:5672/",
+		DefaultQueue:    "machinery_tasks",
+		ResultBackend:   "amqp://guest:guest@localhost:5672/",
+		ResultsExpireIn: 3600,
+		AMQP: &config.AMQPConfig{
+			Exchange:      "machinery_exchange",
+			ExchangeType:  "direct",
+			BindingKey:    "machinery_task",
+			PrefetchCount: 3,
+		},
 	}
-
-	fmt.Println(cnf.Broker)
 
 	// Create server instance
-	broker, err := amqpbroker.New(cnf), nil
-	if err != nil {
-		return nil, err
-	}
-	backend, err := amqpbackend.New(cnf), nil
-	if err != nil {
-		return nil, err
-	}
+	broker := amqpbroker.New(cnf)
+	backend := amqpbackend.New(cnf)
 	lock := eagerlock.New()
-
 	server := machinery.NewServer(cnf, broker, backend, lock)
 
 	// Register tasks

@@ -11,14 +11,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/go-redsync/redsync/v4"
+
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/redsync"
-	"github.com/go-redis/redis/v8"
 )
 
 // BrokerGR represents a Redis broker
@@ -29,9 +30,10 @@ type BrokerGR struct {
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes
 	delayedWG    sync.WaitGroup
 	// If set, path to a socket file overrides hostname
-	socketPath string
-	redsync    *redsync.Redsync
-	redisOnce  sync.Once
+	socketPath           string
+	redsync              *redsync.Redsync
+	redisOnce            sync.Once
+	redisDelayedTasksKey string
 }
 
 // NewGR creates new Broker instance
@@ -57,7 +59,9 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 
 	b.rclient = redis.NewUniversalClient(ropt)
 	if cnf.Redis.DelayedTasksKey != "" {
-		redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
+		b.redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
+	} else {
+		b.redisDelayedTasksKey = defaultRedisDelayedTasksKey
 	}
 	return b
 }
@@ -134,7 +138,7 @@ func (b *BrokerGR) StartConsuming(consumerTag string, concurrency int, taskProce
 			case <-b.GetStopChan():
 				return
 			default:
-				task, err := b.nextDelayedTask(redisDelayedTasksKey)
+				task, err := b.nextDelayedTask(b.redisDelayedTasksKey)
 				if err != nil {
 					continue
 				}
@@ -191,7 +195,7 @@ func (b *BrokerGR) Publish(ctx context.Context, signature *tasks.Signature) erro
 
 		if signature.ETA.After(now) {
 			score := signature.ETA.UnixNano()
-			err = b.rclient.ZAdd(context.Background(), redisDelayedTasksKey, &redis.Z{Score: float64(score), Member: msg}).Err()
+			err = b.rclient.ZAdd(context.Background(), b.redisDelayedTasksKey, &redis.Z{Score: float64(score), Member: msg}).Err()
 			return err
 		}
 	}
@@ -226,7 +230,7 @@ func (b *BrokerGR) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 
 // GetDelayedTasks returns a slice of task signatures that are scheduled, but not yet in the queue
 func (b *BrokerGR) GetDelayedTasks() ([]*tasks.Signature, error) {
-	results, err := b.rclient.ZRange(context.Background(), redisDelayedTasksKey, 0, -1).Result()
+	results, err := b.rclient.ZRange(context.Background(), b.redisDelayedTasksKey, 0, -1).Result()
 	if err != nil {
 		return nil, err
 	}

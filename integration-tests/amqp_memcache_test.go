@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 )
 
@@ -37,7 +38,7 @@ func TestAmqpMemcache(t *testing.T) {
 		},
 	})
 
-	worker := server.NewWorker("test_worker", 0)
+	worker := server.(*machinery.Server).NewWorker("test_worker", 0)
 	defer worker.Quit()
 	go worker.Launch()
 	testAll(server, t)
