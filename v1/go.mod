@@ -15,6 +15,7 @@ require (
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.11.3 // indirect
 	github.com/opentracing/opentracing-go v1.2.0
@@ -33,6 +34,7 @@ require (
 	golang.org/x/tools v0.0.0-20201125231158-b5590deeca9b // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
+	gopkg.in/fsnotify.v1 v1.4.7
 	gopkg.in/yaml.v2 v2.4.0
 )
 
