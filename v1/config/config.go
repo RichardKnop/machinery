@@ -42,8 +42,14 @@ type Config struct {
 	Webhook       string          `yaml:"webhook"`
 }
 
-// ModelsConfig ...
-type ModelsConfig map[string][]string
+// ModelConfig interface for one model
+type ModelConfig struct {
+	URL   string `yaml:"url"`
+	Image string `yaml:"image"`
+}
+
+// ModelsConfig all models
+type ModelsConfig map[string]ModelConfig
 
 // QueueBindingArgs arguments which are used when binding to the exchange
 type QueueBindingArgs map[string]interface{}
