@@ -33,15 +33,13 @@ func init() {
 	app = cli.NewApp()
 	app.Name = "machinery"
 	app.Usage = "machinery worker and send example tasks with machinery send"
-	app.Author = "Richard Knop"
-	app.Email = "risoknop@gmail.com"
 	app.Version = "0.0.0"
 }
 
 func main() {
 	// Set the CLI app commands
-	app.Commands = []cli.Command{
-		{
+	app.Commands = []*cli.Command{
+		&cli.Command{
 			Name:  "worker",
 			Usage: "launch machinery worker",
 			Action: func(c *cli.Context) error {
@@ -51,7 +49,7 @@ func main() {
 				return nil
 			},
 		},
-		{
+		&cli.Command{
 			Name:  "send",
 			Usage: "send example tasks ",
 			Action: func(c *cli.Context) error {
