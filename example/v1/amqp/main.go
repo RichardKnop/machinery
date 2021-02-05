@@ -30,8 +30,6 @@ func init() {
 	app = cli.NewApp()
 	app.Name = "machinery"
 	app.Usage = "machinery worker and send example tasks with machinery send"
-	app.Author = "Richard Knop"
-	app.Email = "risoknop@gmail.com"
 	app.Version = "0.0.0"
 }
 
