@@ -360,7 +360,6 @@ func (b *BrokerGR) nextDelayedTask(key string) (result []byte, err error) {
 
 	var (
 		items []string
-		reply interface{}
 	)
 
 	pollPeriod := 500 // default poll period for delayed tasks
@@ -382,7 +381,8 @@ func (b *BrokerGR) nextDelayedTask(key string) (result []byte, err error) {
 			now := time.Now().UTC().UnixNano()
 
 			// https://redis.io/commands/zrangebyscore
-			items, err = tx.ZRevRangeByScore(context.Background(), key, &redis.ZRangeBy{
+			ctx := context.Background()
+			items, err = tx.ZRevRangeByScore(ctx, key, &redis.ZRangeBy{
 				Min: "0", Max: strconv.FormatInt(now, 10), Offset: 0, Count: 1,
 			}).Result()
 			if err != nil {
@@ -392,22 +392,20 @@ func (b *BrokerGR) nextDelayedTask(key string) (result []byte, err error) {
 				return redis.Nil
 			}
 
-			return nil
+			// only return the first zrange value if there are no other changes in this key
+			// to make sure a delayed task would only be consumed once
+			_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+				pipe.ZRem(ctx, key, items[0])
+				result = []byte(items[0])
+				return nil
+			})
 
+			return err
 		}
+
 		if err = b.rclient.Watch(context.Background(), watchFunc, key); err != nil {
 			return
-		}
-
-		txpipe := b.rclient.TxPipeline()
-		txpipe.ZRem(context.Background(), key, items[0])
-		reply, err = txpipe.Exec(context.Background())
-		if err != nil {
-			return
-		}
-
-		if reply != nil {
-			result = []byte(items[0])
+		} else {
 			break
 		}
 	}
