@@ -44,8 +44,9 @@ type Config struct {
 
 // ModelConfig interface for one model
 type ModelConfig struct {
-	URL   string `yaml:"url"`
-	Image string `yaml:"image"`
+	BindURL string `yaml:"bindurl"`
+	URL     string `yaml:"url"`
+	Image   string `yaml:"image"`
 }
 
 // ModelsConfig all models
