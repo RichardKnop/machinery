@@ -28,11 +28,10 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 
 	var password string
 
-	i := strings.LastIndex(addrs[0], "@")
-	if i > 0 {
-		// with passwrod
-		password = addrs[0][i+1:]
-		addrs[0] = addrs[0][:i]
+	parts := strings.Split(addrs[0], "@")
+	if len(parts) == 2 {
+		password = parts[0]
+		addrs[0] = parts[1]
 	}
 
 	ropt := &redis.UniversalOptions{
