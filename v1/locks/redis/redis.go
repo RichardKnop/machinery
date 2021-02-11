@@ -49,10 +49,9 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 	return lock
 }
 
-//try lock with retries
-func (r Lock) LockWithRetries(key string, value int64) error {
+func (r Lock) LockWithRetries(key string, unixTsToExpireNs int64) error {
 	for i := 0; i <= r.retries; i++ {
-		err := r.Lock(key, value)
+		err := r.Lock(key, unixTsToExpireNs)
 		if err == nil {
 			//成功拿到锁，返回
 			return nil
@@ -63,12 +62,12 @@ func (r Lock) LockWithRetries(key string, value int64) error {
 	return ErrRedisLockFailed
 }
 
-func (r Lock) Lock(key string, value int64) error {
-	var now = time.Now().UnixNano()
-
+func (r Lock) Lock(key string, unixTsToExpireNs int64) error {
+	now := time.Now().UnixNano()
+	expiration := time.Duration(unixTsToExpireNs + 1 - now)
 	ctx := r.rclient.Context()
 
-	success, err := r.rclient.SetNX(ctx, key, value, time.Duration(value+1)).Result()
+	success, err := r.rclient.SetNX(ctx, key, unixTsToExpireNs, expiration).Result()
 	if err != nil {
 		return err
 	}
@@ -84,7 +83,7 @@ func (r Lock) Lock(key string, value int64) error {
 		}
 
 		if timeout != 0 && now > int64(timeout) {
-			newTimeout, err := r.rclient.GetSet(ctx, key, value).Result()
+			newTimeout, err := r.rclient.GetSet(ctx, key, unixTsToExpireNs).Result()
 			if err != nil {
 				return err
 			}
@@ -97,7 +96,7 @@ func (r Lock) Lock(key string, value int64) error {
 			if now > int64(curTimeout) {
 				// success to acquire lock with get set
 				// set the expiration of redis key
-				r.rclient.Expire(ctx, key, time.Duration(value+1))
+				r.rclient.Expire(ctx, key, expiration)
 				return nil
 			}
 
