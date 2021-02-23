@@ -4,12 +4,12 @@ go 1.15
 
 require (
 	cloud.google.com/go v0.76.0 // indirect
-	cloud.google.com/go/pubsub v1.9.1
+	cloud.google.com/go/pubsub v1.10.0
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae
-	github.com/aws/aws-sdk-go v1.37.5
+	github.com/aws/aws-sdk-go v1.37.16
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
-	github.com/go-redis/redis/v8 v8.5.0
+	github.com/go-redis/redis/v8 v8.6.0
 	github.com/go-redsync/redsync/v4 v4.0.4
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible
@@ -22,15 +22,13 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/streadway/amqp v1.0.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.5
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/mongo-driver v1.4.6
 	go.opencensus.io v0.22.6 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/oauth2 v0.0.0-20210201163806-010130855d6c // indirect
-	google.golang.org/api v0.39.0 // indirect
-	google.golang.org/genproto v0.0.0-20210204154452-deb828366460 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
 
