@@ -10,16 +10,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/urfave/cli"
 
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/RichardKnop/machinery/v2/config"
+	"github.com/RichardKnop/machinery/v2/log"
+	"github.com/RichardKnop/machinery/v2/tasks"
 	"github.com/RichardKnop/machinery/v2"
 
-	exampletasks "github.com/RichardKnop/machinery/example/tasks"
-	tracers "github.com/RichardKnop/machinery/example/tracers"
-	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
-	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
-	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
+	exampletasks "github.com/RichardKnop/machinery/v2/example/tasks"
+	tracers "github.com/RichardKnop/machinery/v2/example/tracers"
+	redisbackend "github.com/RichardKnop/machinery/v2/backends/redis"
+	redisbroker "github.com/RichardKnop/machinery/v2/brokers/redis"
+	eagerlock "github.com/RichardKnop/machinery/v2/locks/eager"
 	opentracing "github.com/opentracing/opentracing-go"
 	opentracing_log "github.com/opentracing/opentracing-go/log"
 )
@@ -67,21 +67,22 @@ func main() {
 
 func startServer() (*machinery.Server, error) {
 	cnf := &config.Config{
-		Broker:          "amqp://guest:guest@localhost:5672/",
 		DefaultQueue:    "machinery_tasks",
-		ResultBackend:   "amqp://guest:guest@localhost:5672/",
 		ResultsExpireIn: 3600,
-		AMQP: &config.AMQPConfig{
-			Exchange:      "machinery_exchange",
-			ExchangeType:  "direct",
-			BindingKey:    "machinery_task",
-			PrefetchCount: 3,
+		Redis: &config.RedisConfig{
+			MaxIdle:                3,
+			IdleTimeout:            240,
+			ReadTimeout:            15,
+			WriteTimeout:           15,
+			ConnectTimeout:         15,
+			NormalTasksPollPeriod:  1000,
+			DelayedTasksPollPeriod: 500,
 		},
 	}
 
 	// Create server instance
-	broker := amqpbroker.New(cnf)
-	backend := amqpbackend.New(cnf)
+	broker := redisbroker.NewGR(cnf, []string{"localhost:6379"}, 0)
+	backend := redisbackend.NewGR(cnf, []string{"localhost:6379"}, 0)
 	lock := eagerlock.New()
 	server := machinery.NewServer(cnf, broker, backend, lock)
 

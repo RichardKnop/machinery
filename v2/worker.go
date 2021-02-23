@@ -12,12 +12,12 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	
-	"github.com/RichardKnop/machinery/v1/backends/amqp"
-	"github.com/RichardKnop/machinery/v1/brokers/errs"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/retry"
-	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/machinery/v1/tracing"
+	"github.com/RichardKnop/machinery/v2/backends/amqp"
+	"github.com/RichardKnop/machinery/v2/brokers/errs"
+	"github.com/RichardKnop/machinery/v2/log"
+	"github.com/RichardKnop/machinery/v2/retry"
+	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/RichardKnop/machinery/v2/tracing"
 )
 
 // Worker represents a single worker process

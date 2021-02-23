@@ -9,11 +9,6 @@ import (
 
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
-
-	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
-	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
-	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
-	machineryV2 "github.com/RichardKnop/machinery/v2"
 )
 
 func TestRedisRedis_Redigo(t *testing.T) {
@@ -31,39 +26,6 @@ func TestRedisRedis_Redigo(t *testing.T) {
 	})
 
 	worker := server.(*machinery.Server).NewWorker("test_worker", 0)
-	defer worker.Quit()
-	go worker.Launch()
-	testAll(server, t)
-}
-
-func TestRedisRedis_V2_GoRedis(t *testing.T) {
-	redisURL := os.Getenv("REDIS_URL")
-	if redisURL == "" {
-		t.Skip("REDIS_URL is not defined")
-	}
-
-	cnf := &config.Config{
-		DefaultQueue:    "machinery_tasks",
-		ResultsExpireIn: 3600,
-		Redis: &config.RedisConfig{
-			MaxIdle:                3,
-			IdleTimeout:            240,
-			ReadTimeout:            15,
-			WriteTimeout:           15,
-			ConnectTimeout:         15,
-			NormalTasksPollPeriod:  1000,
-			DelayedTasksPollPeriod: 500,
-		},
-	}
-
-	broker := redisbroker.NewGR(cnf, []string{redisURL}, 0)
-	backend := redisbackend.NewGR(cnf, []string{redisURL}, 0)
-	lock := eagerlock.New()
-	server := machineryV2.NewServer(cnf, broker, backend, lock)
-
-	registerTestTasks(server)
-
-	worker := server.NewWorker("test_worker", 0)
 	defer worker.Quit()
 	go worker.Launch()
 	testAll(server, t)
