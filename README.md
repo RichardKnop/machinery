@@ -1036,8 +1036,7 @@ signature := &tasks.Signature{
     },
   },
 }
-
-err := server.RegisterPeriodTask("0 6 * * ?", "periodic-task", signature)
+err := server.RegisterPeriodicTask("0 6 * * ?", "periodic-task", signature)
 if err != nil {
   // failed to register periodic task
 }
@@ -1080,7 +1079,7 @@ signature2 := tasks.Signature{
 }
 
 group, _ := tasks.NewGroup(&signature1, &signature2)
-err := server.RegisterPeriodGroup("0 6 * * ?", "periodic-group", group)
+err := server.RegisterPeriodicGroup("0 6 * * ?", "periodic-group", group)
 if err != nil {
   // failed to register periodic group
 }
@@ -1133,7 +1132,7 @@ signature3 := tasks.Signature{
 }
 
 chain, _ := tasks.NewChain(&signature1, &signature2, &signature3)
-err := server.RegisterPeriodChain("0 6 * * ?", "periodic-chain", chain)
+err := server.RegisterPeriodicChain("0 6 * * ?", "periodic-chain", chain)
 if err != nil {
   // failed to register periodic chain
 }
@@ -1181,7 +1180,7 @@ signature3 := tasks.Signature{
 
 group := tasks.NewGroup(&signature1, &signature2)
 chord, _ := tasks.NewChord(group, &signature3)
-err := server.RegisterPeriodChord("0 6 * * ?", "periodic-chord", chord)
+err := server.RegisterPeriodicChord("0 6 * * ?", "periodic-chord", chord)
 if err != nil {
   // failed to register periodic chord
 }
