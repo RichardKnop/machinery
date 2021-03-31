@@ -127,7 +127,7 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 			}
 
 			// Print stack trace
-			log.ERROR.Printf("%s", debug.Stack())
+			log.ERROR.Printf("%v stack: %s", err, debug.Stack())
 		}
 	}()
 
