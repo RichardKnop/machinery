@@ -312,15 +312,14 @@ func (b *Backend) updateState(taskState *tasks.TaskState) error {
 func (b *Backend) setExpirationTime(key string) error {
 	expiresIn := b.GetConfig().ResultsExpireIn
 	if expiresIn == 0 {
-		// // expire results after 1 hour by default
+		// expire results after 1 hour by default
 		expiresIn = config.DefaultResultsExpireIn
 	}
-	expirationTimestamp := int32(time.Now().Unix() + int64(expiresIn))
 
 	conn := b.open()
 	defer conn.Close()
 
-	_, err := conn.Do("EXPIREAT", key, expirationTimestamp)
+	_, err := conn.Do("EXPIRE", key, expiresIn)
 	if err != nil {
 		return err
 	}
