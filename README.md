@@ -68,16 +68,16 @@ Instead of factory, you will need to inject broker and backend objects to the se
 ```go
 import (
   "github.com/RichardKnop/machinery/v2"
-  backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
-  brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
+  backendsiface "github.com/RichardKnop/machinery/v2/backends/iface"
+  brokersiface "github.com/RichardKnop/machinery/v2/brokers/iface"
+  locksiface "github.com/RichardKnop/machinery/v2/locks/iface"
 )
 
 var broker brokersiface.Broker
 var backend backendsiface.Backend
-server, err := machinery.NewServer(cnf, broker, backend)
-if err != nil {
-  // do something with the error
-}
+var lock locksiface.Lock
+server := machinery.NewServer(cnf, broker, backend, lock)
+// server.NewWorker("machinery", 10)
 ```
 
 ### First Steps
