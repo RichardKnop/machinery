@@ -10,18 +10,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/urfave/cli"
 
+	"github.com/RichardKnop/machinery/v2"
 	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/log"
 	"github.com/RichardKnop/machinery/v2/tasks"
-	"github.com/RichardKnop/machinery/v2"
 
-	exampletasks "github.com/RichardKnop/machinery/v2/example/tasks"
-	tracers "github.com/RichardKnop/machinery/v2/example/tracers"
 	amqpbackend "github.com/RichardKnop/machinery/v2/backends/amqp"
 	amqpbroker "github.com/RichardKnop/machinery/v2/brokers/amqp"
+	exampletasks "github.com/RichardKnop/machinery/v2/example/tasks"
+	"github.com/RichardKnop/machinery/v2/example/tracers"
 	eagerlock "github.com/RichardKnop/machinery/v2/locks/eager"
-	opentracing "github.com/opentracing/opentracing-go"
-	opentracing_log "github.com/opentracing/opentracing-go/log"
+	"github.com/opentracing/opentracing-go"
+	opentracinglog "github.com/opentracing/opentracing-go/log"
 )
 
 var (
@@ -62,7 +62,7 @@ func main() {
 	}
 
 	// Run the CLI app
-	app.Run(os.Args)
+	_ = app.Run(os.Args)
 }
 
 func startServer() (*machinery.Server, error) {
@@ -86,7 +86,7 @@ func startServer() (*machinery.Server, error) {
 	server := machinery.NewServer(cnf, broker, backend, lock)
 
 	// Register tasks
-	tasks := map[string]interface{}{
+	tasksMap := map[string]interface{}{
 		"add":               exampletasks.Add,
 		"multiply":          exampletasks.Multiply,
 		"sum_ints":          exampletasks.SumInts,
@@ -97,7 +97,7 @@ func startServer() (*machinery.Server, error) {
 		"long_running_task": exampletasks.LongRunningTask,
 	}
 
-	return server, server.RegisterTasks(tasks)
+	return server, server.RegisterTasks(tasksMap)
 }
 
 func worker() error {
@@ -120,21 +120,21 @@ func worker() error {
 
 	// Here we inject some custom code for error handling,
 	// start and end of task hooks, useful for metrics for example.
-	errorhandler := func(err error) {
+	errorHandler := func(err error) {
 		log.ERROR.Println("I am an error handler:", err)
 	}
 
-	pretaskhandler := func(signature *tasks.Signature) {
+	preTaskHandler := func(signature *tasks.Signature) {
 		log.INFO.Println("I am a start of task handler for:", signature.Name)
 	}
 
-	posttaskhandler := func(signature *tasks.Signature) {
+	postTaskHandler := func(signature *tasks.Signature) {
 		log.INFO.Println("I am an end of task handler for:", signature.Name)
 	}
 
-	worker.SetPostTaskHandler(posttaskhandler)
-	worker.SetErrorHandler(errorhandler)
-	worker.SetPreTaskHandler(pretaskhandler)
+	worker.SetPostTaskHandler(postTaskHandler)
+	worker.SetErrorHandler(errorHandler)
+	worker.SetPreTaskHandler(preTaskHandler)
 
 	return worker.Launch()
 }
@@ -275,7 +275,7 @@ func send() error {
 
 	batchID := uuid.New().String()
 	span.SetBaggageItem("batch.id", batchID)
-	span.LogFields(opentracing_log.String("batch.id", batchID))
+	span.LogFields(opentracinglog.String("batch.id", batchID))
 
 	log.INFO.Println("Starting batch:", batchID)
 	/*
@@ -290,7 +290,7 @@ func send() error {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
 
-	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err := asyncResult.Get(time.Millisecond * 5)
 	if err != nil {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
@@ -304,7 +304,7 @@ func send() error {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
 
-	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err = asyncResult.Get(time.Millisecond * 5)
 	if err != nil {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
@@ -315,7 +315,7 @@ func send() error {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
 
-	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err = asyncResult.Get(time.Millisecond * 5)
 	if err != nil {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
@@ -326,7 +326,7 @@ func send() error {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
 
-	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err = asyncResult.Get(time.Millisecond * 5)
 	if err != nil {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
@@ -337,7 +337,7 @@ func send() error {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
 
-	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err = asyncResult.Get(time.Millisecond * 5)
 	if err != nil {
 		return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 	}
@@ -362,7 +362,7 @@ func send() error {
 	}
 
 	for _, asyncResult := range asyncResults {
-		results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+		results, err = asyncResult.Get(time.Millisecond * 5)
 		if err != nil {
 			return fmt.Errorf("Getting task result failed with error: %s", err.Error())
 		}
@@ -393,7 +393,7 @@ func send() error {
 		return fmt.Errorf("Could not send chord: %s", err.Error())
 	}
 
-	results, err = chordAsyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err = chordAsyncResult.Get(time.Millisecond * 5)
 	if err != nil {
 		return fmt.Errorf("Getting chord result failed with error: %s", err.Error())
 	}
@@ -413,7 +413,7 @@ func send() error {
 		return fmt.Errorf("Could not send chain: %s", err.Error())
 	}
 
-	results, err = chainAsyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err = chainAsyncResult.Get(time.Millisecond * 5)
 	if err != nil {
 		return fmt.Errorf("Getting chain result failed with error: %s", err.Error())
 	}
@@ -426,7 +426,7 @@ func send() error {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
 
-	_, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	_, err = asyncResult.Get(time.Millisecond * 5)
 	if err == nil {
 		return errors.New("Error should not be nil if task panicked")
 	}
@@ -439,7 +439,7 @@ func send() error {
 		return fmt.Errorf("Could not send task: %s", err.Error())
 	}
 
-	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	results, err = asyncResult.Get(time.Millisecond * 5)
 	if err != nil {
 		return fmt.Errorf("Getting long running task result failed with error: %s", err.Error())
 	}
