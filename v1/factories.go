@@ -3,6 +3,7 @@ package machinery
 import (
 	"errors"
 	"fmt"
+	"github.com/RichardKnop/machinery/v1/brokers/servicebus"
 	"os"
 	"strconv"
 	"strings"
@@ -103,7 +104,9 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 		}
 		return gcppubsubbroker.New(cnf, projectID, subscriptionName)
 	}
-
+	if strings.HasPrefix(cnf.Broker, "Endpoint=sb://") {
+		return servicebus.New(cnf)
+	}
 	return nil, fmt.Errorf("Factory failed with broker URL: %v", cnf.Broker)
 }
 

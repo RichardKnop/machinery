@@ -3,6 +3,7 @@ package config
 import (
 	"crypto/tls"
 	"fmt"
+	servicebus "github.com/Azure/azure-service-bus-go"
 	"strings"
 	"time"
 
@@ -53,17 +54,18 @@ var (
 
 // Config holds all configuration for our program
 type Config struct {
-	Broker                  string           `yaml:"broker" envconfig:"BROKER"`
-	Lock                    string           `yaml:"lock" envconfig:"LOCK"`
-	MultipleBrokerSeparator string           `yaml:"multiple_broker_separator" envconfig:"MULTIPLE_BROKEN_SEPARATOR"`
-	DefaultQueue            string           `yaml:"default_queue" envconfig:"DEFAULT_QUEUE"`
-	ResultBackend           string           `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
-	ResultsExpireIn         int              `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
-	AMQP                    *AMQPConfig      `yaml:"amqp"`
-	SQS                     *SQSConfig       `yaml:"sqs"`
-	Redis                   *RedisConfig     `yaml:"redis"`
-	GCPPubSub               *GCPPubSubConfig `yaml:"-" ignored:"true"`
-	MongoDB                 *MongoDBConfig   `yaml:"-" ignored:"true"`
+	Broker                  string            `yaml:"broker" envconfig:"BROKER"`
+	Lock                    string            `yaml:"lock" envconfig:"LOCK"`
+	MultipleBrokerSeparator string            `yaml:"multiple_broker_separator" envconfig:"MULTIPLE_BROKEN_SEPARATOR"`
+	DefaultQueue            string            `yaml:"default_queue" envconfig:"DEFAULT_QUEUE"`
+	ResultBackend           string            `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
+	ResultsExpireIn         int               `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
+	AMQP                    *AMQPConfig       `yaml:"amqp"`
+	SQS                     *SQSConfig        `yaml:"sqs"`
+	Redis                   *RedisConfig      `yaml:"redis"`
+	GCPPubSub               *GCPPubSubConfig  `yaml:"-" ignored:"true"`
+	ServiceBus              *ServiceBusConfig `yaml:"servicebus"`
+	MongoDB                 *MongoDBConfig    `yaml:"-" ignored:"true"`
 	TLSConfig               *tls.Config
 	// NoUnixSignals - when set disables signal handling in machinery
 	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
@@ -155,6 +157,11 @@ type RedisConfig struct {
 type GCPPubSubConfig struct {
 	Client       *pubsub.Client
 	MaxExtension time.Duration
+}
+
+// ServiceBusConfig wraps service bus related configuration
+type ServiceBusConfig struct {
+	client *servicebus.Namespace
 }
 
 // MongoDBConfig ...

@@ -3,10 +3,10 @@ module github.com/RichardKnop/machinery/v1
 require (
 	cloud.google.com/go v0.72.0 // indirect
 	cloud.google.com/go/pubsub v1.8.3
+	github.com/Azure/azure-service-bus-go v0.10.12
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae
 	github.com/aws/aws-sdk-go v1.35.35
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
-	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v8 v8.4.0
 	github.com/go-redsync/redsync/v4 v4.0.4
@@ -20,10 +20,8 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.6.1
-	github.com/urfave/cli v1.22.5
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/mongo-driver v1.4.3
 	golang.org/x/crypto v0.0.0-20201124201722-c8d3bf9c5392 // indirect
