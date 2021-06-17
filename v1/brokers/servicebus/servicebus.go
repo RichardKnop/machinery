@@ -20,13 +20,15 @@ import (
 type Broker struct {
 	common.Broker
 	service      *servicebus.Namespace
+	publishQueue *servicebus.Queue
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
-	receivingWG  sync.WaitGroup
+
+	stopReceiving chan struct{}
 }
 
 // New creates a new broker
 func New(cnf *config.Config) (iface.Broker, error) {
-	b := &Broker{Broker: common.NewBroker(cnf)}
+	b := &Broker{Broker: common.NewBroker(cnf), stopReceiving: make(chan struct{})}
 	ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(cnf.Broker))
 	if err != nil {
 		return nil, err
@@ -39,7 +41,12 @@ func New(cnf *config.Config) (iface.Broker, error) {
 		}
 		return nil, err
 	}
+	queue, err := ns.NewQueue(b.GetConfig().DefaultQueue)
+	if err != nil {
+		return nil, err
+	}
 	b.service = ns
+	b.publishQueue = queue
 	return b, nil
 }
 
@@ -49,11 +56,14 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// TODO create conn
-	queueName := "from-machinery"
-	queue, err := b.service.NewQueue(queueName, servicebus.QueueWithPrefetchCount(uint32(concurrency)))
-	if err != nil {
-		return false, err
+	queue := b.publishQueue
+	var err error
+	// we need a new queue connection with prefetch count
+	if concurrency > 1 {
+		queue, err = b.service.NewQueue(b.GetConfig().DefaultQueue, servicebus.QueueWithPrefetchCount(uint32(concurrency)))
+		if err != nil {
+			return false, err
+		}
 	}
 
 	// Define msg chan
@@ -68,12 +78,13 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	for i := 0; i < concurrency; i++ {
 		go func() {
 			for msg := range msgChan {
-				b.consumeOne(ctx, msg, taskProcessor)
+				b.processingWG.Add(1)
+				b.consumeOne(context.Background(), msg, taskProcessor)
+				b.processingWG.Done()
 			}
 		}()
 	}
 
-	// TODO check this stop channel
 	go func() {
 		<-b.GetStopChan()
 		cancel()
@@ -89,13 +100,21 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		continue
 	}
 
-	//close(b.stopDone)
+	close(b.stopReceiving)
+
+	close(msgChan)
 
 	return b.GetRetry(), nil
 }
 
-// TODO ...
+// StopConsuming ...
 func (b *Broker) StopConsuming() {
+	b.Broker.StopConsuming()
+
+	<-b.stopReceiving
+
+	// Wait for all processing tasks to finish
+	b.processingWG.Wait()
 
 }
 
@@ -103,11 +122,6 @@ func (b *Broker) StopConsuming() {
 func (b *Broker) Publish(ctx context.Context, sig *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
 	b.AdjustRoutingKey(sig)
-	// TODO GetOrCreateConnToQueue
-	q, err := b.service.NewQueue(b.GetConfig().DefaultQueue)
-	if err != nil {
-		return err
-	}
 	sigMarshaled, err := json.Marshal(sig)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
@@ -125,7 +139,7 @@ func (b *Broker) Publish(ctx context.Context, sig *tasks.Signature) error {
 		}
 	}
 
-	err = q.Send(ctx, msg)
+	err = b.publishQueue.Send(ctx, msg)
 	if err != nil {
 		log.ERROR.Printf("Error when sending a message: %v", err)
 		return err
