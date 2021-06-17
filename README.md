@@ -31,6 +31,7 @@ Machinery is an asynchronous task queue/job queue based on distributed message p
   * [DynamoDB](#dynamodb)
   * [Redis](#redis-2)
   * [GCPPubSub](#gcppubsub)
+  * [ServiceBus](#service-bus)
 * [Custom Logger](#custom-logger)
 * [Server](#server)
 * [Workers](#workers)
@@ -244,6 +245,16 @@ cnf := &config.Config{
   },
 }
 ```
+
+##### Service Bus
+
+Use Service bus connection string in the format:
+
+```
+Endpoint=sb://...
+```
+
+See [Azure Service Bus docs](https://docs.microsoft.com/en-us/azure/service-bus-messaging/) for more information.
 
 #### DefaultQueue
 
