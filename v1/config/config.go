@@ -3,11 +3,11 @@ package config
 import (
 	"crypto/tls"
 	"fmt"
-	servicebus "github.com/Azure/azure-service-bus-go"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	servicebus "github.com/Azure/azure-service-bus-go"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -161,7 +161,7 @@ type GCPPubSubConfig struct {
 
 // ServiceBusConfig wraps service bus related configuration
 type ServiceBusConfig struct {
-	client *servicebus.Namespace
+	Client *servicebus.Namespace
 }
 
 // MongoDBConfig ...

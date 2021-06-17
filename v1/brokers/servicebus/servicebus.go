@@ -29,23 +29,27 @@ type Broker struct {
 // New creates a new broker
 func New(cnf *config.Config) (iface.Broker, error) {
 	b := &Broker{Broker: common.NewBroker(cnf), stopReceiving: make(chan struct{})}
-	ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(cnf.Broker))
-	if err != nil {
-		return nil, err
+	if cnf.ServiceBus != nil && cnf.ServiceBus.Client != nil {
+		b.service = cnf.ServiceBus.Client
+	} else {
+		ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(cnf.Broker))
+		if err != nil {
+			return nil, err
+		}
+		b.service = ns
 	}
 	ctx := context.Background()
-	_, err = ns.NewQueueManager().Get(ctx, cnf.DefaultQueue)
+	_, err := b.service.NewQueueManager().Get(ctx, cnf.DefaultQueue)
 	if err != nil {
 		if _, ok := err.(servicebus.ErrNotFound); ok {
 			return nil, fmt.Errorf("queue %s does not exist", cnf.DefaultQueue)
 		}
 		return nil, err
 	}
-	queue, err := ns.NewQueue(b.GetConfig().DefaultQueue)
+	queue, err := b.service.NewQueue(b.GetConfig().DefaultQueue)
 	if err != nil {
 		return nil, err
 	}
-	b.service = ns
 	b.publishQueue = queue
 	return b, nil
 }
