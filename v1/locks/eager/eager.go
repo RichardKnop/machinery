@@ -15,7 +15,7 @@ type Lock struct {
 	interval time.Duration
 	register struct {
 		sync.RWMutex
-		m map[string]int64
+		m *sync.Map
 	}
 }
 
@@ -25,8 +25,10 @@ func New() *Lock {
 		interval: 5 * time.Second,
 		register: struct {
 			sync.RWMutex
-			m map[string]int64
-		}{m: make(map[string]int64)},
+			m *sync.Map
+		}{
+			m: new(sync.Map),
+		},
 	}
 }
 
@@ -46,9 +48,9 @@ func (e *Lock) LockWithRetries(key string, value int64) error {
 func (e *Lock) Lock(key string, value int64) error {
 	e.register.RLock()
 	defer e.register.RUnlock()
-	timeout, exist := e.register.m[key]
-	if !exist || time.Now().UnixNano() > timeout {
-		e.register.m[key] = value
+	timeout, exist := e.register.m.Load(key)
+	if !exist || time.Now().UnixNano() > timeout.(int64) {
+		e.register.m.Store(key, value)
 		return nil
 	}
 	return ErrEagerLockFailed
