@@ -26,10 +26,11 @@ func (_ doNothingProcessor) PreConsumeHandler() bool {
 
 func TestConsume(t *testing.T) {
 	var (
-		iBroker    iface.Broker
-		deliveries = make(chan amqp.Delivery, 3)
-		closeChan  chan *amqp.Error
-		processor  doNothingProcessor
+		iBroker         iface.Broker
+		deliveries      = make(chan amqp.Delivery, 3)
+		localDeliveries = make(chan amqp.Delivery)
+		closeChan       chan *amqp.Error
+		processor       doNothingProcessor
 	)
 
 	t.Run("with deliveries more than the number of concurrency", func(t *testing.T) {
@@ -45,7 +46,7 @@ func TestConsume(t *testing.T) {
 		}()
 
 		go func() {
-			err := broker.consume(deliveries, 2, processor, closeChan)
+			err := broker.consume(deliveries, 2, processor, closeChan, localDeliveries)
 			if err != nil {
 				errChan <- err
 			}
