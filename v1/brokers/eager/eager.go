@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
 	"github.com/RichardKnop/machinery/v1/common"
@@ -65,4 +66,8 @@ func (eagerBroker *Broker) Publish(ctx context.Context, task *tasks.Signature) e
 // AssignWorker assigns a worker to the eager broker
 func (eagerBroker *Broker) AssignWorker(w iface.TaskProcessor) {
 	eagerBroker.worker = w
+}
+
+func (b *Broker) PublishToLocal(consumerTag string, sig *tasks.Signature, blockTimeout time.Duration) error {
+	return b.Publish(context.Background(), sig)
 }

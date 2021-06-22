@@ -34,13 +34,15 @@ type Broker struct {
 	common.AMQPConnector
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
 
-	connections      map[string]*AMQPConnection
-	connectionsMutex sync.RWMutex
+	connections          map[string]*AMQPConnection
+	connectionsMutex     sync.RWMutex
+	localDeliveries      map[string]chan amqp.Delivery
+	localDeliveriesMutex sync.RWMutex
 }
 
 // New creates new Broker instance
 func New(cnf *config.Config) iface.Broker {
-	return &Broker{Broker: common.NewBroker(cnf), AMQPConnector: common.AMQPConnector{}, connections: make(map[string]*AMQPConnection)}
+	return &Broker{Broker: common.NewBroker(cnf), AMQPConnector: common.AMQPConnector{}, connections: make(map[string]*AMQPConnection), localDeliveries: make(map[string]chan amqp.Delivery)}
 }
 
 // StartConsuming enters a loop and waits for incoming messages
@@ -92,10 +94,14 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	if err != nil {
 		return b.GetRetry(), fmt.Errorf("Queue consume error: %s", err)
 	}
+	localDeliveries := make(chan amqp.Delivery, 1)
+	b.localDeliveriesMutex.Lock()
+	b.localDeliveries[consumerTag] = localDeliveries
+	b.localDeliveriesMutex.Unlock()
 
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
-	if err := b.consume(deliveries, concurrency, taskProcessor, amqpCloseChan); err != nil {
+	if err := b.consume(deliveries, concurrency, taskProcessor, amqpCloseChan, localDeliveries); err != nil {
 		return b.GetRetry(), err
 	}
 
@@ -251,7 +257,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskProcessor iface.TaskProcessor, amqpCloseChan <-chan *amqp.Error) error {
+func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskProcessor iface.TaskProcessor, amqpCloseChan <-chan *amqp.Error, healthCheckDeliveries chan amqp.Delivery) error {
 	pool := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
@@ -266,6 +272,30 @@ func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskP
 	// a worker, that is, it avoids a possible deadlock
 	errorsChan := make(chan error, 1)
 
+	consumeDelivery := func(d amqp.Delivery) {
+		if concurrency > 0 {
+			// get worker from pool (blocks until one is available)
+			<-pool
+		}
+
+		b.processingWG.Add(1)
+
+		// Consume the task inside a gotourine so multiple tasks
+		// can be processed concurrently
+		go func() {
+			if err := b.consumeOne(d, taskProcessor, true); err != nil {
+				errorsChan <- err
+			}
+
+			b.processingWG.Done()
+
+			if concurrency > 0 {
+				// give worker back to pool
+				pool <- struct{}{}
+			}
+		}()
+	}
+
 	for {
 		select {
 		case amqpErr := <-amqpCloseChan:
@@ -273,29 +303,11 @@ func (b *Broker) consume(deliveries <-chan amqp.Delivery, concurrency int, taskP
 		case err := <-errorsChan:
 			return err
 		case d := <-deliveries:
-			if concurrency > 0 {
-				// get worker from pool (blocks until one is available)
-				<-pool
-			}
-
-			b.processingWG.Add(1)
-
-			// Consume the task inside a gotourine so multiple tasks
-			// can be processed concurrently
-			go func() {
-				if err := b.consumeOne(d, taskProcessor, true); err != nil {
-					errorsChan <- err
-				}
-
-				b.processingWG.Done()
-
-				if concurrency > 0 {
-					// give worker back to pool
-					pool <- struct{}{}
-				}
-			}()
+			consumeDelivery(d)
 		case <-b.GetStopChan():
 			return nil
+		case d := <-healthCheckDeliveries:
+			consumeDelivery(d)
 		}
 	}
 }
@@ -489,4 +501,23 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	}
 
 	return dumper.Signatures, nil
+}
+
+func (b *Broker) PublishToLocal(consumerTag string, sig *tasks.Signature, blockTimeout time.Duration) error {
+	b.localDeliveriesMutex.RLock()
+	deliveries, ok := b.localDeliveries[consumerTag]
+	b.localDeliveriesMutex.RUnlock()
+	if !ok {
+		return fmt.Errorf("no such consumerTag: %v", consumerTag)
+	}
+	msg, err := json.Marshal(sig)
+	if err != nil {
+		return fmt.Errorf("JSON marshal error: %s", err)
+	}
+	select {
+	case deliveries <- amqp.Delivery{Body: msg}:
+		return nil
+	case <-time.After(blockTimeout):
+		return fmt.Errorf("health check: %v queue is full.", consumerTag)
+	}
 }
