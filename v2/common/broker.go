@@ -115,7 +115,7 @@ func (b *Broker) StopConsuming() {
 	}
 	// Notifying the stop channel stops consuming of messages
 	close(b.stopChan)
-	log.WARNING.Print("Stop channel")
+	log.INFO.Print("Stop channel")
 }
 
 // GetRegisteredTaskNames returns registered tasks names
