@@ -52,23 +52,6 @@ func NewServer(cnf *config.Config, brokerServer brokersiface.Broker, backendServ
 	return srv
 }
 
-// NewServerWithBrokerBackend ...
-func NewServerWithBrokerBackendLock(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend, lock lockiface.Lock) *Server {
-	srv := &Server{
-		config:          cnf,
-		registeredTasks: new(sync.Map),
-		broker:          brokerServer,
-		backend:         backendServer,
-		lock:            lock,
-		scheduler:       cron.New(),
-	}
-
-	// Run scheduler job
-	go srv.scheduler.Run()
-
-	return srv
-}
-
 // NewWorker creates Worker instance
 func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
 	return &Worker{

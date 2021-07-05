@@ -3,7 +3,6 @@ package integration_test
 import (
 	"context"
 	"errors"
-	"log"
 	"reflect"
 	"sort"
 	"testing"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/RichardKnop/machinery/v2"
 	"github.com/RichardKnop/machinery/v2/backends/result"
 	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/tasks"
@@ -388,18 +386,6 @@ func registerTestTasks(server Server) {
 	}
 
 	server.RegisterTasks(tasks)
-}
-
-func testSetup(cnf *config.Config) Server {
-
-	server, err := machinery.NewServer(cnf)
-	if err != nil {
-		log.Fatal(err, "Could not initialize server")
-	}
-
-	registerTestTasks(server)
-
-	return server
 }
 
 func newAddTask(a, b int) *tasks.Signature {
