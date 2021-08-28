@@ -272,6 +272,16 @@ Result backend to use for keeping task states and results.
 
 Currently supported backends are:
 
+##### SQL
+
+Machinery use Gorm to connect to DB. See [Gorm](https://gorm.io/docs/connecting_to_the_database.html) docs for more information.
+
+You should use `*grom.DB` object to init Backend, so that you can personalize the DB object.
+
+Machinery will auto migrate models to db in `sql.New()`.
+
+Note, if you set DB as your Backend, the records will never expire.
+
 ##### Redis
 
 Use Redis URL in one of these formats:
@@ -779,7 +789,7 @@ for _, result := range results {
 
 When a task returns with an error, the default behavior is to first attempty to retry the task if it's retriable, otherwise log the error and then eventually call any error callbacks.
 
-To customize this, you can set a custom error handler on the worker which can do more than just logging after retries fail and error callbacks are trigerred:
+To customize this, you can set a custom error handler on the worker which can do more than just logging after retries fail and error callbacks are triggerred:
 
 ```go
 worker.SetErrorHandler(func (err error) {

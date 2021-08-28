@@ -20,6 +20,8 @@ require (
 	github.com/urfave/cli v1.22.5
 	go.mongodb.org/mongo-driver v1.4.6
 	gopkg.in/yaml.v2 v2.4.0
+	gorm.io/driver/mysql v1.1.2
+	gorm.io/gorm v1.21.14
 )
 
 replace git.apache.org/thrift.git => github.com/apache/thrift v0.0.0-20180902110319-2566ecd5d999
