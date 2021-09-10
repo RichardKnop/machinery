@@ -2,6 +2,25 @@
 [2]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker_receives_tasks.png
 [3]: http://patreon_public_assets.s3.amazonaws.com/sized/becomeAPatronBanner.png
 
+## Sublime Fork
+
+This fork exists to prototype some changes and allow us to iterate w/o waiting on the original maintainer.
+
+To use this fork Go's opinionated directory setup it gets a little weird. Inspiration: https://newbedev.com/using-forked-package-import-in-go
+
+To consume this package the `go.mod` should have the original `require` (e.g. referencing `RichardKnop`). Use `replace`
+(at the bottom) with:
+`replace github.com/RichardKnop/machinery => github.com/sublime-security/machinery v1.10.6`
+
+The tagged version in the `replace` statement should be what's used.
+
+To develop on this repo clone it to:
+`$GOPATH/src/github.com/RichardKnop/machinery` (even though it should be under `sublime-security`).
+
+And then update your `replace` statement to be:
+`replace github.com/RichardKnop/machinery => ../../RichardKnop/machinery`
+(and don't push that!)
+
 ## Machinery
 
 Machinery is an asynchronous task queue/job queue based on distributed message passing.
