@@ -196,6 +196,9 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 		signature.UUID = fmt.Sprintf("task_%v", taskID)
 	}
 
+	span.SetTag("signature.name", signature.Name)
+	span.SetTag("signature.uuid", signature.UUID)
+
 	// Set initial task state to PENDING
 	if err := server.backend.SetStatePending(signature); err != nil {
 		return nil, fmt.Errorf("Set state pending error: %s", err)

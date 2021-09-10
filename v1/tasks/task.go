@@ -101,7 +101,8 @@ func New(taskFunc interface{}, args []Arg) (*Task, error) {
 // 2. The task func itself returns a non-nil error.
 func (t *Task) Call() (taskResults []*TaskResult, err error) {
 	// retrieve the span from the task's context and finish it as soon as this function returns
-	if span := opentracing.SpanFromContext(t.Context); span != nil {
+	span := opentracing.SpanFromContext(t.Context)
+	if span != nil {
 		defer span.Finish()
 	}
 
@@ -166,6 +167,9 @@ func (t *Task) Call() (taskResults []*TaskResult, err error) {
 			return nil, ErrLastReturnValueMustBeError
 		}
 
+		if span != nil {
+			span.LogFields(opentracing_log.Error(lastResult.Interface().(error)))
+		}
 		// Return the standard error
 		return nil, lastResult.Interface().(error)
 	}
