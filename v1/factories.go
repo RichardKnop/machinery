@@ -121,13 +121,16 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 		return memcachebackend.New(cnf, servers), nil
 	}
 
-	if strings.HasPrefix(cnf.ResultBackend, "redis://") {
-		redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
-		if err != nil {
-			return nil, err
+	if strings.HasPrefix(cnf.ResultBackend, "redis://") || strings.HasPrefix(cnf.ResultBackend, "rediss://") {
+		var scheme string
+		if strings.HasPrefix(cnf.ResultBackend, "redis://") {
+			scheme = "redis://"
+		} else {
+			scheme = "rediss://"
 		}
-
-		return redisbackend.New(cnf, redisHost, redisPassword, "", redisDB), nil
+		parts := strings.Split(cnf.ResultBackend, scheme)
+		addrs := strings.Split(parts[1], ",")
+		return redisbackend.NewGR(cnf, addrs, 0), nil
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "redis+socket://") {

@@ -11,6 +11,8 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20180710155616-bc664df96737
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/frankban/quicktest v1.13.0 // indirect
+	github.com/go-redis/redis/v8 v8.11.3
+	github.com/go-redsync/redsync/v4 v4.4.1
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gocql/gocql v0.0.0-20200221113847-372a19b1a852
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -24,7 +26,6 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962 // indirect
 	github.com/streadway/amqp v0.0.0-20190214183023-884228600bc9
 	github.com/stretchr/testify v1.6.1
-	github.com/stvp/tempredis v0.0.0-20181119212430-b82af8480203 // indirect
 	github.com/tidwall/pretty v0.0.0-20180105212114-65a9db5fad51 // indirect
 	github.com/urfave/cli v1.20.0
 	go.mongodb.org/mongo-driver v1.0.0
@@ -35,7 +36,7 @@ require (
 	google.golang.org/grpc v1.38.0 // indirect
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
 	gopkg.in/jcmturner/gokrb5.v7 v7.3.0 // indirect
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 go 1.13
