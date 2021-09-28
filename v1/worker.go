@@ -231,6 +231,9 @@ func (worker *Worker) retryTaskIn(signature *tasks.Signature, retryIn time.Durat
 		return fmt.Errorf("Set state to 'retry' for task %s returned error: %s", signature.UUID, err)
 	}
 
+	// Decrement the retry counter, when it reaches 0, we won't retry again
+	signature.RetryCount--
+
 	// Delay task by retryIn duration
 	eta := time.Now().UTC().Add(retryIn)
 	signature.ETA = &eta
