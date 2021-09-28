@@ -238,6 +238,10 @@ func (worker *Worker) retryTaskIn(signature *tasks.Signature, retryIn time.Durat
 	eta := time.Now().UTC().Add(retryIn)
 	signature.ETA = &eta
 
+	if signature.RetryCount == 0 {
+		return worker.taskFailed(signature, errors.New("Task failed too many times."))
+	}
+
 	log.WARNING.Printf("Task %s failed. Going to retry in %.0f seconds.", signature.UUID, retryIn.Seconds())
 
 	// Send the task back to the queue
