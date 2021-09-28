@@ -53,7 +53,12 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 		ropt.MasterName = cnf.Redis.MasterName
 	}
 
-	b.rclient = redis.NewUniversalClient(ropt)
+	if cnf.Redis != nil && cnf.Redis.ClusterMode {
+		b.rclient = redis.NewClusterClient(ropt.Cluster())
+	} else {
+
+		b.rclient = redis.NewUniversalClient(ropt)
+	}
 	b.redsync = redsync.New(redsyncgoredis.NewPool(b.rclient))
 	return b
 }
