@@ -30,6 +30,7 @@ type Worker struct {
 	preTaskHandler    func(*tasks.Signature)
 	postTaskHandler   func(*tasks.Signature)
 	preConsumeHandler func(*Worker) bool
+	timeOutFunc       func(*tasks.Signature) int
 }
 
 var (
@@ -210,8 +211,12 @@ func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 	// Decrement the retry counter, when it reaches 0, we won't retry again
 	signature.RetryCount--
 
-	// Increase retry timeout
-	signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
+	if worker.timeOutFunc != nil {
+		signature.RetryTimeout = worker.timeOutFunc(signature)
+	} else {
+		// Increase retry timeout
+		signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
+	}
 
 	// Delay task by signature.RetryTimeout seconds
 	eta := time.Now().UTC().Add(time.Second * time.Duration(signature.RetryTimeout))
@@ -237,10 +242,6 @@ func (worker *Worker) retryTaskIn(signature *tasks.Signature, retryIn time.Durat
 	// Delay task by retryIn duration
 	eta := time.Now().UTC().Add(retryIn)
 	signature.ETA = &eta
-
-	if signature.RetryCount == 0 {
-		return worker.taskFailed(signature, errors.New("Task failed too many times."))
-	}
 
 	log.WARNING.Printf("Task %s failed. Going to retry in %.0f seconds.", signature.UUID, retryIn.Seconds())
 
@@ -422,12 +423,16 @@ func (worker *Worker) SetPreConsumeHandler(handler func(*Worker) bool) {
 	worker.preConsumeHandler = handler
 }
 
+//SetTimeoutFunc sets a timeout for the worker to determine fibonacci or custom
+func (worker *Worker) SetTimeoutFunc(timeoutFunc func(*tasks.Signature) int) {
+	worker.timeOutFunc = timeoutFunc
+}
+
 //GetServer returns server
 func (worker *Worker) GetServer() *Server {
 	return worker.server
 }
 
-//
 func (worker *Worker) PreConsumeHandler() bool {
 	if worker.preConsumeHandler == nil {
 		return true
