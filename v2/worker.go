@@ -30,6 +30,7 @@ type Worker struct {
 	preTaskHandler    func(*tasks.Signature)
 	postTaskHandler   func(*tasks.Signature)
 	preConsumeHandler func(*Worker) bool
+	timeOutFunc       func(*tasks.Signature) int
 }
 
 var (
@@ -210,8 +211,12 @@ func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 	// Decrement the retry counter, when it reaches 0, we won't retry again
 	signature.RetryCount--
 
-	// Increase retry timeout
-	signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
+	if worker.timeOutFunc != nil {
+		signature.RetryTimeout = worker.timeOutFunc(signature)
+	} else {
+		// Increase retry timeout
+		signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
+	}
 
 	// Delay task by signature.RetryTimeout seconds
 	eta := time.Now().UTC().Add(time.Second * time.Duration(signature.RetryTimeout))
