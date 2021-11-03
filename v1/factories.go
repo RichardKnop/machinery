@@ -94,6 +94,12 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 		if strings.HasPrefix(cnf.Broker, "https://sqs") {
 			return sqsbroker.New(cnf), nil
 		}
+
+		const sqsPrefix = "sqs+"
+		if strings.HasPrefix(cnf.Broker, sqsPrefix) {
+			cnf.Broker = strings.TrimPrefix(cnf.Broker, sqsPrefix)
+			return sqsbroker.New(cnf), nil
+		}
 	}
 
 	if strings.HasPrefix(cnf.Broker, "gcppubsub://") {
@@ -176,6 +182,12 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 	}
 
 	if strings.HasPrefix(cnf.ResultBackend, "https://dynamodb") {
+		return dynamobackend.New(cnf), nil
+	}
+
+	const dynamodbPrefix = "dynamodb+"
+	if strings.HasPrefix(cnf.ResultBackend, dynamodbPrefix) {
+		cnf.ResultBackend = strings.TrimPrefix(cnf.ResultBackend, dynamodbPrefix)
 		return dynamobackend.New(cnf), nil
 	}
 
