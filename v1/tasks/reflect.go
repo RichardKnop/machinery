@@ -275,15 +275,26 @@ func getIntValue(theType string, value interface{}) (int64, error) {
 		if !ok {
 			return 0, typeConversionError(value, typesMap[theType].String())
 		}
-
+		
 		return n.Int64()
 	}
-
-	n, ok := value.(int64)
-	if !ok {
+	
+	var n int64
+	switch val := value.(type) {
+	case int:
+		n = int64(val)
+	case int8:
+		n = int64(val)
+	case int16:
+		n = int64(val)
+	case int32:
+		n = int64(val)
+	case int64:
+		n = val
+	default:
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
-
+	
 	return n, nil
 }
 
@@ -296,24 +307,29 @@ func getUintValue(theType string, value interface{}) (uint64, error) {
 		if !ok {
 			return 0, typeConversionError(value, typesMap[theType].String())
 		}
-
+		
 		intVal, err := n.Int64()
 		if err != nil {
 			return 0, err
 		}
-
+		
 		return uint64(intVal), nil
 	}
-
+	
 	var n uint64
 	switch value := value.(type) {
 	case uint64:
 		n = value
+	case uint32:
+		n = uint64(value)
+	case uint16:
+		n = uint64(value)
 	case uint8:
 		n = uint64(value)
 	default:
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
+	
 	return n, nil
 }
 
@@ -325,15 +341,20 @@ func getFloatValue(theType string, value interface{}) (float64, error) {
 		if !ok {
 			return 0, typeConversionError(value, typesMap[theType].String())
 		}
-
+		
 		return n.Float64()
 	}
-
-	f, ok := value.(float64)
-	if !ok {
+	
+	var f float64
+	switch value := value.(type) {
+	case float32:
+		f = float64(value)
+	case float64:
+		f = value
+	default:
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
-
+	
 	return f, nil
 }
 
