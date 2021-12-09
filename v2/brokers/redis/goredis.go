@@ -42,10 +42,10 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 
 	var password string
 	parts := strings.Split(addrs[0], "@")
-	if len(parts) == 2 {
+	if len(parts) >= 2 {
 		// with password
-		password = parts[0]
-		addrs[0] = parts[1]
+		password = strings.Join(parts[:len(parts)-1], "@")
+		addrs[0] = parts[len(parts)-1] // addr is the last one without @
 	}
 
 	ropt := &redis.UniversalOptions{
