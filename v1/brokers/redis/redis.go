@@ -96,6 +96,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	for i := 0; i < concurrency; i++ {
 		pool <- struct{}{}
 	}
+	closeGoroutineWhenReturn := make(chan int)
 
 	// A receiving goroutine keeps popping messages from the queue by BLPOP
 	// If the message is valid and can be unmarshaled into a proper structure
@@ -106,6 +107,9 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 		for {
 			select {
+			case <-closeGoroutineWhenReturn:
+				close(deliveries)
+				return
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.GetStopChan():
 				close(deliveries)
@@ -139,6 +143,8 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 		for {
 			select {
+			case <-closeGoroutineWhenReturn:
+				return
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.GetStopChan():
 				return
@@ -163,12 +169,20 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	}()
 
 	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
+		close(closeGoroutineWhenReturn)
+		for d := range deliveries {
+			b.requeueMessage(d, taskProcessor)
+		}
 		return b.GetRetry(), err
 	}
 
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()
 
+	close(closeGoroutineWhenReturn)
+	for d := range deliveries {
+		b.requeueMessage(d, taskProcessor)
+	}
 	return b.GetRetry(), nil
 }
 
