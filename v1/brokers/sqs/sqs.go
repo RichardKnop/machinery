@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -59,6 +60,9 @@ func New(cnf *config.Config) iface.Broker {
 
 // StartConsuming enters a loop and waits for incoming messages
 func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcessor iface.TaskProcessor) (bool, error) {
+	if concurrency < 1 {
+		concurrency = runtime.NumCPU() * 2
+	}
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
 	qURL := b.getQueueURL(taskProcessor)
 	//save it so that it can be used later when attempting to delete task
