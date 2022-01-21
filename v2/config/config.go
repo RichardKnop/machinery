@@ -33,7 +33,7 @@ var (
 		Kafka: &KafkaConfig{
 			Topic:                     "machinery_topic",
 			DelayedTasksTopic:         "machinery_delayed_topic",
-			DelayedTasksConsumePeriod: 5000,
+			DelayedTasksConsumePeriod: 500,
 		},
 		DynamoDB: &DynamoDBConfig{
 			TaskStatesTable: "task_states",
@@ -104,7 +104,7 @@ type KafkaConfig struct {
 	DelayedTasksTopic string `yaml:"delayed_tasks_topic" envconfig:"KAFKA_DELAYED_TASKS_TOPIC"`
 
 	// DelayedTasksConsumePeriod specifies the period in milliseconds when consume delayed tasks
-	// Default: 5000
+	// Default: 500
 	DelayedTasksConsumePeriod int `yaml:"delayed_tasks_consume_period" envconfig:"KAFKA_DELAYED_TASKS_CONSUME_PERIOD"`
 
 	// the interval at which offsets are committed to the broker. If 0, commits will be handled synchronously.
