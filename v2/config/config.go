@@ -30,6 +30,11 @@ var (
 			BindingKey:    "machinery_task",
 			PrefetchCount: 3,
 		},
+		Kafka: &KafkaConfig{
+			Topic:                     "machinery_topic",
+			DelayedTasksTopic:         "machinery_delayed_topic",
+			DelayedTasksConsumePeriod: 5000,
+		},
 		DynamoDB: &DynamoDBConfig{
 			TaskStatesTable: "task_states",
 			GroupMetasTable: "group_metas",
@@ -60,6 +65,7 @@ type Config struct {
 	ResultBackend           string           `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
 	ResultsExpireIn         int              `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
 	AMQP                    *AMQPConfig      `yaml:"amqp"`
+	Kafka                   *KafkaConfig     `yaml:"kafka"`
 	SQS                     *SQSConfig       `yaml:"sqs"`
 	Redis                   *RedisConfig     `yaml:"redis"`
 	GCPPubSub               *GCPPubSubConfig `yaml:"-" ignored:"true"`
@@ -85,6 +91,25 @@ type AMQPConfig struct {
 	BindingKey       string           `yaml:"binding_key" envconfig:"AMQP_BINDING_KEY"`
 	PrefetchCount    int              `yaml:"prefetch_count" envconfig:"AMQP_PREFETCH_COUNT"`
 	AutoDelete       bool             `yaml:"auto_delete" envconfig:"AMQP_AUTO_DELETE"`
+}
+
+// KafkaConfig wraps Kafka related configuration
+type KafkaConfig struct {
+	// Kafka topic for normal tasks
+	Topic string `yaml:"topic" envconfig:"KAFKA_TOPIC"`
+
+	ConsumerGroupId string `yaml:"consumer_group_id" envconfig:"KAFKA_CONSUMER_GROUP_ID"`
+
+	// Kafka topic for delayed tasks
+	DelayedTasksTopic string `yaml:"delayed_tasks_topic" envconfig:"KAFKA_DELAYED_TASKS_TOPIC"`
+
+	// DelayedTasksConsumePeriod specifies the period in milliseconds when consume delayed tasks
+	// Default: 5000
+	DelayedTasksConsumePeriod int `yaml:"delayed_tasks_consume_period" envconfig:"KAFKA_DELAYED_TASKS_CONSUME_PERIOD"`
+
+	// the interval at which offsets are committed to the broker. If 0, commits will be handled synchronously.
+	// default: 0
+	CommitInterval int `yaml:"commit_interval" envconfig:"KAFKA_COMMIT_INTERVAL"`
 }
 
 // DynamoDBConfig wraps DynamoDB related configuration
