@@ -15,7 +15,7 @@ import (
 	"github.com/RichardKnop/machinery/v2/log"
 	"github.com/RichardKnop/machinery/v2/tasks"
 
-	eagerbackend "github.com/RichardKnop/machinery/v2/backends/eager"
+	redisbackend "github.com/RichardKnop/machinery/v2/backends/redis"
 	kafkabroker "github.com/RichardKnop/machinery/v2/brokers/kafka"
 	exampletasks "github.com/RichardKnop/machinery/v2/example/tasks"
 	"github.com/RichardKnop/machinery/v2/example/tracers"
@@ -67,7 +67,7 @@ func main() {
 
 func startServer() (*machinery.Server, error) {
 	cnf := &config.Config{
-		Broker:          "amqp://guest:guest@localhost:5672/",
+		Broker:          "localhost:9092",
 		DefaultQueue:    "machinery_tasks",
 		ResultsExpireIn: 3600,
 		Kafka: &config.KafkaConfig{
@@ -79,7 +79,7 @@ func startServer() (*machinery.Server, error) {
 
 	// Create server instance
 	broker := kafkabroker.New(cnf)
-	backend := eagerbackend.New()
+	backend := redisbackend.NewGR(cnf, []string{"localhost:6379"}, 0)
 	lock := eagerlock.New()
 	server := machinery.NewServer(cnf, broker, backend, lock)
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -25,6 +26,8 @@ type KafkaBroker struct {
 	writer        *kafka.Writer
 	delayedReader *kafka.Reader
 	delayedWriter *kafka.Writer
+
+	consumePeriod time.Duration
 
 	consumingWG  sync.WaitGroup // wait group to make sure whole consumption completes
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes
@@ -55,6 +58,14 @@ func New(cnf *config.Config) *KafkaBroker {
 		}
 	}
 
+	consumePeriod := 500 // default poll period for delayed tasks
+	if cnf.Kafka != nil {
+		configuredConsumePeriod := cnf.Kafka.DelayedTasksConsumePeriod
+		if configuredConsumePeriod > 0 {
+			consumePeriod = configuredConsumePeriod
+		}
+	}
+
 	topic, delayedTasksTopic := cnf.Kafka.Topic, cnf.Kafka.DelayedTasksTopic
 	return &KafkaBroker{
 		Broker:        common.NewBroker(cnf),
@@ -62,6 +73,7 @@ func New(cnf *config.Config) *KafkaBroker {
 		writer:        kafka.NewWriter(writerCfg(topic)),
 		delayedReader: kafka.NewReader(readerCfg(delayedTasksTopic)),
 		delayedWriter: kafka.NewWriter(writerCfg(delayedTasksTopic)),
+		consumePeriod: time.Duration(consumePeriod) * time.Millisecond,
 	}
 }
 
@@ -90,7 +102,14 @@ func (b *KafkaBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 				close(deliveries)
 				return
 			default:
-				m, err := b.reader.ReadMessage(context.Background())
+				ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
+				defer cancelFunc()
+				m, err := b.reader.ReadMessage(ctx)
+
+				// timeout error, then retry
+				if errors.Is(err, context.DeadlineExceeded) {
+					continue
+				}
 				if err != nil {
 					errorsChan <- err
 					return
@@ -176,7 +195,6 @@ func (b *KafkaBroker) consumeOne(reader *kafka.Reader, message kafka.Message, ta
 	decoder := json.NewDecoder(bytes.NewReader(message.Value))
 	decoder.UseNumber()
 	if err := decoder.Decode(signature); err != nil {
-		reader.CommitMessages(context.Background(), message)
 		return errs.NewErrCouldNotUnmarshalTaskSignature(message.Value, err)
 	}
 
@@ -192,18 +210,17 @@ func (b *KafkaBroker) consumeOne(reader *kafka.Reader, message kafka.Message, ta
 }
 
 func (b *KafkaBroker) processDelayedTask() error {
-	consumePeriod := 500 // default poll period for delayed tasks
-	if b.GetConfig().Kafka != nil {
-		configuredConsumePeriod := b.GetConfig().Kafka.DelayedTasksConsumePeriod
-		if configuredConsumePeriod > 0 {
-			consumePeriod = configuredConsumePeriod
-		}
-	}
 
-	time.Sleep(time.Duration(consumePeriod) * time.Millisecond)
-	m, err := b.delayedReader.ReadMessage(context.Background())
+	time.Sleep(b.consumePeriod)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), b.consumePeriod)
+	defer cancelFunc()
+	m, err := b.delayedReader.ReadMessage(ctx)
 
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil
+		}
 		return err
 	}
 	defer b.delayedReader.CommitMessages(context.Background(), m)
@@ -233,12 +250,12 @@ func (b *KafkaBroker) Publish(ctx context.Context, signature *tasks.Signature) e
 		now := time.Now().UTC()
 
 		if signature.ETA.After(now) {
-			err = b.delayedWriter.WriteMessages(context.Background(), kafka.Message{Value: msg})
+			err = b.delayedWriter.WriteMessages(ctx, kafka.Message{Value: msg})
 			return err
 		}
 	}
 
-	err = b.writer.WriteMessages(context.Background(), kafka.Message{Value: msg})
+	err = b.writer.WriteMessages(ctx, kafka.Message{Value: msg})
 	return err
 }
 
