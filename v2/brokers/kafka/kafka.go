@@ -20,14 +20,31 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// The kafka message reader interface
+type MessageReader interface {
+	ReadMessage(ctx context.Context) (kafka.Message, error)
+
+	CommitMessages(ctx context.Context, msgs ...kafka.Message) error
+
+	Close() error
+}
+
+// The kafka message writer interface
+type MessageWriter interface {
+	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+
+	Close() error
+}
+
 type KafkaBroker struct {
 	common.Broker
-	reader        *kafka.Reader
-	writer        *kafka.Writer
-	delayedReader *kafka.Reader
-	delayedWriter *kafka.Writer
+	reader        MessageReader
+	writer        MessageWriter
+	delayedReader MessageReader
+	delayedWriter MessageWriter
 
-	consumePeriod time.Duration
+	consumePeriod  time.Duration
+	consumeTimeout time.Duration
 
 	consumingWG  sync.WaitGroup // wait group to make sure whole consumption completes
 	processingWG sync.WaitGroup // use wait group to make sure task processing completes
@@ -36,7 +53,7 @@ type KafkaBroker struct {
 
 type messageInfo struct {
 	message kafka.Message
-	reader  *kafka.Reader
+	reader  MessageReader
 }
 
 func New(cnf *config.Config) *KafkaBroker {
@@ -68,12 +85,13 @@ func New(cnf *config.Config) *KafkaBroker {
 
 	topic, delayedTasksTopic := cnf.Kafka.Topic, cnf.Kafka.DelayedTasksTopic
 	return &KafkaBroker{
-		Broker:        common.NewBroker(cnf),
-		reader:        kafka.NewReader(readerCfg(topic)),
-		writer:        kafka.NewWriter(writerCfg(topic)),
-		delayedReader: kafka.NewReader(readerCfg(delayedTasksTopic)),
-		delayedWriter: kafka.NewWriter(writerCfg(delayedTasksTopic)),
-		consumePeriod: time.Duration(consumePeriod) * time.Millisecond,
+		Broker:         common.NewBroker(cnf),
+		reader:         kafka.NewReader(readerCfg(topic)),
+		writer:         kafka.NewWriter(writerCfg(topic)),
+		delayedReader:  kafka.NewReader(readerCfg(delayedTasksTopic)),
+		delayedWriter:  kafka.NewWriter(writerCfg(delayedTasksTopic)),
+		consumePeriod:  time.Duration(consumePeriod) * time.Millisecond,
+		consumeTimeout: time.Second * 30,
 	}
 }
 
@@ -102,7 +120,7 @@ func (b *KafkaBroker) StartConsuming(consumerTag string, concurrency int, taskPr
 				close(deliveries)
 				return
 			default:
-				ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
+				ctx, cancelFunc := context.WithTimeout(context.Background(), b.consumeTimeout)
 				defer cancelFunc()
 				m, err := b.reader.ReadMessage(ctx)
 
@@ -187,7 +205,7 @@ func (b *KafkaBroker) consume(deliveries <-chan messageInfo, concurrency int, ta
 	}
 }
 
-func (b *KafkaBroker) consumeOne(reader *kafka.Reader, message kafka.Message, taskProcessor iface.TaskProcessor) error {
+func (b *KafkaBroker) consumeOne(reader MessageReader, message kafka.Message, taskProcessor iface.TaskProcessor) error {
 	defer reader.CommitMessages(context.Background(), message)
 
 	// Unmarshal message body into signature struct
@@ -213,7 +231,7 @@ func (b *KafkaBroker) processDelayedTask() error {
 
 	time.Sleep(b.consumePeriod)
 
-	ctx, cancelFunc := context.WithTimeout(context.Background(), b.consumePeriod)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), b.consumeTimeout)
 	defer cancelFunc()
 	m, err := b.delayedReader.ReadMessage(ctx)
 
