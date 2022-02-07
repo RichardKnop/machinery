@@ -48,6 +48,8 @@ type Signature struct {
 	Name           string
 	RoutingKey     string
 	ETA            *time.Time
+	ChainUUID	   string
+	ChainTaskCount int
 	GroupUUID      string
 	GroupTaskCount int
 	Args           []Arg

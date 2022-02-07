@@ -40,6 +40,18 @@ type GroupMeta struct {
 	TTL            int64     `bson:"ttl,omitempty"`
 }
 
+// ChainMeta stores useful metadata about tasks within the same group
+// E.g. UUIDs of all tasks which are used in order to check if all tasks
+// completed successfully or not and thus whether to trigger chord callback
+type ChainMeta struct {
+	ChainUUID      string    `bson:"_id"`
+	TaskUUIDs      []string  `bson:"task_uuids"`
+	ChordTriggered bool      `bson:"chord_triggered"`
+	Lock           bool      `bson:"lock"`
+	CreatedAt      time.Time `bson:"created_at"`
+	TTL            int64     `bson:"ttl,omitempty"`
+}
+
 // NewPendingTaskState ...
 func NewPendingTaskState(signature *Signature) *TaskState {
 	return &TaskState{
