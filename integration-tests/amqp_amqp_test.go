@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1"
+	"github.com/Michael-LiK/machinery/v1/config"
 )
 
 func TestAmqpAmqp(t *testing.T) {

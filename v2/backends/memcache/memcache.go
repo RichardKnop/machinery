@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/RichardKnop/machinery/v2/backends/iface"
-	"github.com/RichardKnop/machinery/v2/common"
-	"github.com/RichardKnop/machinery/v2/config"
-	"github.com/RichardKnop/machinery/v2/log"
-	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/Michael-LiK/machinery/v2/backends/iface"
+	"github.com/Michael-LiK/machinery/v2/common"
+	"github.com/Michael-LiK/machinery/v2/config"
+	"github.com/Michael-LiK/machinery/v2/log"
+	"github.com/Michael-LiK/machinery/v2/tasks"
 
 	gomemcache "github.com/bradfitz/gomemcache/memcache"
 )

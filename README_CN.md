@@ -1,21 +1,21 @@
-[1]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker.png
-[2]: https://raw.githubusercontent.com/RichardKnop/assets/master/machinery/example_worker_receives_tasks.png
+[1]: https://raw.githubusercontent.com/Michael-LiK/assets/master/machinery/example_worker.png
+[2]: https://raw.githubusercontent.com/Michael-LiK/assets/master/machinery/example_worker_receives_tasks.png
 [3]: http://patreon_public_assets.s3.amazonaws.com/sized/becomeAPatronBanner.png
 
 ## Machinery
 
 Machinery 是一个基于分布式消息传递的异步任务队列框架.
 
-[![Travis Status for RichardKnop/machinery](https://travis-ci.org/RichardKnop/machinery.svg?branch=master&label=linux+build)](https://travis-ci.org/RichardKnop/machinery)
-[![godoc for RichardKnop/machinery](https://godoc.org/github.com/nathany/looper?status.svg)](http://godoc.org/github.com/RichardKnop/machinery/v1)
-[![codecov for RichardKnop/machinery](https://codecov.io/gh/RichardKnop/machinery/branch/master/graph/badge.svg)](https://codecov.io/gh/RichardKnop/machinery)
+[![Travis Status for Michael-LiK/machinery](https://travis-ci.org/Michael-LiK/machinery.svg?branch=master&label=linux+build)](https://travis-ci.org/Michael-LiK/machinery)
+[![godoc for Michael-LiK/machinery](https://godoc.org/github.com/nathany/looper?status.svg)](http://godoc.org/github.com/Michael-LiK/machinery/v1)
+[![codecov for Michael-LiK/machinery](https://codecov.io/gh/Michael-LiK/machinery/branch/master/graph/badge.svg)](https://codecov.io/gh/Michael-LiK/machinery)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/RichardKnop/machinery)](https://goreportcard.com/report/github.com/RichardKnop/machinery)
-[![GolangCI](https://golangci.com/badges/github.com/RichardKnop/machinery.svg)](https://golangci.com)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Michael-LiK/machinery)](https://goreportcard.com/report/github.com/Michael-LiK/machinery)
+[![GolangCI](https://golangci.com/badges/github.com/Michael-LiK/machinery.svg)](https://golangci.com)
 [![OpenTracing Badge](https://img.shields.io/badge/OpenTracing-enabled-blue.svg)](http://opentracing.io)
 
-[![Sourcegraph for RichardKnop/machinery](https://sourcegraph.com/github.com/RichardKnop/machinery/-/badge.svg)](https://sourcegraph.com/github.com/RichardKnop/machinery?badge)
-[![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://richardknop.github.io/donate/)
+[![Sourcegraph for Michael-LiK/machinery](https://sourcegraph.com/github.com/Michael-LiK/machinery/-/badge.svg)](https://sourcegraph.com/github.com/Michael-LiK/machinery?badge)
+[![Donate Bitcoin](https://img.shields.io/badge/donate-bitcoin-orange.svg)](https://Michael-LiK.github.io/donate/)
 
 ---
 
@@ -67,10 +67,10 @@ Instead of factory, you will need to inject broker and backend objects to the se
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v2"
-  backendsiface "github.com/RichardKnop/machinery/v2/backends/iface"
-  brokersiface "github.com/RichardKnop/machinery/v2/brokers/iface"
-  locksiface "github.com/RichardKnop/machinery/v2/locks/iface"
+  "github.com/Michael-LiK/machinery/v2"
+  backendsiface "github.com/Michael-LiK/machinery/v2/backends/iface"
+  brokersiface "github.com/Michael-LiK/machinery/v2/brokers/iface"
+  locksiface "github.com/Michael-LiK/machinery/v2/locks/iface"
 )
 
 var broker brokersiface.Broker
@@ -85,13 +85,13 @@ server := machinery.NewServer(cnf, broker, backend, lock)
 将Machinery依赖添加到你的 $GOPATH/src:
 
 ```sh
-go get github.com/RichardKnop/machinery/v1
+go get github.com/Michael-LiK/machinery/v1
 ```
 
 或者使用实验版本 v2 release:
 
 ```sh
-go get github.com/RichardKnop/machinery/v2
+go get github.com/Michael-LiK/machinery/v2
 ```
 
 首先你需要定义一些任务. 可以浏览示例 `example/tasks/tasks.go` 这里有一些简单的例子.
@@ -313,7 +313,7 @@ amqp://[username:password@]@host[:port]
 
 1. `amqp://guest:guest@localhost:5672`
 
-> 请注意 AMQP 不被推荐作为结果存储使用. 详情见 [Keeping Results](https://github.com/RichardKnop/machinery#keeping-results)
+> 请注意 AMQP 不被推荐作为结果存储使用. 详情见 [Keeping Results](https://github.com/Michael-LiK/machinery#keeping-results)
 
 ##### MongoDB
 
@@ -393,7 +393,7 @@ type Interface interface {
 }
 ```
 
-然后就可以设置日志在你的安装代码中使用`Set` 方式，通过`github.com/RichardKnop/machinery/v1/log` 这个包:
+然后就可以设置日志在你的安装代码中使用`Set` 方式，通过`github.com/Michael-LiK/machinery/v1/log` 这个包:
 
 ```go
 log.Set(myCustomLogger)
@@ -405,8 +405,8 @@ log.Set(myCustomLogger)
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/config"
-  "github.com/RichardKnop/machinery/v1"
+  "github.com/Michael-LiK/machinery/v1/config"
+  "github.com/Michael-LiK/machinery/v1"
 )
 
 var cnf = &config.Config{
@@ -634,7 +634,7 @@ Machinery 在发送任务到broker前将任务编码为json.任务结果也将�
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/tasks"
+  "github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 signature := &tasks.Signature{
@@ -798,8 +798,8 @@ worker.SetErrorHandler(func (err error) {
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/tasks"
-  "github.com/RichardKnop/machinery/v1"
+  "github.com/Michael-LiK/machinery/v1/tasks"
+  "github.com/Michael-LiK/machinery/v1"
 )
 
 signature1 := tasks.Signature{
@@ -859,8 +859,8 @@ for _, asyncResult := range asyncResults {
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/tasks"
-  "github.com/RichardKnop/machinery/v1"
+  "github.com/Michael-LiK/machinery/v1/tasks"
+  "github.com/Michael-LiK/machinery/v1"
 )
 
 signature1 := tasks.Signature{
@@ -935,8 +935,8 @@ for _, result := range results {
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/tasks"
-  "github.com/RichardKnop/machinery/v1"
+  "github.com/Michael-LiK/machinery/v1/tasks"
+  "github.com/Michael-LiK/machinery/v1"
 )
 
 signature1 := tasks.Signature{
@@ -1021,7 +1021,7 @@ Machinery 现在支持安排定期任务和工作流。请参见下面的示例�
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/tasks"
+  "github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 signature := &tasks.Signature{
@@ -1047,8 +1047,8 @@ if err != nil {
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/tasks"
-  "github.com/RichardKnop/machinery/v1"
+  "github.com/Michael-LiK/machinery/v1/tasks"
+  "github.com/Michael-LiK/machinery/v1"
 )
 
 signature1 := tasks.Signature{
@@ -1090,8 +1090,8 @@ if err != nil {
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/tasks"
-  "github.com/RichardKnop/machinery/v1"
+  "github.com/Michael-LiK/machinery/v1/tasks"
+  "github.com/Michael-LiK/machinery/v1"
 )
 
 signature1 := tasks.Signature{
@@ -1143,8 +1143,8 @@ if err != nil {
 
 ```go
 import (
-  "github.com/RichardKnop/machinery/v1/tasks"
-  "github.com/RichardKnop/machinery/v1"
+  "github.com/Michael-LiK/machinery/v1/tasks"
+  "github.com/Michael-LiK/machinery/v1"
 )
 
 signature1 := tasks.Signature{
