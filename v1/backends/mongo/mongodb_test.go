@@ -13,6 +13,7 @@ import (
 
 var (
 	groupUUID = "123456"
+	chainUUID = "666666"
 	taskUUIDs = []string{"1", "2", "3"}
 )
 
@@ -32,6 +33,10 @@ func newBackend() (iface.Backend, error) {
 	}
 
 	if err := backend.InitGroup(groupUUID, taskUUIDs); err != nil {
+		return nil, err
+	}
+
+	if err := backend.InitChain(groupUUID, taskUUIDs); err != nil {
 		return nil, err
 	}
 	return backend, nil

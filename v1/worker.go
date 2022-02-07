@@ -302,7 +302,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 
 	// Defer purging of group meta queue if we are using AMQP backend
 	if worker.hasAMQPBackend() {
-		defer worker.server.GetBackend().PurgeGroupMeta(signature.GroupUUID)
+		defer worker.server.GetBackend(). PurgeGroupMeta(signature.GroupUUID)
 	}
 
 	// Trigger chord callback

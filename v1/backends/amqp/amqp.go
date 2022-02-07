@@ -44,6 +44,10 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
+	return nil
+}
+
 // GroupCompleted returns true if all tasks in a group finished
 // NOTE: Given AMQP limitation this will only return true if all finished
 // tasks were successful as we do not keep track of completed failed tasks

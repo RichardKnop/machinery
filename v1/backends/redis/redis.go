@@ -68,6 +68,31 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
+// InitGroup creates and saves a group meta data object
+func (b *Backend) InitChain(groupUUID string, taskUUIDs []string) error {
+	groupMeta := &tasks.GroupMeta{
+		GroupUUID: groupUUID,
+		TaskUUIDs: taskUUIDs,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	encoded, err := json.Marshal(groupMeta)
+	if err != nil {
+		return err
+	}
+
+	conn := b.open()
+	defer conn.Close()
+
+	expiration := int64(b.getExpiration().Seconds())
+	_, err = conn.Do("SET", groupUUID, encoded, "EX", expiration)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // GroupCompleted returns true if all tasks in a group finished
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	conn := b.open()

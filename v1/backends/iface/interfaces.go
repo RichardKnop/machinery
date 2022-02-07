@@ -11,6 +11,8 @@ type Backend interface {
 	GroupCompleted(groupUUID string, groupTaskCount int) (bool, error)
 	GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error)
 	TriggerChord(groupUUID string) (bool, error)
+	// Chain related functions
+	InitChain(chainUUID string, taskUUIDs []string) error
 
 	// Setting / getting task state
 	SetStatePending(signature *tasks.Signature) error

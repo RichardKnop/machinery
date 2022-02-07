@@ -50,6 +50,17 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return err
 }
 
+// InitGroup creates and saves a group meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
+	groupMeta := &tasks.ChainMeta{
+		ChainUUID: chainUUID,
+		TaskUUIDs: taskUUIDs,
+		CreatedAt: time.Now().UTC(),
+	}
+	_, err := b.groupMetasCollection().InsertOne(context.Background(), groupMeta)
+	return err
+}
+
 // GroupCompleted returns true if all tasks in a group finished
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)
