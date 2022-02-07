@@ -78,6 +78,32 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
+// InitChain ...
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
+	meta := tasks.ChainMeta{
+		ChainUUID: chainUUID,
+		TaskUUIDs: taskUUIDs,
+		CreatedAt: time.Now().UTC(),
+		TTL:       b.getExpirationTime(),
+	}
+	av, err := dynamodbattribute.MarshalMap(meta)
+	if err != nil {
+		log.ERROR.Printf("Error when marshaling Dynamodb attributes. Err: %v", err)
+		return err
+	}
+	input := &dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String(b.cnf.DynamoDB.GroupMetasTable),
+	}
+	_, err = b.client.PutItem(input)
+
+	if err != nil {
+		log.ERROR.Printf("Got error when calling PutItem: %v; Error: %v", input, err)
+		return err
+	}
+	return nil
+}
+
 // GroupCompleted ...
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	groupMeta, err := b.getGroupMeta(groupUUID)

@@ -59,6 +59,12 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
+	b.groups[chainUUID] = struct{}{}
+	return nil
+}
+
+
 // GroupCompleted returns true (always)
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
 	_, ok := b.groups[groupUUID]
