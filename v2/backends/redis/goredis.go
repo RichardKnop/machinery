@@ -33,7 +33,7 @@ type BackendGR struct {
 }
 
 // NewGR creates Backend instance
-func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
+func newGR(cnf *config.Config, addrs []string, db int, isCluster bool) iface.Backend {
 	b := &BackendGR{
 		Backend: common.NewBackend(cnf),
 	}
@@ -53,9 +53,21 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 		ropt.MasterName = cnf.Redis.MasterName
 	}
 
-	b.rclient = redis.NewUniversalClient(ropt)
+	if isCluster {
+		b.rclient = redis.NewClusterClient(ropt.Cluster())
+	} else {
+		b.rclient = redis.NewUniversalClient(ropt)
+	}
 	b.redsync = redsync.New(redsyncgoredis.NewPool(b.rclient))
 	return b
+}
+
+func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
+	return newGR(cnf, addrs, db, false)
+}
+
+func NewCluster(cnf *config.Config, addrs []string) iface.Backend {
+	return newGR(cnf, addrs, 0, true)
 }
 
 // InitGroup creates and saves a group meta data object
