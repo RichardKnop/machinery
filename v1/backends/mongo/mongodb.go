@@ -58,7 +58,7 @@ func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
 		TaskUUIDs: taskUUIDs,
 		CreatedAt: time.Now().UTC(),
 	}
-	_, err := b.groupMetasCollection().InsertOne(context.Background(), chainMeta)
+	_, err := b.chainMetasCollection().InsertOne(context.Background(), chainMeta)
 	return err
 }
 

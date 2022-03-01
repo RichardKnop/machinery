@@ -26,6 +26,15 @@ type Chord struct {
 }
 
 // GetUUIDs returns slice of task UUIDS
+func (chain *Chain) GetUUIDs() []string {
+	taskUUIDs := make([]string, len(chain.Tasks))
+	for i, signature := range chain.Tasks {
+		taskUUIDs[i] = signature.UUID
+	}
+	return taskUUIDs
+}
+
+// GetUUIDs returns slice of task UUIDS
 func (group *Group) GetUUIDs() []string {
 	taskUUIDs := make([]string, len(group.Tasks))
 	for i, signature := range group.Tasks {

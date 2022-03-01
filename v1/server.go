@@ -234,6 +234,14 @@ func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, e
 		return nil, err
 	}
 
+	if server.backend == nil {
+		return nil, errors.New("Result backend required")
+	}
+
+	server.backend.InitChain(chain.ChainUUId, chain.GetUUIDs())
+
+
+
 	return result.NewChainAsyncResult(chain.Tasks, server.backend), nil
 }
 
