@@ -68,15 +68,16 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
-// InitGroup creates and saves a group meta data object
-func (b *Backend) InitChain(groupUUID string, taskUUIDs []string) error {
-	groupMeta := &tasks.GroupMeta{
-		GroupUUID: groupUUID,
+// InitGroup creates and saves a chain meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	chainMeta := &tasks.ChainMeta{
+		ChainUUID: chainUUID,
 		TaskUUIDs: taskUUIDs,
+		MainId:    mainId,
 		CreatedAt: time.Now().UTC(),
 	}
 
-	encoded, err := json.Marshal(groupMeta)
+	encoded, err := json.Marshal(chainMeta)
 	if err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func (b *Backend) InitChain(groupUUID string, taskUUIDs []string) error {
 	defer conn.Close()
 
 	expiration := int64(b.getExpiration().Seconds())
-	_, err = conn.Do("SET", groupUUID, encoded, "EX", expiration)
+	_, err = conn.Do("SET", chainUUID, encoded, "EX", expiration)
 	if err != nil {
 		return err
 	}

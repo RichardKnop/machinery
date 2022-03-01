@@ -52,10 +52,11 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 }
 
 // InitGroup creates and saves a group meta data object
-func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
 	chainMeta := &tasks.ChainMeta{
 		ChainUUID: chainUUID,
 		TaskUUIDs: taskUUIDs,
+		MainId:    mainId,
 		CreatedAt: time.Now().UTC(),
 	}
 	_, err := b.chainMetasCollection().InsertOne(context.Background(), chainMeta)

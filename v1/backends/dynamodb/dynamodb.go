@@ -79,10 +79,11 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 }
 
 // InitChain ...
-func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
 	meta := tasks.ChainMeta{
 		ChainUUID: chainUUID,
 		TaskUUIDs: taskUUIDs,
+		MainId:    mainId,
 		CreatedAt: time.Now().UTC(),
 		TTL:       b.getExpirationTime(),
 	}

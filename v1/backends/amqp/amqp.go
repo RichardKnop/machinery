@@ -44,7 +44,8 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
-func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
+// InitChain creates and saves a chain meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
 	return nil
 }
 

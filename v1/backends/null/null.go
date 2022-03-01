@@ -43,6 +43,8 @@ func (e ErrTasknotFound) Error() string {
 type Backend struct {
 	common.Backend
 	groups map[string]struct{}
+	chains map[string]struct{}
+
 }
 
 // New creates NullBackend instance
@@ -59,8 +61,8 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
-func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
-	b.groups[chainUUID] = struct{}{}
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	b.chains[chainUUID] = struct{}{}
 	return nil
 }
 

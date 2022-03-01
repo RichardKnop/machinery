@@ -45,6 +45,7 @@ type GroupMeta struct {
 // completed successfully or not and thus whether to trigger chord callback
 type ChainMeta struct {
 	ChainUUID      string    `bson:"_id"`
+	MainId         string    `bson:"main_id"`
 	TaskUUIDs      []string  `bson:"task_uuids"`
 	ChordTriggered bool      `bson:"chord_triggered"`
 	Lock           bool      `bson:"lock"`

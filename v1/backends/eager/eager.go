@@ -71,8 +71,8 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	return nil
 }
 
-// InitChain creates and saves a group meta data object
-func (b *Backend) InitChain(chainUUID string, taskUUIDs []string) error {
+// InitChain creates and saves a chain meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
 	tasks := make([]string, 0, len(taskUUIDs))
 	// copy every task
 	tasks = append(tasks, taskUUIDs...)

@@ -218,17 +218,17 @@ func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult,
 }
 
 // SendChainWithContext will inject the trace context in all the signature headers before publishing it
-func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain) (*result.ChainAsyncResult, error) {
+func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain, mainId string) (*result.ChainAsyncResult, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "SendChain", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChainTag)
 	defer span.Finish()
 
 	tracing.AnnotateSpanWithChainInfo(span, chain)
 
-	return server.SendChain(chain)
+	return server.SendChain(chain, mainId)
 }
 
 // SendChain triggers a chain of tasks
-func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, error) {
+func (server *Server) SendChain(chain *tasks.Chain, mainId string) (*result.ChainAsyncResult, error) {
 	_, err := server.SendTask(chain.Tasks[0])
 	if err != nil {
 		return nil, err
@@ -238,9 +238,7 @@ func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, e
 		return nil, errors.New("Result backend required")
 	}
 
-	server.backend.InitChain(chain.ChainUUId, chain.GetUUIDs())
-
-
+	server.backend.InitChain(chain.ChainUUId, chain.GetUUIDs(), mainId)
 
 	return result.NewChainAsyncResult(chain.Tasks, server.backend), nil
 }

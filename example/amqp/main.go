@@ -404,7 +404,7 @@ func send() error {
 		return fmt.Errorf("Error creating chain: %s", err)
 	}
 
-	chainAsyncResult, err := server.SendChainWithContext(ctx, chain)
+	chainAsyncResult, err := server.SendChainWithContext(ctx, chain, " ")
 	if err != nil {
 		return fmt.Errorf("Could not send chain: %s", err.Error())
 	}
