@@ -36,7 +36,7 @@ func newBackend() (iface.Backend, error) {
 		return nil, err
 	}
 
-	if err := backend.InitChain(groupUUID, taskUUIDs); err != nil {
+	if err := backend.InitChain(chainUUID, taskUUIDs); err != nil {
 		return nil, err
 	}
 	return backend, nil
