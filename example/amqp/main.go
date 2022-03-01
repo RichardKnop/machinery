@@ -10,13 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/urfave/cli"
 
-	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 
-	exampletasks "github.com/RichardKnop/machinery/example/tasks"
-	tracers "github.com/RichardKnop/machinery/example/tracers"
+	exampletasks "github.com/Michael-LiK/machinery/example/tasks"
+	tracers "github.com/Michael-LiK/machinery/example/tracers"
 	opentracing "github.com/opentracing/opentracing-go"
 	opentracing_log "github.com/opentracing/opentracing-go/log"
 )
@@ -404,7 +404,7 @@ func send() error {
 		return fmt.Errorf("Error creating chain: %s", err)
 	}
 
-	chainAsyncResult, err := server.SendChainWithContext(ctx, chain)
+	chainAsyncResult, err := server.SendChainWithContext(ctx, chain, " ")
 	if err != nil {
 		return fmt.Errorf("Could not send chain: %s", err.Error())
 	}

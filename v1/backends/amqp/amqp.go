@@ -20,11 +20,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/common"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 	"github.com/streadway/amqp"
 )
 
@@ -41,6 +41,11 @@ func New(cnf *config.Config) iface.Backend {
 
 // InitGroup creates and saves a group meta data object
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
+	return nil
+}
+
+// InitChain creates and saves a chain meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
 	return nil
 }
 

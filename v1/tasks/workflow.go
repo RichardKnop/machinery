@@ -8,7 +8,8 @@ import (
 
 // Chain creates a chain of tasks to be executed one after another
 type Chain struct {
-	Tasks []*Signature
+	ChainUUId string
+	Tasks     []*Signature
 }
 
 // Group creates a set of tasks to be executed in parallel
@@ -25,6 +26,15 @@ type Chord struct {
 }
 
 // GetUUIDs returns slice of task UUIDS
+func (chain *Chain) GetUUIDs() []string {
+	taskUUIDs := make([]string, len(chain.Tasks))
+	for i, signature := range chain.Tasks {
+		taskUUIDs[i] = signature.UUID
+	}
+	return taskUUIDs
+}
+
+// GetUUIDs returns slice of task UUIDS
 func (group *Group) GetUUIDs() []string {
 	taskUUIDs := make([]string, len(group.Tasks))
 	for i, signature := range group.Tasks {
@@ -37,11 +47,16 @@ func (group *Group) GetUUIDs() []string {
 // results unless task signatures are set to be immutable
 func NewChain(signatures ...*Signature) (*Chain, error) {
 	// Auto generate task UUIDs if needed
+	chainUUID := uuid.New().String()
+	chainID := fmt.Sprintf("chain_%v", chainUUID)
+
 	for _, signature := range signatures {
 		if signature.UUID == "" {
 			signatureID := uuid.New().String()
 			signature.UUID = fmt.Sprintf("task_%v", signatureID)
 		}
+		signature.ChainUUID = chainID
+		signature.ChainTaskCount = len(signatures)
 	}
 
 	for i := len(signatures) - 1; i > 0; i-- {
@@ -50,7 +65,7 @@ func NewChain(signatures ...*Signature) (*Chain, error) {
 		}
 	}
 
-	chain := &Chain{Tasks: signatures}
+	chain := &Chain{ChainUUId: chainID, Tasks: signatures}
 
 	return chain, nil
 }

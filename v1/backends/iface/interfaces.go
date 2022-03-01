@@ -1,7 +1,7 @@
 package iface
 
 import (
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 // Backend - a common interface for all result backends
@@ -11,6 +11,8 @@ type Backend interface {
 	GroupCompleted(groupUUID string, groupTaskCount int) (bool, error)
 	GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error)
 	TriggerChord(groupUUID string) (bool, error)
+	// Chain related functions
+	InitChain(chainUUID string, taskUUIDs []string, mainId string) error
 
 	// Setting / getting task state
 	SetStatePending(signature *tasks.Signature) error

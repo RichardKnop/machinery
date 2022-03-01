@@ -2,7 +2,7 @@ package tasks
 
 import (
 	"fmt"
-	"github.com/RichardKnop/machinery/v1/utils"
+	"github.com/Michael-LiK/machinery/v1/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,6 +48,9 @@ type Signature struct {
 	Name           string
 	RoutingKey     string
 	ETA            *time.Time
+	Index          int
+	ChainUUID      string
+	ChainTaskCount int
 	GroupUUID      string
 	GroupTaskCount int
 	Args           []Arg

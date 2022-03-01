@@ -11,12 +11,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/backends/result"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1"
+	"github.com/Michael-LiK/machinery/v1/backends/result"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 
-	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
+	brokersiface "github.com/Michael-LiK/machinery/v1/brokers/iface"
 )
 
 type ascendingInt64s []int64

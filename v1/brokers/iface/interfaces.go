@@ -3,8 +3,8 @@ package iface
 import (
 	"context"
 
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 // Broker - a common interface for all brokers

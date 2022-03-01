@@ -8,11 +8,11 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/common"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -57,6 +57,33 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	meta := tasks.GroupMeta{
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
+		CreatedAt: time.Now().UTC(),
+		TTL:       b.getExpirationTime(),
+	}
+	av, err := dynamodbattribute.MarshalMap(meta)
+	if err != nil {
+		log.ERROR.Printf("Error when marshaling Dynamodb attributes. Err: %v", err)
+		return err
+	}
+	input := &dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String(b.cnf.DynamoDB.GroupMetasTable),
+	}
+	_, err = b.client.PutItem(input)
+
+	if err != nil {
+		log.ERROR.Printf("Got error when calling PutItem: %v; Error: %v", input, err)
+		return err
+	}
+	return nil
+}
+
+// InitChain ...
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	meta := tasks.ChainMeta{
+		ChainUUID: chainUUID,
+		TaskUUIDs: taskUUIDs,
+		MainId:    mainId,
 		CreatedAt: time.Now().UTC(),
 		TTL:       b.getExpirationTime(),
 	}

@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/common"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 
 	gomemcache "github.com/bradfitz/gomemcache/memcache"
 )
@@ -44,6 +44,27 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 
 	return b.getClient().Set(&gomemcache.Item{
 		Key:        groupUUID,
+		Value:      encoded,
+		Expiration: b.getExpirationTimestamp(),
+	})
+}
+
+// InitChain creates and saves a chain meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	chainMeta := &tasks.ChainMeta{
+		ChainUUID: chainUUID,
+		TaskUUIDs: taskUUIDs,
+		MainId:    mainId,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	encoded, err := json.Marshal(&chainMeta)
+	if err != nil {
+		return err
+	}
+
+	return b.getClient().Set(&gomemcache.Item{
+		Key:        chainUUID,
 		Value:      encoded,
 		Expiration: b.getExpirationTimestamp(),
 	})

@@ -11,11 +11,11 @@ import (
 	redsyncredis "github.com/go-redsync/redsync/v4/redis/redigo"
 	"github.com/gomodule/redigo/redis"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/common"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 // Backend represents a Redis result backend
@@ -61,6 +61,32 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 
 	expiration := int64(b.getExpiration().Seconds())
 	_, err = conn.Do("SET", groupUUID, encoded, "EX", expiration)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// InitGroup creates and saves a chain meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	chainMeta := &tasks.ChainMeta{
+		ChainUUID: chainUUID,
+		TaskUUIDs: taskUUIDs,
+		MainId:    mainId,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	encoded, err := json.Marshal(chainMeta)
+	if err != nil {
+		return err
+	}
+
+	conn := b.open()
+	defer conn.Close()
+
+	expiration := int64(b.getExpiration().Seconds())
+	_, err = conn.Do("SET", chainUUID, encoded, "EX", expiration)
 	if err != nil {
 		return err
 	}

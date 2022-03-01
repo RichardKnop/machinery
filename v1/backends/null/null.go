@@ -3,10 +3,10 @@ package null
 import (
 	"fmt"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/common"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 // ErrGroupNotFound ...
@@ -43,6 +43,8 @@ func (e ErrTasknotFound) Error() string {
 type Backend struct {
 	common.Backend
 	groups map[string]struct{}
+	chains map[string]struct{}
+
 }
 
 // New creates NullBackend instance
@@ -58,6 +60,12 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	b.groups[groupUUID] = struct{}{}
 	return nil
 }
+
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	b.chains[chainUUID] = struct{}{}
+	return nil
+}
+
 
 // GroupCompleted returns true (always)
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {

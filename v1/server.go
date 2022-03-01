@@ -10,17 +10,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 
-	"github.com/RichardKnop/machinery/v1/backends/result"
-	"github.com/RichardKnop/machinery/v1/brokers/eager"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/machinery/v1/tracing"
-	"github.com/RichardKnop/machinery/v1/utils"
+	"github.com/Michael-LiK/machinery/v1/backends/result"
+	"github.com/Michael-LiK/machinery/v1/brokers/eager"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/tracing"
+	"github.com/Michael-LiK/machinery/v1/utils"
 
-	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
-	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
-	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
+	backendsiface "github.com/Michael-LiK/machinery/v1/backends/iface"
+	brokersiface "github.com/Michael-LiK/machinery/v1/brokers/iface"
+	lockiface "github.com/Michael-LiK/machinery/v1/locks/iface"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -218,21 +218,27 @@ func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult,
 }
 
 // SendChainWithContext will inject the trace context in all the signature headers before publishing it
-func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain) (*result.ChainAsyncResult, error) {
+func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain, mainId string) (*result.ChainAsyncResult, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "SendChain", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChainTag)
 	defer span.Finish()
 
 	tracing.AnnotateSpanWithChainInfo(span, chain)
 
-	return server.SendChain(chain)
+	return server.SendChain(chain, mainId)
 }
 
 // SendChain triggers a chain of tasks
-func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, error) {
+func (server *Server) SendChain(chain *tasks.Chain, mainId string) (*result.ChainAsyncResult, error) {
 	_, err := server.SendTask(chain.Tasks[0])
 	if err != nil {
 		return nil, err
 	}
+
+	if server.backend == nil {
+		return nil, errors.New("Result backend required")
+	}
+
+	server.backend.InitChain(chain.ChainUUId, chain.GetUUIDs(), mainId)
 
 	return result.NewChainAsyncResult(chain.Tasks, server.backend), nil
 }
@@ -398,7 +404,7 @@ func (server *Server) RegisterPeriodicChain(spec, name string, signatures ...*ta
 		}
 
 		//send task
-		_, err = server.SendChain(chain)
+		_, err = server.SendChain(chain,"")
 		if err != nil {
 			log.ERROR.Printf("periodic task failed. task name is: %s. error is %s", name, err.Error())
 		}

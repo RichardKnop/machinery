@@ -12,11 +12,11 @@ import (
 	"github.com/go-redsync/redsync/v4"
 	redsyncgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v8"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/common"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 // BackendGR represents a Redis result backend
@@ -38,10 +38,10 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 		Backend: common.NewBackend(cnf),
 	}
 	parts := strings.Split(addrs[0], "@")
-	if len(parts) >= 2 {
+	if len(parts) == 2 {
 		// with passwrod
-		b.password = strings.Join(parts[:len(parts)-1], "@")
-		addrs[0] = parts[len(parts)-1] // addr is the last one without @
+		b.password = parts[0]
+		addrs[0] = parts[1]
 	}
 
 	ropt := &redis.UniversalOptions{
@@ -78,6 +78,29 @@ func (b *BackendGR) InitGroup(groupUUID string, taskUUIDs []string) error {
 
 	expiration := b.getExpiration()
 	err = b.rclient.Set(context.Background(), groupUUID, encoded, expiration).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// InitChain creates and saves a group meta data object
+func (b *BackendGR) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	chianMeta := &tasks.ChainMeta{
+		ChainUUID: chainUUID,
+		TaskUUIDs: taskUUIDs,
+		MainId:    mainId,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	encoded, err := json.Marshal(chianMeta)
+	if err != nil {
+		return err
+	}
+
+	expiration := b.getExpiration()
+	err = b.rclient.Set(context.Background(), chainUUID, encoded, expiration).Err()
 	if err != nil {
 		return err
 	}

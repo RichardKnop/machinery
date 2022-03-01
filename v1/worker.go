@@ -12,12 +12,12 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	
-	"github.com/RichardKnop/machinery/v1/backends/amqp"
-	"github.com/RichardKnop/machinery/v1/brokers/errs"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/retry"
-	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/machinery/v1/tracing"
+	"github.com/Michael-LiK/machinery/v1/backends/amqp"
+	"github.com/Michael-LiK/machinery/v1/brokers/errs"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/retry"
+	"github.com/Michael-LiK/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/tracing"
 )
 
 // Worker represents a single worker process
@@ -302,7 +302,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 
 	// Defer purging of group meta queue if we are using AMQP backend
 	if worker.hasAMQPBackend() {
-		defer worker.server.GetBackend().PurgeGroupMeta(signature.GroupUUID)
+		defer worker.server.GetBackend(). PurgeGroupMeta(signature.GroupUUID)
 	}
 
 	// Trigger chord callback

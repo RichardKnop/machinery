@@ -4,15 +4,16 @@ import (
 	"os"
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/backends/mongo"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/backends/mongo"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	groupUUID = "123456"
+	chainUUID = "666666"
 	taskUUIDs = []string{"1", "2", "3"}
 )
 
@@ -32,6 +33,10 @@ func newBackend() (iface.Backend, error) {
 	}
 
 	if err := backend.InitGroup(groupUUID, taskUUIDs); err != nil {
+		return nil, err
+	}
+
+	if err := backend.InitChain(chainUUID, taskUUIDs); err != nil {
 		return nil, err
 	}
 	return backend, nil

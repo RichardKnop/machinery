@@ -13,11 +13,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/common"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/log"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 // Backend represents a MongoDB result backend
@@ -26,6 +26,7 @@ type Backend struct {
 	client *mongo.Client
 	tc     *mongo.Collection
 	gmc    *mongo.Collection
+	cmc    *mongo.Collection
 	once   sync.Once
 }
 
@@ -47,6 +48,18 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 		CreatedAt: time.Now().UTC(),
 	}
 	_, err := b.groupMetasCollection().InsertOne(context.Background(), groupMeta)
+	return err
+}
+
+// InitGroup creates and saves a group meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	chainMeta := &tasks.ChainMeta{
+		ChainUUID: chainUUID,
+		TaskUUIDs: taskUUIDs,
+		MainId:    mainId,
+		CreatedAt: time.Now().UTC(),
+	}
+	_, err := b.chainMetasCollection().InsertOne(context.Background(), chainMeta)
 	return err
 }
 
@@ -279,6 +292,14 @@ func (b *Backend) groupMetasCollection() *mongo.Collection {
 	return b.gmc
 }
 
+func (b *Backend) chainMetasCollection() *mongo.Collection {
+	b.once.Do(func() {
+		b.connect()
+	})
+
+	return b.cmc
+}
+
 // connect creates the underlying mgo connection if it doesn't exist
 // creates required indexes for our collections
 func (b *Backend) connect() error {
@@ -296,6 +317,7 @@ func (b *Backend) connect() error {
 
 	b.tc = b.client.Database(database).Collection("tasks")
 	b.gmc = b.client.Database(database).Collection("group_metas")
+	b.cmc = b.client.Database(database).Collection("chain_metas")
 
 	err = b.createMongoIndexes(database)
 	if err != nil {

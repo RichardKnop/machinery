@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Michael-LiK/machinery/v1/backends/iface"
+	"github.com/Michael-LiK/machinery/v1/common"
+	"github.com/Michael-LiK/machinery/v1/config"
+	"github.com/Michael-LiK/machinery/v1/tasks"
 )
 
 // ErrGroupNotFound ...
@@ -46,6 +46,7 @@ func (e ErrTasknotFound) Error() string {
 type Backend struct {
 	common.Backend
 	groups     map[string][]string
+	chains 	   map[string][]string
 	tasks      map[string][]byte
 	stateMutex sync.Mutex
 }
@@ -55,6 +56,7 @@ func New() iface.Backend {
 	return &Backend{
 		Backend: common.NewBackend(new(config.Config)),
 		groups:  make(map[string][]string),
+		chains:  make(map[string][]string),
 		tasks:   make(map[string][]byte),
 	}
 }
@@ -66,6 +68,16 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	tasks = append(tasks, taskUUIDs...)
 
 	b.groups[groupUUID] = tasks
+	return nil
+}
+
+// InitChain creates and saves a chain meta data object
+func (b *Backend) InitChain(chainUUID string, taskUUIDs []string, mainId string) error {
+	tasks := make([]string, 0, len(taskUUIDs))
+	// copy every task
+	tasks = append(tasks, taskUUIDs...)
+
+	b.chains[chainUUID] = tasks
 	return nil
 }
 
