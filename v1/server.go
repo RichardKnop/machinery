@@ -404,7 +404,7 @@ func (server *Server) RegisterPeriodicChain(spec, name string, signatures ...*ta
 		}
 
 		//send task
-		_, err = server.SendChain(chain)
+		_, err = server.SendChain(chain,"")
 		if err != nil {
 			log.ERROR.Printf("periodic task failed. task name is: %s. error is %s", name, err.Error())
 		}
