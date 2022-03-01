@@ -9,7 +9,7 @@ import (
 // Chain creates a chain of tasks to be executed one after another
 type Chain struct {
 	ChainUUId string
-	Tasks []*Signature
+	Tasks     []*Signature
 }
 
 // Group creates a set of tasks to be executed in parallel
@@ -65,7 +65,7 @@ func NewChain(signatures ...*Signature) (*Chain, error) {
 		}
 	}
 
-	chain := &Chain{ChainUUId: chainID,Tasks: signatures}
+	chain := &Chain{ChainUUId: chainID, Tasks: signatures}
 
 	return chain, nil
 }
