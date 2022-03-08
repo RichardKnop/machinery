@@ -294,13 +294,23 @@ func (b *Backend) connect() error {
 		database = b.GetConfig().MongoDB.Database
 	}
 
-	b.tc = b.client.Database(database).Collection("tasks")
-	b.gmc = b.client.Database(database).Collection("group_metas")
-
-	err = b.createMongoIndexes(database)
-	if err != nil {
-		return err
+	taskColl := "tasks"
+	if b.GetConfig().MongoDB != nil {
+		taskColl = b.GetConfig().MongoDB.NoticeTasksColl
 	}
+
+	groupMetaColl := "group_metas"
+	if b.GetConfig().MongoDB != nil {
+		groupMetaColl = b.GetConfig().MongoDB.NoticeGroupMetas
+	}
+
+	b.tc = b.client.Database(database).Collection(taskColl)
+	b.gmc = b.client.Database(database).Collection(groupMetaColl)
+
+	//err = b.createMongoIndexes(database)
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }
 
