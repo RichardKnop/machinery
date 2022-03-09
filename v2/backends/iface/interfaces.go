@@ -1,7 +1,7 @@
 package iface
 
 import (
-	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/Nimbleway/machinery/v2/tasks"
 )
 
 // Backend - a common interface for all result backends

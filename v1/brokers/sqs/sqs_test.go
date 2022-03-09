@@ -10,10 +10,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/brokers/sqs"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/retry"
+	"github.com/Nimbleway/machinery/v1"
+	"github.com/Nimbleway/machinery/v1/brokers/sqs"
+	"github.com/Nimbleway/machinery/v1/config"
+	"github.com/Nimbleway/machinery/v1/retry"
 
 	awssqs "github.com/aws/aws-sdk-go/service/sqs"
 )

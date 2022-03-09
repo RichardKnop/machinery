@@ -8,19 +8,19 @@ import (
 	"testing"
 	"unsafe"
 
-	machinery "github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
+	machinery "github.com/Nimbleway/machinery/v1"
+	"github.com/Nimbleway/machinery/v1/config"
 	"github.com/stretchr/testify/assert"
 
-	amqpbroker "github.com/RichardKnop/machinery/v1/brokers/amqp"
-	brokeriface "github.com/RichardKnop/machinery/v1/brokers/iface"
-	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
-	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
+	amqpbroker "github.com/Nimbleway/machinery/v1/brokers/amqp"
+	brokeriface "github.com/Nimbleway/machinery/v1/brokers/iface"
+	redisbroker "github.com/Nimbleway/machinery/v1/brokers/redis"
+	sqsbroker "github.com/Nimbleway/machinery/v1/brokers/sqs"
 
-	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
-	memcachebackend "github.com/RichardKnop/machinery/v1/backends/memcache"
-	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
-	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
+	amqpbackend "github.com/Nimbleway/machinery/v1/backends/amqp"
+	memcachebackend "github.com/Nimbleway/machinery/v1/backends/memcache"
+	mongobackend "github.com/Nimbleway/machinery/v1/backends/mongo"
+	redisbackend "github.com/Nimbleway/machinery/v1/backends/redis"
 )
 
 var (

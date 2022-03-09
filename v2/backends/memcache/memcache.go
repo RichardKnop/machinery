@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/RichardKnop/machinery/v2/backends/iface"
-	"github.com/RichardKnop/machinery/v2/common"
-	"github.com/RichardKnop/machinery/v2/config"
-	"github.com/RichardKnop/machinery/v2/log"
-	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/Nimbleway/machinery/v2/backends/iface"
+	"github.com/Nimbleway/machinery/v2/common"
+	"github.com/Nimbleway/machinery/v2/config"
+	"github.com/Nimbleway/machinery/v2/log"
+	"github.com/Nimbleway/machinery/v2/tasks"
 
 	gomemcache "github.com/bradfitz/gomemcache/memcache"
 )

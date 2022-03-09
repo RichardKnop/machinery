@@ -11,7 +11,7 @@ import (
 	opentracing_ext "github.com/opentracing/opentracing-go/ext"
 	opentracing_log "github.com/opentracing/opentracing-go/log"
 
-	"github.com/RichardKnop/machinery/v2/log"
+	"github.com/Nimbleway/machinery/v2/log"
 )
 
 // ErrTaskPanicked ...

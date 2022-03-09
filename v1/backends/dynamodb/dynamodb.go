@@ -8,11 +8,11 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 
-	"github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Nimbleway/machinery/v1/backends/iface"
+	"github.com/Nimbleway/machinery/v1/common"
+	"github.com/Nimbleway/machinery/v1/config"
+	"github.com/Nimbleway/machinery/v1/log"
+	"github.com/Nimbleway/machinery/v1/tasks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"

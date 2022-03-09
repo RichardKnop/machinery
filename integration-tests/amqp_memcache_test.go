@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/Nimbleway/machinery/v1"
+	"github.com/Nimbleway/machinery/v1/config"
 )
 
 func TestAmqpMemcache(t *testing.T) {

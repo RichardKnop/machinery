@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/RichardKnop/machinery/v2/brokers/iface"
-	"github.com/RichardKnop/machinery/v2/common"
-	"github.com/RichardKnop/machinery/v2/config"
-	"github.com/RichardKnop/machinery/v2/log"
-	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/Nimbleway/machinery/v2/brokers/iface"
+	"github.com/Nimbleway/machinery/v2/common"
+	"github.com/Nimbleway/machinery/v2/config"
+	"github.com/Nimbleway/machinery/v2/log"
+	"github.com/Nimbleway/machinery/v2/tasks"
 )
 
 // Broker represents an Google Cloud Pub/Sub broker

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RichardKnop/machinery/v2/backends/dynamodb"
-	"github.com/RichardKnop/machinery/v2/log"
-	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/Nimbleway/machinery/v2/backends/dynamodb"
+	"github.com/Nimbleway/machinery/v2/log"
+	"github.com/Nimbleway/machinery/v2/tasks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/stretchr/testify/assert"
 

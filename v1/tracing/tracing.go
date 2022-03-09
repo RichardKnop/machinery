@@ -3,7 +3,7 @@ package tracing
 import (
 	"encoding/json"
 
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/Nimbleway/machinery/v1/tasks"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	opentracing_ext "github.com/opentracing/opentracing-go/ext"

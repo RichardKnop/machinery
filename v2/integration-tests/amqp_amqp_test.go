@@ -4,12 +4,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/RichardKnop/machinery/v2"
-	"github.com/RichardKnop/machinery/v2/config"
+	"github.com/Nimbleway/machinery/v2"
+	"github.com/Nimbleway/machinery/v2/config"
 
-	amqpbackend "github.com/RichardKnop/machinery/v2/backends/amqp"
-	amqpbroker "github.com/RichardKnop/machinery/v2/brokers/amqp"
-	eagerlock "github.com/RichardKnop/machinery/v2/locks/eager"
+	amqpbackend "github.com/Nimbleway/machinery/v2/backends/amqp"
+	amqpbroker "github.com/Nimbleway/machinery/v2/brokers/amqp"
+	eagerlock "github.com/Nimbleway/machinery/v2/locks/eager"
 )
 
 func TestAmqpAmqp(t *testing.T) {

@@ -11,9 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 
-	"github.com/RichardKnop/machinery/v2/brokers/iface"
-	"github.com/RichardKnop/machinery/v2/common"
-	"github.com/RichardKnop/machinery/v2/config"
+	"github.com/Nimbleway/machinery/v2/brokers/iface"
+	"github.com/Nimbleway/machinery/v2/common"
+	"github.com/Nimbleway/machinery/v2/config"
 
 	awssqs "github.com/aws/aws-sdk-go/service/sqs"
 )

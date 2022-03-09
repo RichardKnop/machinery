@@ -13,11 +13,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/RichardKnop/machinery/v2/backends/iface"
-	"github.com/RichardKnop/machinery/v2/common"
-	"github.com/RichardKnop/machinery/v2/config"
-	"github.com/RichardKnop/machinery/v2/log"
-	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/Nimbleway/machinery/v2/backends/iface"
+	"github.com/Nimbleway/machinery/v2/common"
+	"github.com/Nimbleway/machinery/v2/config"
+	"github.com/Nimbleway/machinery/v2/log"
+	"github.com/Nimbleway/machinery/v2/tasks"
 )
 
 // Backend represents a MongoDB result backend

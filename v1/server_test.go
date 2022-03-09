@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	
-	"github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
+
+	"github.com/Nimbleway/machinery/v1"
+	"github.com/Nimbleway/machinery/v1/config"
 )
 
 func TestRegisterTasks(t *testing.T) {
@@ -37,7 +37,7 @@ func TestRegisterTaskInRaceCondition(t *testing.T) {
 	t.Parallel()
 
 	server := getTestServer(t)
-	for i:=0; i<10; i++ {
+	for i := 0; i < 10; i++ {
 		go func() {
 			err := server.RegisterTask("test_task", func() error { return nil })
 			assert.NoError(t, err)

@@ -3,7 +3,7 @@ package retry_test
 import (
 	"testing"
 
-	"github.com/RichardKnop/machinery/v2/retry"
+	"github.com/Nimbleway/machinery/v2/retry"
 	"github.com/stretchr/testify/assert"
 )
 
