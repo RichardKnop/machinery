@@ -55,6 +55,21 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 	}
 	if cnf.Redis != nil {
 		ropt.MasterName = cnf.Redis.MasterName
+		if cnf.Redis.IdleTimeout == 0 {
+			ropt.IdleTimeout = time.Duration(-1)
+		} else {
+			ropt.IdleTimeout = time.Duration(cnf.Redis.IdleTimeout) * time.Second
+		}
+		if cnf.Redis.MaxActive != 0 {
+			ropt.PoolSize = cnf.Redis.MaxActive
+		}
+		if cnf.Redis.ConnectTimeout != 0 {
+			ropt.DialTimeout = time.Duration(cnf.Redis.ConnectTimeout) * time.Second
+			ropt.PoolTimeout = time.Duration(cnf.Redis.ConnectTimeout) * time.Second
+		}
+		if cnf.Redis.ReadTimeout != 0 {
+			ropt.ReadTimeout = time.Duration(cnf.Redis.ReadTimeout) * time.Second
+		}
 	}
 
 	if cnf.Redis != nil && cnf.Redis.ClusterMode {
