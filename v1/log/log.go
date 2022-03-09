@@ -1,7 +1,7 @@
 package log
 
 import (
-	"github.com/Nimbleway/logging"
+	"github.com/RichardKnop/logging"
 )
 
 var (
