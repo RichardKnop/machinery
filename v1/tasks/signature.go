@@ -56,32 +56,32 @@ const (
 
 // Signature represents a single task invocation
 type Signature struct {
-	UUID           string
-	Name           string
-	RoutingKey     string
-	ETA            *time.Time
-	GroupUUID      string
-	GroupTaskCount int
-	Args           []Arg
-	Headers        Headers
-	Priority       uint8
-	Immutable      bool
-	RetryCount     int
-	RetryTimeout   int
-	OnSuccess      []*Signature
-	OnError        []*Signature
-	ChordCallback  *Signature
+	UUID           string       `bson:"uuid,omitempty"`
+	Name           string       `bson:"name,omitempty"`
+	RoutingKey     string       `bson:"routingKey,omitempty"`
+	ETA            *time.Time   `bson:"eta,omitempty"`
+	GroupUUID      string       `bson:"groupuuid,omitempty"`
+	GroupTaskCount int          `bson:"groupTaskCount,omitempty"`
+	Args           []Arg        `bson:"args,omitempty"`
+	Headers        Headers      `bson:"headers,omitempty"`
+	Priority       uint8        `bson:"priority,omitempty"`
+	Immutable      bool         `bson:"immutable,omitempty"`
+	RetryCount     int          `bson:"retryCount,omitempty"`
+	RetryTimeout   int          `bson:"retryTimeout,omitempty"`
+	OnSuccess      []*Signature `bson:"onSuccess,omitempty"`
+	OnError        []*Signature `bson:"onError,omitempty"`
+	ChordCallback  *Signature   `bson:"chordCallback,omitempty"`
 	//MessageGroupId for Broker, e.g. SQS
-	BrokerMessageGroupId string
+	BrokerMessageGroupId string `bson:"brokerMessageGroupId,omitempty"`
 	//ReceiptHandle of SQS Message
-	SQSReceiptHandle string
+	SQSReceiptHandle string `bson:"sqsReceiptHandle,omitempty"`
 	// StopTaskDeletionOnError used with sqs when we want to send failed messages to dlq,
 	// and don't want machinery to delete from source queue
-	StopTaskDeletionOnError bool
+	StopTaskDeletionOnError bool `bson:"stopTaskDeletionOnError,omitempty"`
 	// IgnoreWhenTaskNotRegistered auto removes the request when there is no handeler available
 	// When this is true a task with no handler will be ignored and not placed back in the queue
-	IgnoreWhenTaskNotRegistered bool
-	MsgType                     MsgType
+	IgnoreWhenTaskNotRegistered bool    `bson:"ignoreWhenTaskNotRegistered,omitempty"`
+	MsgType                     MsgType `bson:"msgType,omitempty"`
 }
 
 func (s *Signature) NextRetryTimeout() (retryTimeout int, err error) {
@@ -112,7 +112,6 @@ func NewSignature(name string, args []Arg) (*Signature, error) {
 		Args: args,
 	}, nil
 }
-
 
 func CopySignatures(signatures ...*Signature) []*Signature {
 	var sigs = make([]*Signature, len(signatures))
