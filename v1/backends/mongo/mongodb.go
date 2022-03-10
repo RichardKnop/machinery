@@ -124,25 +124,35 @@ func (b *Backend) SetStatePending(signature *tasks.Signature) error {
 		"state": tasks.StatePending,
 		// "task_name":  signature.Name,
 		// "created_at": time.Now().UTC(),
+		"updateTime": time.Now().UTC(),
 	}
 	return b.updateState(signature, update)
 }
 
 // SetStateReceived updates task state to RECEIVED
 func (b *Backend) SetStateReceived(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.StateReceived}
+	update := bson.M{
+		"state":      tasks.StateReceived,
+		"updateTime": time.Now().UTC(),
+	}
 	return b.updateState(signature, update)
 }
 
 // SetStateStarted updates task state to STARTED
 func (b *Backend) SetStateStarted(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.StateStarted}
+	update := bson.M{
+		"state":      tasks.StateStarted,
+		"updateTime": time.Now().UTC(),
+	}
 	return b.updateState(signature, update)
 }
 
 // SetStateRetry updates task state to RETRY
 func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
-	update := bson.M{"state": tasks.StateRetry}
+	update := bson.M{
+		"state":      tasks.StateRetry,
+		"updateTime": time.Now().UTC(),
+	}
 	return b.updateState(signature, update)
 }
 
@@ -150,8 +160,9 @@ func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	decodedResults := b.decodeResults(results)
 	update := bson.M{
-		"state":   tasks.StateSuccess,
-		"results": decodedResults,
+		"state":      tasks.StateSuccess,
+		"results":    decodedResults,
+		"updateTime": time.Now().UTC(),
 	}
 	return b.updateState(signature, update)
 }
@@ -180,7 +191,11 @@ func (b *Backend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult
 
 // SetStateFailure updates task state to FAILURE
 func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
-	update := bson.M{"state": tasks.StateFailure, "error": err}
+	update := bson.M{
+		"state":      tasks.StateFailure,
+		"error":      err,
+		"updateTime": time.Now().UTC(),
+	}
 	return b.updateState(signature, update)
 }
 
