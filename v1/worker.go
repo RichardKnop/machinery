@@ -11,11 +11,10 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	
+
 	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
 )
@@ -211,16 +210,22 @@ func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 	signature.RetryCount--
 
 	// Increase retry timeout
-	signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
+	// signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
+
+	// Increase retry timeout
+	timeout, err := signature.NextRetryTimeout()
+	if err != nil {
+		return fmt.Errorf("Set retryTimeout for task %s returned error: %s", signature.UUID, err)
+	}
 
 	// Delay task by signature.RetryTimeout seconds
-	eta := time.Now().UTC().Add(time.Second * time.Duration(signature.RetryTimeout))
+	eta := time.Now().Add(time.Second * time.Duration(timeout))
 	signature.ETA = &eta
 
 	log.WARNING.Printf("Task %s failed. Going to retry in %d seconds.", signature.UUID, signature.RetryTimeout)
 
 	// Send the task back to the queue
-	_, err := worker.server.SendTask(signature)
+	_, err = worker.server.SendTask(signature)
 	return err
 }
 

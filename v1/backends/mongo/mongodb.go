@@ -39,6 +39,15 @@ func New(cnf *config.Config) (iface.Backend, error) {
 	return backend, nil
 }
 
+func NewMongoBackEnd(cnf *config.Config) (*Backend, error) {
+	backend := &Backend{
+		Backend: common.NewBackend(cnf),
+		once:    sync.Once{},
+	}
+
+	return backend, nil
+}
+
 // InitGroup creates and saves a group meta data object
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 	groupMeta := &tasks.GroupMeta{
@@ -112,9 +121,9 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 // SetStatePending updates task state to PENDING
 func (b *Backend) SetStatePending(signature *tasks.Signature) error {
 	update := bson.M{
-		"state":      tasks.StatePending,
-		"task_name":  signature.Name,
-		"created_at": time.Now().UTC(),
+		"state": tasks.StatePending,
+		// "task_name":  signature.Name,
+		// "created_at": time.Now().UTC(),
 	}
 	return b.updateState(signature, update)
 }
@@ -259,7 +268,7 @@ func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 // updateState saves current task state
 func (b *Backend) updateState(signature *tasks.Signature, update bson.M) error {
 	update = bson.M{"$set": update}
-	_, err := b.tasksCollection().UpdateOne(context.Background(), bson.M{"_id": signature.UUID}, update, options.Update().SetUpsert(true))
+	_, err := b.tasksCollection().UpdateOne(context.Background(), bson.M{"signature.uuid": signature.UUID}, update, options.Update().SetUpsert(true))
 	return err
 }
 
@@ -364,5 +373,14 @@ func (b *Backend) createMongoIndexes(database string) error {
 		return err
 	}
 
+	return err
+}
+
+func (b *Backend) SaveStatePending(signature tasks.SignatureInterface) error {
+	common := signature.GetCommon()
+	common.State = tasks.StatePending
+	time := time.Now()
+	common.CreateTime, common.UpdateTime = time, time
+	_, err := b.tasksCollection().InsertOne(context.Background(), signature)
 	return err
 }

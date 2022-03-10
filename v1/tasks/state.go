@@ -3,6 +3,8 @@ package tasks
 import "time"
 
 const (
+	// StateCreated - task is created by sender
+	StateCreated = "CREATED"
 	// StatePending - initial state of a task
 	StatePending = "PENDING"
 	// StateReceived - when task is received by a worker

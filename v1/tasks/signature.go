@@ -2,8 +2,11 @@ package tasks
 
 import (
 	"fmt"
-	"github.com/RichardKnop/machinery/v1/utils"
 	"time"
+
+	"github.com/RichardKnop/machinery/v1/log"
+	"github.com/RichardKnop/machinery/v1/retry"
+	"github.com/RichardKnop/machinery/v1/utils"
 
 	"github.com/google/uuid"
 )
@@ -42,6 +45,15 @@ func (h Headers) ForeachKey(handler func(key, val string) error) error {
 	return nil
 }
 
+type MsgType int
+
+const (
+	NOTIFICATION = MsgType(0)
+	PUSH         = MsgType(1)
+	EMAIL        = MsgType(2)
+	SMS          = MsgType(3)
+)
+
 // Signature represents a single task invocation
 type Signature struct {
 	UUID           string
@@ -69,6 +81,26 @@ type Signature struct {
 	// IgnoreWhenTaskNotRegistered auto removes the request when there is no handeler available
 	// When this is true a task with no handler will be ignored and not placed back in the queue
 	IgnoreWhenTaskNotRegistered bool
+	MsgType                     MsgType
+}
+
+func (s *Signature) NextRetryTimeout() (retryTimeout int, err error) {
+	switch s.MsgType {
+	case NOTIFICATION:
+		retryTimeout, err = retry.TransNotificationBackoff(s.RetryCount)
+		s.RetryTimeout = retryTimeout
+	case PUSH:
+		log.INFO.Print("i am push")
+	case EMAIL:
+		log.INFO.Print("i am email")
+	case SMS:
+		log.INFO.Print("i am sms")
+	default:
+		log.INFO.Print("i am neither")
+		retryTimeout = retry.FibonacciNext(s.RetryTimeout)
+		s.RetryTimeout = retryTimeout
+	}
+	return
 }
 
 // NewSignature creates a new task signature
@@ -80,6 +112,7 @@ func NewSignature(name string, args []Arg) (*Signature, error) {
 		Args: args,
 	}, nil
 }
+
 
 func CopySignatures(signatures ...*Signature) []*Signature {
 	var sigs = make([]*Signature, len(signatures))

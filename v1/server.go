@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 
+	"github.com/RichardKnop/machinery/v1/backends/mongo"
 	"github.com/RichardKnop/machinery/v1/backends/result"
 	"github.com/RichardKnop/machinery/v1/brokers/eager"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -18,10 +19,11 @@ import (
 	"github.com/RichardKnop/machinery/v1/tracing"
 	"github.com/RichardKnop/machinery/v1/utils"
 
+	"github.com/opentracing/opentracing-go"
+
 	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -175,6 +177,50 @@ func (server *Server) GetRegisteredTask(name string) (interface{}, error) {
 		return nil, fmt.Errorf("Task not registered error: %s", name)
 	}
 	return taskFunc, nil
+}
+
+func (server *Server) SendTaskAsyncWithContext(ctx context.Context, iSignature tasks.SignatureInterface) error {
+	span, _ := opentracing.StartSpanFromContext(ctx, "SendTask", tracing.ProducerOption(), tracing.MachineryTag)
+	defer span.Finish()
+
+	signature := iSignature.GetSig()
+
+	// tag the span with some info about the signature
+	signature.Headers = tracing.HeadersWithSpan(signature.Headers, span)
+
+	// Make sure result backend is defined
+	if server.backend == nil {
+		return errors.New("Result backend required")
+	}
+
+	// Auto generate a UUID if not set already
+	if signature.UUID == "" {
+		taskID := uuid.New().String()
+		signature.UUID = fmt.Sprintf("task_%v", taskID)
+	}
+
+	// todo save full field
+	if mongoBackEnd, ok := server.backend.(*mongo.Backend); !ok {
+		return fmt.Errorf("currenct backEnd implemention is not mongo,please check")
+	} else {
+		err := mongoBackEnd.SaveStatePending(iSignature)
+		if err != nil {
+			return fmt.Errorf("Set state pending error: %s", err)
+		}
+	}
+	//if err := server.backend.SaveStatePending(&iSignature); err != nil {
+	//	return fmt.Errorf("Set state pending error: %s", err)
+	//}
+
+	if server.prePublishHandler != nil {
+		server.prePublishHandler(signature)
+	}
+
+	if err := server.broker.Publish(ctx, signature); err != nil {
+		return fmt.Errorf("Publish message error: %s", err)
+	}
+
+	return nil
 }
 
 // SendTaskWithContext will inject the trace context in the signature headers before publishing it

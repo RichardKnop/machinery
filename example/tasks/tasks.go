@@ -2,6 +2,7 @@ package exampletasks
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -73,3 +74,19 @@ func LongRunningTask() error {
 	log.INFO.Print("Long running task finished")
 	return nil
 }
+
+func SendNotification(content string) error {
+	//requestBody := content[0]
+	//url := content[1]
+	//
+	//log.INFO.Printf("body:%v,url:%v", requestBody, url)
+	//for _, v := range content {
+	//	fmt.Println(v)
+	//}
+	// 模拟发送异步通知
+	time.Sleep(1 * time.Second)
+	fmt.Println(content)
+
+	return errors.New("send notification err")
+}
+

@@ -29,3 +29,8 @@ var Closure = func() func(chan int) {
 		retryIn = fibonacci()
 	}
 }
+
+type Retryable interface {
+	NextRetryTimeout() (retryTimeout int, err error)
+}
+
