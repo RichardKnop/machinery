@@ -82,6 +82,12 @@ var (
 			expectedValue: uint64(185135722552891243),
 		},
 		{
+			name:          "uint64",
+			value:         json.Number("9223372036854775808"), // math.MaxInt64 + 1
+			expectedType:  "uint64",
+			expectedValue: uint64(9223372036854775808),
+		},
+		{
 			name:          "float32",
 			value:         json.Number("0.5"),
 			expectedType:  "float32",
