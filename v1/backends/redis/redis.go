@@ -7,13 +7,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redsync/redsync/v4"
+	redsyncredis "github.com/go-redsync/redsync/v4/redis/redigo"
+	"github.com/gomodule/redigo/redis"
+
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/redsync"
-	"github.com/gomodule/redigo/redis"
 )
 
 // Backend represents a Redis result backend
@@ -346,7 +348,7 @@ func (b *Backend) getExpiration() time.Duration {
 func (b *Backend) open() redis.Conn {
 	b.redisOnce.Do(func() {
 		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
-		b.redsync = redsync.New([]redsync.Pool{b.pool})
+		b.redsync = redsync.New(redsyncredis.NewPool(b.pool))
 	})
 	return b.pool.Get()
 }

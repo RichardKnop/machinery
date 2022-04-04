@@ -3,12 +3,11 @@ package machinery
 import (
 	"errors"
 	"fmt"
-	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
-	redislock "github.com/RichardKnop/machinery/v1/locks/redis"
-	neturl "net/url"
 	"os"
 	"strconv"
 	"strings"
+
+	neturl "net/url"
 
 	"github.com/RichardKnop/machinery/v1/config"
 
@@ -18,7 +17,6 @@ import (
 	brokeriface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	redisbroker "github.com/RichardKnop/machinery/v1/brokers/redis"
 	sqsbroker "github.com/RichardKnop/machinery/v1/brokers/sqs"
-	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 
 	amqpbackend "github.com/RichardKnop/machinery/v1/backends/amqp"
 	dynamobackend "github.com/RichardKnop/machinery/v1/backends/dynamodb"
@@ -28,6 +26,10 @@ import (
 	mongobackend "github.com/RichardKnop/machinery/v1/backends/mongo"
 	nullbackend "github.com/RichardKnop/machinery/v1/backends/null"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
+
+	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
+	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
+	redislock "github.com/RichardKnop/machinery/v1/locks/redis"
 )
 
 // BrokerFactory creates a new object of iface.Broker
@@ -56,7 +58,7 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 			)
 		}
 		brokers := strings.Split(parts[1], ",")
-		if len(brokers) > 1 {
+		if len(brokers) > 1 || (cnf.Redis != nil && cnf.Redis.ClusterMode) {
 			return redisbroker.NewGR(cnf, brokers, 0), nil
 		} else {
 			redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.Broker)
@@ -108,6 +110,7 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 // BackendFactory creates a new object of backends.Interface
 // Currently supported backends are AMQP/S and Memcache
 func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
+
 	if strings.HasPrefix(cnf.ResultBackend, "amqp://") {
 		return amqpbackend.New(cnf), nil
 	}
@@ -137,7 +140,7 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 		}
 		parts := strings.Split(cnf.ResultBackend, scheme)
 		addrs := strings.Split(parts[1], ",")
-		if len(addrs) > 1 {
+		if len(addrs) > 1 || (cnf.Redis != nil && cnf.Redis.ClusterMode) {
 			return redisbackend.NewGR(cnf, addrs, 0), nil
 		} else {
 			redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
@@ -233,7 +236,9 @@ func LockFactory(cnf *config.Config) (lockiface.Lock, error) {
 		locks := strings.Split(parts[1], ",")
 		return redislock.New(cnf, locks, 0, 3), nil
 	}
-	return nil, fmt.Errorf("Factory failed with lock: %v", cnf.Lock)
+
+	// Lock is required for periodic tasks to work, therefor return in memory lock in case none is configured
+	return eagerlock.New(), nil
 }
 
 // ParseRedisSocketURL extracts Redis connection options from a URL with the

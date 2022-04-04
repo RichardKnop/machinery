@@ -9,13 +9,14 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/go-redsync/redsync/v4"
+	redsyncgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v8"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/redsync"
 )
 
 // BackendGR represents a Redis result backend
@@ -37,10 +38,10 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 		Backend: common.NewBackend(cnf),
 	}
 	parts := strings.Split(addrs[0], "@")
-	if len(parts) == 2 {
+	if len(parts) >= 2 {
 		// with passwrod
-		b.password = parts[0]
-		addrs[0] = parts[1]
+		b.password = strings.Join(parts[:len(parts)-1], "@")
+		addrs[0] = parts[len(parts)-1] // addr is the last one without @
 	}
 
 	ropt := &redis.UniversalOptions{
@@ -52,7 +53,13 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 		ropt.MasterName = cnf.Redis.MasterName
 	}
 
-	b.rclient = redis.NewUniversalClient(ropt)
+	if cnf.Redis != nil && cnf.Redis.ClusterMode {
+		b.rclient = redis.NewClusterClient(ropt.Cluster())
+	} else {
+
+		b.rclient = redis.NewUniversalClient(ropt)
+	}
+	b.redsync = redsync.New(redsyncgoredis.NewPool(b.rclient))
 	return b
 }
 

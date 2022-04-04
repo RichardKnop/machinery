@@ -21,6 +21,7 @@ func TestRedactURL(t *testing.T) {
 
 func TestPreConsumeHandler(t *testing.T) {
 	t.Parallel()
+
 	worker := &machinery.Worker{}
 
 	worker.SetPreConsumeHandler(SamplePreConsumeHandler)

@@ -2,13 +2,12 @@ package redis
 
 import (
 	"errors"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/redsync"
-	"github.com/go-redis/redis"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/go-redis/redis/v8"
 )
 
 var (
@@ -16,12 +15,9 @@ var (
 )
 
 type Lock struct {
-	rclient    redis.UniversalClient
-	retries    int
-	interval   time.Duration
-	socketPath string
-	redsync    *redsync.Redsync
-	redisOnce  sync.Once
+	rclient  redis.UniversalClient
+	retries  int
+	interval time.Duration
 }
 
 func New(cnf *config.Config, addrs []string, db, retries int) Lock {
@@ -31,11 +27,11 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 	lock := Lock{retries: retries}
 
 	var password string
+
 	parts := strings.Split(addrs[0], "@")
-	if len(parts) == 2 {
-		// with passwrod
-		password = parts[0]
-		addrs[0] = parts[1]
+	if len(parts) >= 2 {
+		password = strings.Join(parts[:len(parts)-1], "@")
+		addrs[0] = parts[len(parts)-1] // addr is the last one without @
 	}
 
 	ropt := &redis.UniversalOptions{
@@ -52,10 +48,9 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 	return lock
 }
 
-//try lock with retries
-func (r Lock) LockWithRetries(key string, value int64) error {
+func (r Lock) LockWithRetries(key string, unixTsToExpireNs int64) error {
 	for i := 0; i <= r.retries; i++ {
-		err := r.Lock(key, value)
+		err := r.Lock(key, unixTsToExpireNs)
 		if err == nil {
 			//成功拿到锁，返回
 			return nil
@@ -66,16 +61,18 @@ func (r Lock) LockWithRetries(key string, value int64) error {
 	return ErrRedisLockFailed
 }
 
-func (r Lock) Lock(key string, value int64) error {
-	var now = time.Now().UnixNano()
+func (r Lock) Lock(key string, unixTsToExpireNs int64) error {
+	now := time.Now().UnixNano()
+	expiration := time.Duration(unixTsToExpireNs + 1 - now)
+	ctx := r.rclient.Context()
 
-	success, err := r.rclient.SetNX(key, value, 0).Result()
+	success, err := r.rclient.SetNX(ctx, key, unixTsToExpireNs, expiration).Result()
 	if err != nil {
 		return err
 	}
 
 	if !success {
-		v, err := r.rclient.Get(key).Result()
+		v, err := r.rclient.Get(ctx, key).Result()
 		if err != nil {
 			return err
 		}
@@ -85,7 +82,7 @@ func (r Lock) Lock(key string, value int64) error {
 		}
 
 		if timeout != 0 && now > int64(timeout) {
-			newTimeout, err := r.rclient.GetSet(key, value).Result()
+			newTimeout, err := r.rclient.GetSet(ctx, key, unixTsToExpireNs).Result()
 			if err != nil {
 				return err
 			}
@@ -96,7 +93,9 @@ func (r Lock) Lock(key string, value int64) error {
 			}
 
 			if now > int64(curTimeout) {
-				//使用getset加锁成功
+				// success to acquire lock with get set
+				// set the expiration of redis key
+				r.rclient.Expire(ctx, key, expiration)
 				return nil
 			}
 
