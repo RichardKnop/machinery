@@ -8,13 +8,11 @@ require (
 	github.com/aws/aws-sdk-go v1.33.6
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
-	github.com/getlantern/deepcopy v0.0.0-20160317154340-7f45deb8130a // indirect
 	github.com/go-redis/redis v6.15.8+incompatible
 	github.com/go-redis/redis/v8 v8.0.0-beta.6
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/klauspost/compress v1.10.10 // indirect
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
@@ -25,7 +23,6 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/stvp/tempredis v0.0.0-20181119212430-b82af8480203 // indirect
 	github.com/urfave/cli v1.22.4
-	github.com/vektra/mockery v1.1.2
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/mongo-driver v1.3.5
 	go.opentelemetry.io/otel v0.8.0 // indirect
