@@ -14,12 +14,12 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redsync/redsync/v4"
 
-	"github.com/RichardKnop/machinery/v1/brokers/errs"
-	"github.com/RichardKnop/machinery/v1/brokers/iface"
-	"github.com/RichardKnop/machinery/v1/common"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/log"
-	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/YaoJunZhao/machinery/v1/brokers/errs"
+	"github.com/YaoJunZhao/machinery/v1/brokers/iface"
+	"github.com/YaoJunZhao/machinery/v1/common"
+	"github.com/YaoJunZhao/machinery/v1/config"
+	"github.com/YaoJunZhao/machinery/v1/log"
+	"github.com/YaoJunZhao/machinery/v1/tasks"
 )
 
 // BrokerGR represents a Redis broker
