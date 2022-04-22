@@ -26,7 +26,9 @@ func New() *Lock {
 		register: struct {
 			sync.RWMutex
 			m map[string]int64
-		}{m: make(map[string]int64)},
+		}{
+			m: make(map[string]int64),
+		},
 	}
 }
 
@@ -44,8 +46,8 @@ func (e *Lock) LockWithRetries(key string, value int64) error {
 }
 
 func (e *Lock) Lock(key string, value int64) error {
-	e.register.RLock()
-	defer e.register.RUnlock()
+	e.register.Lock()
+	defer e.register.Unlock()
 	timeout, exist := e.register.m[key]
 	if !exist || time.Now().UnixNano() > timeout {
 		e.register.m[key] = value
