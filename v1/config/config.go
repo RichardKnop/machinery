@@ -153,6 +153,10 @@ type RedisConfig struct {
 	ClusterMode bool `yaml:"cluster_mode" envconfig:"REDIS_CLUSTER_MODE"`
 
 	TLSConfig *tls.Config `yaml:"r_tls_config" envconfig:"REDIS_TLS_CONFIG"`
+
+	Username string `yaml:"r_username" envconfig:"REDIS_USERNAME"`
+
+	Password string `yaml:"r_password" envconfig:"REDIS_PASSWORD"`
 }
 
 // GCPPubSubConfig wraps GCP PubSub related configuration

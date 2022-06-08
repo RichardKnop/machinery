@@ -73,6 +73,14 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 		if cnf.Redis.TLSConfig != nil {
 			ropt.TLSConfig = cnf.Redis.TLSConfig
 		}
+		if cnf.Redis.Username != "" {
+			ropt.Username = cnf.Redis.Username
+		}
+
+		if cnf.Redis.Password != "" {
+			ropt.Password = cnf.Redis.Password
+		}
+
 	}
 
 	if cnf.Redis != nil && cnf.Redis.ClusterMode {
