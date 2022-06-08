@@ -70,6 +70,9 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 		if cnf.Redis.ReadTimeout != 0 {
 			ropt.ReadTimeout = time.Duration(cnf.Redis.ReadTimeout) * time.Second
 		}
+		if cnf.Redis.TLSConfig != nil {
+			ropt.TLSConfig = cnf.Redis.TLSConfig
+		}
 	}
 
 	if cnf.Redis != nil && cnf.Redis.ClusterMode {

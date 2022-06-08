@@ -151,6 +151,8 @@ type RedisConfig struct {
 	MasterName string `yaml:"master_name" envconfig:"REDIS_MASTER_NAME"`
 	// ClusterMode specifies machinery should use redis cluster client explicitly
 	ClusterMode bool `yaml:"cluster_mode" envconfig:"REDIS_CLUSTER_MODE"`
+
+	TLSConfig *tls.Config `yaml:"r_tls_config" envconfig:"REDIS_TLS_CONFIG"`
 }
 
 // GCPPubSubConfig wraps GCP PubSub related configuration
