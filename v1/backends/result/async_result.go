@@ -162,6 +162,10 @@ func (chainAsyncResult *ChainAsyncResult) Get(sleepDuration time.Duration) ([]re
 	return results, err
 }
 
+func (chainAsyncResult *ChainAsyncResult) GetAsyncResult() ([]*AsyncResult) {
+	return chainAsyncResult.asyncResults
+}
+
 // Get returns result of a chord (synchronous blocking call)
 func (chordAsyncResult *ChordAsyncResult) Get(sleepDuration time.Duration) ([]reflect.Value, error) {
 	if chordAsyncResult.backend == nil {
