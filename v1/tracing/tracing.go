@@ -23,7 +23,7 @@ var (
 // and start a new span with the given operation name.
 func StartSpanFromHeaders(headers http.Header, operationName string) opentracing.Span {
 	// Try to extract the span context from the carrier.
-	spanContext, err := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, headers)
+	spanContext, err := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(headers))
 
 	// Create a new span from the span context if found or start a new trace with the function name.
 	// For clarity add the machinery component tag.
@@ -48,7 +48,7 @@ func HeadersWithSpan(headers http.Header, span opentracing.Span) http.Header {
 		headers = make(http.Header)
 	}
 
-	if err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.HTTPHeaders, headers); err != nil {
+	if err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(headers)); err != nil {
 		span.LogFields(opentracing_log.Error(err))
 	}
 
