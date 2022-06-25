@@ -42,7 +42,7 @@ func StartSpanFromHeaders(headers http.Header, operationName string) opentracing
 }
 
 // HeadersWithSpan will inject a span into the signature headers
-func HeadersWithSpan(headers http.Header, span opentracing.Span) tasks.Headers {
+func HeadersWithSpan(headers http.Header, span opentracing.Span) http.Header {
 	// check if the headers aren't nil
 	if headers == nil {
 		headers = make(http.Header)
