@@ -85,6 +85,7 @@ type AMQPConfig struct {
 	BindingKey       string           `yaml:"binding_key" envconfig:"AMQP_BINDING_KEY"`
 	PrefetchCount    int              `yaml:"prefetch_count" envconfig:"AMQP_PREFETCH_COUNT"`
 	AutoDelete       bool             `yaml:"auto_delete" envconfig:"AMQP_AUTO_DELETE"`
+	EarlyAck         bool             `yaml:"early_ack" envconfig:"AMQP_EARLY_ACK"`
 }
 
 // DynamoDBConfig wraps DynamoDB related configuration
