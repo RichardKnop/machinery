@@ -9,16 +9,18 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/urfave/cli"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/RichardKnop/machinery/v1/tracing"
 
 	exampletasks "github.com/RichardKnop/machinery/example/tasks"
 	tracers "github.com/RichardKnop/machinery/example/tracers"
-	opentracing "github.com/opentracing/opentracing-go"
-	opentracing_log "github.com/opentracing/opentracing-go/log"
 )
 
 var (
@@ -269,12 +271,12 @@ func send() error {
 	 * set a batch id as baggage so it can travel all the way into
 	 * the worker functions.
 	 */
-	span, ctx := opentracing.StartSpanFromContext(context.Background(), "send")
-	defer span.Finish()
+	ctx, span := otel.Tracer(tracing.MachineryTraceName).Start(context.Background(), "send")
+	defer span.End()
 
 	batchID := uuid.New().String()
-	span.SetBaggageItem("batch.id", batchID)
-	span.LogFields(opentracing_log.String("batch.id", batchID))
+	baggage.ContextWithBaggage(ctx, "batch_id", batchID)
+	span.SetAttributes(attribute.String("batch_id", batchID))
 
 	log.INFO.Println("Starting batch:", batchID)
 	/*

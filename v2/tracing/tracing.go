@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"encoding/json"
+	"net/http"
 
 	"github.com/RichardKnop/machinery/v2/tasks"
 
@@ -20,9 +21,9 @@ var (
 
 // StartSpanFromHeaders will extract a span from the signature headers
 // and start a new span with the given operation name.
-func StartSpanFromHeaders(headers tasks.Headers, operationName string) opentracing.Span {
+func StartSpanFromHeaders(headers http.Header, operationName string) opentracing.Span {
 	// Try to extract the span context from the carrier.
-	spanContext, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, headers)
+	spanContext, err := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(headers))
 
 	// Create a new span from the span context if found or start a new trace with the function name.
 	// For clarity add the machinery component tag.
@@ -41,13 +42,13 @@ func StartSpanFromHeaders(headers tasks.Headers, operationName string) opentraci
 }
 
 // HeadersWithSpan will inject a span into the signature headers
-func HeadersWithSpan(headers tasks.Headers, span opentracing.Span) tasks.Headers {
+func HeadersWithSpan(headers http.Header, span opentracing.Span) http.Header {
 	// check if the headers aren't nil
 	if headers == nil {
-		headers = make(tasks.Headers)
+		headers = make(http.Header)
 	}
 
-	if err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, headers); err != nil {
+	if err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(headers)); err != nil {
 		span.LogFields(opentracing_log.Error(err))
 	}
 
