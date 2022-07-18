@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redsync/redsync/v4"
 	redsyncgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v8"
@@ -59,6 +60,7 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 
 		b.rclient = redis.NewUniversalClient(ropt)
 	}
+	b.rclient.AddHook(redisotel.NewTracingHook())
 	b.redsync = redsync.New(redsyncgoredis.NewPool(b.rclient))
 	return b
 }

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redsync/redsync/v4"
 
@@ -62,6 +63,7 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 	} else {
 		b.rclient = redis.NewUniversalClient(ropt)
 	}
+	b.rclient.AddHook(redisotel.NewTracingHook())
 
 	if cnf.Redis.DelayedTasksKey != "" {
 		b.redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
