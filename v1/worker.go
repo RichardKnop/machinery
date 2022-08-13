@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	
+
 	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -33,9 +33,9 @@ type Worker struct {
 }
 
 var (
-	// ErrWorkerQuitGracefully is return when worker quit gracefully
+	// ErrWorkerQuitGracefully is returned when worker quit gracefully
 	ErrWorkerQuitGracefully = errors.New("Worker quit gracefully")
-	// ErrWorkerQuitGracefully is return when worker quit abruptly
+	// ErrWorkerQuitAbruptly is returned when worker quit abruptly
 	ErrWorkerQuitAbruptly = errors.New("Worker quit abruptly")
 )
 
