@@ -140,7 +140,7 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 		}
 		parts := strings.Split(cnf.ResultBackend, scheme)
 		addrs := strings.Split(parts[1], ",")
-		if len(addrs) > 1 || (cnf.Redis != nil && cnf.Redis.ClusterMode) {
+		if true || (cnf.Redis != nil && cnf.Redis.ClusterMode) {
 			return redisbackend.NewGR(cnf, addrs, 0), nil
 		} else {
 			redisHost, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
