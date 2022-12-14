@@ -60,7 +60,8 @@ type consumerOption struct {
 
 func (c consumerOption) Apply(o *opentracing.StartSpanOptions) {
 	if c.producerContext != nil {
-		opentracing.FollowsFrom(c.producerContext).Apply(o)
+		// We want a ChildOf relationship between the Consumer and Producer
+		opentracing.ChildOf(c.producerContext).Apply(o)
 	}
 	opentracing_ext.SpanKindConsumer.Apply(o)
 }
