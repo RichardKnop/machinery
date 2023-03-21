@@ -45,8 +45,10 @@ func NewServer(cnf *config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	// Backend is optional so we ignore the error
-	backend, _ := BackendFactory(cnf)
+	backend, err := BackendFactory(cnf)
+	if err != nil {
+		return nil, err
+	}
 
 	srv := NewServerWithBrokerBackend(cnf, broker, backend)
 
