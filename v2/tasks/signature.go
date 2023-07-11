@@ -2,17 +2,18 @@ package tasks
 
 import (
 	"fmt"
-	"github.com/RichardKnop/machinery/v2/utils"
 	"time"
+
+	"github.com/RichardKnop/machinery/v2/utils"
 
 	"github.com/google/uuid"
 )
 
 // Arg represents a single argument passed to invocation fo a task
 type Arg struct {
-	Name  string      `bson:"name"`
-	Type  string      `bson:"type"`
-	Value interface{} `bson:"value"`
+	Name  string      `json:"name,omitempty" bson:"name"`
+	Type  string      `json:"type,omitempty" bson:"type"`
+	Value interface{} `json:"value,omitempty" bson:"value"`
 }
 
 // Headers represents the headers which should be used to direct the task
@@ -44,31 +45,31 @@ func (h Headers) ForeachKey(handler func(key, val string) error) error {
 
 // Signature represents a single task invocation
 type Signature struct {
-	UUID           string
-	Name           string
-	RoutingKey     string
-	ETA            *time.Time
-	GroupUUID      string
-	GroupTaskCount int
-	Args           []Arg
-	Headers        Headers
-	Priority       uint8
-	Immutable      bool
-	RetryCount     int
-	RetryTimeout   int
-	OnSuccess      []*Signature
-	OnError        []*Signature
-	ChordCallback  *Signature
+	UUID           string       `json:"UUID,omitempty"`
+	Name           string       `json:"name,omitempty"`
+	RoutingKey     string       `json:"routingKey,omitempty"`
+	ETA            *time.Time   `json:"ETA,omitempty"`
+	GroupUUID      string       `json:"groupUUID,omitempty"`
+	GroupTaskCount int          `json:"groupTaskCount,omitempty"`
+	Args           []Arg        `json:"args,omitempty"`
+	Headers        Headers      `json:"headers,omitempty"`
+	Priority       uint8        `json:"priority,omitempty"`
+	Immutable      bool         `json:"immutable,omitempty"`
+	RetryCount     int          `json:"retryCount,omitempty"`
+	RetryTimeout   int          `json:"retryTimeout,omitempty"`
+	OnSuccess      []*Signature `json:"onSuccess,omitempty"`
+	OnError        []*Signature `json:"onError,omitempty"`
+	ChordCallback  *Signature   `json:"chordCallback,omitempty"`
 	//MessageGroupId for Broker, e.g. SQS
-	BrokerMessageGroupId string
+	BrokerMessageGroupId string `json:"brokerMessageGroupId,omitempty"`
 	//ReceiptHandle of SQS Message
-	SQSReceiptHandle string
+	SQSReceiptHandle string `json:"SQSReceiptHandle,omitempty"`
 	// StopTaskDeletionOnError used with sqs when we want to send failed messages to dlq,
 	// and don't want machinery to delete from source queue
-	StopTaskDeletionOnError bool
+	StopTaskDeletionOnError bool `json:"stopTaskDeletionOnError,omitempty"`
 	// IgnoreWhenTaskNotRegistered auto removes the request when there is no handeler available
 	// When this is true a task with no handler will be ignored and not placed back in the queue
-	IgnoreWhenTaskNotRegistered bool
+	IgnoreWhenTaskNotRegistered bool `json:"ignoreWhenTaskNotRegistered,omitempty"`
 }
 
 // NewSignature creates a new task signature

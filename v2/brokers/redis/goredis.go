@@ -37,7 +37,7 @@ type BrokerGR struct {
 }
 
 // NewGR creates new Broker instance
-func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
+func newGR(cnf *config.Config, addrs []string, db int, isCluster bool) iface.Broker {
 	b := &BrokerGR{Broker: common.NewBroker(cnf)}
 
 	var password string
@@ -57,13 +57,25 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 		ropt.MasterName = cnf.Redis.MasterName
 	}
 
-	b.rclient = redis.NewUniversalClient(ropt)
+	if isCluster {
+		b.rclient = redis.NewClusterClient(ropt.Cluster())
+	} else {
+		b.rclient = redis.NewUniversalClient(ropt)
+	}
 	if cnf.Redis.DelayedTasksKey != "" {
 		b.redisDelayedTasksKey = cnf.Redis.DelayedTasksKey
 	} else {
 		b.redisDelayedTasksKey = defaultRedisDelayedTasksKey
 	}
 	return b
+}
+
+func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
+	return newGR(cnf, addrs, db, false)
+}
+
+func NewCluster(cnf *config.Config, addrs []string) iface.Broker {
+	return newGR(cnf, addrs, 0, true)
 }
 
 // StartConsuming enters a loop and waits for incoming messages

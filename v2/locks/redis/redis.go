@@ -20,7 +20,7 @@ type Lock struct {
 	interval time.Duration
 }
 
-func New(cnf *config.Config, addrs []string, db, retries int) Lock {
+func newLock(cnf *config.Config, addrs []string, db, retries int, isCluster bool) Lock {
 	if retries <= 0 {
 		return Lock{}
 	}
@@ -43,9 +43,21 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 		ropt.MasterName = cnf.Redis.MasterName
 	}
 
-	lock.rclient = redis.NewUniversalClient(ropt)
+	if isCluster {
+		lock.rclient = redis.NewClusterClient(ropt.Cluster())
+	} else {
+		lock.rclient = redis.NewUniversalClient(ropt)
+	}
 
 	return lock
+}
+
+func New(cnf *config.Config, addrs []string, db, retries int) Lock {
+	return newLock(cnf, addrs, db, retries, false)
+}
+
+func NewCluster(cnf *config.Config, addrs []string, retries int) Lock {
+	return newLock(cnf, addrs, 0, retries, true)
 }
 
 func (r Lock) LockWithRetries(key string, unixTsToExpireNs int64) error {
