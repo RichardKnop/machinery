@@ -27,6 +27,7 @@ type AsyncResult struct {
 type ChordAsyncResult struct {
 	groupAsyncResults []*AsyncResult
 	chordAsyncResult  *AsyncResult
+	errorAsyncResult  *AsyncResult
 	backend           iface.Backend
 }
 
@@ -46,7 +47,7 @@ func NewAsyncResult(signature *tasks.Signature, backend iface.Backend) *AsyncRes
 }
 
 // NewChordAsyncResult creates ChordAsyncResult instance
-func NewChordAsyncResult(groupTasks []*tasks.Signature, chordCallback *tasks.Signature, backend iface.Backend) *ChordAsyncResult {
+func NewChordAsyncResult(groupTasks []*tasks.Signature, chordCallback *tasks.Signature, errorCallback *tasks.Signature, backend iface.Backend) *ChordAsyncResult {
 	asyncResults := make([]*AsyncResult, len(groupTasks))
 	for i, task := range groupTasks {
 		asyncResults[i] = NewAsyncResult(task, backend)
@@ -54,6 +55,7 @@ func NewChordAsyncResult(groupTasks []*tasks.Signature, chordCallback *tasks.Sig
 	return &ChordAsyncResult{
 		groupAsyncResults: asyncResults,
 		chordAsyncResult:  NewAsyncResult(chordCallback, backend),
+		errorAsyncResult:  NewAsyncResult(errorCallback, backend),
 		backend:           backend,
 	}
 }
@@ -168,12 +170,16 @@ func (chordAsyncResult *ChordAsyncResult) Get(sleepDuration time.Duration) ([]re
 		return nil, ErrBackendNotConfigured
 	}
 
-	var err error
+	errorSeen := false
 	for _, asyncResult := range chordAsyncResult.groupAsyncResults {
-		_, err = asyncResult.Get(sleepDuration)
+		_, err := asyncResult.Get(sleepDuration)
 		if err != nil {
-			return nil, err
+			errorSeen = true
 		}
+	}
+
+	if errorSeen {
+		return chordAsyncResult.errorAsyncResult.Get(sleepDuration)
 	}
 
 	return chordAsyncResult.chordAsyncResult.Get(sleepDuration)
