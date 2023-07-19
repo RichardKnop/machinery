@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"go.mongodb.org/mongo-driver/mongo"
+	"gorm.io/gorm"
 )
 
 const (
@@ -64,6 +65,7 @@ type Config struct {
 	Redis                   *RedisConfig     `yaml:"redis"`
 	GCPPubSub               *GCPPubSubConfig `yaml:"-" ignored:"true"`
 	MongoDB                 *MongoDBConfig   `yaml:"-" ignored:"true"`
+	SQL                     *SqlDBConfig     `yaml:"-" ignored:"true"`
 	TLSConfig               *tls.Config
 	// NoUnixSignals - when set disables signal handling in machinery
 	NoUnixSignals bool            `yaml:"no_unix_signals" envconfig:"NO_UNIX_SIGNALS"`
@@ -163,6 +165,11 @@ type GCPPubSubConfig struct {
 type MongoDBConfig struct {
 	Client   *mongo.Client
 	Database string
+}
+
+// SqlDBConfig ...
+type SqlDBConfig struct {
+	Client *gorm.DB
 }
 
 // Decode from yaml to map (any field whose type or pointer-to-type implements

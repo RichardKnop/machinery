@@ -12,12 +12,14 @@ services:
       - memcached
       - mongo
       - gcppubsub
+      - mariadb
     links:
       - rabbitmq
       - redis
       - memcached
       - mongo
       - gcppubsub
+      - mariadb
     build:
       context: .
       dockerfile: ./Dockerfile.test
@@ -28,6 +30,7 @@ services:
       MEMCACHE_URL: 'memcached:11211'
       MONGODB_URL: 'mongo:27017'
       SQS_URL: ${SQS_URL}
+      SQL_URL: 'root:guest@tcp(mariadb)/machinery?charset=utf8&parseTime=True'
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
@@ -70,3 +73,13 @@ services:
       dockerfile: ./Dockerfile.gcppubsub
     logging:
       driver: none
+
+  mariadb:
+    container_name: machinery_sut_mariadb
+    image: mariadb
+    environment:
+      - MARIADB_ROOT_PASSWORD=guest
+      - MARIADB_DATABASE=machinery
+    logging:
+      driver: none
+

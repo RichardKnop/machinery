@@ -17,6 +17,8 @@ const (
 	StateFailure = "FAILURE"
 )
 
+var StateIsCompleted = [2]string{StateSuccess, StateFailure}
+
 // TaskState represents a state of a task
 type TaskState struct {
 	TaskUUID  string        `bson:"_id"`
@@ -95,7 +97,12 @@ func NewRetryTaskState(signature *Signature) *TaskState {
 // IsCompleted returns true if state is SUCCESS or FAILURE,
 // i.e. the task has finished processing and either succeeded or failed.
 func (taskState *TaskState) IsCompleted() bool {
-	return taskState.IsSuccess() || taskState.IsFailure()
+	for i := range StateIsCompleted {
+		if StateIsCompleted[i] == taskState.State {
+			return true
+		}
+	}
+	return false
 }
 
 // IsSuccess returns true if state is SUCCESS
