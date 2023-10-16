@@ -333,8 +333,11 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 
 	log.DEBUG.Printf("Received new message: %s", delivery.Body)
 
+	if ack && b.GetConfig().AMQP.EarlyAck {
+		delivery.Ack(multiple)
+	}
 	err := taskProcessor.Process(signature)
-	if ack {
+	if ack && !b.GetConfig().AMQP.EarlyAck {
 		delivery.Ack(multiple)
 	}
 	return err
