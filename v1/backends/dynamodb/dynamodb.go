@@ -89,14 +89,13 @@ func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, er
 	if err != nil {
 		return false, err
 	}
-	var countSuccessTasks = 0
+
 	for _, taskState := range taskStates {
-		if taskState.IsCompleted() {
-			countSuccessTasks++
+		if !taskState.IsCompleted() {
+			return false, nil
 		}
 	}
-
-	return countSuccessTasks == groupTaskCount, nil
+	return true, nil
 }
 
 // GroupTaskStates ...
