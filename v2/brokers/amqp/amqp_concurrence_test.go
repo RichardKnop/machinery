@@ -5,7 +5,7 @@ import (
 	"github.com/RichardKnop/machinery/v2/brokers/iface"
 	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/tasks"
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"testing"
 	"time"
 )
