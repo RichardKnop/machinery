@@ -343,6 +343,7 @@ RabbitMQ related configuration. Not necessary if you are using other broker/back
 * `QueueBindingArguments`: an optional map of additional arguments used when binding to an AMQP queue
 * `BindingKey`: The queue is bind to the exchange with this key, e.g. `machinery_task`
 * `PrefetchCount`: How many tasks to prefetch (set to `1` if you have long running tasks)
+* `DelayedQueue`: delayed queue name to be used for task retry or delayed task (if empty it will follow auto create and delate delayed queues)
 
 #### DynamoDB
 
