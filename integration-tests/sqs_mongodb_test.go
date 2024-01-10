@@ -31,4 +31,6 @@ func TestSQSMongodb(t *testing.T) {
 	go worker.Launch()
 	testAll(server, t)
 	worker.Quit()
+
+	testPubslishToLocal(server, t)
 }

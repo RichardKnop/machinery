@@ -40,11 +40,13 @@ type Broker struct {
 	redsync              *redsync.Redsync
 	redisOnce            sync.Once
 	redisDelayedTasksKey string
+	deliveriesMap        map[string]chan []byte
+	deliveriesMapMutex   sync.RWMutex
 }
 
 // New creates new Broker instance
 func New(cnf *config.Config, host, password, socketPath string, db int) iface.Broker {
-	b := &Broker{Broker: common.NewBroker(cnf)}
+	b := &Broker{Broker: common.NewBroker(cnf), deliveriesMap: make(map[string]chan []byte)}
 	b.host = host
 	b.db = db
 	b.password = password
@@ -91,6 +93,9 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	// Channel to which we will push tasks ready for processing by worker
 	deliveries := make(chan []byte, concurrency)
 	pool := make(chan struct{}, concurrency)
+	b.deliveriesMapMutex.Lock()
+	b.deliveriesMap[consumerTag] = deliveries
+	b.deliveriesMapMutex.Unlock()
 
 	// initialize worker pool with maxWorkers workers
 	for i := 0; i < concurrency; i++ {
@@ -484,4 +489,23 @@ func (b *Broker) requeueMessage(delivery []byte, taskProcessor iface.TaskProcess
 	conn := b.open()
 	defer conn.Close()
 	conn.Do("RPUSH", getQueue(b.GetConfig(), taskProcessor), delivery)
+}
+
+func (b *Broker) PublishToLocal(consumerTag string, sig *tasks.Signature, blockTimeout time.Duration) error {
+	b.deliveriesMapMutex.RLock()
+	deliveries, ok := b.deliveriesMap[consumerTag]
+	b.deliveriesMapMutex.RUnlock()
+	if !ok {
+		return fmt.Errorf("no such consumerTag: %v", consumerTag)
+	}
+	msg, err := json.Marshal(sig)
+	if err != nil {
+		return fmt.Errorf("JSON marshal error: %s", err)
+	}
+	select {
+	case deliveries <- msg:
+		return nil
+	case <-time.After(blockTimeout):
+		return fmt.Errorf("health check: %v queue is full.", consumerTag)
+	}
 }
