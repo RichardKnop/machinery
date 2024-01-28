@@ -1009,7 +1009,7 @@ make ci
 This will basically run docker-compose command:
 
 ```sh
-(docker-compose -f docker-compose.test.yml -p machinery_ci up --build -d) && (docker logs -f machinery_sut &) && (docker wait machinery_sut)
+(docker compose -f docker-compose.test.yml -p machinery_ci up --build -d) && (docker logs -f machinery_sut &) && (docker wait machinery_sut)
 ```
 
 Alternative approach is to setup a development environment on your machine.
@@ -1021,6 +1021,7 @@ export AMQP_URL=amqp://guest:guest@localhost:5672/
 export REDIS_URL=localhost:6379
 export MEMCACHE_URL=localhost:11211
 export MONGODB_URL=localhost:27017
+export DYNAMODB_URL=localhost:8000
 ```
 
 To run integration tests against an SQS instance, you will need to create a "test_queue" in SQS and export these environment variables:
