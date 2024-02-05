@@ -150,6 +150,10 @@ type RedisConfig struct {
 
 	// MasterName specifies a redis master name in order to configure a sentinel-backed redis FailoverClient
 	MasterName string `yaml:"master_name" envconfig:"REDIS_MASTER_NAME"`
+
+	// ClusterEnabled specifies whether cluster mode is enabled, regardless the number of addresses.
+	// This helps create ClusterClient for Redis servers that enabled cluster mode with 1 node, or using AWS configuration endpoint
+	ClusterEnabled bool `yaml:"cluster_enabled" envconfig:"REDIS_CLUSTER_ENABLED"`
 }
 
 // GCPPubSubConfig wraps GCP PubSub related configuration
