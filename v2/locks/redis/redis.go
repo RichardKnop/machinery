@@ -1,13 +1,15 @@
 package redis
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/RichardKnop/machinery/v2/config"
 )
 
 var (
@@ -43,7 +45,11 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 		ropt.MasterName = cnf.Redis.MasterName
 	}
 
-	lock.rclient = redis.NewUniversalClient(ropt)
+	if cnf.Redis != nil && cnf.Redis.ClusterEnabled {
+		lock.rclient = redis.NewClusterClient(ropt.Cluster())
+	} else {
+		lock.rclient = redis.NewUniversalClient(ropt)
+	}
 
 	return lock
 }
@@ -52,7 +58,7 @@ func (r Lock) LockWithRetries(key string, unixTsToExpireNs int64) error {
 	for i := 0; i <= r.retries; i++ {
 		err := r.Lock(key, unixTsToExpireNs)
 		if err == nil {
-			//成功拿到锁，返回
+			// 成功拿到锁，返回
 			return nil
 		}
 
@@ -64,7 +70,7 @@ func (r Lock) LockWithRetries(key string, unixTsToExpireNs int64) error {
 func (r Lock) Lock(key string, unixTsToExpireNs int64) error {
 	now := time.Now().UnixNano()
 	expiration := time.Duration(unixTsToExpireNs + 1 - now)
-	ctx := r.rclient.Context()
+	ctx := context.Background()
 
 	success, err := r.rclient.SetNX(ctx, key, unixTsToExpireNs, expiration).Result()
 	if err != nil {
