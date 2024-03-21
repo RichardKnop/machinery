@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/go-redsync/redsync/v4"
-	redsyncgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v8"
+	redsyncgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v9"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
 	"github.com/RichardKnop/machinery/v1/common"
@@ -38,10 +38,10 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 		Backend: common.NewBackend(cnf),
 	}
 	parts := strings.Split(addrs[0], "@")
-	if len(parts) == 2 {
+	if len(parts) >= 2 {
 		// with passwrod
-		b.password = parts[0]
-		addrs[0] = parts[1]
+		b.password = strings.Join(parts[:len(parts)-1], "@")
+		addrs[0] = parts[len(parts)-1] // addr is the last one without @
 	}
 
 	ropt := &redis.UniversalOptions{

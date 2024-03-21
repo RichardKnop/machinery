@@ -15,7 +15,7 @@ import (
 	"github.com/RichardKnop/machinery/v2/log"
 	"github.com/RichardKnop/machinery/v2/tasks"
 	"github.com/pkg/errors"
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type AMQPConnection struct {
@@ -354,24 +354,48 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
-	// It's necessary to redeclare the queue each time (to zero its TTL timer).
-	queueName := fmt.Sprintf(
-		"delay.%d.%s.%s",
-		delayMs, // delay duration in mileseconds
-		b.GetConfig().AMQP.Exchange,
-		signature.RoutingKey, // routing key
-	)
+	queueName := b.GetConfig().AMQP.DelayedQueue
 	declareQueueArgs := amqp.Table{
 		// Exchange where to send messages after TTL expiration.
 		"x-dead-letter-exchange": b.GetConfig().AMQP.Exchange,
 		// Routing key which use when resending expired messages.
 		"x-dead-letter-routing-key": signature.RoutingKey,
-		// Time in milliseconds
-		// after that message will expire and be sent to destination.
-		"x-message-ttl": delayMs,
-		// Time after that the queue will be deleted.
-		"x-expires": delayMs * 2,
 	}
+	messageProperties := amqp.Publishing{
+		Headers:      amqp.Table(signature.Headers),
+		ContentType:  "application/json",
+		Body:         message,
+		DeliveryMode: amqp.Persistent,
+		Expiration:   fmt.Sprint(delayMs),
+	}
+
+	if queueName == "" {
+		// It's necessary to redeclare the queue each time (to zero its TTL timer).
+		queueName = fmt.Sprintf(
+			"delay.%d.%s.%s",
+			delayMs, // delay duration in mileseconds
+			b.GetConfig().AMQP.Exchange,
+			signature.RoutingKey, // routing key
+		)
+		declareQueueArgs = amqp.Table{
+			// Exchange where to send messages after TTL expiration.
+			"x-dead-letter-exchange": b.GetConfig().AMQP.Exchange,
+			// Routing key which use when resending expired messages.
+			"x-dead-letter-routing-key": signature.RoutingKey,
+			// Time in milliseconds
+			// after that message will expire and be sent to destination.
+			"x-message-ttl": delayMs,
+			// Time after that the queue will be deleted.
+			"x-expires": delayMs * 2,
+		}
+		messageProperties = amqp.Publishing{
+			Headers:      amqp.Table(signature.Headers),
+			ContentType:  "application/json",
+			Body:         message,
+			DeliveryMode: amqp.Persistent,
+		}
+	}
+
 	conn, channel, _, _, _, err := b.Connect(
 		b.GetConfig().Broker,
 		b.GetConfig().MultipleBrokerSeparator,
@@ -397,12 +421,7 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 		queueName,                   // routing key
 		false,                       // mandatory
 		false,                       // immediate
-		amqp.Publishing{
-			Headers:      amqp.Table(signature.Headers),
-			ContentType:  "application/json",
-			Body:         message,
-			DeliveryMode: amqp.Persistent,
-		},
+		messageProperties,
 	); err != nil {
 		return err
 	}

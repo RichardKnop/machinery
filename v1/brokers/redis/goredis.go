@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/go-redsync/redsync/v4"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/brokers/iface"
@@ -42,10 +42,10 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 
 	var password string
 	parts := strings.Split(addrs[0], "@")
-	if len(parts) == 2 {
+	if len(parts) >= 2 {
 		// with password
-		password = parts[0]
-		addrs[0] = parts[1]
+		password = strings.Join(parts[:len(parts)-1], "@")
+		addrs[0] = parts[len(parts)-1] // addr is the last one without @
 	}
 
 	ropt := &redis.UniversalOptions{
@@ -200,7 +200,7 @@ func (b *BrokerGR) Publish(ctx context.Context, signature *tasks.Signature) erro
 
 		if signature.ETA.After(now) {
 			score := signature.ETA.UnixNano()
-			err = b.rclient.ZAdd(context.Background(), b.redisDelayedTasksKey, &redis.Z{Score: float64(score), Member: msg}).Err()
+			err = b.rclient.ZAdd(context.Background(), b.redisDelayedTasksKey, redis.Z{Score: float64(score), Member: msg}).Err()
 			return err
 		}
 	}
