@@ -276,26 +276,18 @@ func getIntValue(theType string, value interface{}) (int64, error) {
 		if !ok {
 			return 0, typeConversionError(value, typesMap[theType].String())
 		}
-		
+
 		return n.Int64()
 	}
-	
+
 	var n int64
 	switch val := value.(type) {
-	case int:
-		n = int64(val)
-	case int8:
-		n = int64(val)
-	case int16:
-		n = int64(val)
-	case int32:
-		n = int64(val)
-	case int64:
-		n = val
+	case int, int8, int16, int32, int64:
+		n = int64(val.(int))
 	default:
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
-	
+
 	return n, nil
 }
 
@@ -317,21 +309,15 @@ func getUintValue(theType string, value interface{}) (uint64, error) {
 
 		return uintVal, nil
 	}
-	
+
 	var n uint64
 	switch value := value.(type) {
-	case uint64:
-		n = value
-	case uint32:
-		n = uint64(value)
-	case uint16:
-		n = uint64(value)
-	case uint8:
-		n = uint64(value)
+	case uint8, uint16, uint32, uint64:
+		n = uint64(value.(uint))
 	default:
 		return 0, typeConversionError(value, typesMap[theType].String())
 	}
-	
+
 	return n, nil
 }
 
