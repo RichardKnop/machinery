@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/go-redsync/redsync/v4"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/Nimbleway/machinery/v1/brokers/errs"
 	"github.com/Nimbleway/machinery/v1/brokers/iface"
@@ -56,9 +56,9 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 	if cnf.Redis != nil {
 		ropt.MasterName = cnf.Redis.MasterName
 		if cnf.Redis.IdleTimeout == 0 {
-			ropt.IdleTimeout = time.Duration(-1)
+			ropt.ConnMaxIdleTime = time.Duration(-1)
 		} else {
-			ropt.IdleTimeout = time.Duration(cnf.Redis.IdleTimeout) * time.Second
+			ropt.ConnMaxIdleTime = time.Duration(cnf.Redis.IdleTimeout) * time.Second
 		}
 		if cnf.Redis.MaxActive != 0 {
 			ropt.PoolSize = cnf.Redis.MaxActive
@@ -226,7 +226,7 @@ func (b *BrokerGR) Publish(ctx context.Context, signature *tasks.Signature) erro
 
 		if signature.ETA.After(now) {
 			score := signature.ETA.UnixNano()
-			err = b.rclient.ZAdd(context.Background(), b.redisDelayedTasksKey, &redis.Z{Score: float64(score), Member: msg}).Err()
+			err = b.rclient.ZAdd(context.Background(), b.redisDelayedTasksKey, redis.Z{Score: float64(score), Member: msg}).Err()
 			return err
 		}
 	}

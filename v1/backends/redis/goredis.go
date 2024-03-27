@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/go-redsync/redsync/v4"
-	redsyncgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v8"
+	redsyncgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v9"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/Nimbleway/machinery/v1/backends/iface"
 	"github.com/Nimbleway/machinery/v1/common"
@@ -52,9 +52,9 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 	if cnf.Redis != nil {
 		ropt.MasterName = cnf.Redis.MasterName
 		if cnf.Redis.IdleTimeout == 0 {
-			ropt.IdleTimeout = time.Duration(-1)
+			ropt.ConnMaxIdleTime = time.Duration(-1)
 		} else {
-			ropt.IdleTimeout = time.Duration(cnf.Redis.IdleTimeout) * time.Second
+			ropt.ConnMaxIdleTime = time.Duration(cnf.Redis.IdleTimeout) * time.Second
 		}
 		if cnf.Redis.MaxActive != 0 {
 			ropt.PoolSize = cnf.Redis.MaxActive
