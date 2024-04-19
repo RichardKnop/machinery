@@ -148,6 +148,9 @@ type RedisConfig struct {
 	DelayedTasksPollPeriod int    `yaml:"delayed_tasks_poll_period" envconfig:"REDIS_DELAYED_TASKS_POLL_PERIOD"`
 	DelayedTasksKey        string `yaml:"delayed_tasks_key" envconfig:"REDIS_DELAYED_TASKS_KEY"`
 
+	// ConnectionName specifies the redis connection name to be set when connecting to the Redis server
+	ConnectionName string `yaml:"connection_name" envconfig:"REDIS_CONNECTION_NAME"`
+
 	// MasterName specifies a redis master name in order to configure a sentinel-backed redis FailoverClient
 	MasterName string `yaml:"master_name" envconfig:"REDIS_MASTER_NAME"`
 	// ClusterMode specifies machinery should use redis cluster client explicitly
