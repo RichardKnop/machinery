@@ -48,6 +48,7 @@ func ReadFromFile(cnfPath string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Open file error: %s", err)
 	}
+	defer file.Close()
 
 	// Config file found, let's try to read it
 	data := make([]byte, 1000)
