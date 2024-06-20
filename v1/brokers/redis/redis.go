@@ -91,10 +91,12 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	// Channel to which we will push tasks ready for processing by worker
 	deliveries := make(chan []byte, concurrency)
 	pool := make(chan struct{}, concurrency)
+  nextTask := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
 	for i := 0; i < concurrency; i++ {
 		pool <- struct{}{}
+		nextTask <- struct{}{}
 	}
 
 	// A receiving goroutine keeps popping messages from the queue by BLPOP
@@ -103,7 +105,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	go func() {
 
 		log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
-
+		var gotTask bool
 		for {
 			select {
 			// A way to stop this goroutine from b.StopConsuming
@@ -119,10 +121,16 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				}
 
 				if taskProcessor.PreConsumeHandler() {
+					if !gotTask {
+						<-nextTask
+						gotTask = true
+					}
+
 					task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
 					//TODO: should this error be ignored?
 					if len(task) > 0 {
 						deliveries <- task
+						gotTask = false
 					}
 				}
 
@@ -162,7 +170,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		}
 	}()
 
-	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
+	if err := b.consume(deliveries, nextTask, concurrency, taskProcessor); err != nil {
 		return b.GetRetry(), err
 	}
 
@@ -275,7 +283,7 @@ func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
-func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor) error {
+func (b *Broker) consume(deliveries <-chan []byte, nextPool chan<- struct{}, concurrency int, taskProcessor iface.TaskProcessor) error {
 	errorsChan := make(chan error, concurrency*2)
 	pool := make(chan struct{}, concurrency)
 
@@ -309,6 +317,11 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 			// Consume the task inside a goroutine so multiple tasks
 			// can be processed concurrently
 			go func() {
+				defer func() {
+					nextPool <- struct{}{}
+				}()
+				
+        
 				if err := b.consumeOne(d, taskProcessor); err != nil {
 					errorsChan <- err
 				}
