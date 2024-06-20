@@ -105,6 +105,7 @@ func (b *BrokerGR) StartConsuming(consumerTag string, concurrency int, taskProce
 	for i := 0; i < concurrency; i++ {
 		pool <- struct{}{}
 	}
+	closeGoroutineWhenReturn := make(chan int)
 
 	// A receiving goroutine keeps popping messages from the queue by BLPOP
 	// If the message is valid and can be unmarshaled into a proper structure
@@ -115,6 +116,9 @@ func (b *BrokerGR) StartConsuming(consumerTag string, concurrency int, taskProce
 
 		for {
 			select {
+			case <-closeGoroutineWhenReturn:
+				close(deliveries)
+				return
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.GetStopChan():
 				close(deliveries)
@@ -139,6 +143,8 @@ func (b *BrokerGR) StartConsuming(consumerTag string, concurrency int, taskProce
 
 		for {
 			select {
+			case <-closeGoroutineWhenReturn:
+				return
 			// A way to stop this goroutine from b.StopConsuming
 			case <-b.GetStopChan():
 				return
@@ -163,12 +169,20 @@ func (b *BrokerGR) StartConsuming(consumerTag string, concurrency int, taskProce
 	}()
 
 	if err := b.consume(deliveries, concurrency, taskProcessor); err != nil {
+		close(closeGoroutineWhenReturn)
+		for d := range deliveries {
+			b.requeueMessage(context.Background(), d)
+		}
 		return b.GetRetry(), err
 	}
 
 	// Waiting for any tasks being processed to finish
 	b.processingWG.Wait()
 
+	close(closeGoroutineWhenReturn)
+	for d := range deliveries {
+		b.requeueMessage(context.Background(), d)
+	}
 	return b.GetRetry(), nil
 }
 
@@ -181,6 +195,19 @@ func (b *BrokerGR) StopConsuming() {
 	b.consumingWG.Wait()
 
 	b.rclient.Close()
+}
+
+func (b *BrokerGR) requeueMessage(ctx context.Context, task []byte) {
+	signature := new(tasks.Signature)
+	decoder := json.NewDecoder(bytes.NewReader(task))
+	decoder.UseNumber()
+	if err := decoder.Decode(signature); err != nil {
+		log.ERROR.Print(errs.NewErrCouldNotUnmarshalTaskSignature(task, err))
+	}
+
+	if err := b.Publish(context.Background(), signature); err != nil {
+		log.ERROR.Print(err)
+	}
 }
 
 // Publish places a new message on the default queue
