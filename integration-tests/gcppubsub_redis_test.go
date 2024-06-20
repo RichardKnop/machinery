@@ -95,7 +95,10 @@ func TestGCPPubSubRedis(t *testing.T) {
 	})
 
 	worker := server.(*machinery.Server).NewWorker("test_worker", 0)
-	defer worker.Quit()
 	go worker.Launch()
 	testAll(server, t)
+	worker.Quit()
+
+	// not supported
+	// testPubslishToLocal(server, t)
 }

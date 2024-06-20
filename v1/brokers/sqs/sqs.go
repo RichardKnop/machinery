@@ -30,17 +30,19 @@ const (
 // There are examples on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/sqs-example-create-queue.html
 type Broker struct {
 	common.Broker
-	processingWG      sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
-	receivingWG       sync.WaitGroup
-	stopReceivingChan chan int
-	sess              *session.Session
-	service           sqsiface.SQSAPI
-	queueUrl          *string
+	processingWG       sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
+	receivingWG        sync.WaitGroup
+	stopReceivingChan  chan int
+	sess               *session.Session
+	service            sqsiface.SQSAPI
+	queueUrl           *string
+	deliveriesMap      map[string]chan *awssqs.ReceiveMessageOutput
+	deliveriesMapMutex sync.RWMutex
 }
 
 // New creates new Broker instance
 func New(cnf *config.Config) iface.Broker {
-	b := &Broker{Broker: common.NewBroker(cnf)}
+	b := &Broker{Broker: common.NewBroker(cnf), deliveriesMap: make(map[string]chan *awssqs.ReceiveMessageOutput)}
 	if cnf.SQS != nil && cnf.SQS.Client != nil {
 		// Use provided *SQS client
 		b.service = cnf.SQS.Client
@@ -66,6 +68,9 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	deliveries := make(chan *awssqs.ReceiveMessageOutput, concurrency)
 	pool := make(chan struct{}, concurrency)
+	b.deliveriesMapMutex.Lock()
+	b.deliveriesMap[consumerTag] = deliveries
+	b.deliveriesMapMutex.Unlock()
 
 	// initialize worker pool with maxWorkers workers
 	for i := 0; i < concurrency; i++ {
@@ -365,4 +370,25 @@ func (b *Broker) getQueueURL(taskProcessor iface.TaskProcessor) *string {
 	}
 
 	return aws.String(b.GetConfig().Broker + "/" + queueName)
+}
+
+func (b *Broker) PublishToLocal(consumerTag string, sig *tasks.Signature, blockTimeout time.Duration) error {
+	b.deliveriesMapMutex.RLock()
+	deliveries, ok := b.deliveriesMap[consumerTag]
+	b.deliveriesMapMutex.RUnlock()
+	if !ok {
+		return fmt.Errorf("no such consumerTag: %v", consumerTag)
+	}
+	msg, err := json.Marshal(sig)
+	if err != nil {
+		return fmt.Errorf("JSON marshal error: %s", err)
+	}
+	sqsMsg := awssqs.Message{}
+	sqsMsg.SetBody(string(msg))
+	select {
+	case deliveries <- &awssqs.ReceiveMessageOutput{Messages: []*awssqs.Message{&sqsMsg}}:
+		return nil
+	case <-time.After(blockTimeout):
+		return fmt.Errorf("health check: %v queue is full.", consumerTag)
+	}
 }

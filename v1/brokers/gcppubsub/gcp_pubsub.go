@@ -195,3 +195,8 @@ func (b *Broker) consumeOne(delivery *pubsub.Message, taskProcessor iface.TaskPr
 	// Call Ack() after successfully consuming and processing the message
 	delivery.Ack()
 }
+
+// not supported
+func (b *Broker) PublishToLocal(consumerTag string, sig *tasks.Signature, blockTimeout time.Duration) error {
+	return fmt.Errorf("gcp pubsub not support PublishToLocal")
+}

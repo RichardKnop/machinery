@@ -3,12 +3,15 @@ package integration_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/RichardKnop/machinery/v1"
@@ -29,6 +32,7 @@ type Server interface {
 	GetBroker() brokersiface.Broker
 	GetConfig() *config.Config
 	RegisterTasks(namedTaskFuncs map[string]interface{}) error
+	RegisterTask(name string, taskFunc interface{}) error
 	SendTaskWithContext(ctx context.Context, signature *tasks.Signature) (*result.AsyncResult, error)
 	SendTask(signature *tasks.Signature) (*result.AsyncResult, error)
 	SendChainWithContext(ctx context.Context, chain *tasks.Chain) (*result.ChainAsyncResult, error)
@@ -37,6 +41,7 @@ type Server interface {
 	SendGroup(group *tasks.Group, sendConcurrency int) ([]*result.AsyncResult, error)
 	SendChordWithContext(ctx context.Context, chord *tasks.Chord, sendConcurrency int) (*result.ChordAsyncResult, error)
 	SendChord(chord *tasks.Chord, sendConcurrency int) (*result.ChordAsyncResult, error)
+	NewWorker(consumerTag string, concurrency int) *machinery.Worker
 }
 
 func testAll(server Server, t *testing.T) {
@@ -338,6 +343,99 @@ func testDelay(server Server, t *testing.T) {
 			eta.UnixNano(),
 		)
 	}
+}
+
+func testPubslishToLocal(oldServer Server, t *testing.T) {
+	tag := "health_check_tag"
+	config := oldServer.GetConfig()
+	config.DefaultQueue = tag
+	if config.AMQP != nil {
+		config.AMQP.BindingKey = tag
+	}
+	server, err := machinery.NewServer(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	healthCheckTaskName := "health-check"
+	healthCheckCompleteChan := make(chan string, 1)
+	// RegisterTask health check task
+	err = server.RegisterTask(healthCheckTaskName, func(healthCheckUUID string) error {
+		select {
+		case healthCheckCompleteChan <- healthCheckUUID: // success and send uuid
+			return nil
+		case <-time.After(5 * time.Second):
+			return fmt.Errorf("send health check result error: %v", healthCheckUUID)
+		}
+	})
+	assert.Nil(t, err)
+
+	// start worker with concurrency 1
+	worker := server.NewWorker(tag, 1)
+	worker.Queue = tag
+	go worker.Launch()
+	time.Sleep(1 * time.Second) // ensure worker start
+
+	// check health: send message to local worker; wait `taskExecutionTimeout` until the task is completed
+	checkHealth := func(consumerTag string, taskExecutionTimeout time.Duration) error {
+		// clear channel
+		select {
+		case <-healthCheckCompleteChan:
+		default:
+		}
+
+		broker := server.GetBroker()
+		healthCheckUUID, err := uuid.NewUUID()
+		if err != nil {
+			return err
+		}
+		if err := broker.PublishToLocal(consumerTag, &tasks.Signature{
+			UUID: healthCheckUUID.String(),
+			Name: healthCheckTaskName,
+			Args: []tasks.Arg{
+				{Type: "string", Value: healthCheckUUID.String()},
+			},
+		}, 5*time.Second); err != nil {
+			return err
+		}
+
+		// wait for task execution success
+		select {
+		case successUUID := <-healthCheckCompleteChan:
+			if successUUID == healthCheckUUID.String() {
+				return nil
+			}
+		case <-time.After(taskExecutionTimeout):
+		}
+		return fmt.Errorf("health check execution fail: %v", healthCheckUUID.String())
+	}
+	// trigger `checkHealth`
+	err = checkHealth(tag, 5*time.Second)
+	assert.Nil(t, err)
+
+	// Simulation of worker being stuck
+	if err := server.RegisterTask("sleep-ten-seconds", func() error {
+		time.Sleep(10 * time.Second)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = server.SendTask(&tasks.Signature{
+		Name: "sleep-ten-seconds",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(3 * time.Second) // ensure sleep-ten-seconds running
+	// checkHealth fail
+	err = checkHealth(tag, 5*time.Second)
+	assert.True(t, strings.HasPrefix(err.Error(), "health check execution fail: "))
+	time.Sleep(6 * time.Second) // ensure queue is empty and last health check task executed
+	// checkHealth success
+	err = checkHealth(tag, 5*time.Second)
+	assert.Nil(t, err)
+
+	// stop worker
+	worker.Quit()
 }
 
 func registerTestTasks(server Server) {

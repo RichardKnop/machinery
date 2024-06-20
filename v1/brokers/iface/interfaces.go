@@ -2,6 +2,7 @@ package iface
 
 import (
 	"context"
+	"time"
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -18,6 +19,8 @@ type Broker interface {
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)
 	GetDelayedTasks() ([]*tasks.Signature, error)
 	AdjustRoutingKey(s *tasks.Signature)
+	// send messages to local workers
+	PublishToLocal(consumerTag string, sig *tasks.Signature, t time.Duration) error
 }
 
 // TaskProcessor - can process a delivered task
