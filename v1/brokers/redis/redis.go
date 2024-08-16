@@ -102,6 +102,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	// If the message is valid and can be unmarshaled into a proper structure
 	// we send it to the deliveries channel
 	go func() {
+
 		log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
 		for {
