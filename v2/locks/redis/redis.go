@@ -45,6 +45,10 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 		ropt.MasterName = cnf.Redis.MasterName
 	}
 
+	if cnf.Redis != nil && cnf.Redis.SentinelPassword != "" {
+		ropt.SentinelPassword = cnf.Redis.SentinelPassword
+	}
+
 	if cnf.Redis != nil && cnf.Redis.ClusterEnabled {
 		lock.rclient = redis.NewClusterClient(ropt.Cluster())
 	} else {

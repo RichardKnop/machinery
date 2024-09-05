@@ -157,6 +157,9 @@ type RedisConfig struct {
 	// ClusterEnabled specifies whether cluster mode is enabled, regardless the number of addresses.
 	// This helps create ClusterClient for Redis servers that enabled cluster mode with 1 node, or using AWS configuration endpoint
 	ClusterEnabled bool `yaml:"cluster_enabled" envconfig:"REDIS_CLUSTER_ENABLED"`
+
+	// SentinelPassword specifies the password to be used when connecting to a Redis server via Sentinel
+	SentinelPassword string `yaml:"sentinel_password" envconfig:"REDIS_SENTINEL_PASSWORD"`
 }
 
 // GCPPubSubConfig wraps GCP PubSub related configuration
