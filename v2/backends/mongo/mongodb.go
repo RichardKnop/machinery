@@ -143,6 +143,7 @@ func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.T
 	update := bson.M{
 		"state":   tasks.StateSuccess,
 		"results": decodedResults,
+		"ttl":     time.Now().Add(time.Duration(b.GetConfig().ResultsExpireIn) * time.Second),
 	}
 	return b.updateState(signature, update)
 }
@@ -171,7 +172,11 @@ func (b *Backend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult
 
 // SetStateFailure updates task state to FAILURE
 func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
-	update := bson.M{"state": tasks.StateFailure, "error": err}
+	update := bson.M{
+		"state": tasks.StateFailure,
+		"error": err,
+		"ttl":   time.Now().Add(time.Duration(b.GetConfig().ResultsExpireIn) * time.Second),
+	}
 	return b.updateState(signature, update)
 }
 
@@ -338,18 +343,14 @@ func (b *Backend) createMongoIndexes(database string) error {
 
 	tasksCollection := b.client.Database(database).Collection("tasks")
 
-	expireIn := int32(b.GetConfig().ResultsExpireIn)
-
-	_, err := tasksCollection.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
-		{
-			Keys:    bson.M{"state": 1},
-			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
+	_, err := tasksCollection.Indexes().CreateMany(
+		context.Background(), []mongo.IndexModel{
+			{
+				Keys:    bson.M{"ttl": 1},
+				Options: options.Index().SetBackground(true).SetExpireAfterSeconds(0),
+			},
 		},
-		mongo.IndexModel{
-			Keys:    bson.M{"lock": 1},
-			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
-		},
-	})
+	)
 	if err != nil {
 		return err
 	}
