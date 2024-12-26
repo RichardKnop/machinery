@@ -53,6 +53,10 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Backend {
 		ropt.MasterName = cnf.Redis.MasterName
 	}
 
+	if cnf.Redis != nil && cnf.Redis.SentinelPassword != "" {
+		ropt.SentinelPassword = cnf.Redis.SentinelPassword
+	}
+
 	if cnf.Redis != nil && cnf.Redis.ClusterEnabled {
 		b.rclient = redis.NewClusterClient(ropt.Cluster())
 	} else {
