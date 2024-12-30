@@ -56,13 +56,13 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 		b.GetConfig().Broker,
 		b.GetConfig().MultipleBrokerSeparator,
 		b.GetConfig().TLSConfig,
-		b.GetConfig().AMQP.Exchange,                     // exchange name
-		b.GetConfig().AMQP.ExchangeType,                 // exchange type
-		queueName,                                       // queue name
-		true,                                            // queue durable
-		false,                                           // queue delete when unused
-		b.GetConfig().AMQP.BindingKey,                   // queue binding key
-		nil,                                             // exchange declare args
+		b.GetConfig().AMQP.Exchange,     // exchange name
+		b.GetConfig().AMQP.ExchangeType, // exchange type
+		queueName,                       // queue name
+		true,                            // queue durable
+		false,                           // queue delete when unused
+		b.GetConfig().AMQP.BindingKey,   // queue binding key
+		nil,                             // exchange declare args
 		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
@@ -212,8 +212,8 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 
 	connection, err := b.GetOrOpenConnection(
 		queue,
-		bindingKey,                                      // queue binding key
-		nil,                                             // exchange declare args
+		bindingKey, // queue binding key
+		nil,        // exchange declare args
 		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
@@ -372,23 +372,19 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 		// Time after that the queue will be deleted.
 		"x-expires": delayMs * 2,
 	}
-	xMaxPriority, ok := b.GetConfig().AMQP.QueueDeclareArgs["x-max-priority"]
-	if ok {
-		declareQueueArgs["x-max-priority"] = xMaxPriority
-	}
 
 	conn, channel, _, _, _, err := b.Connect(
 		b.GetConfig().Broker,
 		b.GetConfig().MultipleBrokerSeparator,
 		b.GetConfig().TLSConfig,
-		b.GetConfig().AMQP.Exchange,                     // exchange name
-		b.GetConfig().AMQP.ExchangeType,                 // exchange type
-		queueName,                                       // queue name
-		true,                                            // queue durable
-		b.GetConfig().AMQP.AutoDelete,                   // queue delete when unused
-		queueName,                                       // queue binding key
-		nil,                                             // exchange declare args
-		declareQueueArgs,                                // queue declare args
+		b.GetConfig().AMQP.Exchange,     // exchange name
+		b.GetConfig().AMQP.ExchangeType, // exchange type
+		queueName,                       // queue name
+		true,                            // queue durable
+		b.GetConfig().AMQP.AutoDelete,   // queue delete when unused
+		queueName,                       // queue binding key
+		nil,                             // exchange declare args
+		declareQueueArgs,                // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
@@ -466,8 +462,8 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	bindingKey := b.GetConfig().AMQP.BindingKey // queue binding key
 	conn, err := b.GetOrOpenConnection(
 		queue,
-		bindingKey,                                      // queue binding key
-		nil,                                             // exchange declare args
+		bindingKey, // queue binding key
+		nil,        // exchange declare args
 		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
