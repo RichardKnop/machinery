@@ -3,22 +3,25 @@ module github.com/RichardKnop/machinery/v2
 go 1.15
 
 require (
-	cloud.google.com/go/pubsub v1.10.0
+	cloud.google.com/go/pubsub v1.33.0
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae
 	github.com/aws/aws-sdk-go v1.37.16
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
 	github.com/go-redsync/redsync/v4 v4.8.1
 	github.com/gomodule/redigo v1.9.2
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rabbitmq/amqp091-go v1.9.0
 	github.com/redis/go-redis/v9 v9.0.5
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.5
+	go.etcd.io/etcd/api/v3 v3.5.17
+	go.etcd.io/etcd/client/v3 v3.5.17
 	go.mongodb.org/mongo-driver v1.17.0
+	golang.org/x/sync v0.8.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
