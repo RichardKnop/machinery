@@ -219,7 +219,9 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 	// and leave the message in the queue
 	if !b.IsTaskRegistered(sig.Name) {
 		if sig.IgnoreWhenTaskNotRegistered {
-			b.deleteOne(delivery)
+			if err := b.deleteOne(delivery); err != nil {
+				log.ERROR.Printf("error when deleting the delivery. delivery is %v, Error=%s", delivery, err)
+			}
 		}
 		return fmt.Errorf("task %s is not registered", sig.Name)
 	}
@@ -227,7 +229,7 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 	err := taskProcessor.Process(sig)
 	if err != nil {
 		// stop task deletion in case we want to send messages to dlq in sqs
-		if err == errs.ErrStopTaskDeletion {
+		if errors.Is(err, errs.ErrStopTaskDeletion) {
 			return nil
 		}
 		return err
@@ -270,9 +272,8 @@ func (b *Broker) receiveMessage(qURL *string) (*awssqs.ReceiveMessageOutput, err
 	if b.GetConfig().SQS != nil {
 		waitTimeSeconds = b.GetConfig().SQS.WaitTimeSeconds
 		visibilityTimeout = b.GetConfig().SQS.VisibilityTimeout
-	} else {
-		waitTimeSeconds = 0
 	}
+
 	input := &awssqs.ReceiveMessageInput{
 		AttributeNames: []*string{
 			aws.String(awssqs.MessageSystemAttributeNameSentTimestamp),
@@ -348,6 +349,36 @@ func (b *Broker) continueReceivingMessages(qURL *string, deliveries chan *awssqs
 		go func() { deliveries <- output }()
 	}
 	return true, nil
+}
+
+// heartbeat is a method sends a heartbeat signal to AWS SQS to keep a message invisible to other consumers while being processed.
+func (b *Broker) heartbeat(delivery *awssqs.ReceiveMessageOutput, notify <-chan struct{}) {
+	ticker := time.NewTicker(time.Duration(*b.GetConfig().SQS.VisibilityTimeout) / 2 * time.Second)
+
+	go func() {
+		for {
+			select {
+			case <-notify:
+				ticker.Stop()
+
+				return
+			case <-b.stopReceivingChan:
+				ticker.Stop()
+
+				return
+			case <-ticker.C:
+				// Extend the delivery visibility timeout
+				_, err := b.service.ChangeMessageVisibility(&awssqs.ChangeMessageVisibilityInput{
+					QueueUrl:          b.defaultQueueURL(),
+					ReceiptHandle:     delivery.Messages[0].ReceiptHandle,
+					VisibilityTimeout: aws.Int64(int64(*b.GetConfig().SQS.VisibilityTimeout)),
+				})
+				if err != nil {
+					log.ERROR.Printf("Error when changing delivery visibility: %v", err)
+				}
+			}
+		}
+	}()
 }
 
 // stopReceiving is a method sending a signal to stopReceivingChan
