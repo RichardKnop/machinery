@@ -200,6 +200,13 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 		return errors.New("received empty message, the delivery is " + delivery.GoString())
 	}
 
+	if b.GetConfig().SQS.VisibilityHeartBeat {
+		notify := make(chan struct{})
+		defer close(notify)
+
+		b.visibilityHeartbeat(delivery, notify)
+	}
+
 	sig := new(tasks.Signature)
 	decoder := json.NewDecoder(strings.NewReader(*delivery.Messages[0].Body))
 	decoder.UseNumber()
@@ -351,9 +358,13 @@ func (b *Broker) continueReceivingMessages(qURL *string, deliveries chan *awssqs
 	return true, nil
 }
 
-// heartbeat is a method sends a heartbeat signal to AWS SQS to keep a message invisible to other consumers while being processed.
-func (b *Broker) heartbeat(delivery *awssqs.ReceiveMessageOutput, notify <-chan struct{}) {
-	ticker := time.NewTicker(time.Duration(*b.GetConfig().SQS.VisibilityTimeout) / 2 * time.Second)
+// visibilityHeartbeat is a method that sends a heartbeat signal to AWS SQS to keep a message invisible to other consumers while being processed.
+func (b *Broker) visibilityHeartbeat(delivery *awssqs.ReceiveMessageOutput, notify <-chan struct{}) {
+	if b.GetConfig().SQS.VisibilityTimeout == nil || *b.GetConfig().SQS.VisibilityTimeout == 0 {
+		return
+	}
+
+	ticker := time.NewTicker(time.Duration(*b.GetConfig().SQS.VisibilityTimeout) * 500 * time.Millisecond)
 
 	go func() {
 		for {
