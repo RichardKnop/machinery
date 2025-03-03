@@ -143,7 +143,7 @@ func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.T
 	update := bson.M{
 		"state":   tasks.StateSuccess,
 		"results": decodedResults,
-		"ttl":     time.Now().Add(time.Duration(b.GetConfig().ResultsExpireIn) * time.Second),
+		"delete_at":     time.Now().Add(time.Duration(b.GetConfig().ResultsExpireIn) * time.Second),
 	}
 	return b.updateState(signature, update)
 }
@@ -175,7 +175,7 @@ func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error 
 	update := bson.M{
 		"state": tasks.StateFailure,
 		"error": err,
-		"ttl":   time.Now().Add(time.Duration(b.GetConfig().ResultsExpireIn) * time.Second),
+		"delete_at":   time.Now().Add(time.Duration(b.GetConfig().ResultsExpireIn) * time.Second),
 	}
 	return b.updateState(signature, update)
 }
@@ -346,7 +346,7 @@ func (b *Backend) createMongoIndexes(database string) error {
 	_, err := tasksCollection.Indexes().CreateMany(
 		context.Background(), []mongo.IndexModel{
 			{
-				Keys:    bson.M{"ttl": 1},
+				Keys:    bson.M{"delete_at": 1},
 				Options: options.Index().SetBackground(true).SetExpireAfterSeconds(0),
 			},
 		},
