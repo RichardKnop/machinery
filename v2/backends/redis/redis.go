@@ -286,15 +286,25 @@ func (b *Backend) getGroupMeta(conn redis.Conn, groupUUID string) (*tasks.GroupM
 func (b *Backend) getStates(conn redis.Conn, taskUUIDs ...string) ([]*tasks.TaskState, error) {
 	taskStates := make([]*tasks.TaskState, len(taskUUIDs))
 
+	var reply []interface{}
 	// conn.Do requires []interface{}... can't pass []string unfortunately
-	taskUUIDInterfaces := make([]interface{}, len(taskUUIDs))
-	for i, taskUUID := range taskUUIDs {
-		taskUUIDInterfaces[i] = interface{}(taskUUID)
-	}
-
-	reply, err := redis.Values(conn.Do("MGET", taskUUIDInterfaces...))
-	if err != nil {
-		return taskStates, err
+	stepCount := 20
+	uuidCursor := 0
+	for uuidCursor < len(taskUUIDs) {
+		startIdx := uuidCursor
+		uuidCursor = uuidCursor + stepCount
+		if uuidCursor > len(taskUUIDs) {
+			uuidCursor = len(taskUUIDs)
+		}
+		taskUUIDInterfaces := make([]interface{}, uuidCursor-startIdx)
+		for i, taskUUID := range taskUUIDs[startIdx:uuidCursor] {
+			taskUUIDInterfaces[i] = interface{}(taskUUID)
+		}
+		values, err := redis.Values(conn.Do("MGET", taskUUIDInterfaces...))
+		if err != nil {
+			return taskStates, err
+		}
+		reply = append(reply, values...)
 	}
 
 	for i, value := range reply {
