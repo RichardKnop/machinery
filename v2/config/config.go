@@ -3,11 +3,11 @@ package config
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	"github.com/RichardKnop/machinery/v2/brokers/iface/sqs"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -97,7 +97,7 @@ type DynamoDBConfig struct {
 
 // SQSConfig wraps SQS related configuration
 type SQSConfig struct {
-	Client          sqsiface.SQSAPI
+	Client          sqs.API
 	WaitTimeSeconds int `yaml:"receive_wait_time_seconds" envconfig:"SQS_WAIT_TIME_SECONDS"`
 	// https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
 	// visibility timeout should default to nil to use the overall visibility timeout for the queue
