@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go v0.76.0 // indirect
 	cloud.google.com/go/pubsub v1.10.0
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae
-	github.com/aws/aws-sdk-go v1.37.16
+	github.com/aws/aws-sdk-go v1.55.6
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/go-redsync/redsync/v4 v4.8.1
