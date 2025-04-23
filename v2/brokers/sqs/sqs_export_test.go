@@ -7,15 +7,13 @@ import (
 	"os"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-
 	"github.com/RichardKnop/machinery/v2/brokers/iface"
 	"github.com/RichardKnop/machinery/v2/common"
 	"github.com/RichardKnop/machinery/v2/config"
-
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	awssqs "github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 )
 
 var (
@@ -107,17 +105,23 @@ func NewTestConfig() *config.Config {
 		DefaultQueue:  "test_queue",
 		ResultBackend: fmt.Sprintf("redis://%v", redisURL),
 		Lock:          fmt.Sprintf("redis://%v", redisURL),
+		SQS: &config.SQSConfig{
+			VisibilityTimeout: aws.Int(30),
+		},
 	}
 }
 
-func NewTestBroker() *Broker {
+func NewTestBroker(cnf *config.Config) *Broker {
 
-	cnf := NewTestConfig()
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
-	svc := new(FakeSQS)
+	var svc sqsiface.SQSAPI = new(FakeSQS)
+
+	if cnf.SQS.Client != nil {
+		svc = cnf.SQS.Client
+	}
 	return &Broker{
 		Broker:            common.NewBroker(cnf),
 		sess:              sess,
