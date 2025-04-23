@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	dynamodbiface "github.com/RichardKnop/machinery/v2/backends/iface/dynamodb"
 	"github.com/RichardKnop/machinery/v2/brokers/iface/sqs"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -90,7 +90,7 @@ type AMQPConfig struct {
 
 // DynamoDBConfig wraps DynamoDB related configuration
 type DynamoDBConfig struct {
-	Client          *dynamodb.DynamoDB
+	Client          dynamodbiface.API
 	TaskStatesTable string `yaml:"task_states_table" envconfig:"TASK_STATES_TABLE"`
 	GroupMetasTable string `yaml:"group_metas_table" envconfig:"GROUP_METAS_TABLE"`
 }

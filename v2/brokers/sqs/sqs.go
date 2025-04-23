@@ -47,9 +47,7 @@ func New(cnf *config.Config) (iface.Broker, error) {
 		// Use provided *SQS client
 		b.service = cnf.SQS.Client
 	} else {
-		cfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
-			awsconfig.WithRegion("eu-west-1"),
-		)
+		cfg, err := awsconfig.LoadDefaultConfig(context.TODO())
 		if err != nil {
 			return nil, fmt.Errorf("%w: unable to load AWS SDK config: ", err)
 		}
