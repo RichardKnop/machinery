@@ -5,7 +5,7 @@ import (
 	"errors"
 	"os"
 
-	dynamodbiface2 "github.com/RichardKnop/machinery/v2/backends/iface/dynamodb"
+	dynamodbiface "github.com/RichardKnop/machinery/v2/backends/iface/dynamodb"
 	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/tasks"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -16,8 +16,8 @@ var (
 	TestDynamoDBBackend    *Backend
 	TestErrDynamoDBBackend *Backend
 	TestCnf                *config.Config
-	TestDBClient           dynamodbiface2.API
-	TestErrDBClient        dynamodbiface2.API
+	TestDBClient           dynamodbiface.API
+	TestErrDBClient        dynamodbiface.API
 	TestGroupMeta          *tasks.GroupMeta
 	TestTask1              map[string]types.AttributeValue
 	TestTask2              map[string]types.AttributeValue
@@ -25,7 +25,7 @@ var (
 )
 
 type TestDynamoDBClient struct {
-	dynamodbiface2.API
+	dynamodbiface.API
 	PutItemOverride      func(context.Context, *dynamodb.PutItemInput, ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
 	UpdateItemOverride   func(context.Context, *dynamodb.UpdateItemInput, ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
 	GetItemOverride      func(ctx context.Context, input *dynamodb.GetItemInput, ops ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
@@ -145,7 +145,7 @@ func (t *TestDynamoDBClient) ListTables(ctx context.Context, input *dynamodb.Lis
 
 // Always returns error
 type TestErrDynamoDBClient struct {
-	dynamodbiface2.API
+	dynamodbiface.API
 }
 
 func (t *TestErrDynamoDBClient) PutItem(context.Context, *dynamodb.PutItemInput, ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
@@ -197,7 +197,7 @@ func (b *Backend) GetConfig() *config.Config {
 	return b.cnf
 }
 
-func (b *Backend) GetClient() dynamodbiface2.API {
+func (b *Backend) GetClient() dynamodbiface.API {
 	return b.client
 }
 
