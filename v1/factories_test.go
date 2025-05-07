@@ -25,11 +25,11 @@ import (
 
 var (
 	redisSchemeTestCases = []struct {
-		desc      string
-		url       string
-		host, pwd string
-		db        int
-		err       error
+		desc            string
+		url             string
+		host, user, pwd string
+		db              int
+		err             error
 	}{
 		{
 			desc: "invalid redis scheme",
@@ -49,12 +49,14 @@ var (
 			desc: "redis password and host",
 			url:  "redis://pwd@127.0.0.1:5672",
 			host: "127.0.0.1:5672",
+			user: "",
 			pwd:  "pwd",
 		},
 		{
 			desc: "redis password, host and db",
 			url:  "redis://pwd@127.0.0.1:5672/2",
 			host: "127.0.0.1:5672",
+			user: "",
 			pwd:  "pwd",
 			db:   2,
 		},
@@ -62,24 +64,28 @@ var (
 			desc: "redis user, password host",
 			url:  "redis://user:pwd@127.0.0.1:5672",
 			host: "127.0.0.1:5672",
+			user: "user",
 			pwd:  "pwd",
 		},
 		{
 			desc: "redis user, password with colon host",
 			url:  "redis://user:pwd:with:colon@127.0.0.1:5672",
 			host: "127.0.0.1:5672",
+			user: "user",
 			pwd:  "pwd:with:colon",
 		},
 		{
 			desc: "redis user, empty password and host",
 			url:  "redis://user:@127.0.0.1:5672",
 			host: "127.0.0.1:5672",
+			user: "user",
 			pwd:  "",
 		},
 		{
 			desc: "redis empty user, password and host",
 			url:  "redis://:pwd@127.0.0.1:5672",
 			host: "127.0.0.1:5672",
+			user: "",
 			pwd:  "pwd",
 		},
 	}
@@ -135,7 +141,7 @@ func TestBrokerFactory(t *testing.T) {
 			isRedisBroker,
 			"Broker should be instance of *brokers.RedisBroker",
 		)
-		expected := redisbroker.New(&cnf, "localhost:6379", "password", "", 0)
+		expected := redisbroker.New(&cnf, "localhost:6379", "", "password", "", 0)
 		assert.True(
 			t,
 			brokerEqual(actual, expected),
@@ -157,7 +163,7 @@ func TestBrokerFactory(t *testing.T) {
 			isRedisBroker,
 			"Broker should be instance of *brokers.RedisBroker",
 		)
-		expected := redisbroker.New(&cnf, "localhost:6379", "", "", 0)
+		expected := redisbroker.New(&cnf, "localhost:6379", "", "", "", 0)
 		assert.True(
 			t,
 			brokerEqual(actual, expected),
@@ -179,7 +185,7 @@ func TestBrokerFactory(t *testing.T) {
 			isRedisBroker,
 			"Broker should be instance of *brokers.RedisBroker",
 		)
-		expected := redisbroker.New(&cnf, "", "", "/tmp/redis.sock", 0)
+		expected := redisbroker.New(&cnf, "", "", "", "/tmp/redis.sock", 0)
 		assert.True(
 			t,
 			brokerEqual(actual, expected),
@@ -331,7 +337,7 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := redisbackend.New(&cnf, "localhost:6379", "password", "", 0)
+		expected := redisbackend.New(&cnf, "localhost:6379", "", "password", "", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -346,7 +352,7 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := redisbackend.New(&cnf, "localhost:6379", "", "", 0)
+		expected := redisbackend.New(&cnf, "localhost:6379", "", "", "", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -361,7 +367,7 @@ func TestBackendFactory(t *testing.T) {
 
 	actual, err = machinery.BackendFactory(&cnf)
 	if assert.NoError(t, err) {
-		expected := redisbackend.New(&cnf, "", "", "/tmp/redis.sock", 0)
+		expected := redisbackend.New(&cnf, "", "", "", "/tmp/redis.sock", 0)
 		assert.True(
 			t,
 			reflect.DeepEqual(actual, expected),
@@ -414,7 +420,7 @@ func TestParseRedisURL(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
 
-			host, pwd, db, err := machinery.ParseRedisURL(tc.url)
+			host, user, pwd, db, err := machinery.ParseRedisURL(tc.url)
 			if tc.err != nil {
 				assert.Error(t, err, tc.err)
 				return
@@ -422,6 +428,7 @@ func TestParseRedisURL(t *testing.T) {
 
 			if assert.NoError(t, err) {
 				assert.Equal(t, tc.host, host)
+				assert.Equal(t, tc.user, user)
 				assert.Equal(t, tc.pwd, pwd)
 				assert.Equal(t, tc.db, db)
 			}
@@ -433,39 +440,42 @@ func TestParseRedisSocketURL(t *testing.T) {
 	t.Parallel()
 
 	var (
-		path, pwd, url string
-		db             int
-		err            error
+		path, user, pwd, url string
+		db                   int
+		err                  error
 	)
 
 	url = "non_redissock:///tmp/redis.sock"
-	_, _, _, err = machinery.ParseRedisSocketURL(url)
+	_, _, _, _, err = machinery.ParseRedisSocketURL(url)
 	assert.Error(t, err, "invalid redis scheme")
 
 	url = "redis+socket:/"
-	_, _, _, err = machinery.ParseRedisSocketURL(url)
+	_, _, _, _, err = machinery.ParseRedisSocketURL(url)
 	assert.Error(t, err, "invalid redis url scheme")
 
 	url = "redis+socket:///tmp/redis.sock"
-	path, pwd, db, err = machinery.ParseRedisSocketURL(url)
+	path, user, pwd, db, err = machinery.ParseRedisSocketURL(url)
 	if assert.NoError(t, err) {
 		assert.Equal(t, "/tmp/redis.sock", path)
+		assert.Equal(t, "", user)
 		assert.Equal(t, "", pwd)
 		assert.Equal(t, 0, db)
 	}
 
-	url = "redis+socket://pwd@/tmp/redis.sock"
-	path, pwd, db, _ = machinery.ParseRedisSocketURL(url)
+	url = "redis+socket://user:pwd@/tmp/redis.sock"
+	path, user, pwd, db, _ = machinery.ParseRedisSocketURL(url)
 	if assert.NoError(t, err) {
 		assert.Equal(t, "/tmp/redis.sock", path)
+		assert.Equal(t, "user", user)
 		assert.Equal(t, "pwd", pwd)
 		assert.Equal(t, 0, db)
 	}
 
-	url = "redis+socket://pwd@/tmp/redis.sock:/2"
-	path, pwd, db, err = machinery.ParseRedisSocketURL(url)
+	url = "redis+socket://user:pwd@/tmp/redis.sock:/2"
+	path, user, pwd, db, err = machinery.ParseRedisSocketURL(url)
 	if assert.NoError(t, err) {
 		assert.Equal(t, "/tmp/redis.sock", path)
+		assert.Equal(t, "user", user)
 		assert.Equal(t, "pwd", pwd)
 		assert.Equal(t, 2, db)
 	}
