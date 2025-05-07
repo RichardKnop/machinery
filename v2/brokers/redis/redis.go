@@ -29,6 +29,7 @@ type Broker struct {
 	common.Broker
 	common.RedisConnector
 	host         string
+	username     string
 	password     string
 	db           int
 	pool         *redis.Pool
@@ -43,10 +44,11 @@ type Broker struct {
 }
 
 // New creates new Broker instance
-func New(cnf *config.Config, host, password, socketPath string, db int) iface.Broker {
+func New(cnf *config.Config, host, username, password, socketPath string, db int) iface.Broker {
 	b := &Broker{Broker: common.NewBroker(cnf)}
 	b.host = host
 	b.db = db
+	b.username = username
 	b.password = password
 	b.socketPath = socketPath
 
@@ -475,7 +477,7 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 // open returns or creates instance of Redis connection
 func (b *Broker) open() redis.Conn {
 	b.redisOnce.Do(func() {
-		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
+		b.pool = b.NewPool(b.socketPath, b.host, b.username, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
 		b.redsync = redsync.New(redsyncredis.NewPool(b.pool))
 	})
 

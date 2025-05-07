@@ -22,6 +22,7 @@ import (
 type Backend struct {
 	common.Backend
 	host     string
+	username string
 	password string
 	db       int
 	pool     *redis.Pool
@@ -33,11 +34,12 @@ type Backend struct {
 }
 
 // New creates Backend instance
-func New(cnf *config.Config, host, password, socketPath string, db int) iface.Backend {
+func New(cnf *config.Config, host, username, password, socketPath string, db int) iface.Backend {
 	return &Backend{
 		Backend:    common.NewBackend(cnf),
 		host:       host,
 		db:         db,
+		username:   username,
 		password:   password,
 		socketPath: socketPath,
 	}
@@ -347,7 +349,7 @@ func (b *Backend) getExpiration() time.Duration {
 // open returns or creates instance of Redis connection
 func (b *Backend) open() redis.Conn {
 	b.redisOnce.Do(func() {
-		b.pool = b.NewPool(b.socketPath, b.host, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
+		b.pool = b.NewPool(b.socketPath, b.host, b.username, b.password, b.db, b.GetConfig().Redis, b.GetConfig().TLSConfig)
 		b.redsync = redsync.New(redsyncredis.NewPool(b.pool))
 	})
 	return b.pool.Get()
