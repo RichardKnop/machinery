@@ -27,7 +27,7 @@ var (
 type RedisConnector struct{}
 
 // NewPool returns a new pool of Redis connections
-func (rc *RedisConnector) NewPool(socketPath, host, password string, db int, cnf *config.RedisConfig, tlsConfig *tls.Config) *redis.Pool {
+func (rc *RedisConnector) NewPool(socketPath, host, username, password string, db int, cnf *config.RedisConfig, tlsConfig *tls.Config) *redis.Pool {
 	if cnf == nil {
 		cnf = defaultConfig
 	}
@@ -37,7 +37,7 @@ func (rc *RedisConnector) NewPool(socketPath, host, password string, db int, cnf
 		MaxActive:   cnf.MaxActive,
 		Wait:        cnf.Wait,
 		Dial: func() (redis.Conn, error) {
-			c, err := rc.open(socketPath, host, password, db, cnf, tlsConfig)
+			c, err := rc.open(socketPath, host, username, password, db, cnf, tlsConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -63,7 +63,7 @@ func (rc *RedisConnector) NewPool(socketPath, host, password string, db int, cnf
 }
 
 // Open a new Redis connection
-func (rc *RedisConnector) open(socketPath, host, password string, db int, cnf *config.RedisConfig, tlsConfig *tls.Config) (redis.Conn, error) {
+func (rc *RedisConnector) open(socketPath, host, username string, password string, db int, cnf *config.RedisConfig, tlsConfig *tls.Config) (redis.Conn, error) {
 	var opts = []redis.DialOption{
 		redis.DialDatabase(db),
 		redis.DialReadTimeout(time.Duration(cnf.ReadTimeout) * time.Second),
@@ -74,6 +74,10 @@ func (rc *RedisConnector) open(socketPath, host, password string, db int, cnf *c
 
 	if tlsConfig != nil {
 		opts = append(opts, redis.DialTLSConfig(tlsConfig), redis.DialUseTLS(true))
+	}
+
+	if username != "" {
+		opts = append(opts, redis.DialUsername(username))
 	}
 
 	if password != "" {

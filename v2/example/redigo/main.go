@@ -81,8 +81,8 @@ func startServer() (*machinery.Server, error) {
 	}
 
 	// Create server instance
-	broker := redisbroker.New(cnf, "localhost:6379", "", "", 0)
-	backend := redisbackend.New(cnf, "localhost:6379", "", "", 0)
+	broker := redisbroker.New(cnf, "localhost:6379", "", "", "", 0)
+	backend := redisbackend.New(cnf, "localhost:6379", "", "", "", 0)
 	lock := eagerlock.New()
 	server := machinery.NewServer(cnf, broker, backend, lock)
 

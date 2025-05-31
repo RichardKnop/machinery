@@ -41,10 +41,18 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 	b := &BrokerGR{Broker: common.NewBroker(cnf)}
 
 	var password string
+	var username string
 	parts := strings.Split(addrs[0], "@")
 	if len(parts) >= 2 {
 		// with password
-		password = strings.Join(parts[:len(parts)-1], "@")
+		options := strings.SplitN(strings.Join(parts[:len(parts)-1], "@"), ":", 2)
+		if len(options) >= 2 {
+			username = options[0]
+			password = options[1]
+		} else {
+			password = options[0]
+		}
+
 		addrs[0] = parts[len(parts)-1] // addr is the last one without @
 	}
 
@@ -52,6 +60,7 @@ func NewGR(cnf *config.Config, addrs []string, db int) iface.Broker {
 		Addrs:    addrs,
 		DB:       db,
 		Password: password,
+		Username: username,
 	}
 	if cnf.Redis != nil {
 		ropt.MasterName = cnf.Redis.MasterName
