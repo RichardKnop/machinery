@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	dynamodbiface "github.com/RichardKnop/machinery/v2/backends/iface/dynamodb"
+	"github.com/RichardKnop/machinery/v2/brokers/iface/sqs"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -90,18 +90,21 @@ type AMQPConfig struct {
 
 // DynamoDBConfig wraps DynamoDB related configuration
 type DynamoDBConfig struct {
-	Client          *dynamodb.DynamoDB
+	Client          dynamodbiface.API
 	TaskStatesTable string `yaml:"task_states_table" envconfig:"TASK_STATES_TABLE"`
 	GroupMetasTable string `yaml:"group_metas_table" envconfig:"GROUP_METAS_TABLE"`
 }
 
 // SQSConfig wraps SQS related configuration
 type SQSConfig struct {
-	Client          *sqs.SQS
+	Client          sqs.API
 	WaitTimeSeconds int `yaml:"receive_wait_time_seconds" envconfig:"SQS_WAIT_TIME_SECONDS"`
 	// https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
 	// visibility timeout should default to nil to use the overall visibility timeout for the queue
 	VisibilityTimeout *int `yaml:"receive_visibility_timeout" envconfig:"SQS_VISIBILITY_TIMEOUT"`
+	// https://docs.aws.amazon.com/es_es/AWSSimpleQueueService/latest/SQSDeveloperGuide/best-practices-processing-messages-timely-manner.html
+	// visibility heartbeat should default to true to ensure that the visibility timeout is extended while the task is being processed.
+	VisibilityHeartBeat bool `yaml:"visibility_hearth_beat" envconfig:"SQS_VISIBILITY_HEARTBEAT"`
 }
 
 // RedisConfig ...

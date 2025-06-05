@@ -1,34 +1,35 @@
 package dynamodb
 
 import (
+	"context"
 	"errors"
 	"os"
 
+	dynamodbiface "github.com/RichardKnop/machinery/v2/backends/iface/dynamodb"
 	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/tasks"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 var (
 	TestDynamoDBBackend    *Backend
 	TestErrDynamoDBBackend *Backend
 	TestCnf                *config.Config
-	TestDBClient           dynamodbiface.DynamoDBAPI
-	TestErrDBClient        dynamodbiface.DynamoDBAPI
+	TestDBClient           dynamodbiface.API
+	TestErrDBClient        dynamodbiface.API
 	TestGroupMeta          *tasks.GroupMeta
-	TestTask1              map[string]*dynamodb.AttributeValue
-	TestTask2              map[string]*dynamodb.AttributeValue
-	TestTask3              map[string]*dynamodb.AttributeValue
+	TestTask1              map[string]types.AttributeValue
+	TestTask2              map[string]types.AttributeValue
+	TestTask3              map[string]types.AttributeValue
 )
 
 type TestDynamoDBClient struct {
-	dynamodbiface.DynamoDBAPI
-	PutItemOverride      func(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
-	UpdateItemOverride   func(*dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error)
-	GetItemOverride      func(input *dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error)
-	BatchGetItemOverride func(*dynamodb.BatchGetItemInput) (*dynamodb.BatchGetItemOutput, error)
+	dynamodbiface.API
+	PutItemOverride      func(context.Context, *dynamodb.PutItemInput, ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
+	UpdateItemOverride   func(context.Context, *dynamodb.UpdateItemInput, ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
+	GetItemOverride      func(ctx context.Context, input *dynamodb.GetItemInput, ops ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
+	BatchGetItemOverride func(context.Context, *dynamodb.BatchGetItemInput, ...func(*dynamodb.Options)) (*dynamodb.BatchGetItemOutput, error)
 }
 
 func (t *TestDynamoDBClient) ResetOverrides() {
@@ -37,81 +38,81 @@ func (t *TestDynamoDBClient) ResetOverrides() {
 	t.BatchGetItemOverride = nil
 }
 
-func (t *TestDynamoDBClient) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
+func (t *TestDynamoDBClient) PutItem(ctx context.Context, input *dynamodb.PutItemInput, ops ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
 	if t.PutItemOverride != nil {
-		return t.PutItemOverride(input)
+		return t.PutItemOverride(ctx, input, ops...)
 	}
 	return &dynamodb.PutItemOutput{}, nil
 }
-func (t *TestDynamoDBClient) BatchGetItem(input *dynamodb.BatchGetItemInput) (*dynamodb.BatchGetItemOutput, error) {
+func (t *TestDynamoDBClient) BatchGetItem(ctx context.Context, input *dynamodb.BatchGetItemInput, ops ...func(*dynamodb.Options)) (*dynamodb.BatchGetItemOutput, error) {
 	if t.BatchGetItemOverride != nil {
-		return t.BatchGetItemOverride(input)
+		return t.BatchGetItemOverride(ctx, input, ops...)
 	}
 	return &dynamodb.BatchGetItemOutput{}, nil
 }
 
-func (t *TestDynamoDBClient) GetItem(input *dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error) {
+func (t *TestDynamoDBClient) GetItem(ctx context.Context, input *dynamodb.GetItemInput, ops ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
 	if t.GetItemOverride != nil {
-		return t.GetItemOverride(input)
+		return t.GetItemOverride(ctx, input, ops...)
 	}
 	var output *dynamodb.GetItemOutput
 	switch *input.TableName {
 	case "group_metas":
 		output = &dynamodb.GetItemOutput{
-			Item: map[string]*dynamodb.AttributeValue{
-				"TaskUUIDs": {
-					L: []*dynamodb.AttributeValue{
-						{
-							S: aws.String("testTaskUUID1"),
+			Item: map[string]types.AttributeValue{
+				"TaskUUIDs": &types.AttributeValueMemberL{
+					Value: []types.AttributeValue{
+						&types.AttributeValueMemberS{
+							Value: "testTaskUUID1",
 						},
-						{
-							S: aws.String("testTaskUUID2"),
+						&types.AttributeValueMemberS{
+							Value: "testTaskUUID2",
 						},
-						{
-							S: aws.String("testTaskUUID3"),
+						&types.AttributeValueMemberS{
+							Value: "testTaskUUID3",
 						},
 					},
 				},
-				"ChordTriggered": {
-					BOOL: aws.Bool(false),
+				"ChordTriggered": &types.AttributeValueMemberBOOL{
+					Value: false,
 				},
-				"GroupUUID": {
-					S: aws.String("testGroupUUID"),
+				"GroupUUID": &types.AttributeValueMemberS{
+					Value: "testGroupUUID",
 				},
-				"Lock": {
-					BOOL: aws.Bool(false),
+				"Lock": &types.AttributeValueMemberBOOL{
+					Value: false,
 				},
 			},
 		}
 	case "task_states":
 		if input.Key["TaskUUID"] == nil {
 			output = &dynamodb.GetItemOutput{
-				Item: map[string]*dynamodb.AttributeValue{
-					"Error": {
-						NULL: aws.Bool(false),
+				Item: map[string]types.AttributeValue{
+					"Error": &types.AttributeValueMemberNULL{
+						Value: false,
 					},
-					"State": {
-						S: aws.String(tasks.StatePending),
+					"State": &types.AttributeValueMemberS{
+						Value: tasks.StatePending,
 					},
-					"TaskUUID": {
-						S: aws.String("testTaskUUID1"),
+					"TaskUUID": &types.AttributeValueMemberS{
+						Value: "testTaskUUID1",
 					},
-					"Results:": {
-						NULL: aws.Bool(true),
+					"Results:": &types.AttributeValueMemberNULL{
+						Value: true,
 					},
 				},
 			}
 		} else {
-			if *(input.Key["TaskUUID"].S) == "testTaskUUID1" {
+			if input.Key["TaskUUID"].(*types.AttributeValueMemberS).Value == "testTaskUUID1" {
 				output = &dynamodb.GetItemOutput{
 					Item: TestTask1,
 				}
-			} else if *(input.Key["TaskUUID"].S) == "testTaskUUID2" {
+			} else if input.Key["TaskUUID"].(*types.AttributeValueMemberS).Value == "testTaskUUID2" {
 				output = &dynamodb.GetItemOutput{
 					Item: TestTask2,
 				}
 
-			} else if *(input.Key["TaskUUID"].S) == "testTaskUUID3" {
+			} else if input.Key["TaskUUID"].(*types.AttributeValueMemberS).Value == "testTaskUUID3" {
 				output = &dynamodb.GetItemOutput{
 					Item: TestTask3,
 				}
@@ -122,52 +123,52 @@ func (t *TestDynamoDBClient) GetItem(input *dynamodb.GetItemInput) (*dynamodb.Ge
 	return output, nil
 }
 
-func (t *TestDynamoDBClient) DeleteItem(*dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error) {
+func (t *TestDynamoDBClient) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, ops ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error) {
 	return &dynamodb.DeleteItemOutput{}, nil
 }
 
-func (t *TestDynamoDBClient) UpdateItem(input *dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
+func (t *TestDynamoDBClient) UpdateItem(ctx context.Context, input *dynamodb.UpdateItemInput, ops ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error) {
 	if t.UpdateItemOverride != nil {
-		return t.UpdateItemOverride(input)
+		return t.UpdateItemOverride(ctx, input, ops...)
 	}
 	return &dynamodb.UpdateItemOutput{}, nil
 }
 
-func (t *TestDynamoDBClient) ListTables(*dynamodb.ListTablesInput) (*dynamodb.ListTablesOutput, error) {
+func (t *TestDynamoDBClient) ListTables(ctx context.Context, input *dynamodb.ListTablesInput, ops ...func(*dynamodb.Options)) (*dynamodb.ListTablesOutput, error) {
 	return &dynamodb.ListTablesOutput{
-		TableNames: []*string{
-			aws.String("group_metas"),
-			aws.String("task_states"),
+		TableNames: []string{
+			"group_metas",
+			"task_states",
 		},
 	}, nil
 }
 
 // Always returns error
 type TestErrDynamoDBClient struct {
-	dynamodbiface.DynamoDBAPI
+	dynamodbiface.API
 }
 
-func (t *TestErrDynamoDBClient) PutItem(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
+func (t *TestErrDynamoDBClient) PutItem(context.Context, *dynamodb.PutItemInput, ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
 	return nil, errors.New("error when putting an item")
 }
 
-func (t *TestErrDynamoDBClient) GetItem(*dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error) {
+func (t *TestErrDynamoDBClient) GetItem(context.Context, *dynamodb.GetItemInput, ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
 	return nil, errors.New("error when getting an item")
 }
 
-func (t *TestErrDynamoDBClient) DeleteItem(*dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error) {
+func (t *TestErrDynamoDBClient) DeleteItem(context.Context, *dynamodb.DeleteItemInput, ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error) {
 	return nil, errors.New("error when deleting an item")
 }
 
-func (t *TestErrDynamoDBClient) Scan(*dynamodb.ScanInput) (*dynamodb.ScanOutput, error) {
+func (t *TestErrDynamoDBClient) Scan(context.Context, *dynamodb.ScanInput, ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error) {
 	return nil, errors.New("error when scanning an item")
 }
 
-func (t *TestErrDynamoDBClient) UpdateItem(*dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
+func (t *TestErrDynamoDBClient) UpdateItem(context.Context, *dynamodb.UpdateItemInput, ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error) {
 	return nil, errors.New("error when updating an item")
 }
 
-func (t *TestErrDynamoDBClient) ListTables(*dynamodb.ListTablesInput) (*dynamodb.ListTablesOutput, error) {
+func (t *TestErrDynamoDBClient) ListTables(context.Context, *dynamodb.ListTablesInput, ...func(*dynamodb.Options)) (*dynamodb.ListTablesOutput, error) {
 	return nil, errors.New("error when listing tables")
 }
 
@@ -196,7 +197,7 @@ func (b *Backend) GetConfig() *config.Config {
 	return b.cnf
 }
 
-func (b *Backend) GetClient() dynamodbiface.DynamoDBAPI {
+func (b *Backend) GetClient() dynamodbiface.API {
 	return b.client
 }
 
@@ -240,7 +241,7 @@ func (b *Backend) UpdateToFailureStateWithErrorForTest(taskState *tasks.TaskStat
 	return b.updateToFailureStateWithError(taskState)
 }
 
-func (b *Backend) TableExistsForTest(tableName string, tableNames []*string) bool {
+func (b *Backend) TableExistsForTest(tableName string, tableNames []string) bool {
 	return b.tableExists(tableName, tableNames)
 }
 
