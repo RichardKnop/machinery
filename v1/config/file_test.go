@@ -1,57 +1,73 @@
 package config_test
 
 import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/stretchr/testify/assert"
 )
 
-var configYAMLData = `---
-broker: broker
-default_queue: default_queue
-result_backend: result_backend
-results_expire_in: 123456
-amqp:
-  binding_key: binding_key
-  exchange: exchange
-  exchange_type: exchange_type
-  prefetch_count: 123
-  queue_declare_args:
-    x-max-priority: 10
-  queue_binding_args:
-    image-type: png
-    x-match: any
-sqs:
-  receive_wait_time_seconds: 123
-  receive_visibility_timeout: 456
-redis:
-  max_idle: 12
-  max_active: 123
-  max_idle_timeout: 456
-  wait: false
-  read_timeout: 17
-  write_timeout: 19
-  connect_timeout: 21
-  normal_tasks_poll_period: 1001
-  delayed_tasks_poll_period: 23
-  delayed_tasks_key: delayed_tasks_key
-  master_name: master_name
-no_unix_signals: true
-dynamodb:
-  task_states_table: task_states_table
-  group_metas_table: group_metas_table
-`
+const (
+	tenBytes = "MACHINERY_"
+)
+
+func testFile(lines int) ([]byte, string, func() error, error) {
+	b := bytes.NewBuffer([]byte{})
+	name := filepath.Join(os.TempDir(), fmt.Sprintf("file_test_%d", lines))
+	f, err := os.Create(name)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	for i := 0; i < lines; i++ {
+		_, err := f.WriteString(tenBytes)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		_, err = b.WriteString(tenBytes)
+		if err != nil {
+			return nil, "", nil, err
+		}
+	}
+
+	defer f.Close()
+
+	return b.Bytes(), name, func() error {
+		return os.Remove(name)
+	}, nil
+}
 
 func TestReadFromFile(t *testing.T) {
 	t.Parallel()
 
-	data, err := config.ReadFromFile("testconfig.yml")
+	content, name, closer, err := testFile(config.ConfigMaxSize/len(tenBytes) - 1)
+	defer closer()
+
+	data, err := config.ReadFromFile(name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, configYAMLData, string(data))
+	assert.Equal(t, content, data)
+}
+
+func TestReadFromFile_TooLarge(t *testing.T) {
+	t.Parallel()
+
+	content, name, closer, err := testFile(config.ConfigMaxSize/len(tenBytes) + 1)
+	defer closer()
+
+	data, err := config.ReadFromFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, len(data), config.ConfigMaxSize)
+	assert.Equal(t, data, content[0:config.ConfigMaxSize])
 }
 
 func TestNewFromYaml(t *testing.T) {
