@@ -11,15 +11,17 @@ import (
 
 	"github.com/RichardKnop/machinery/v2/brokers/errs"
 	"github.com/RichardKnop/machinery/v2/brokers/iface"
+	sqsiface "github.com/RichardKnop/machinery/v2/brokers/iface/sqs"
 	"github.com/RichardKnop/machinery/v2/common"
 	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/log"
 	"github.com/RichardKnop/machinery/v2/tasks"
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-
-	awssqs "github.com/aws/aws-sdk-go/service/sqs"
 )
 
 const (
@@ -34,27 +36,26 @@ type Broker struct {
 	receivingWG       sync.WaitGroup
 	stopReceivingChan chan int
 	sess              *session.Session
-	service           sqsiface.SQSAPI
+	service           sqsiface.API
 	queueUrl          *string
 }
 
 // New creates new Broker instance
-func New(cnf *config.Config) iface.Broker {
+func New(cnf *config.Config) (iface.Broker, error) {
 	b := &Broker{Broker: common.NewBroker(cnf)}
 	if cnf.SQS != nil && cnf.SQS.Client != nil {
 		// Use provided *SQS client
 		b.service = cnf.SQS.Client
 	} else {
-		// Initialize a session that the SDK will use to load credentials from the shared credentials file, ~/.aws/credentials.
-		// See details on: https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
-		// Also, env AWS_REGION is also required
-		b.sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
-		b.service = awssqs.New(b.sess)
+		cfg, err := awsconfig.LoadDefaultConfig(context.TODO())
+		if err != nil {
+			return nil, fmt.Errorf("%w: unable to load AWS SDK config: ", err)
+		}
+
+		b.service = sqs.NewFromConfig(cfg)
 	}
 
-	return b
+	return b, nil
 }
 
 // StartConsuming enters a loop and waits for incoming messages
@@ -64,7 +65,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	//save it so that it can be used later when attempting to delete task
 	b.queueUrl = qURL
 
-	deliveries := make(chan *awssqs.ReceiveMessageOutput, concurrency)
+	deliveries := make(chan *sqs.ReceiveMessageOutput, concurrency)
 	pool := make(chan struct{}, concurrency)
 
 	// initialize worker pool with maxWorkers workers
@@ -133,7 +134,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 	// Check that signature.RoutingKey is set, if not switch to DefaultQueue
 	b.AdjustRoutingKey(signature)
 
-	MsgInput := &awssqs.SendMessageInput{
+	MsgInput := &sqs.SendMessageInput{
 		MessageBody: aws.String(string(msg)),
 		QueueUrl:    aws.String(b.GetConfig().Broker + "/" + signature.RoutingKey),
 	}
@@ -161,11 +162,11 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 			if delay > maxAWSSQSDelay {
 				return errors.New("Max AWS SQS delay exceeded")
 			}
-			MsgInput.DelaySeconds = aws.Int64(int64(delay.Seconds()))
+			MsgInput.DelaySeconds = int32(delay.Seconds())
 		}
 	}
 
-	result, err := b.service.SendMessageWithContext(ctx, MsgInput)
+	result, err := b.service.SendMessage(ctx, MsgInput)
 
 	if err != nil {
 		log.ERROR.Printf("Error when sending a message: %v", err)
@@ -178,7 +179,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 }
 
 // consume is a method which keeps consuming deliveries from a channel, until there is an error or a stop signal
-func (b *Broker) consume(deliveries <-chan *awssqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}) error {
+func (b *Broker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}) error {
 
 	errorsChan := make(chan error)
 
@@ -194,10 +195,17 @@ func (b *Broker) consume(deliveries <-chan *awssqs.ReceiveMessageOutput, concurr
 }
 
 // consumeOne is a method consumes a delivery. If a delivery was consumed successfully, it will be deleted from AWS SQS
-func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor iface.TaskProcessor) error {
+func (b *Broker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor iface.TaskProcessor) error {
 	if len(delivery.Messages) == 0 {
 		log.ERROR.Printf("received an empty message, the delivery was %v", delivery)
-		return errors.New("received empty message, the delivery is " + delivery.GoString())
+		return errors.New("received empty message, the delivery is " + awsutil.Prettify(delivery))
+	}
+
+	if b.GetConfig().SQS.VisibilityHeartBeat {
+		notify := make(chan struct{})
+		defer close(notify)
+
+		b.visibilityHeartbeat(delivery, notify)
 	}
 
 	if b.GetConfig().SQS.VisibilityHeartBeat {
@@ -249,9 +257,9 @@ func (b *Broker) consumeOne(delivery *awssqs.ReceiveMessageOutput, taskProcessor
 }
 
 // deleteOne is a method delete a delivery from AWS SQS
-func (b *Broker) deleteOne(delivery *awssqs.ReceiveMessageOutput) error {
+func (b *Broker) deleteOne(delivery *sqs.ReceiveMessageOutput) error {
 	qURL := b.defaultQueueURL()
-	_, err := b.service.DeleteMessage(&awssqs.DeleteMessageInput{
+	_, err := b.service.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{
 		QueueUrl:      qURL,
 		ReceiptHandle: delivery.Messages[0].ReceiptHandle,
 	})
@@ -273,7 +281,7 @@ func (b *Broker) defaultQueueURL() *string {
 }
 
 // receiveMessage is a method receives a message from specified queue url
-func (b *Broker) receiveMessage(qURL *string) (*awssqs.ReceiveMessageOutput, error) {
+func (b *Broker) receiveMessage(qURL *string) (*sqs.ReceiveMessageOutput, error) {
 	var waitTimeSeconds int
 	var visibilityTimeout *int
 	if b.GetConfig().SQS != nil {
@@ -281,21 +289,21 @@ func (b *Broker) receiveMessage(qURL *string) (*awssqs.ReceiveMessageOutput, err
 		visibilityTimeout = b.GetConfig().SQS.VisibilityTimeout
 	}
 
-	input := &awssqs.ReceiveMessageInput{
-		AttributeNames: []*string{
-			aws.String(awssqs.MessageSystemAttributeNameSentTimestamp),
+	input := &sqs.ReceiveMessageInput{
+		MessageSystemAttributeNames: []types.MessageSystemAttributeName{
+			types.MessageSystemAttributeNameSentTimestamp,
 		},
-		MessageAttributeNames: []*string{
-			aws.String(awssqs.QueueAttributeNameAll),
+		MessageAttributeNames: []string{
+			string(types.QueueAttributeNameAll),
 		},
 		QueueUrl:            qURL,
-		MaxNumberOfMessages: aws.Int64(1),
-		WaitTimeSeconds:     aws.Int64(int64(waitTimeSeconds)),
+		MaxNumberOfMessages: 1,
+		WaitTimeSeconds:     int32(waitTimeSeconds),
 	}
 	if visibilityTimeout != nil {
-		input.VisibilityTimeout = aws.Int64(int64(*visibilityTimeout))
+		input.VisibilityTimeout = int32(*visibilityTimeout)
 	}
-	result, err := b.service.ReceiveMessage(input)
+	result, err := b.service.ReceiveMessage(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +318,7 @@ func (b *Broker) initializePool(pool chan struct{}, concurrency int) {
 }
 
 // consumeDeliveries is a method consuming deliveries from deliveries channel
-func (b *Broker) consumeDeliveries(deliveries <-chan *awssqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
+func (b *Broker) consumeDeliveries(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
 	select {
 	case err := <-errorsChan:
 		return false, err
@@ -340,7 +348,7 @@ func (b *Broker) consumeDeliveries(deliveries <-chan *awssqs.ReceiveMessageOutpu
 }
 
 // continueReceivingMessages is a method returns a continue signal
-func (b *Broker) continueReceivingMessages(qURL *string, deliveries chan *awssqs.ReceiveMessageOutput) (bool, error) {
+func (b *Broker) continueReceivingMessages(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
 	select {
 	// A way to stop this goroutine from b.StopConsuming
 	case <-b.stopReceivingChan:
@@ -359,7 +367,7 @@ func (b *Broker) continueReceivingMessages(qURL *string, deliveries chan *awssqs
 }
 
 // visibilityHeartbeat is a method that sends a heartbeat signal to AWS SQS to keep a message invisible to other consumers while being processed.
-func (b *Broker) visibilityHeartbeat(delivery *awssqs.ReceiveMessageOutput, notify <-chan struct{}) {
+func (b *Broker) visibilityHeartbeat(delivery *sqs.ReceiveMessageOutput, notify <-chan struct{}) {
 	if b.GetConfig().SQS.VisibilityTimeout == nil || *b.GetConfig().SQS.VisibilityTimeout == 0 {
 		return
 	}
@@ -379,10 +387,10 @@ func (b *Broker) visibilityHeartbeat(delivery *awssqs.ReceiveMessageOutput, noti
 				return
 			case <-ticker.C:
 				// Extend the delivery visibility timeout
-				_, err := b.service.ChangeMessageVisibility(&awssqs.ChangeMessageVisibilityInput{
+				_, err := b.service.ChangeMessageVisibility(context.TODO(), &sqs.ChangeMessageVisibilityInput{
 					QueueUrl:          b.defaultQueueURL(),
 					ReceiptHandle:     delivery.Messages[0].ReceiptHandle,
-					VisibilityTimeout: aws.Int64(int64(*b.GetConfig().SQS.VisibilityTimeout)),
+					VisibilityTimeout: int32(*b.GetConfig().SQS.VisibilityTimeout),
 				})
 				if err != nil {
 					log.ERROR.Printf("Error when changing delivery visibility: %v", err)

@@ -1,6 +1,7 @@
 package dynamodb_test
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"testing"
@@ -9,15 +10,16 @@ import (
 	"github.com/RichardKnop/machinery/v2/backends/dynamodb"
 	"github.com/RichardKnop/machinery/v2/log"
 	"github.com/RichardKnop/machinery/v2/tasks"
-	"github.com/aws/aws-sdk-go/aws"
+	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
-
-	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
 	// should call t.Skip if not connected to internet
-	backend := dynamodb.New(dynamodb.TestCnf)
+	backend, err := dynamodb.New(dynamodb.TestCnf)
+	require.NoError(t, err)
 	assert.IsType(t, new(dynamodb.Backend), backend)
 }
 
@@ -37,11 +39,11 @@ func TestInitGroup(t *testing.T) {
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
 	// Override DynamoDB PutItem() behavior
 	var isPutItemCalled bool
-	client.PutItemOverride = func(input *awsdynamodb.PutItemInput) (*awsdynamodb.PutItemOutput, error) {
+	client.PutItemOverride = func(ctx context.Context, input *awsdynamodb.PutItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.PutItemOutput, error) {
 		isPutItemCalled = true
 		assert.NotNil(t, input)
 
-		actualTTLStr := *input.Item["TTL"].N
+		actualTTLStr := input.Item["TTL"].(*types.AttributeValueMemberN).Value
 		expectedTTLTime := time.Now().Add(3 * time.Hour)
 		assertTTLValue(t, expectedTTLTime, actualTTLStr)
 
@@ -65,17 +67,17 @@ func TestGroupCompleted(t *testing.T) {
 	tableName := dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable
 	// Override DynamoDB BatchGetItem() behavior
 	var isBatchGetItemCalled bool
-	client.BatchGetItemOverride = func(input *awsdynamodb.BatchGetItemInput) (*awsdynamodb.BatchGetItemOutput, error) {
+	client.BatchGetItemOverride = func(ctx context.Context, input *awsdynamodb.BatchGetItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.BatchGetItemOutput, error) {
 		isBatchGetItemCalled = true
 		assert.NotNil(t, input)
-		assert.Nil(t, input.Validate())
+		assert.Nil(t, validateBatchGetItemInput(input))
 
 		return &awsdynamodb.BatchGetItemOutput{
-			Responses: map[string][]map[string]*awsdynamodb.AttributeValue{
+			Responses: map[string][]map[string]types.AttributeValue{
 				tableName: {
-					{"State": {S: aws.String(tasks.StateSuccess)}},
-					{"State": {S: aws.String(tasks.StateSuccess)}},
-					{"State": {S: aws.String(tasks.StateFailure)}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateSuccess}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateSuccess}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateFailure}},
 				},
 			},
 		}, nil
@@ -89,7 +91,7 @@ func TestGroupCompleted(t *testing.T) {
 }
 func TestGroupCompletedReturnsError(t *testing.T) {
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
-	client.BatchGetItemOverride = func(input *awsdynamodb.BatchGetItemInput) (*awsdynamodb.BatchGetItemOutput, error) {
+	client.BatchGetItemOverride = func(ctx context.Context, input *awsdynamodb.BatchGetItemInput, ops ...func(options *awsdynamodb.Options)) (*awsdynamodb.BatchGetItemOutput, error) {
 		return nil, fmt.Errorf("Simulating error from AWS")
 	}
 	isCompleted, err := dynamodb.TestDynamoDBBackend.GroupCompleted("test", 3)
@@ -103,13 +105,13 @@ func TestGroupCompletedReturnsFalse(t *testing.T) {
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
 	tableName := dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable
 	// Override DynamoDB BatchGetItem() behavior
-	client.BatchGetItemOverride = func(_ *awsdynamodb.BatchGetItemInput) (*awsdynamodb.BatchGetItemOutput, error) {
+	client.BatchGetItemOverride = func(ctx context.Context, _ *awsdynamodb.BatchGetItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.BatchGetItemOutput, error) {
 		return &awsdynamodb.BatchGetItemOutput{
-			Responses: map[string][]map[string]*awsdynamodb.AttributeValue{
+			Responses: map[string][]map[string]types.AttributeValue{
 				tableName: {
-					{"State": {S: aws.String(tasks.StateSuccess)}},
-					{"State": {S: aws.String(tasks.StateFailure)}},
-					{"State": {S: aws.String(tasks.StatePending)}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateSuccess}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateFailure}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StatePending}},
 				},
 			},
 		}, nil
@@ -126,20 +128,20 @@ func TestGroupCompletedRetries(t *testing.T) {
 	tableName := dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable
 	// Override DynamoDB BatchGetItem() behavior
 	var countBatchGetItemAPICalls int
-	client.BatchGetItemOverride = func(_ *awsdynamodb.BatchGetItemInput) (*awsdynamodb.BatchGetItemOutput, error) {
+	client.BatchGetItemOverride = func(ctx context.Context, _ *awsdynamodb.BatchGetItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.BatchGetItemOutput, error) {
 		countBatchGetItemAPICalls++
 
 		return &awsdynamodb.BatchGetItemOutput{
-			Responses: map[string][]map[string]*awsdynamodb.AttributeValue{
+			Responses: map[string][]map[string]types.AttributeValue{
 				tableName: {
-					{"State": {S: aws.String(tasks.StateSuccess)}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateSuccess}},
 				},
 			},
-			UnprocessedKeys: map[string]*awsdynamodb.KeysAndAttributes{
+			UnprocessedKeys: map[string]types.KeysAndAttributes{
 				tableName: {
-					Keys: []map[string]*awsdynamodb.AttributeValue{
-						{"TaskUUID": {S: aws.String("unfetchedTaskUUID1")}},
-						{"TaskUUID": {S: aws.String("unfetchedTaskUUID2")}},
+					Keys: []map[string]types.AttributeValue{
+						{"TaskUUID": &types.AttributeValueMemberS{Value: "unfetchedTaskUUID1"}},
+						{"TaskUUID": &types.AttributeValueMemberS{Value: "unfetchedTaskUUID2"}},
 					},
 				},
 			},
@@ -157,21 +159,21 @@ func TestGroupCompletedRetrieSuccess(t *testing.T) {
 	tableName := dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable
 	// Override DynamoDB BatchGetItem() behavior
 	var countBatchGetItemAPICalls int
-	client.BatchGetItemOverride = func(_ *awsdynamodb.BatchGetItemInput) (*awsdynamodb.BatchGetItemOutput, error) {
+	client.BatchGetItemOverride = func(ctx context.Context, _ *awsdynamodb.BatchGetItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.BatchGetItemOutput, error) {
 		countBatchGetItemAPICalls++
 
 		// simulate unfetched keys on 1st attempt.
 		if countBatchGetItemAPICalls == 1 {
 			return &awsdynamodb.BatchGetItemOutput{
-				Responses: map[string][]map[string]*awsdynamodb.AttributeValue{
+				Responses: map[string][]map[string]types.AttributeValue{
 					tableName: {}, // no keys returned in this attempt.
 				},
-				UnprocessedKeys: map[string]*awsdynamodb.KeysAndAttributes{
+				UnprocessedKeys: map[string]types.KeysAndAttributes{
 					tableName: {
-						Keys: []map[string]*awsdynamodb.AttributeValue{
-							{"TaskUUID": {S: aws.String("unfetchedTaskUUID1")}},
-							{"TaskUUID": {S: aws.String("unfetchedTaskUUID2")}},
-							{"TaskUUID": {S: aws.String("unfetchedTaskUUID3")}},
+						Keys: []map[string]types.AttributeValue{
+							{"TaskUUID": &types.AttributeValueMemberS{Value: "unfetchedTaskUUID1"}},
+							{"TaskUUID": &types.AttributeValueMemberS{Value: "unfetchedTaskUUID2"}},
+							{"TaskUUID": &types.AttributeValueMemberS{Value: "unfetchedTaskUUID3"}},
 						},
 					},
 				},
@@ -181,11 +183,11 @@ func TestGroupCompletedRetrieSuccess(t *testing.T) {
 
 		// Return all keys in subsequent attempts.
 		return &awsdynamodb.BatchGetItemOutput{
-			Responses: map[string][]map[string]*awsdynamodb.AttributeValue{
+			Responses: map[string][]map[string]types.AttributeValue{
 				tableName: {
-					{"State": {S: aws.String(tasks.StateSuccess)}},
-					{"State": {S: aws.String(tasks.StateSuccess)}},
-					{"State": {S: aws.String(tasks.StateSuccess)}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateSuccess}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateSuccess}},
+					{"State": &types.AttributeValueMemberS{Value: tasks.StateSuccess}},
 				},
 			},
 		}, nil
@@ -218,35 +220,35 @@ func TestPrivateFuncGetGroupMeta(t *testing.T) {
 
 func TestPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
 	result := awsdynamodb.GetItemOutput{
-		Item: map[string]*awsdynamodb.AttributeValue{
-			"Error": {
-				NULL: aws.Bool(true),
+		Item: map[string]types.AttributeValue{
+			"Error": &types.AttributeValueMemberNULL{
+				Value: true,
 			},
-			"State": {
-				S: aws.String(tasks.StatePending),
+			"State": &types.AttributeValueMemberS{
+				Value: tasks.StatePending,
 			},
-			"TaskUUID": {
-				S: aws.String("testTaskUUID1"),
+			"TaskUUID": &types.AttributeValueMemberS{
+				Value: "testTaskUUID1",
 			},
-			"Results:": {
-				NULL: aws.Bool(true),
+			"Results:": &types.AttributeValueMemberNULL{
+				Value: true,
 			},
 		},
 	}
 
 	invalidResult := awsdynamodb.GetItemOutput{
-		Item: map[string]*awsdynamodb.AttributeValue{
-			"Error": {
-				BOOL: aws.Bool(true),
+		Item: map[string]types.AttributeValue{
+			"Error": &types.AttributeValueMemberBOOL{
+				Value: true,
 			},
-			"State": {
-				S: aws.String(tasks.StatePending),
+			"State": &types.AttributeValueMemberS{
+				Value: tasks.StatePending,
 			},
-			"TaskUUID": {
-				S: aws.String("testTaskUUID1"),
+			"TaskUUID": &types.AttributeValueMemberS{
+				Value: "testTaskUUID1",
 			},
-			"Results:": {
-				BOOL: aws.Bool(true),
+			"Results:": &types.AttributeValueMemberBOOL{
+				Value: true,
 			},
 		},
 	}
@@ -271,55 +273,55 @@ func TestPrivateFuncUnmarshalTaskStateGetItemResult(t *testing.T) {
 
 func TestPrivateFuncUnmarshalGroupMetaGetItemResult(t *testing.T) {
 	result := awsdynamodb.GetItemOutput{
-		Item: map[string]*awsdynamodb.AttributeValue{
-			"TaskUUIDs": {
-				L: []*awsdynamodb.AttributeValue{
-					{
-						S: aws.String("testTaskUUID1"),
+		Item: map[string]types.AttributeValue{
+			"TaskUUIDs": &types.AttributeValueMemberL{
+				Value: []types.AttributeValue{
+					&types.AttributeValueMemberS{
+						Value: "testTaskUUID1",
 					},
-					{
-						S: aws.String("testTaskUUID2"),
+					&types.AttributeValueMemberS{
+						Value: "testTaskUUID2",
 					},
-					{
-						S: aws.String("testTaskUUID3"),
+					&types.AttributeValueMemberS{
+						Value: "testTaskUUID3",
 					},
 				},
 			},
-			"ChordTriggered": {
-				BOOL: aws.Bool(false),
+			"ChordTriggered": &types.AttributeValueMemberBOOL{
+				Value: false,
 			},
-			"GroupUUID": {
-				S: aws.String("testGroupUUID"),
+			"GroupUUID": &types.AttributeValueMemberS{
+				Value: "testGroupUUID",
 			},
-			"Lock": {
-				BOOL: aws.Bool(false),
+			"Lock": &types.AttributeValueMemberBOOL{
+				Value: false,
 			},
 		},
 	}
 
 	invalidResult := awsdynamodb.GetItemOutput{
-		Item: map[string]*awsdynamodb.AttributeValue{
-			"TaskUUIDs": {
-				L: []*awsdynamodb.AttributeValue{
-					{
-						S: aws.String("testTaskUUID1"),
+		Item: map[string]types.AttributeValue{
+			"TaskUUIDs": &types.AttributeValueMemberL{
+				Value: []types.AttributeValue{
+					&types.AttributeValueMemberS{
+						Value: "testTaskUUID1",
 					},
-					{
-						S: aws.String("testTaskUUID2"),
+					&types.AttributeValueMemberS{
+						Value: "testTaskUUID2",
 					},
-					{
-						S: aws.String("testTaskUUID3"),
+					&types.AttributeValueMemberS{
+						Value: "testTaskUUID3",
 					},
 				},
 			},
-			"ChordTriggered": {
-				S: aws.String("false"), // this attribute is invalid
+			"ChordTriggered": &types.AttributeValueMemberS{
+				Value: "false", // this attribute is invalid
 			},
-			"GroupUUID": {
-				S: aws.String("testGroupUUID"),
+			"GroupUUID": &types.AttributeValueMemberS{
+				Value: "testGroupUUID",
 			},
-			"Lock": {
-				BOOL: aws.Bool(false),
+			"Lock": &types.AttributeValueMemberBOOL{
+				Value: false,
 			},
 		},
 	}
@@ -367,14 +369,14 @@ func verifyUpdateInput(t *testing.T, input *awsdynamodb.UpdateItemInput, expecte
 	assert.NotNil(t, input)
 
 	// verify task ID
-	assert.Equal(t, expectedTaskID, *input.Key["TaskUUID"].S)
+	assert.Equal(t, expectedTaskID, input.Key["TaskUUID"].(*types.AttributeValueMemberS).Value)
 
 	// verify task state
-	assert.Equal(t, expectedState, *input.ExpressionAttributeValues[":s"].S)
+	assert.Equal(t, expectedState, input.ExpressionAttributeValues[":s"].(*types.AttributeValueMemberS).Value)
 
 	// Verify TTL
 	if !expectedTTLTime.IsZero() {
-		actualTTLStr := *input.ExpressionAttributeValues[":t"].N
+		actualTTLStr := input.ExpressionAttributeValues[":t"].(*types.AttributeValueMemberN).Value
 		assertTTLValue(t, expectedTTLTime, actualTTLStr)
 	}
 }
@@ -387,7 +389,7 @@ func TestSetStateSuccess(t *testing.T) {
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
 	// Override DynamoDB UpdateItem() behavior
 	var isUpdateItemCalled bool
-	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+	client.UpdateItemOverride = func(ctx context.Context, input *awsdynamodb.UpdateItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 		isUpdateItemCalled = true
 		verifyUpdateInput(t, input, signature.UUID, tasks.StateSuccess, time.Now().Add(3*time.Hour))
 		return &awsdynamodb.UpdateItemOutput{}, nil
@@ -407,7 +409,7 @@ func TestSetStateFailure(t *testing.T) {
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
 	// Override DynamoDB UpdateItem() behavior
 	var isUpdateItemCalled bool
-	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+	client.UpdateItemOverride = func(ctx context.Context, input *awsdynamodb.UpdateItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 		isUpdateItemCalled = true
 		verifyUpdateInput(t, input, signature.UUID, tasks.StateFailure, time.Now().Add(2*time.Hour))
 		return &awsdynamodb.UpdateItemOutput{}, nil
@@ -426,7 +428,7 @@ func TestSetStateReceived(t *testing.T) {
 	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 2 * 3600 // results should expire after 2 hours (ignored for this state)
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
 	var isUpdateItemCalled bool
-	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+	client.UpdateItemOverride = func(ctx context.Context, input *awsdynamodb.UpdateItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 		isUpdateItemCalled = true
 		verifyUpdateInput(t, input, signature.UUID, tasks.StateReceived, time.Time{})
 		return &awsdynamodb.UpdateItemOutput{}, nil
@@ -445,7 +447,7 @@ func TestSetStateStarted(t *testing.T) {
 	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 2 * 3600 // results should expire after 2 hours (ignored for this state)
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
 	var isUpdateItemCalled bool
-	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+	client.UpdateItemOverride = func(ctx context.Context, input *awsdynamodb.UpdateItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 		isUpdateItemCalled = true
 		verifyUpdateInput(t, input, signature.UUID, tasks.StateStarted, time.Time{})
 		return &awsdynamodb.UpdateItemOutput{}, nil
@@ -464,7 +466,7 @@ func TestSetStateRetry(t *testing.T) {
 	dynamodb.TestDynamoDBBackend.GetConfig().ResultsExpireIn = 2 * 3600 // results should expire after 2 hours (ignored for this state)
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
 	var isUpdateItemCalled bool
-	client.UpdateItemOverride = func(input *awsdynamodb.UpdateItemInput) (*awsdynamodb.UpdateItemOutput, error) {
+	client.UpdateItemOverride = func(ctx context.Context, input *awsdynamodb.UpdateItemInput, ops ...func(options *awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 		isUpdateItemCalled = true
 		verifyUpdateInput(t, input, signature.UUID, tasks.StateRetry, time.Time{})
 		return &awsdynamodb.UpdateItemOutput{}, nil
@@ -499,28 +501,29 @@ func TestGroupTaskStates(t *testing.T) {
 	}
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
 	tableName := dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.TaskStatesTable
-	client.BatchGetItemOverride = func(input *awsdynamodb.BatchGetItemInput) (*awsdynamodb.BatchGetItemOutput, error) {
-		assert.Nil(t, input.Validate())
+	client.BatchGetItemOverride = func(ctx context.Context, input *awsdynamodb.BatchGetItemInput, ops ...func(options *awsdynamodb.Options)) (*awsdynamodb.BatchGetItemOutput, error) {
+		assert.Nil(t, validateBatchGetItemInput(input))
+
 		return &awsdynamodb.BatchGetItemOutput{
-			Responses: map[string][]map[string]*awsdynamodb.AttributeValue{
+			Responses: map[string][]map[string]types.AttributeValue{
 				tableName: {
 					{
-						"TaskUUID": {S: aws.String("testTaskUUID1")},
-						"Results:": {NULL: aws.Bool(true)},
-						"State":    {S: aws.String(tasks.StatePending)},
-						"Error":    {NULL: aws.Bool(true)},
+						"TaskUUID": &types.AttributeValueMemberS{Value: "testTaskUUID1"},
+						"Results:": &types.AttributeValueMemberNULL{Value: true},
+						"State":    &types.AttributeValueMemberS{Value: tasks.StatePending},
+						"Error":    &types.AttributeValueMemberNULL{Value: true},
 					},
 					{
-						"TaskUUID": {S: aws.String("testTaskUUID2")},
-						"Results:": {NULL: aws.Bool(true)},
-						"State":    {S: aws.String(tasks.StateStarted)},
-						"Error":    {NULL: aws.Bool(true)},
+						"TaskUUID": &types.AttributeValueMemberS{Value: "testTaskUUID2"},
+						"Results:": &types.AttributeValueMemberNULL{Value: true},
+						"State":    &types.AttributeValueMemberS{Value: tasks.StateStarted},
+						"Error":    &types.AttributeValueMemberNULL{Value: true},
 					},
 					{
-						"TaskUUID": {S: aws.String("testTaskUUID3")},
-						"Results:": {NULL: aws.Bool(true)},
-						"State":    {S: aws.String(tasks.StateSuccess)},
-						"Error":    {NULL: aws.Bool(true)},
+						"TaskUUID": &types.AttributeValueMemberS{Value: "testTaskUUID3"},
+						"Results:": &types.AttributeValueMemberNULL{Value: true},
+						"State":    &types.AttributeValueMemberS{Value: tasks.StateSuccess},
+						"Error":    &types.AttributeValueMemberNULL{Value: true},
 					},
 				},
 			},
@@ -551,13 +554,13 @@ func TestGetState(t *testing.T) {
 		Error:    "",
 	}
 	client := dynamodb.TestDynamoDBBackend.GetClient().(*dynamodb.TestDynamoDBClient)
-	client.GetItemOverride = func(input *awsdynamodb.GetItemInput) (*awsdynamodb.GetItemOutput, error) {
+	client.GetItemOverride = func(ctx context.Context, input *awsdynamodb.GetItemInput, ops ...func(*awsdynamodb.Options)) (*awsdynamodb.GetItemOutput, error) {
 		return &awsdynamodb.GetItemOutput{
-			Item: map[string]*awsdynamodb.AttributeValue{
-				"TaskUUID": {S: aws.String("testTaskUUID1")},
-				"Results:": {NULL: aws.Bool(true)},
-				"State":    {S: aws.String(tasks.StatePending)},
-				"Error":    {NULL: aws.Bool(false)},
+			Item: map[string]types.AttributeValue{
+				"TaskUUID": &types.AttributeValueMemberS{Value: "testTaskUUID1"},
+				"Results:": &types.AttributeValueMemberNULL{Value: true},
+				"State":    &types.AttributeValueMemberS{Value: tasks.StatePending},
+				"Error":    &types.AttributeValueMemberNULL{Value: false},
 			},
 		}, nil
 	}
@@ -635,7 +638,7 @@ func TestPrivateFuncUpdateToFailureStateWithError(t *testing.T) {
 }
 
 func TestPrivateFuncTableExistsForTest(t *testing.T) {
-	tables := []*string{aws.String("foo")}
+	tables := []string{"foo"}
 	assert.False(t, dynamodb.TestDynamoDBBackend.TableExistsForTest("bar", tables))
 	assert.True(t, dynamodb.TestDynamoDBBackend.TableExistsForTest("foo", tables))
 }
@@ -655,4 +658,22 @@ func TestPrivateFuncCheckRequiredTablesIfExistForTest(t *testing.T) {
 	err = dynamodb.TestDynamoDBBackend.CheckRequiredTablesIfExistForTest()
 	assert.NotNil(t, err)
 	dynamodb.TestDynamoDBBackend.GetConfig().DynamoDB.GroupMetasTable = groupTable
+}
+
+func validateBatchGetItemInput(input *awsdynamodb.BatchGetItemInput) error {
+	if input == nil {
+		return fmt.Errorf("input is nil")
+	}
+	if len(input.RequestItems) == 0 {
+		return fmt.Errorf("RequestItems cannot be empty")
+	}
+	for tableName, keysAndAttributes := range input.RequestItems {
+		if tableName == "" {
+			return fmt.Errorf("table name cannot be empty")
+		}
+		if len(keysAndAttributes.Keys) == 0 {
+			return fmt.Errorf("Keys for table %s cannot be empty", tableName)
+		}
+	}
+	return nil
 }
