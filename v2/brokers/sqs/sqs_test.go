@@ -7,15 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/RichardKnop/machinery/v2"
+	eagerbck "github.com/RichardKnop/machinery/v2/backends/eager"
+	"github.com/RichardKnop/machinery/v2/brokers/eager"
 	"github.com/RichardKnop/machinery/v2/brokers/sqs"
 	"github.com/RichardKnop/machinery/v2/config"
+	eagerlock "github.com/RichardKnop/machinery/v2/locks/eager"
 	"github.com/RichardKnop/machinery/v2/retry"
-
+	"github.com/aws/aws-sdk-go/aws"
 	awssqs "github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -31,14 +35,14 @@ func init() {
 func TestNewAWSSQSBroker(t *testing.T) {
 	t.Parallel()
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	assert.IsType(t, broker, sqs.New(cnf))
 }
 
 func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 	errorBroker := sqs.NewTestErrorBroker()
 
 	qURL := broker.DefaultQueueURLForTest()
@@ -87,10 +91,7 @@ func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 
 func TestPrivateFunc_consume(t *testing.T) {
 
-	server1, err := machinery.NewServer(cnf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	server1 := machinery.NewServer(cnf, eager.New(), eagerbck.New(), eagerlock.New())
 	pool := make(chan struct{})
 	wk := server1.NewWorker("sms_worker", 0)
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
@@ -98,29 +99,25 @@ func TestPrivateFunc_consume(t *testing.T) {
 	outputCopy.Messages = []*awssqs.Message{}
 	go func() { deliveries <- &outputCopy }()
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	// an infinite loop will be executed only when there is no error
-	err = broker.ConsumeForTest(deliveries, 0, wk, pool)
+	err := broker.ConsumeForTest(deliveries, 0, wk, pool)
 	assert.NotNil(t, err)
 }
 
 func TestPrivateFunc_consumeOne(t *testing.T) {
-
-	server1, err := machinery.NewServer(cnf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	server1 := machinery.NewServer(cnf, eager.New(), eagerbck.New(), eagerlock.New())
 	wk := server1.NewWorker("sms_worker", 0)
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
-	err = broker.ConsumeOneForTest(receiveMessageOutput, wk)
-	assert.NotNil(t, err)
+	err := broker.ConsumeOneForTest(receiveMessageOutput, wk)
+	assert.Error(t, err)
 
 	outputCopy := *receiveMessageOutput
 	outputCopy.Messages = []*awssqs.Message{}
 	err = broker.ConsumeOneForTest(&outputCopy, wk)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	outputCopy.Messages = []*awssqs.Message{
 		{
@@ -128,12 +125,54 @@ func TestPrivateFunc_consumeOne(t *testing.T) {
 		},
 	}
 	err = broker.ConsumeOneForTest(&outputCopy, wk)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
+}
+
+func TestPrivateFunc_consumeOneWithVisibilityHeartBeat(t *testing.T) {
+
+	cfg := sqs.NewTestConfig()
+	cfg.SQS.VisibilityHeartBeat = true
+	cfg.SQS.VisibilityTimeout = aws.Int(1) // seconds
+
+	mockClient := new(MockSQSAPI)
+
+	cfg.SQS.Client = mockClient
+
+	broker := sqs.NewTestBroker(cfg)
+
+	server1 := machinery.NewServer(cfg, broker, eagerbck.New(), eagerlock.New())
+
+	// Long-running task by two times the visibility timeout.
+	err := server1.RegisterTask("test-task", func(ctx context.Context) error {
+		time.Sleep(time.Duration(*cfg.SQS.VisibilityTimeout) * 2 * time.Second)
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	wk := server1.NewWorker("sms_worker", 0)
+
+	receiveMessageOutput.Messages = []*awssqs.Message{
+		{
+			Body: aws.String(`{"Name": "test-task"}`),
+		},
+	}
+
+	mockClient.On("ChangeMessageVisibility", mock.AnythingOfType("*sqs.ChangeMessageVisibilityInput")).Return(&awssqs.ChangeMessageVisibilityOutput{}, nil)
+	mockClient.On("DeleteMessage", mock.AnythingOfType("*sqs.DeleteMessageInput")).Return(&awssqs.DeleteMessageOutput{}, nil)
+
+	err = broker.ConsumeOneForTest(receiveMessageOutput, wk)
+	assert.NoError(t, err)
+
+	time.Sleep(time.Duration(*cfg.SQS.VisibilityTimeout) * time.Second)
+
+	// Assert that ChangeMessageVisibility was called.
+	mockClient.AssertNumberOfCalls(t, "ChangeMessageVisibility", 4)
 }
 
 func TestPrivateFunc_initializePool(t *testing.T) {
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	concurrency := 9
 	pool := make(chan struct{}, concurrency)
@@ -143,13 +182,10 @@ func TestPrivateFunc_initializePool(t *testing.T) {
 
 func TestPrivateFunc_startConsuming(t *testing.T) {
 
-	server1, err := machinery.NewServer(cnf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	server1 := machinery.NewServer(cnf, eager.New(), eagerbck.New(), eagerlock.New())
 
 	wk := server1.NewWorker("sms_worker", 0)
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	retryFunc := broker.GetRetryFuncForTest()
 	stopChan := broker.GetStopChanForTest()
@@ -164,7 +200,7 @@ func TestPrivateFunc_startConsuming(t *testing.T) {
 
 func TestPrivateFuncDefaultQueueURL(t *testing.T) {
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	qURL := broker.DefaultQueueURLForTest()
 
@@ -173,7 +209,7 @@ func TestPrivateFuncDefaultQueueURL(t *testing.T) {
 
 func TestPrivateFunc_stopReceiving(t *testing.T) {
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	go broker.StopReceivingForTest()
 
@@ -183,7 +219,7 @@ func TestPrivateFunc_stopReceiving(t *testing.T) {
 
 func TestPrivateFunc_receiveMessage(t *testing.T) {
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	qURL := broker.DefaultQueueURLForTest()
 	output, err := broker.ReceiveMessageForTest(qURL)
@@ -197,13 +233,10 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	pool := make(chan struct{}, concurrency)
 	errorsChan := make(chan error)
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
-	server1, err := machinery.NewServer(cnf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	server1 := machinery.NewServer(cnf, eager.New(), eagerbck.New(), eagerlock.New())
 
 	wk := server1.NewWorker("sms_worker", 0)
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	go func() { deliveries <- receiveMessageOutput }()
 	whetherContinue, err := broker.ConsumeDeliveriesForTest(deliveries, concurrency, wk, pool, errorsChan)
@@ -253,7 +286,7 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 
 func TestPrivateFunc_deleteOne(t *testing.T) {
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 	errorBroker := sqs.NewTestErrorBroker()
 
 	err := broker.DeleteOneForTest(receiveMessageOutput)
@@ -265,12 +298,9 @@ func TestPrivateFunc_deleteOne(t *testing.T) {
 
 func Test_CustomQueueName(t *testing.T) {
 
-	server1, err := machinery.NewServer(cnf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	server1 := machinery.NewServer(cnf, eager.New(), eagerbck.New(), eagerlock.New())
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	wk := server1.NewWorker("test-worker", 0)
 	qURL := broker.GetQueueURLForTest(wk)
@@ -284,27 +314,25 @@ func Test_CustomQueueName(t *testing.T) {
 func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 
 	msg := `{
-        "UUID": "uuid-dummy-task",
-        "Name": "test-task",
-        "RoutingKey": "dummy-routing"
-	}
-	`
+			"UUID": "uuid-dummy-task",
+			"Name": "test-task",
+			"RoutingKey": "dummy-routing"
+		}
+		`
 
 	testResp := "47f8b355-5115-4b45-b33a-439016400411"
 	output := make(chan string) // The output channel
 
 	cnf.ResultBackend = "eager"
-	server1, err := machinery.NewServer(cnf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = server1.RegisterTask("test-task", func(ctx context.Context) error {
+	server1 := machinery.NewServer(cnf, eager.New(), eagerbck.New(), eagerlock.New())
+
+	err := server1.RegisterTask("test-task", func(ctx context.Context) error {
 		output <- testResp
 
 		return nil
 	})
 
-	broker := sqs.NewTestBroker()
+	broker := sqs.NewTestBroker(cnf)
 
 	broker.SetRegisteredTaskNames([]string{"test-task"})
 	assert.NoError(t, err)
@@ -337,4 +365,26 @@ func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 		// call timed out
 		t.Fatal("task not processed in 10 seconds")
 	}
+}
+
+// MockSQSAPI is a mock implementation of the sqsiface.SQSAPI interface
+type MockSQSAPI struct {
+	mock.Mock
+
+	sqsiface.SQSAPI
+}
+
+func (m *MockSQSAPI) ReceiveMessage(input *awssqs.ReceiveMessageInput) (*awssqs.ReceiveMessageOutput, error) {
+	args := m.Called(input)
+	return args.Get(0).(*awssqs.ReceiveMessageOutput), args.Error(1)
+}
+
+func (m *MockSQSAPI) DeleteMessage(input *awssqs.DeleteMessageInput) (*awssqs.DeleteMessageOutput, error) {
+	args := m.Called(input)
+	return args.Get(0).(*awssqs.DeleteMessageOutput), args.Error(1)
+}
+
+func (m *MockSQSAPI) ChangeMessageVisibility(input *awssqs.ChangeMessageVisibilityInput) (*awssqs.ChangeMessageVisibilityOutput, error) {
+	args := m.Called(input)
+	return args.Get(0).(*awssqs.ChangeMessageVisibilityOutput), args.Error(1)
 }

@@ -1,4 +1,4 @@
-FROM google/cloud-sdk:216.0.0-alpine
+FROM google/cloud-sdk:530.0.0-alpine
 
 RUN apk --update add openjdk8-jre
 RUN gcloud components install --quiet beta pubsub-emulator

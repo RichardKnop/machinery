@@ -208,6 +208,13 @@ func (b *Broker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor if
 		b.visibilityHeartbeat(delivery, notify)
 	}
 
+	if b.GetConfig().SQS.VisibilityHeartBeat {
+		notify := make(chan struct{})
+		defer close(notify)
+
+		b.visibilityHeartbeat(delivery, notify)
+	}
+
 	sig := new(tasks.Signature)
 	decoder := json.NewDecoder(strings.NewReader(*delivery.Messages[0].Body))
 	decoder.UseNumber()
