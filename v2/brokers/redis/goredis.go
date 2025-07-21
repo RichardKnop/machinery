@@ -92,7 +92,7 @@ func (b *BrokerGR) StartConsuming(consumerTag string, concurrency int, taskProce
 	defer b.consumingWG.Done()
 
 	if concurrency < 1 {
-		concurrency = runtime.NumCPU() * 2
+		concurrency = runtime.GOMAXPROCS(0) * 2
 	}
 
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
