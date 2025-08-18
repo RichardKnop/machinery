@@ -12,12 +12,14 @@ services:
       - memcached
       - mongo
       - gcppubsub
+      - dynamodb
     links:
       - rabbitmq
       - redis
       - memcached
       - mongo
       - gcppubsub
+      - dynamodb
     build:
       context: .
       dockerfile: ./Dockerfile.test
@@ -35,6 +37,7 @@ services:
       GCPPUBSUB_URL: 'gcppubsub://example-project/test_subscription_queue'
       GCPPUBSUB_TOPIC: 'test_topic_queue'
       PUBSUB_EMULATOR_HOST: 'gcppubsub:8085'
+      DYNAMODB_URL: 'dynamodb:8000'
 
   rabbitmq:
     container_name: machinery_sut_rabbitmq
@@ -70,3 +73,10 @@ services:
       dockerfile: ./Dockerfile.gcppubsub
     logging:
       driver: none
+
+  dynamodb:
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
