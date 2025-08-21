@@ -3,7 +3,6 @@ package config
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"strings"
 	"time"
 
