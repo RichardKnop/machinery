@@ -20,8 +20,6 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/aws/aws-sdk-go/aws/awsutil"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 const (
@@ -35,7 +33,6 @@ type Broker struct {
 	processingWG      sync.WaitGroup // use wait group to make sure task processing completes on interrupt signal
 	receivingWG       sync.WaitGroup
 	stopReceivingChan chan int
-	sess              *session.Session
 	service           sqsiface.API
 	queueUrl          *string
 }
@@ -198,7 +195,7 @@ func (b *Broker) consume(deliveries <-chan *sqs.ReceiveMessageOutput, concurrenc
 func (b *Broker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor iface.TaskProcessor) error {
 	if len(delivery.Messages) == 0 {
 		log.ERROR.Printf("received an empty message, the delivery was %v", delivery)
-		return errors.New("received empty message, the delivery is " + awsutil.Prettify(delivery))
+		return fmt.Errorf("received empty message, the delivery is %v", delivery)
 	}
 
 	if b.GetConfig().SQS.VisibilityHeartBeat {

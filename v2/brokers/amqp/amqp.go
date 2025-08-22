@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/log"
 	"github.com/RichardKnop/machinery/v2/tasks"
-	"github.com/pkg/errors"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -142,7 +142,7 @@ func (b *Broker) GetOrOpenConnection(queueName string, queueBindingKey string, e
 			queueBindingArgs,                // queue binding args
 		)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to connect to queue %s", queueName)
+			return nil, fmt.Errorf("Failed to connect to queue %s: %s", queueName, err)
 		}
 
 		// Reconnect to the channel if it disconnects/errors out
@@ -218,7 +218,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to get a connection for queue %s", queue)
+		return fmt.Errorf("Failed to get a connection for queue %s: %w", queue, err)
 	}
 
 	channel := connection.channel
@@ -237,7 +237,7 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 			DeliveryMode: amqp.Persistent,
 		},
 	); err != nil {
-		return errors.Wrap(err, "Failed to publish task")
+		return fmt.Errorf("Failed to publish task: %w", err)
 	}
 
 	confirmed := <-confirmsChan
@@ -483,13 +483,13 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get a connection for queue %s", queue)
+		return nil, fmt.Errorf("Failed to get a connection for queue %s: %w", queue, err)
 	}
 
 	channel := conn.channel
 	queueInfo, err := channel.QueueInspect(queue)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get info for queue %s", queue)
+		return nil, fmt.Errorf("Failed to get info for queue %s: %w", queue, err)
 	}
 
 	var tag uint64
@@ -499,7 +499,7 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	for i := 0; i < queueInfo.Messages; i++ {
 		d, _, err := channel.Get(queue, false)
 		if err != nil {
-			return nil, errors.Wrap(err, "Failed to get from queue")
+			return nil, fmt.Errorf("Failed to get from queue: %w", err)
 		}
 		tag = d.DeliveryTag
 		b.consumeOne(d, dumper, false)

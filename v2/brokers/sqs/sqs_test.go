@@ -10,13 +10,14 @@ import (
 	"github.com/RichardKnop/machinery/v2"
 	eagerbck "github.com/RichardKnop/machinery/v2/backends/eager"
 	"github.com/RichardKnop/machinery/v2/brokers/eager"
+	sqsiface "github.com/RichardKnop/machinery/v2/brokers/iface/sqs"
 	"github.com/RichardKnop/machinery/v2/brokers/sqs"
 	"github.com/RichardKnop/machinery/v2/config"
 	eagerlock "github.com/RichardKnop/machinery/v2/locks/eager"
 	"github.com/RichardKnop/machinery/v2/retry"
-	"github.com/aws/aws-sdk-go/aws"
-	awssqs "github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -35,9 +36,12 @@ func init() {
 func TestNewAWSSQSBroker(t *testing.T) {
 	t.Parallel()
 
-	broker := sqs.NewTestBroker(cnf)
+	testBroker := sqs.NewTestBroker(cnf)
 
-	assert.IsType(t, broker, sqs.New(cnf))
+	broker, err := sqs.New(cnf)
+	require.NoError(t, err)
+
+	assert.IsType(t, testBroker, broker)
 }
 
 func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
@@ -81,7 +85,7 @@ func TestPrivateFunc_continueReceivingMessages(t *testing.T) {
 
 	// Test when there is no message
 	outputCopy := *receiveMessageOutput
-	receiveMessageOutput.Messages = []*awssqs.Message{}
+	receiveMessageOutput.Messages = []types.Message{}
 	whetherContinue, err = broker.ContinueReceivingMessagesForTest(qURL, deliveries)
 	assert.True(t, whetherContinue)
 	assert.Nil(t, err)
@@ -96,7 +100,7 @@ func TestPrivateFunc_consume(t *testing.T) {
 	wk := server1.NewWorker("sms_worker", 0)
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	outputCopy := *receiveMessageOutput
-	outputCopy.Messages = []*awssqs.Message{}
+	outputCopy.Messages = []types.Message{}
 	go func() { deliveries <- &outputCopy }()
 
 	broker := sqs.NewTestBroker(cnf)
@@ -115,11 +119,11 @@ func TestPrivateFunc_consumeOne(t *testing.T) {
 	assert.Error(t, err)
 
 	outputCopy := *receiveMessageOutput
-	outputCopy.Messages = []*awssqs.Message{}
+	outputCopy.Messages = []types.Message{}
 	err = broker.ConsumeOneForTest(&outputCopy, wk)
 	assert.Error(t, err)
 
-	outputCopy.Messages = []*awssqs.Message{
+	outputCopy.Messages = []types.Message{
 		{
 			Body: aws.String("foo message"),
 		},
@@ -152,7 +156,7 @@ func TestPrivateFunc_consumeOneWithVisibilityHeartBeat(t *testing.T) {
 
 	wk := server1.NewWorker("sms_worker", 0)
 
-	receiveMessageOutput.Messages = []*awssqs.Message{
+	receiveMessageOutput.Messages = []types.Message{
 		{
 			Body: aws.String(`{"Name": "test-task"}`),
 		},
@@ -254,7 +258,7 @@ func TestPrivateFunc_consumeDeliveries(t *testing.T) {
 	assert.Nil(t, err)
 
 	outputCopy := *receiveMessageOutput
-	outputCopy.Messages = []*awssqs.Message{}
+	outputCopy.Messages = []types.Message{}
 	go func() { deliveries <- &outputCopy }()
 	whetherContinue, err = broker.ConsumeDeliveriesForTest(deliveries, concurrency, wk, pool, errorsChan)
 	e := <-errorsChan
@@ -341,7 +345,7 @@ func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 	wk := server1.NewWorker("sms_worker", 1)
 	deliveries := make(chan *awssqs.ReceiveMessageOutput)
 	outputCopy := *receiveMessageOutput
-	outputCopy.Messages = []*awssqs.Message{
+	outputCopy.Messages = []types.Message{
 		{
 			MessageId: aws.String("test-sqs-msg1"),
 			Body:      aws.String(msg),
@@ -371,20 +375,20 @@ func TestPrivateFunc_consumeWithConcurrency(t *testing.T) {
 type MockSQSAPI struct {
 	mock.Mock
 
-	sqsiface.SQSAPI
+	sqsiface.API
 }
 
-func (m *MockSQSAPI) ReceiveMessage(input *awssqs.ReceiveMessageInput) (*awssqs.ReceiveMessageOutput, error) {
+func (m *MockSQSAPI) ReceiveMessage(ctx context.Context, input *awssqs.ReceiveMessageInput, opts ...func(*awssqs.Options)) (*awssqs.ReceiveMessageOutput, error) {
 	args := m.Called(input)
 	return args.Get(0).(*awssqs.ReceiveMessageOutput), args.Error(1)
 }
 
-func (m *MockSQSAPI) DeleteMessage(input *awssqs.DeleteMessageInput) (*awssqs.DeleteMessageOutput, error) {
+func (m *MockSQSAPI) DeleteMessage(ctx context.Context, input *awssqs.DeleteMessageInput, opts ...func(*awssqs.Options)) (*awssqs.DeleteMessageOutput, error) {
 	args := m.Called(input)
 	return args.Get(0).(*awssqs.DeleteMessageOutput), args.Error(1)
 }
 
-func (m *MockSQSAPI) ChangeMessageVisibility(input *awssqs.ChangeMessageVisibilityInput) (*awssqs.ChangeMessageVisibilityOutput, error) {
+func (m *MockSQSAPI) ChangeMessageVisibility(ctx context.Context, input *awssqs.ChangeMessageVisibilityInput, opts ...func(*awssqs.Options)) (*awssqs.ChangeMessageVisibilityOutput, error) {
 	args := m.Called(input)
 	return args.Get(0).(*awssqs.ChangeMessageVisibilityOutput), args.Error(1)
 }

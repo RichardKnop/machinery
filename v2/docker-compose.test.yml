@@ -5,19 +5,13 @@ services:
     container_name: machinery_sut
     image: machinery_sut:latest
     volumes:
-      - "./:/go/src/github.com/RichardKnop/machinery"
+      - "./:/go/src/github.com/RichardKnop/machinery/v2"
     depends_on:
       - rabbitmq
       - redis
-      - memcached
-      - mongo
-      - gcppubsub
     links:
       - rabbitmq
       - redis
-      - memcached
-      - mongo
-      - gcppubsub
     build:
       context: .
       dockerfile: ./Dockerfile.test
@@ -25,16 +19,11 @@ services:
       AMQP_URLS: 'amqp://guest:guest@dummy:5672/,amqp://guest:guest@rabbitmq:5672/'
       AMQP_URLS_SEPARATOR: ','
       REDIS_URL: 'redis:6379'
-      MEMCACHE_URL: 'memcached:11211'
-      MONGODB_URL: 'mongo:27017'
       SQS_URL: ${SQS_URL}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       AWS_REGION: 'us-west-2'
-      GCPPUBSUB_URL: 'gcppubsub://example-project/test_subscription_queue'
-      GCPPUBSUB_TOPIC: 'test_topic_queue'
-      PUBSUB_EMULATOR_HOST: 'gcppubsub:8085'
 
   rabbitmq:
     container_name: machinery_sut_rabbitmq
@@ -48,25 +37,5 @@ services:
   redis:
     container_name: machinery_sut_redis
     image: redis
-    logging:
-      driver: none
-
-  memcached:
-    container_name: machinery_sut_memcached
-    image: memcached
-    logging:
-      driver: none
-
-  mongo:
-    container_name: machinery_sut_mongo
-    image: mongo
-    logging:
-      driver: none
-
-  gcppubsub:
-    container_name: machinery_sut_gcppubsub
-    build:
-      context: .
-      dockerfile: ./Dockerfile.gcppubsub
     logging:
       driver: none

@@ -1,21 +1,21 @@
 package sqs
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	sqsiface "github.com/RichardKnop/machinery/v2/brokers/iface/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"os"
 	"sync"
+
+	sqsiface "github.com/RichardKnop/machinery/v2/brokers/iface/sqs"
 
 	"github.com/RichardKnop/machinery/v2/brokers/iface"
 	"github.com/RichardKnop/machinery/v2/common"
 	"github.com/RichardKnop/machinery/v2/config"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	awssqs "github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 var (
@@ -26,7 +26,7 @@ type FakeSQS struct {
 	sqsiface.API
 }
 
-func (f *FakeSQS) SendMessage(*awssqs.SendMessageInput) (*awssqs.SendMessageOutput, error) {
+func (f *FakeSQS) SendMessage(context.Context, *awssqs.SendMessageInput, ...func(*awssqs.Options)) (*awssqs.SendMessageOutput, error) {
 	output := awssqs.SendMessageOutput{
 		MD5OfMessageAttributes: aws.String("d25a6aea97eb8f585bfa92d314504a92"),
 		MD5OfMessageBody:       aws.String("bbdc5fdb8be7251f5c910905db994bab"),
@@ -35,11 +35,11 @@ func (f *FakeSQS) SendMessage(*awssqs.SendMessageInput) (*awssqs.SendMessageOutp
 	return &output, nil
 }
 
-func (f *FakeSQS) ReceiveMessage(*awssqs.ReceiveMessageInput) (*awssqs.ReceiveMessageOutput, error) {
+func (f *FakeSQS) ReceiveMessage(context.Context, *awssqs.ReceiveMessageInput, ...func(*awssqs.Options)) (*awssqs.ReceiveMessageOutput, error) {
 	return ReceiveMessageOutput, nil
 }
 
-func (f *FakeSQS) DeleteMessage(*awssqs.DeleteMessageInput) (*awssqs.DeleteMessageOutput, error) {
+func (f *FakeSQS) DeleteMessage(context.Context, *awssqs.DeleteMessageInput, ...func(*awssqs.Options)) (*awssqs.DeleteMessageOutput, error) {
 	return &awssqs.DeleteMessageOutput{}, nil
 }
 
@@ -47,17 +47,17 @@ type ErrorSQS struct {
 	sqsiface.API
 }
 
-func (e *ErrorSQS) SendMessage(*sqs.SendMessageInput) (*awssqs.SendMessageOutput, error) {
+func (e *ErrorSQS) SendMessage(context.Context, *awssqs.SendMessageInput, ...func(*awssqs.Options)) (*awssqs.SendMessageOutput, error) {
 	err := errors.New("this is an error")
 	return nil, err
 }
 
-func (e *ErrorSQS) ReceiveMessage(*sqs.ReceiveMessageInput) (*awssqs.ReceiveMessageOutput, error) {
+func (e *ErrorSQS) ReceiveMessage(context.Context, *awssqs.ReceiveMessageInput, ...func(*awssqs.Options)) (*awssqs.ReceiveMessageOutput, error) {
 	err := errors.New("this is an error")
 	return nil, err
 }
 
-func (e *ErrorSQS) DeleteMessage(*sqs.DeleteMessageInput) (*awssqs.DeleteMessageOutput, error) {
+func (e *ErrorSQS) DeleteMessage(context.Context, *awssqs.DeleteMessageInput, ...func(*awssqs.Options)) (*awssqs.DeleteMessageOutput, error) {
 	err := errors.New("this is an error")
 	return nil, err
 }
@@ -66,15 +66,15 @@ func init() {
 	// TODO: chang message body to signature example
 	messageBody, _ := json.Marshal(map[string]int{"apple": 5, "lettuce": 7})
 	ReceiveMessageOutput = &awssqs.ReceiveMessageOutput{
-		Messages: []*awssqs.Message{
+		Messages: []types.Message{
 			{
-				Attributes: map[string]*string{
-					"SentTimestamp": aws.String("1512962021537"),
+				Attributes: map[string]string{
+					"SentTimestamp": "1512962021537",
 				},
 				Body:                   aws.String(string(messageBody)),
 				MD5OfBody:              aws.String("bbdc5fdb8be7251f5c910905db994bab"),
 				MD5OfMessageAttributes: aws.String("d25a6aea97eb8f585bfa92d314504a92"),
-				MessageAttributes: map[string]*awssqs.MessageAttributeValue{
+				MessageAttributes: map[string]types.MessageAttributeValue{
 					"Title": {
 						DataType:    aws.String("String"),
 						StringValue: aws.String("The Whistler"),
@@ -115,10 +115,6 @@ func NewTestConfig() *config.Config {
 
 func NewTestBroker(cnf *config.Config) *Broker {
 
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-
 	var svc sqsiface.API = new(FakeSQS)
 
 	if cnf.SQS.Client != nil {
@@ -126,7 +122,6 @@ func NewTestBroker(cnf *config.Config) *Broker {
 	}
 	return &Broker{
 		Broker:            common.NewBroker(cnf),
-		sess:              sess,
 		service:           svc,
 		processingWG:      sync.WaitGroup{},
 		receivingWG:       sync.WaitGroup{},
@@ -137,14 +132,10 @@ func NewTestBroker(cnf *config.Config) *Broker {
 func NewTestErrorBroker() *Broker {
 
 	cnf := NewTestConfig()
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
 
 	errSvc := new(ErrorSQS)
 	return &Broker{
 		Broker:            common.NewBroker(cnf),
-		sess:              sess,
 		service:           errSvc,
 		processingWG:      sync.WaitGroup{},
 		receivingWG:       sync.WaitGroup{},
@@ -152,15 +143,15 @@ func NewTestErrorBroker() *Broker {
 	}
 }
 
-func (b *Broker) ConsumeForTest(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}) error {
+func (b *Broker) ConsumeForTest(deliveries <-chan *awssqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}) error {
 	return b.consume(deliveries, concurrency, taskProcessor, pool)
 }
 
-func (b *Broker) ConsumeOneForTest(delivery *sqs.ReceiveMessageOutput, taskProcessor iface.TaskProcessor) error {
+func (b *Broker) ConsumeOneForTest(delivery *awssqs.ReceiveMessageOutput, taskProcessor iface.TaskProcessor) error {
 	return b.consumeOne(delivery, taskProcessor)
 }
 
-func (b *Broker) DeleteOneForTest(delivery *sqs.ReceiveMessageOutput) error {
+func (b *Broker) DeleteOneForTest(delivery *awssqs.ReceiveMessageOutput) error {
 	return b.deleteOne(delivery)
 }
 
@@ -168,7 +159,7 @@ func (b *Broker) DefaultQueueURLForTest() *string {
 	return b.defaultQueueURL()
 }
 
-func (b *Broker) ReceiveMessageForTest(qURL *string) (*sqs.ReceiveMessageOutput, error) {
+func (b *Broker) ReceiveMessageForTest(qURL *string) (*awssqs.ReceiveMessageOutput, error) {
 	return b.receiveMessage(qURL)
 }
 
@@ -176,11 +167,11 @@ func (b *Broker) InitializePoolForTest(pool chan struct{}, concurrency int) {
 	b.initializePool(pool, concurrency)
 }
 
-func (b *Broker) ConsumeDeliveriesForTest(deliveries <-chan *sqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
+func (b *Broker) ConsumeDeliveriesForTest(deliveries <-chan *awssqs.ReceiveMessageOutput, concurrency int, taskProcessor iface.TaskProcessor, pool chan struct{}, errorsChan chan error) (bool, error) {
 	return b.consumeDeliveries(deliveries, concurrency, taskProcessor, pool, errorsChan)
 }
 
-func (b *Broker) ContinueReceivingMessagesForTest(qURL *string, deliveries chan *sqs.ReceiveMessageOutput) (bool, error) {
+func (b *Broker) ContinueReceivingMessagesForTest(qURL *string, deliveries chan *awssqs.ReceiveMessageOutput) (bool, error) {
 	return b.continueReceivingMessages(qURL, deliveries)
 }
 

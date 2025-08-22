@@ -13,11 +13,11 @@ import (
 	"github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/log"
 	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/aws/aws-sdk-go/aws"
 )
 
 const (
@@ -533,7 +533,7 @@ func (b *Backend) updateToFailureStateWithError(taskState *tasks.TaskState) erro
 		input.ExpressionAttributeValues[":t"] = &types.AttributeValueMemberN{
 			Value: fmt.Sprintf("%d", taskState.TTL),
 		}
-		input.UpdateExpression = aws.String(aws.StringValue(input.UpdateExpression) + ", #T = :t")
+		input.UpdateExpression = aws.String(*input.UpdateExpression + ", #T = :t")
 	}
 
 	_, err := b.client.UpdateItem(context.TODO(), input)
