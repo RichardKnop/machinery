@@ -9,6 +9,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	ConfigMaxSize = 1000
+)
+
 // NewFromYaml creates a config object from YAML file
 func NewFromYaml(cnfPath string, keepReloading bool) (*Config, error) {
 	cnf, err := fromFile(cnfPath)
@@ -51,7 +55,7 @@ func ReadFromFile(cnfPath string) ([]byte, error) {
 	defer file.Close()
 
 	// Config file found, let's try to read it
-	data := make([]byte, 1000)
+	data := make([]byte, ConfigMaxSize)
 	count, err := file.Read(data)
 	if err != nil {
 		return nil, fmt.Errorf("Read from file error: %s", err)

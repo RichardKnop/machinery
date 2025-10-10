@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -10,5 +11,6 @@ const (
 )
 
 func GetLockName(name, spec string) string {
-	return LockKeyPrefix + filepath.Base(os.Args[0]) + name + spec
+	cmd := filepath.Base(os.Args[0])
+	return strings.Join([]string{LockKeyPrefix, cmd, name, spec}, "")
 }
