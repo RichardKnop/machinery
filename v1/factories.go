@@ -59,7 +59,8 @@ func BrokerFactory(cnf *config.Config) (brokeriface.Broker, error) {
 		}
 		brokers := strings.Split(parts[1], ",")
 		if len(brokers) > 1 || (cnf.Redis != nil && cnf.Redis.ClusterMode) {
-			return redisbroker.NewGR(cnf, brokers, 0), nil
+			db, brokers := ParseBrokers(brokers)
+			return redisbroker.NewGR(cnf, brokers, db), nil
 		} else {
 			redisHost, redisUsername, redisPassword, redisDB, err := ParseRedisURL(cnf.Broker)
 			if err != nil {
@@ -141,7 +142,8 @@ func BackendFactory(cnf *config.Config) (backendiface.Backend, error) {
 		parts := strings.Split(cnf.ResultBackend, scheme)
 		addrs := strings.Split(parts[1], ",")
 		if len(addrs) > 1 || (cnf.Redis != nil && cnf.Redis.ClusterMode) {
-			return redisbackend.NewGR(cnf, addrs, 0), nil
+			db, addrs := ParseBrokers(addrs)
+			return redisbackend.NewGR(cnf, addrs, db), nil
 		} else {
 			redisHost, redisUsername, redisPassword, redisDB, err := ParseRedisURL(cnf.ResultBackend)
 
@@ -219,6 +221,23 @@ func ParseRedisURL(url string) (host, username, password string, db int, err err
 	}
 
 	return
+}
+
+// Parse the database index from the last broker in the list, and remove the /db part from it.
+func ParseBrokers(brokers []string) (int, []string) {
+	db := 0
+	last := brokers[len(brokers)-1]
+	if strings.Contains(last, "/") {
+		parts := strings.SplitN(last, "/", 2)
+		brokers[len(brokers)-1] = parts[0]
+		if len(parts) == 2 && parts[1] != "" {
+			if val, err := strconv.Atoi(parts[1]); err == nil {
+				db = val
+			}
+		}
+	}
+
+	return db, brokers
 }
 
 // LockFactory creates a new object of iface.Lock
