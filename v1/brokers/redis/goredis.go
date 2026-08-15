@@ -262,6 +262,31 @@ func (b *BrokerGR) GetDelayedTasks() ([]*tasks.Signature, error) {
 	return taskSignatures, nil
 }
 
+// ScanDelayedTasks returns up to count delayed tasks and the cursor for the next scan.
+// A nextCursor value of 0 means the scan is complete.
+func (b *BrokerGR) ScanDelayedTasks(cursor uint64, count int) (taskSignatures []*tasks.Signature, nextCursor uint64, err error) {
+	if count <= 0 {
+		return nil, 0, fmt.Errorf("scan count must be greater than zero")
+	}
+
+	entries, nextCursor, err := b.rclient.ZScan(context.Background(), b.redisDelayedTasksKey, cursor, "", int64(count)).Result()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	taskSignatures = make([]*tasks.Signature, 0, len(entries)/2)
+	for i := 0; i+1 < len(entries); i += 2 {
+		signature := new(tasks.Signature)
+		decoder := json.NewDecoder(strings.NewReader(entries[i]))
+		decoder.UseNumber()
+		if err = decoder.Decode(signature); err != nil {
+			return nil, 0, err
+		}
+		taskSignatures = append(taskSignatures, signature)
+	}
+	return taskSignatures, nextCursor, nil
+}
+
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
 func (b *BrokerGR) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor) error {
