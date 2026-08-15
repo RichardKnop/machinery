@@ -1,6 +1,7 @@
 .PHONY: fmt lint golint test test-with-coverage ci
 # TODO: When Go 1.9 is released vendor folder should be ignored automatically
 PACKAGES=`go list ./... | grep -v vendor | grep -v mocks`
+GOLANGCI_LINT ?= golangci-lint
 
 fmt:
 	for pkg in ${PACKAGES}; do \
@@ -8,7 +9,7 @@ fmt:
 	done;
 
 lint:
-	gometalinter --tests --disable-all --deadline=120s -E vet -E gofmt -E misspell -E ineffassign -E goimports -E deadcode ./...
+	$(GOLANGCI_LINT) run ./...
 
 golint:
 	for pkg in ${PACKAGES}; do \
