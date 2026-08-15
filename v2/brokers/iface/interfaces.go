@@ -20,6 +20,13 @@ type Broker interface {
 	AdjustRoutingKey(s *tasks.Signature)
 }
 
+// DelayedTaskScanner is implemented by Redis brokers that can enumerate delayed
+// tasks incrementally. Callers can type assert a Broker to this interface when
+// they need to avoid loading an entire delayed queue into memory.
+type DelayedTaskScanner interface {
+	ScanDelayedTasks(cursor uint64, count int) (tasks []*tasks.Signature, nextCursor uint64, err error)
+}
+
 // TaskProcessor - can process a delivered task
 // This will probably always be a worker instance
 type TaskProcessor interface {

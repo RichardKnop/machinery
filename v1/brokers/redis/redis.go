@@ -281,6 +281,39 @@ func (b *Broker) GetDelayedTasks() ([]*tasks.Signature, error) {
 	return taskSignatures, nil
 }
 
+// ScanDelayedTasks returns up to count delayed tasks and the cursor for the next scan.
+// A nextCursor value of 0 means the scan is complete.
+func (b *Broker) ScanDelayedTasks(cursor uint64, count int) (taskSignatures []*tasks.Signature, nextCursor uint64, err error) {
+	if count <= 0 {
+		return nil, 0, fmt.Errorf("scan count must be greater than zero")
+	}
+
+	conn := b.open()
+	defer conn.Close()
+
+	values, err := redis.Values(conn.Do("ZSCAN", b.redisDelayedTasksKey, cursor, "COUNT", count))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var entries [][]byte
+	if _, err = redis.Scan(values, &nextCursor, &entries); err != nil {
+		return nil, 0, err
+	}
+
+	taskSignatures = make([]*tasks.Signature, 0, len(entries)/2)
+	for i := 0; i+1 < len(entries); i += 2 {
+		signature := new(tasks.Signature)
+		decoder := json.NewDecoder(bytes.NewReader(entries[i]))
+		decoder.UseNumber()
+		if err = decoder.Decode(signature); err != nil {
+			return nil, 0, err
+		}
+		taskSignatures = append(taskSignatures, signature)
+	}
+	return taskSignatures, nextCursor, nil
+}
+
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
 func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor, stopConsumer chan struct{}) error {
