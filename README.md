@@ -1215,6 +1215,13 @@ Easiest (and platform agnostic) way to run tests is via `docker-compose`:
 make ci
 ```
 
+Run static analysis with the pinned `golangci-lint` configuration:
+
+```bash
+make lint
+(cd v2 && make lint)
+```
+
 This will basically run docker-compose command:
 
 ```sh
