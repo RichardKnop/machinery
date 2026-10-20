@@ -104,7 +104,7 @@ type SQSConfig struct {
 	VisibilityTimeout *int `yaml:"receive_visibility_timeout" envconfig:"SQS_VISIBILITY_TIMEOUT"`
 	// https://docs.aws.amazon.com/es_es/AWSSimpleQueueService/latest/SQSDeveloperGuide/best-practices-processing-messages-timely-manner.html
 	// visibility heartbeat should default to true to ensure that the visibility timeout is extended while the task is being processed.
-	VisibilityHeartBeat bool `yaml:"visibility_hearth_beat" envconfig:"SQS_VISIBILITY_HEARTBEAT"`
+	VisibilityHeartBeat bool `yaml:"visibility_heartbeat" envconfig:"SQS_VISIBILITY_HEARTBEAT"`
 }
 
 // RedisConfig ...
