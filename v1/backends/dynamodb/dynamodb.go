@@ -290,7 +290,7 @@ func (b *Backend) PurgeState(taskUUID string) error {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"TaskUUID": {
-				N: aws.String(taskUUID),
+				S: aws.String(taskUUID),
 			},
 		},
 		TableName: aws.String(b.cnf.DynamoDB.TaskStatesTable),
@@ -308,7 +308,7 @@ func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"GroupUUID": {
-				N: aws.String(groupUUID),
+				S: aws.String(groupUUID),
 			},
 		},
 		TableName: aws.String(b.cnf.DynamoDB.GroupMetasTable),
