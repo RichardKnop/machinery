@@ -198,6 +198,10 @@ func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Cha
 
 // SendChain triggers a chain of tasks
 func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, error) {
+	if len(chain.Tasks) == 0 {
+		return nil, errors.New("Cannot send an empty chain")
+	}
+
 	_, err := server.SendTask(chain.Tasks[0])
 	if err != nil {
 		return nil, err
