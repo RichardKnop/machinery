@@ -110,6 +110,7 @@ func (asyncResult *AsyncResult) Get(sleepDuration time.Duration) ([]reflect.Valu
 // GetWithTimeout returns task results with a timeout (synchronous blocking call)
 func (asyncResult *AsyncResult) GetWithTimeout(timeoutDuration, sleepDuration time.Duration) ([]reflect.Value, error) {
 	timeout := time.NewTimer(timeoutDuration)
+	defer timeout.Stop()
 
 	for {
 		select {
@@ -119,7 +120,9 @@ func (asyncResult *AsyncResult) GetWithTimeout(timeoutDuration, sleepDuration ti
 			results, err := asyncResult.Touch()
 
 			if results == nil && err == nil {
-				time.Sleep(sleepDuration)
+				if err := waitForResultPoll(timeout.C, sleepDuration); err != nil {
+					return nil, err
+				}
 			} else {
 				return results, err
 			}
@@ -191,6 +194,7 @@ func (chainAsyncResult *ChainAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 	)
 
 	timeout := time.NewTimer(timeoutDuration)
+	defer timeout.Stop()
 	ln := len(chainAsyncResult.asyncResults)
 	lastResult := chainAsyncResult.asyncResults[ln-1]
 
@@ -214,7 +218,9 @@ func (chainAsyncResult *ChainAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 			if results != nil {
 				return results, err
 			}
-			time.Sleep(sleepDuration)
+			if err := waitForResultPoll(timeout.C, sleepDuration); err != nil {
+				return nil, err
+			}
 		}
 	}
 }
@@ -231,6 +237,7 @@ func (chordAsyncResult *ChordAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 	)
 
 	timeout := time.NewTimer(timeoutDuration)
+	defer timeout.Stop()
 	for {
 		select {
 		case <-timeout.C:
@@ -250,7 +257,21 @@ func (chordAsyncResult *ChordAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 			if results != nil {
 				return results, err
 			}
-			time.Sleep(sleepDuration)
+			if err := waitForResultPoll(timeout.C, sleepDuration); err != nil {
+				return nil, err
+			}
 		}
+	}
+}
+
+// waitForResultPoll waits between polls without delaying the result timeout.
+func waitForResultPoll(timeout <-chan time.Time, sleepDuration time.Duration) error {
+	sleep := time.NewTimer(sleepDuration)
+	defer sleep.Stop()
+	select {
+	case <-timeout:
+		return ErrTimeoutReached
+	case <-sleep.C:
+		return nil
 	}
 }
