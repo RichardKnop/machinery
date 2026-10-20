@@ -92,6 +92,7 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	}
 
 	sub.ReceiveSettings.NumGoroutines = concurrency
+	sub.ReceiveSettings.MaxOutstandingMessages = concurrency
 	log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
 
 	ctx, cancel := context.WithCancel(context.Background())
