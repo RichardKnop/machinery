@@ -1,6 +1,7 @@
 package machinery
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -197,7 +198,7 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 		return worker.taskFailed(signature, err)
 	}
 
-	return worker.taskSucceeded(signature, results)
+	return worker.taskSucceeded(task.Context, signature, results)
 }
 
 // retryTask decrements RetryCount counter and republishes the task to the queue
@@ -244,7 +245,7 @@ func (worker *Worker) retryTaskIn(signature *tasks.Signature, retryIn time.Durat
 
 // taskSucceeded updates the task state and triggers success callbacks or a
 // chord callback if this was the last task of a group with a chord callback
-func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*tasks.TaskResult) error {
+func (worker *Worker) taskSucceeded(ctx context.Context, signature *tasks.Signature, taskResults []*tasks.TaskResult) error {
 	// Update task state to SUCCESS
 	if err := worker.server.GetBackend().SetStateSuccess(signature, taskResults); err != nil {
 		return fmt.Errorf("Set state to 'success' for task %s returned error: %s", signature.UUID, err)
@@ -273,7 +274,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 			}
 		}
 
-		worker.server.SendTask(successTask)
+		worker.server.SendTaskWithContext(ctx, successTask)
 	}
 
 	// If the task was not part of a group, just return
@@ -400,27 +401,26 @@ func (worker *Worker) SetErrorHandler(handler func(err error)) {
 	worker.errorHandler = handler
 }
 
-//SetPreTaskHandler sets a custom handler func before a job is started
+// SetPreTaskHandler sets a custom handler func before a job is started
 func (worker *Worker) SetPreTaskHandler(handler func(*tasks.Signature)) {
 	worker.preTaskHandler = handler
 }
 
-//SetPostTaskHandler sets a custom handler for the end of a job
+// SetPostTaskHandler sets a custom handler for the end of a job
 func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 	worker.postTaskHandler = handler
 }
 
-//SetPreConsumeHandler sets a custom handler for the end of a job
+// SetPreConsumeHandler sets a custom handler for the end of a job
 func (worker *Worker) SetPreConsumeHandler(handler func(*Worker) bool) {
 	worker.preConsumeHandler = handler
 }
 
-//GetServer returns server
+// GetServer returns server
 func (worker *Worker) GetServer() *Server {
 	return worker.server
 }
 
-//
 func (worker *Worker) PreConsumeHandler() bool {
 	if worker.preConsumeHandler == nil {
 		return true
