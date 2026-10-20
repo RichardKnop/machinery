@@ -279,7 +279,7 @@ func (b *Backend) batchFetchTaskStates(taskUUIDs []string) ([]*tasks.TaskState, 
 
 	// Look for any unprocessed keys
 	var unfetchedKeys []string
-	if _, ok = result.UnprocessedKeys[tableName]; !ok {
+	if _, ok = result.UnprocessedKeys[tableName]; ok {
 		unfetchedKeys, err = getUnfetchedKeys(result.UnprocessedKeys[tableName])
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to fetch some keys: [%+v]. Error: [%s]", result.UnprocessedKeys, err)
