@@ -220,20 +220,21 @@ func (server *Server) SendGroupWithContext(ctx context.Context, group *tasks.Gro
 
 	asyncResults := make([]*result.AsyncResult, len(group.Tasks))
 
-	var wg sync.WaitGroup
-	wg.Add(len(group.Tasks))
-	errorsChan := make(chan error, len(group.Tasks)*2)
-
 	// Init group
-	server.backend.InitGroup(group.GroupUUID, group.GetUUIDs())
+	if err := server.backend.InitGroup(group.GroupUUID, group.GetUUIDs()); err != nil {
+		return nil, err
+	}
 
 	// Init the tasks Pending state first
 	for _, signature := range group.Tasks {
 		if err := server.backend.SetStatePending(signature); err != nil {
-			errorsChan <- err
-			continue
+			return nil, err
 		}
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(group.Tasks))
+	errorsChan := make(chan error, len(group.Tasks)*2)
 
 	pool := make(chan struct{}, sendConcurrency)
 	go func() {
