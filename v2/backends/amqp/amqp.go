@@ -41,7 +41,18 @@ func New(cnf *config.Config) iface.Backend {
 
 // InitGroup creates and saves a group meta data object
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
-	return nil
+	conn, channel, err := b.Open(b.GetConfig().ResultBackend, b.GetConfig().TLSConfig)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	defer channel.Close()
+	queue, err := b.declareChordQueue(channel, groupUUID)
+	if err != nil {
+		return err
+	}
+	_, err = channel.QueuePurge(queue.Name, false)
+	return err
 }
 
 // GroupCompleted returns true if all tasks in a group finished
@@ -121,14 +132,52 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer b.Close(channel, conn)
-
-	_, err = b.InspectQueue(channel, amqmChordTriggeredQueue(groupUUID))
+	defer conn.Close()
+	defer channel.Close()
+	queue, err := b.declareChordQueue(channel, groupUUID)
 	if err != nil {
+		return false, err
+	}
+	if err := channel.Confirm(false); err != nil {
+		return false, err
+	}
+	returns := channel.NotifyReturn(make(chan amqp.Return, 1))
+	confirms := channel.NotifyPublish(make(chan amqp.Confirmation, 1))
+	if err := channel.Publish("", queue.Name, true, false, amqp.Publishing{
+		DeliveryMode: amqp.Persistent, Body: []byte("claimed"),
+	}); err != nil {
+		return false, err
+	}
+	confirmation, ok := <-confirms
+	if !ok {
+		return false, errors.New("AMQP chord confirmation channel closed")
+	}
+	select {
+	case returned := <-returns:
+		return false, fmt.Errorf("AMQP chord marker returned: %d %s", returned.ReplyCode, returned.ReplyText)
+	default:
+	}
+	if confirmation.Ack {
 		return true, nil
 	}
+	// A full queue rejects all subsequent claimants. Other broker failures
+	// must not be mistaken for an existing claim.
+	state, err := channel.QueueInspect(queue.Name)
+	if err != nil {
+		return false, err
+	}
+	if state.Messages > 0 {
+		return false, nil
+	}
+	return false, errors.New("AMQP chord marker was not confirmed")
+}
 
-	return false, nil
+func (b *Backend) declareChordQueue(channel *amqp.Channel, groupUUID string) (amqp.Queue, error) {
+	return channel.QueueDeclare(amqmChordTriggeredQueue(groupUUID), true, false, false, false, amqp.Table{
+		"x-max-length": int32(1),
+		"x-overflow":   "reject-publish",
+		"x-expires":    int32(b.getExpiresIn()),
+	})
 }
 
 // SetStatePending updates task state to PENDING
@@ -256,10 +305,11 @@ func (b *Backend) PurgeGroupMeta(groupUUID string) error {
 	if err != nil {
 		return err
 	}
-	defer b.Close(channel, conn)
+	defer conn.Close()
+	defer channel.Close()
 
-	b.DeleteQueue(channel, amqmChordTriggeredQueue(groupUUID))
-
+	// Keep the claim until expiry so late workers cannot trigger the chord again.
+	// InitGroup explicitly resets it when the caller starts a new generation.
 	return b.DeleteQueue(channel, groupUUID)
 }
 
