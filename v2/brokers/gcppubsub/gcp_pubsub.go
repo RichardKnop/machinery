@@ -168,6 +168,7 @@ func (b *Broker) consumeOne(delivery *pubsub.Message, taskProcessor iface.TaskPr
 	if len(delivery.Data) == 0 {
 		delivery.Nack()
 		log.ERROR.Printf("received an empty message, the delivery was %v", delivery)
+		return
 	}
 
 	sig := new(tasks.Signature)
@@ -176,6 +177,7 @@ func (b *Broker) consumeOne(delivery *pubsub.Message, taskProcessor iface.TaskPr
 	if err := decoder.Decode(sig); err != nil {
 		delivery.Nack()
 		log.ERROR.Printf("unmarshal error. the delivery is %v", delivery)
+		return
 	}
 
 	// If the task is not registered return an error
@@ -183,6 +185,7 @@ func (b *Broker) consumeOne(delivery *pubsub.Message, taskProcessor iface.TaskPr
 	if !b.IsTaskRegistered(sig.Name) {
 		delivery.Nack()
 		log.ERROR.Printf("task %s is not registered", sig.Name)
+		return
 	}
 
 	err := taskProcessor.Process(sig)
