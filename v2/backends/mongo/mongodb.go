@@ -141,9 +141,9 @@ func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	decodedResults := b.decodeResults(results)
 	update := bson.M{
-		"state":   tasks.StateSuccess,
-		"results": decodedResults,
-		"delete_at":     time.Now().Add(time.Duration(b.GetConfig().ResultsExpireIn) * time.Second),
+		"state":     tasks.StateSuccess,
+		"results":   decodedResults,
+		"delete_at": b.getExpirationTime(),
 	}
 	return b.updateState(signature, update)
 }
@@ -173,9 +173,9 @@ func (b *Backend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult
 // SetStateFailure updates task state to FAILURE
 func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
 	update := bson.M{
-		"state": tasks.StateFailure,
-		"error": err,
-		"delete_at":   time.Now().Add(time.Duration(b.GetConfig().ResultsExpireIn) * time.Second),
+		"state":     tasks.StateFailure,
+		"error":     err,
+		"delete_at": b.getExpirationTime(),
 	}
 	return b.updateState(signature, update)
 }
@@ -356,4 +356,13 @@ func (b *Backend) createMongoIndexes(database string) error {
 	}
 
 	return err
+}
+
+// getExpirationTime applies the shared default retention when none is configured.
+func (b *Backend) getExpirationTime() time.Time {
+	expiresIn := b.GetConfig().ResultsExpireIn
+	if expiresIn == 0 {
+		expiresIn = config.DefaultResultsExpireIn
+	}
+	return time.Now().Add(time.Duration(expiresIn) * time.Second)
 }
