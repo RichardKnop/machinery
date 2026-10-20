@@ -55,7 +55,7 @@ var (
 type Config struct {
 	Broker                  string           `yaml:"broker" envconfig:"BROKER"`
 	Lock                    string           `yaml:"lock" envconfig:"LOCK"`
-	MultipleBrokerSeparator string           `yaml:"multiple_broker_separator" envconfig:"MULTIPLE_BROKEN_SEPARATOR"`
+	MultipleBrokerSeparator string           `yaml:"multiple_broker_separator" envconfig:"MULTIPLE_BROKER_SEPARATOR"`
 	DefaultQueue            string           `yaml:"default_queue" envconfig:"DEFAULT_QUEUE"`
 	ResultBackend           string           `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
 	ResultsExpireIn         int              `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`

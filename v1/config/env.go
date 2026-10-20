@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+
 	"github.com/kelseyhightower/envconfig"
 
 	"github.com/RichardKnop/machinery/v1/log"
@@ -27,6 +29,13 @@ func fromEnvironment() (*Config, error) {
 	}
 	if err := envconfig.Process("", loadedCnf); err != nil {
 		return nil, err
+	}
+
+	// Keep the historical misspelling as a fallback for existing deployments.
+	if _, present := os.LookupEnv("MULTIPLE_BROKER_SEPARATOR"); !present {
+		if separator, present := os.LookupEnv("MULTIPLE_BROKEN_SEPARATOR"); present {
+			cnf.MultipleBrokerSeparator = separator
+		}
 	}
 
 	if loadedCnf.AMQP == nil {
