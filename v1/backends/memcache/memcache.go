@@ -98,7 +98,10 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 
 	// If group meta is locked, wait until it's unlocked
 	for groupMeta.Lock {
-		groupMeta, _ = b.getGroupMeta(groupUUID)
+		groupMeta, err = b.getGroupMeta(groupUUID)
+		if err != nil {
+			return false, err
+		}
 		log.WARNING.Print("Group meta locked, waiting")
 		time.Sleep(time.Millisecond * 5)
 	}
