@@ -97,14 +97,14 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 		},
 	}
 
-	_, err := b.groupMetasCollection().UpdateOne(context.Background(), query, change, options.Update())
+	result, err := b.groupMetasCollection().UpdateOne(context.Background(), query, change, options.Update())
 
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			log.WARNING.Printf("Chord already triggered for group %s", groupUUID)
-			return false, nil
-		}
 		return false, err
+	}
+	if result.MatchedCount == 0 {
+		log.WARNING.Printf("No untriggered chord found for group %s", groupUUID)
+		return false, nil
 	}
 	return true, nil
 }
