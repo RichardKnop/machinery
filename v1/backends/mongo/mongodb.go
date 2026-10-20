@@ -141,8 +141,9 @@ func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
 	decodedResults := b.decodeResults(results)
 	update := bson.M{
-		"state":   tasks.StateSuccess,
-		"results": decodedResults,
+		"state":     tasks.StateSuccess,
+		"results":   decodedResults,
+		"delete_at": b.getExpirationTime(),
 	}
 	return b.updateState(signature, update)
 }
@@ -171,7 +172,11 @@ func (b *Backend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult
 
 // SetStateFailure updates task state to FAILURE
 func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error {
-	update := bson.M{"state": tasks.StateFailure, "error": err}
+	update := bson.M{
+		"state":     tasks.StateFailure,
+		"error":     err,
+		"delete_at": b.getExpirationTime(),
+	}
 	return b.updateState(signature, update)
 }
 
@@ -335,24 +340,17 @@ func (b *Backend) dial() (*mongo.Client, error) {
 
 // createMongoIndexes ensures all indexes are in place
 func (b *Backend) createMongoIndexes(database string) error {
-
-	tasksCollection := b.client.Database(database).Collection("tasks")
-
-	expireIn := int32(b.GetConfig().ResultsExpireIn)
-
-	_, err := tasksCollection.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
-		{
-			Keys:    bson.M{"state": 1},
-			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
-		},
-		mongo.IndexModel{
-			Keys:    bson.M{"lock": 1},
-			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
-		},
+	_, err := b.client.Database(database).Collection("tasks").Indexes().CreateOne(context.Background(), mongo.IndexModel{
+		Keys:    bson.M{"delete_at": 1},
+		Options: options.Index().SetBackground(true).SetExpireAfterSeconds(0),
 	})
-	if err != nil {
-		return err
-	}
-
 	return err
+}
+
+func (b *Backend) getExpirationTime() time.Time {
+	expiresIn := b.GetConfig().ResultsExpireIn
+	if expiresIn == 0 {
+		expiresIn = config.DefaultResultsExpireIn
+	}
+	return time.Now().Add(time.Duration(expiresIn) * time.Second)
 }
