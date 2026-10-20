@@ -250,7 +250,7 @@ func (b *Backend) getStates(taskUUIDs ...string) ([]*tasks.TaskState, error) {
 		}
 		states = append(states, state)
 	}
-	if cur.Err() != nil {
+	if err := cur.Err(); err != nil {
 		return nil, err
 	}
 	return states, nil
