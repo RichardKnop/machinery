@@ -61,6 +61,8 @@ func New() iface.Backend {
 
 // InitGroup creates and saves a group meta data object
 func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
+	b.stateMutex.Lock()
+	defer b.stateMutex.Unlock()
 	tasks := make([]string, 0, len(taskUUIDs))
 	// copy every task
 	tasks = append(tasks, taskUUIDs...)
@@ -71,7 +73,9 @@ func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
 
 // GroupCompleted returns true if all tasks in a group finished
 func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, error) {
+	b.stateMutex.Lock()
 	tasks, ok := b.groups[groupUUID]
+	b.stateMutex.Unlock()
 	if !ok {
 		return false, NewErrGroupNotFound(groupUUID)
 	}
@@ -93,7 +97,9 @@ func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, er
 
 // GroupTaskStates returns states of all tasks in the group
 func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error) {
+	b.stateMutex.Lock()
 	taskUUIDs, ok := b.groups[groupUUID]
+	b.stateMutex.Unlock()
 	if !ok {
 		return nil, NewErrGroupNotFound(groupUUID)
 	}
@@ -157,7 +163,9 @@ func (b *Backend) SetStateFailure(signature *tasks.Signature, err string) error 
 
 // GetState returns the latest task state
 func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
+	b.stateMutex.Lock()
 	tasktStateBytes, ok := b.tasks[taskUUID]
+	b.stateMutex.Unlock()
 	if !ok {
 		return nil, NewErrTasknotFound(taskUUID)
 	}
@@ -174,6 +182,8 @@ func (b *Backend) GetState(taskUUID string) (*tasks.TaskState, error) {
 
 // PurgeState deletes stored task state
 func (b *Backend) PurgeState(taskUUID string) error {
+	b.stateMutex.Lock()
+	defer b.stateMutex.Unlock()
 	_, ok := b.tasks[taskUUID]
 	if !ok {
 		return NewErrTasknotFound(taskUUID)
@@ -185,6 +195,8 @@ func (b *Backend) PurgeState(taskUUID string) error {
 
 // PurgeGroupMeta deletes stored group meta data
 func (b *Backend) PurgeGroupMeta(groupUUID string) error {
+	b.stateMutex.Lock()
+	defer b.stateMutex.Unlock()
 	_, ok := b.groups[groupUUID]
 	if !ok {
 		return NewErrGroupNotFound(groupUUID)
