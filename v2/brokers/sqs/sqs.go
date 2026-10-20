@@ -123,13 +123,13 @@ func (b *Broker) StopConsuming() {
 
 // Publish places a new message on the default queue
 func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error {
+	// Check that signature.RoutingKey is set, if not switch to DefaultQueue
+	b.AdjustRoutingKey(signature)
+
 	msg, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
-
-	// Check that signature.RoutingKey is set, if not switch to DefaultQueue
-	b.AdjustRoutingKey(signature)
 
 	MsgInput := &sqs.SendMessageInput{
 		MessageBody: aws.String(string(msg)),
@@ -198,14 +198,7 @@ func (b *Broker) consumeOne(delivery *sqs.ReceiveMessageOutput, taskProcessor if
 		return fmt.Errorf("received empty message, the delivery is %v", delivery)
 	}
 
-	if b.GetConfig().SQS.VisibilityHeartBeat {
-		notify := make(chan struct{})
-		defer close(notify)
-
-		b.visibilityHeartbeat(delivery, notify)
-	}
-
-	if b.GetConfig().SQS.VisibilityHeartBeat {
+	if b.GetConfig().SQS != nil && b.GetConfig().SQS.VisibilityHeartBeat {
 		notify := make(chan struct{})
 		defer close(notify)
 

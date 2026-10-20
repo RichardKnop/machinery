@@ -125,13 +125,13 @@ func (b *Broker) StopConsuming() {
 
 // Publish places a new message on the default queue
 func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error {
+	// Check that signature.RoutingKey is set, if not switch to DefaultQueue
+	b.AdjustRoutingKey(signature)
+
 	msg, err := json.Marshal(signature)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
-
-	// Check that signature.RoutingKey is set, if not switch to DefaultQueue
-	b.AdjustRoutingKey(signature)
 
 	MsgInput := &awssqs.SendMessageInput{
 		MessageBody: aws.String(string(msg)),
