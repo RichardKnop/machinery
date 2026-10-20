@@ -298,6 +298,7 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 	for {
 		select {
 		case err := <-errorsChan:
+			close(stopConsumer)
 			for v := range deliveries {
 				b.requeueMessage(v, taskProcessor)
 			}
