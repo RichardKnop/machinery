@@ -129,20 +129,21 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 
 	// If group meta is locked, wait until it's unlocked
 	for groupMeta.Lock {
-		groupMeta, _ = b.getGroupMeta(groupUUID)
+		groupMeta, err = b.getGroupMeta(groupUUID)
+		if err != nil {
+			return false, err
+		}
 		log.WARNING.Printf("Group [%s] locked, waiting", groupUUID)
 		time.Sleep(time.Millisecond * 5)
 	}
 
-	// Acquire lock
-	if err = b.lockGroupMeta(groupUUID); err != nil {
-		return false, err
-	}
-	defer b.unlockGroupMeta(groupUUID)
-
 	// update group meta data
 	err = b.chordTriggered(groupUUID)
 	if err != nil {
+		var conditionalError *types.ConditionalCheckFailedException
+		if errors.As(err, &conditionalError) {
+			return false, nil
+		}
 		return false, err
 	}
 	return true, err
@@ -395,8 +396,10 @@ func (b *Backend) chordTriggered(groupUUID string) error {
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: map[string]string{
 			"#CT": "ChordTriggered",
+			"#G":  "GroupUUID",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":notTriggered": &types.AttributeValueMemberBOOL{Value: false},
 			":ct": &types.AttributeValueMemberBOOL{
 				Value: true,
 			},
@@ -406,9 +409,10 @@ func (b *Backend) chordTriggered(groupUUID string) error {
 				Value: groupUUID,
 			},
 		},
-		ReturnValues:     types.ReturnValueUpdatedNew,
-		TableName:        aws.String(b.cnf.DynamoDB.GroupMetasTable),
-		UpdateExpression: aws.String("SET #CT = :ct"),
+		ReturnValues:        types.ReturnValueUpdatedNew,
+		TableName:           aws.String(b.cnf.DynamoDB.GroupMetasTable),
+		UpdateExpression:    aws.String("SET #CT = :ct"),
+		ConditionExpression: aws.String("attribute_exists(#G) AND (attribute_not_exists(#CT) OR #CT = :notTriggered)"),
 	}
 
 	_, err := b.client.UpdateItem(context.TODO(), input)
