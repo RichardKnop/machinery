@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	
+
 	"github.com/RichardKnop/machinery/v2/backends/amqp"
 	"github.com/RichardKnop/machinery/v2/brokers/errs"
 	"github.com/RichardKnop/machinery/v2/log"
@@ -273,7 +273,9 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 			}
 		}
 
-		worker.server.SendTask(successTask)
+		if _, err := worker.server.SendTask(successTask); err != nil {
+			return err
+		}
 	}
 
 	// If the task was not part of a group, just return
@@ -378,7 +380,9 @@ func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) erro
 			Value: taskErr.Error(),
 		}}, errorTask.Args...)
 		errorTask.Args = args
-		worker.server.SendTask(errorTask)
+		if _, err := worker.server.SendTask(errorTask); err != nil {
+			return err
+		}
 	}
 
 	if signature.StopTaskDeletionOnError {
