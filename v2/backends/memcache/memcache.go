@@ -8,7 +8,6 @@ import (
 	"github.com/RichardKnop/machinery/v2/backends/iface"
 	"github.com/RichardKnop/machinery/v2/common"
 	"github.com/RichardKnop/machinery/v2/config"
-	"github.com/RichardKnop/machinery/v2/log"
 	"github.com/RichardKnop/machinery/v2/tasks"
 
 	gomemcache "github.com/bradfitz/gomemcache/memcache"
@@ -17,15 +16,14 @@ import (
 // Backend represents a Memcache result backend
 type Backend struct {
 	common.Backend
-	servers []string
-	client  *gomemcache.Client
+	client *gomemcache.Client
 }
 
 // New creates Backend instance
 func New(cnf *config.Config, servers []string) iface.Backend {
 	return &Backend{
 		Backend: common.NewBackend(cnf),
-		servers: servers,
+		client:  gomemcache.New(servers...),
 	}
 }
 
@@ -86,44 +84,36 @@ func (b *Backend) GroupTaskStates(groupUUID string, groupTaskCount int) ([]*task
 // whether the worker should trigger chord (true) or no if it has been triggered
 // already (false)
 func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
-	groupMeta, err := b.getGroupMeta(groupUUID)
-	if err != nil {
-		return false, err
+	for {
+		item, err := b.getClient().Get(groupUUID)
+		if err != nil {
+			return false, err
+		}
+		groupMeta := new(tasks.GroupMeta)
+		if err := json.Unmarshal(item.Value, groupMeta); err != nil {
+			return false, err
+		}
+		if groupMeta.ChordTriggered {
+			return false, nil
+		}
+		// Allow an existing metadata lock to finish before claiming the chord.
+		if groupMeta.Lock {
+			time.Sleep(time.Millisecond * 5)
+			continue
+		}
+		groupMeta.ChordTriggered = true
+		item.Value, err = json.Marshal(groupMeta)
+		if err != nil {
+			return false, err
+		}
+		item.Expiration = b.getExpirationTimestamp()
+		if err = b.getClient().CompareAndSwap(item); err == gomemcache.ErrCASConflict {
+			continue
+		} else if err != nil {
+			return false, err
+		}
+		return true, nil
 	}
-
-	// Chord has already been triggered, return false (should not trigger again)
-	if groupMeta.ChordTriggered {
-		return false, nil
-	}
-
-	// If group meta is locked, wait until it's unlocked
-	for groupMeta.Lock {
-		groupMeta, _ = b.getGroupMeta(groupUUID)
-		log.WARNING.Print("Group meta locked, waiting")
-		time.Sleep(time.Millisecond * 5)
-	}
-
-	// Acquire lock
-	if err = b.lockGroupMeta(groupMeta); err != nil {
-		return false, err
-	}
-	defer b.unlockGroupMeta(groupMeta)
-
-	// Update the group meta data
-	groupMeta.ChordTriggered = true
-	encoded, err := json.Marshal(&groupMeta)
-	if err != nil {
-		return false, err
-	}
-	if err = b.getClient().Replace(&gomemcache.Item{
-		Key:        groupUUID,
-		Value:      encoded,
-		Expiration: b.getExpirationTimestamp(),
-	}); err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
 
 // SetStatePending updates task state to PENDING
@@ -203,36 +193,6 @@ func (b *Backend) updateState(taskState *tasks.TaskState) error {
 	})
 }
 
-// lockGroupMeta acquires lock on group meta data
-func (b *Backend) lockGroupMeta(groupMeta *tasks.GroupMeta) error {
-	groupMeta.Lock = true
-	encoded, err := json.Marshal(groupMeta)
-	if err != nil {
-		return err
-	}
-
-	return b.getClient().Set(&gomemcache.Item{
-		Key:        groupMeta.GroupUUID,
-		Value:      encoded,
-		Expiration: b.getExpirationTimestamp(),
-	})
-}
-
-// unlockGroupMeta releases lock on group meta data
-func (b *Backend) unlockGroupMeta(groupMeta *tasks.GroupMeta) error {
-	groupMeta.Lock = false
-	encoded, err := json.Marshal(groupMeta)
-	if err != nil {
-		return err
-	}
-
-	return b.getClient().Set(&gomemcache.Item{
-		Key:        groupMeta.GroupUUID,
-		Value:      encoded,
-		Expiration: b.getExpirationTimestamp(),
-	})
-}
-
 // getGroupMeta retrieves group meta data, convenience function to avoid repetition
 func (b *Backend) getGroupMeta(groupUUID string) (*tasks.GroupMeta, error) {
 	item, err := b.getClient().Get(groupUUID)
@@ -283,10 +243,7 @@ func (b *Backend) getExpirationTimestamp() int32 {
 	return int32(time.Now().Unix() + int64(expiresIn))
 }
 
-// getClient returns or creates instance of Memcache client
+// getClient returns the Memcache client.
 func (b *Backend) getClient() *gomemcache.Client {
-	if b.client == nil {
-		b.client = gomemcache.New(b.servers...)
-	}
 	return b.client
 }
