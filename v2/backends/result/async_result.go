@@ -239,13 +239,13 @@ func (chordAsyncResult *ChordAsyncResult) GetWithTimeout(timeoutDuration, sleepD
 			for _, asyncResult := range chordAsyncResult.groupAsyncResults {
 				_, errcur := asyncResult.Touch()
 				if errcur != nil {
-					return nil, err
+					return nil, errcur
 				}
 			}
 
 			results, err = chordAsyncResult.chordAsyncResult.Touch()
 			if err != nil {
-				return nil, nil
+				return nil, err
 			}
 			if results != nil {
 				return results, err
