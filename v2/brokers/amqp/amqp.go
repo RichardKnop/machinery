@@ -332,7 +332,7 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 	log.DEBUG.Printf("Received new message: %s", delivery.Body)
 
 	err := taskProcessor.Process(signature)
-	if ack {
+	if ack && err == nil {
 		delivery.Ack(multiple)
 	}
 	return err
