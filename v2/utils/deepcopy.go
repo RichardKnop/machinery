@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"reflect"
+	"time"
 )
 
 var (
@@ -43,6 +44,10 @@ func deepCopy(dst, src reflect.Value) {
 			deepCopy(dst.Index(i), src.Index(i))
 		}
 	case reflect.Struct:
+		if src.Type() == reflect.TypeOf(time.Time{}) {
+			dst.Set(src)
+			return
+		}
 		typeSrc := src.Type()
 		for i := 0; i < src.NumField(); i++ {
 			value := src.Field(i)
