@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"strings"
@@ -109,6 +110,10 @@ type SQSConfig struct {
 
 // RedisConfig ...
 type RedisConfig struct {
+	// CredentialsProviderContext supplies connection credentials to v2 go-redis
+	// brokers and result backends. Set it programmatically; YAML/env omit it.
+	CredentialsProviderContext func(context.Context) (string, string, error) `yaml:"-" json:"-" ignored:"true"`
+
 	// Maximum number of idle connections in the pool.
 	// Default: 10
 	MaxIdle int `yaml:"max_idle" envconfig:"REDIS_MAX_IDLE"`

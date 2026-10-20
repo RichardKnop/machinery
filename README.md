@@ -351,6 +351,15 @@ Redis related configuration. Not necessary if you are using other backend.
 
 See: [config](/v1/config/config.go) (TODO)
 
+In v2, go-redis brokers and result backends also accept
+`RedisConfig.CredentialsProviderContext`, a function with signature
+`func(context.Context) (username string, password string, err error)`. Set it
+programmatically on the Redis config before constructing the server to supply
+credentials when the client opens connections. It takes precedence over URL
+credentials, and provider errors are returned by the client. Leaving it nil
+preserves URL authentication. This callback is omitted from YAML, JSON, and
+environment configuration; v1 and the Redigo driver do not use it.
+
 #### GCPPubSub
 
 GCPPubSub related configuration. Not necessary if you are using other backend.
