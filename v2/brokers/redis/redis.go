@@ -125,8 +125,19 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 				}
 
 				if taskProcessor.PreConsumeHandler() {
-					task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
-					//TODO: should this error be ignored?
+					task, err := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
+					if err != nil && err != redis.ErrNil {
+						log.ERROR.Print(err)
+						// BLPOP normally blocks, but server/network errors can return immediately.
+						// Pace those failures while allowing consumer shutdown to interrupt.
+						timer := time.NewTimer(time.Second)
+						select {
+						case <-timer.C:
+						case <-b.GetStopChan():
+						case <-stopConsumer:
+						}
+						timer.Stop()
+					}
 					if len(task) > 0 {
 						deliveries <- task
 					}
@@ -149,7 +160,6 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 			case <-b.GetStopChan():
 				return
 			case <-stopConsumer:
-				close(deliveries)
 				return
 			default:
 				task, err := b.nextDelayedTask(b.redisDelayedTasksKey)
@@ -298,6 +308,7 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 	for {
 		select {
 		case err := <-errorsChan:
+			close(stopConsumer)
 			for v := range deliveries {
 				b.requeueMessage(v, taskProcessor)
 			}
