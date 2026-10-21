@@ -129,8 +129,19 @@ func (b *BrokerGR) StartConsuming(consumerTag string, concurrency int, taskProce
 				close(deliveries)
 				return
 			case <-pool:
-				task, _ := b.nextTask(getQueueGR(b.GetConfig(), taskProcessor))
-				//TODO: should this error be ignored?
+				task, err := b.nextTask(getQueueGR(b.GetConfig(), taskProcessor))
+				if err != nil && err != redis.Nil {
+					log.ERROR.Print(err)
+					// BLPOP normally blocks, but server/network errors can return immediately.
+					// Pace those failures while allowing consumer shutdown to interrupt.
+					timer := time.NewTimer(time.Second)
+					select {
+					case <-timer.C:
+					case <-b.GetStopChan():
+
+					}
+					timer.Stop()
+				}
 				if len(task) > 0 {
 					deliveries <- task
 				}
